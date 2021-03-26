@@ -17,69 +17,69 @@
 */
 //==============================================================================
 
-
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/app/misc/TxPool.h>
 
-
 namespace ripple {
 
-
-uint64_t TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set &set)
+uint64_t
+TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set)
 {
     uint64_t txCnt = 0;
 
-    std::lock_guard<std::mutex> lock(mutexTxPoll_);
+    std::shared_lock read_lock_set{mutexSet_};
+    std::shared_lock read_lock_avoid{mutexAvoid_};
 
     JLOG(j_.info()) << "Currently mTxsSet size: " << mTxsSet.size()
-        << ", mAvoid size: " << mAvoidByHash.size();
+                    << ", mAvoid size: " << mAvoidByHash.size();
 
-    for (auto iter = mTxsSet.begin(); txCnt < limit && iter != mTxsSet.end(); ++iter)
+    for (auto iter = mTxsSet.begin(); txCnt < limit && iter != mTxsSet.end();
+         ++iter)
     {
         if (!mAvoidByHash.count((*iter)->getID()))
         {
             set.insert((*iter)->getID());
             txCnt++;
-
-            // update avoid set
-            //mAvoidBySeq[seq].insert((*iter)->getID());
-            //mAvoidByHash.emplace((*iter)->getID(), seq);
         }
     }
 
     return txCnt;
 }
 
-TER TxPool::insertTx(std::shared_ptr<Transaction> transaction, LedgerIndex ledgerSeq)
+TER
+TxPool::insertTx(
+    std::shared_ptr<Transaction> transaction,
+    LedgerIndex ledgerSeq)
 {
-    std::lock_guard<std::mutex> lock(mutexTxPoll_);
-
     if (mTxsSet.size() >= mMaxTxsInPool)
     {
         JLOG(j_.warn()) << "Txs pool is full, insert failed, Tx hash: "
-            << transaction->getID();
+                        << transaction->getID();
         return telTX_POOL_FULL;
     }
 
     TER ter = tefPAST_SEQ;
+    std::unique_lock lock(mutexSet_);
     auto result = mTxsSet.insert(transaction);
 
     if (result.second)
     {
         JLOG(j_.trace()) << "Inserting a new Tx: " << transaction->getID();
 
-        if (mTxsHash.emplace(make_pair(transaction->getID(), result.first)).second)
+        if (mTxsHash.emplace(make_pair(transaction->getID(), result.first))
+                .second)
         {
             ter = tesSUCCESS;
-			// Init sync_status
-			if (mSyncStatus.pool_start_seq == 0)
-			{
-				mSyncStatus.pool_start_seq = ledgerSeq;
-			}
+            // Init sync_status
+            if (mSyncStatus.pool_start_seq == 0)
+            {
+                mSyncStatus.pool_start_seq = ledgerSeq;
+            }
         }
         else
         {
-            JLOG(j_.error()) << "mTxsHash.emplace failed, Tx: " << transaction->getID();
+            JLOG(j_.error())
+                << "mTxsHash.emplace failed, Tx: " << transaction->getID();
             mTxsSet.erase(transaction);
             ter = telLOCAL_ERROR;
         }
@@ -92,27 +92,32 @@ TER TxPool::insertTx(std::shared_ptr<Transaction> transaction, LedgerIndex ledge
     return ter;
 }
 
-void TxPool::removeTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const& prevHash)
+void
+TxPool::removeTxs(
+    SHAMap const& cSet,
+    LedgerIndex ledgerSeq,
+    uint256 const& prevHash)
 {
-    std::lock_guard<std::mutex> lock(mutexTxPoll_);
-
-	int count = 0;
-	TransactionSet::iterator iterSet;
+    int count = 0;
+    TransactionSet::iterator iterSet;
     for (auto const& item : cSet)
     {
         try
         {
-			if (!txExists(item.key()))
-				continue;
+            if (!txExists(item.key()))
+                continue;
 
-            // If not exist, throw std::out_of_range exception.
-            iterSet = mTxsHash.at(item.key());
-
-            // remove from Tx pool.
-            mTxsHash.erase(item.key());
-            mTxsSet.erase(iterSet);
+            {
+                // If not exist, throw std::out_of_range exception.
+                std::unique_lock<std::shared_mutex> lock(mutexSet_);
+                iterSet = mTxsHash.at(item.key());
+                // remove from Tx pool.
+                mTxsHash.erase(item.key());
+                mTxsSet.erase(iterSet);
+            }
 
             // remove from avoid set.
+            std::unique_lock<std::shared_mutex> lock(mutexAvoid_);
             if (mAvoidByHash.find(item.key()) != mAvoidByHash.end())
             {
                 LedgerIndex seq = mAvoidByHash[item.key()];
@@ -125,9 +130,10 @@ void TxPool::removeTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const&
             }
             else
             {
-                JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in mAvoid set";
+                // JLOG(j_.warn()) << "TxPool::TX:" << item.key() << " not in
+                // mAvoid set";
             }
-			count++;
+            count++;
         }
         catch (std::exception const& e)
         {
@@ -135,59 +141,66 @@ void TxPool::removeTxs(SHAMap const& cSet, LedgerIndex ledgerSeq, uint256 const&
         }
     }
 
-	JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
+    JLOG(j_.info()) << "Remove " << count << " txs for ledger " << ledgerSeq;
 
-	checkSyncStatus(ledgerSeq, prevHash);
+    checkSyncStatus(ledgerSeq, prevHash);
 }
 
-void TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
+void
+TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
 {
-	//update sync_status
-	if (mTxsSet.size() == 0)
-	{
-		mSyncStatus.init();
-		return;
-	}
+    // update sync_status
+    if (mTxsSet.size() == 0)
+    {
+        mSyncStatus.init();
+        return;
+    }
 
-	// There are ledgers to be synced.
-	if (mSyncStatus.pool_start_seq > 0)
-	{
-		if (mSyncStatus.max_advance_seq < ledgerSeq)
-		{
-			mSyncStatus.max_advance_seq = ledgerSeq;
-		}
+    // There are ledgers to be synced.
+    if (mSyncStatus.pool_start_seq > 0)
+    {
+        if (mSyncStatus.max_advance_seq < ledgerSeq)
+        {
+            mSyncStatus.max_advance_seq = ledgerSeq;
+        }
 
-		mSyncStatus.mapSynced[ledgerSeq] = prevHash;
+        mSyncStatus.mapSynced[ledgerSeq] = prevHash;
 
-		// get next prevHash to sync
-		{
-			uint256 prevHashDue = beast::zero;
-			int seqDue = 0;
-			for (int i = mSyncStatus.max_advance_seq - 1; i >= mSyncStatus.pool_start_seq; i--)
-			{
-				if (mSyncStatus.mapSynced.find(i) == mSyncStatus.mapSynced.end())
-				{
-					prevHashDue = mSyncStatus.mapSynced[i + 1];
-					seqDue = i;
-					break;
-				}
-			}
-			if (prevHashDue == beast::zero)
-			{
-				mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
-				mSyncStatus.mapSynced.clear();
-			}
-			else
-			{
-				mSyncStatus.prevHash = prevHashDue;
-				JLOG(j_.info()) << "start_seq:" << mSyncStatus.pool_start_seq << ",advance seq=" 
-					<< mSyncStatus.max_advance_seq << ",ledger seq to acquire:" << seqDue;
-			}
-		}
-	}
+        // get next prevHash to sync
+        {
+            uint256 prevHashDue = beast::zero;
+            int seqDue = 0;
+            for (int i = mSyncStatus.max_advance_seq - 1;
+                 i >= mSyncStatus.pool_start_seq;
+                 i--)
+            {
+                if (mSyncStatus.mapSynced.find(i) ==
+                    mSyncStatus.mapSynced.end())
+                {
+                    prevHashDue = mSyncStatus.mapSynced[i + 1];
+                    seqDue = i;
+                    break;
+                }
+            }
+            if (prevHashDue == beast::zero)
+            {
+                mSyncStatus.pool_start_seq = mSyncStatus.max_advance_seq + 1;
+                mSyncStatus.mapSynced.clear();
+            }
+            else
+            {
+                mSyncStatus.prevHash = prevHashDue;
+                JLOG(j_.info())
+                    << "start_seq:" << mSyncStatus.pool_start_seq
+                    << ",advance seq=" << mSyncStatus.max_advance_seq
+                    << ",ledger seq to acquire:" << seqDue;
+            }
+        }
+    }
 }
 
-void TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
+void
+TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 {
     // If the Tx set had be added into avoid set recently, don't add it again.
     // TODO
@@ -195,8 +208,14 @@ void TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
     {
         return;
     }
+    if (mAvoidBySeq.find(seq) != mAvoidBySeq.end() &&
+        mAvoidBySeq[seq].size() > 0)
+    {
+        JLOG(j_.info()) << "TxPool updateAvoid already "
+                        << mAvoidBySeq[seq].size() << " txs for Seq:" << seq;
+    }
 
-    std::lock_guard<std::mutex> lock(mutexTxPoll_);
+    std::unique_lock lock(mutexAvoid_);
 
     for (auto const& item : map)
     {
@@ -208,9 +227,10 @@ void TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
     }
 }
 
-void TxPool::clearAvoid(LedgerIndex seq)
+void
+TxPool::clearAvoid(LedgerIndex seq)
 {
-    std::lock_guard<std::mutex> lock(mutexTxPoll_);
+    std::unique_lock lock(mutexAvoid_);
 
     for (auto const& hash : mAvoidBySeq[seq])
     {
@@ -219,36 +239,46 @@ void TxPool::clearAvoid(LedgerIndex seq)
     mAvoidBySeq.erase(seq);
 }
 
-bool TxPool::isAvailable()
+bool
+TxPool::isAvailable()
 {
-	return mSyncStatus.max_advance_seq <= mSyncStatus.pool_start_seq;
+    return mSyncStatus.max_advance_seq <= mSyncStatus.pool_start_seq;
 }
 
-void TxPool::timerEntry()
+void
+TxPool::timerEntry()
 {
-	if (!isAvailable())
-	{
-		// we need to switch the ledger we're working from
-		auto prevLedger = app_.getLedgerMaster().getLedgerByHash(mSyncStatus.prevHash);
+    if (!isAvailable())
+    {
+        // we need to switch the ledger we're working from
+        auto prevLedger =
+            app_.getLedgerMaster().getLedgerByHash(mSyncStatus.prevHash);
         if (prevLedger)
-		{
-			JLOG(j_.info()) << "TxPool found ledger " << prevLedger->info().seq;
-			removeTxs(prevLedger->txMap(), prevLedger->info().seq, prevLedger->info().parentHash);
-		}
-	}
+        {
+            JLOG(j_.info()) << "TxPool found ledger " << prevLedger->info().seq;
+            removeTxs(
+                prevLedger->txMap(),
+                prevLedger->info().seq,
+                prevLedger->info().parentHash);
+        }
+    }
 }
 
-void TxPool::removeTx(uint256 hash)
+void
+TxPool::removeTx(uint256 hash)
 {
-	std::lock_guard<std::mutex> lock(mutexTxPoll_);
-	if(mTxsHash.find(hash) != mTxsHash.end())
-	{
-		// remove from Tx pool.
-		auto iter = mTxsHash.at(hash);
-		mTxsHash.erase(hash);
-		mTxsSet.erase(iter);
+    if (mTxsHash.find(hash) != mTxsHash.end())
+    {
+        // remove from Tx pool.
+        {
+            std::unique_lock lock(mutexSet_);
+            auto iter = mTxsHash.at(hash);
+            mTxsHash.erase(hash);
+            mTxsSet.erase(iter);
+        }
 
-		// remove from avoid set.
+        // remove from avoid set.
+        std::unique_lock lock(mutexAvoid_);
         if (mAvoidByHash.find(hash) != mAvoidByHash.end())
         {
             LedgerIndex seq = mAvoidByHash[hash];
@@ -259,8 +289,7 @@ void TxPool::removeTx(uint256 hash)
             }
             mAvoidByHash.erase(hash);
         }
-	}
+    }
 }
 
-
-}
+}  // namespace ripple
