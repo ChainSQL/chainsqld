@@ -50,7 +50,7 @@ Vote::New(
     vote.ledger_info_ = ledger_info;
     vote.timestamp_msecs_ = static_cast<int64_t>(
         std::chrono::time_point_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now())
+            std::chrono::system_clock::now())
             .time_since_epoch()
             .count());
     vote.signature_ = signature;
