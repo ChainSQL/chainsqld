@@ -838,8 +838,8 @@ public:
 			sql = build_addcolumn_sql();
 			break;
 		case BuildSQL::BUILD_ALTER_DEL_SQL:
+            sql = build_delcolumn_sql();
 			break;
-			sql = build_delcolumn_sql();
 		case BuildSQL::BUILD_ALTER_MOD_SQL:
 			sql = build_modifycolumn_sql();
 			break;
