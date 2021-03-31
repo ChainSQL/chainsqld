@@ -278,8 +278,7 @@ LedgerMaster::onConsensusReached(
     bool bWaitingInit,
     std::shared_ptr<Ledger const> previousLedger)
 {
-    mLastConsensusTime =
-        app_.timeKeeper().closeTime().time_since_epoch().count();
+    updateConsensusTime();
 
     if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
     {
@@ -293,13 +292,6 @@ LedgerMaster::onConsensusReached(
     checkSubChains();
     app_.getTableSync().TryTableSync();
     tryAdvance();
-}
-
-void
-LedgerMaster::updateConsensusTime()
-{
-    mLastConsensusTime =
-        app_.timeKeeper().closeTime().time_since_epoch().count();
 }
 
 std::chrono::seconds

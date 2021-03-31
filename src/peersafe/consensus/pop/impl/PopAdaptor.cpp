@@ -307,6 +307,8 @@ PopAdaptor::doAccept(
     // See if we can accept a ledger as fully-validated
     consensusBuilt(built.ledger_, result.txns.id(), std::move(consensusJson));
 
+    ledgerMaster_.updateConsensusTime();
+
     //-------------------------------------------------------------------------
     {
         // Build new open ledger

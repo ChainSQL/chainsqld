@@ -133,6 +133,13 @@ public:
         return !mValidLedger.empty();
     }
 
+    inline void
+    updateConsensusTime()
+    {
+        mLastConsensusTime =
+            app_.timeKeeper().closeTime().time_since_epoch().count();
+    }
+
     void
     initGenesisLedger(std::shared_ptr<Ledger> const genesis);
 
@@ -208,9 +215,6 @@ public:
     onConsensusReached(
         bool bWaitingInit,
         std::shared_ptr<Ledger const> previousLedger);
-
-    void
-    updateConsensusTime();
 
     // Returns the minimum ledger sequence in SQL database, if any.
     boost::optional<LedgerIndex>
