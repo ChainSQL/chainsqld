@@ -248,7 +248,7 @@ private:
     NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
 
-    uint64_t lastTxSetSize_;
+    uint64_t txQueuedCount_;
 
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;

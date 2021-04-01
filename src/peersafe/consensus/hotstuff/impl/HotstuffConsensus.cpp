@@ -290,27 +290,34 @@ HotstuffConsensus::canExtract()
 
         if (sinceClose <= 0)
         {
-            sinceClose = (adaptor_.closeTime() - consensusTime_).count();
+            sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             adaptor_.closeTime() - consensusTime_)
+                             .count();
         }
     }
+
+    auto txQueuedCount = adaptor_.getPoolQueuedTxCount();
+
+    JLOG(j_.info()) << "sinceClose: " << sinceClose
+                    << " txQueuedCount: " << txQueuedCount
+                    << " txQueuedCount_: " << txQueuedCount_;
 
     if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
         return true;
 
     if (adaptor_.parms().maxTXS_IN_LEDGER >=
             adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
-        adaptor_.getPoolQueuedTxCount() >= adaptor_.parms().maxTXS_IN_LEDGER &&
+        txQueuedCount >= adaptor_.parms().maxTXS_IN_LEDGER &&
         sinceClose >= adaptor_.parms().minBLOCK_TIME / 2)
     {
         return true;
     }
 
-    if (lastTxSetSize_ > 0 &&
-        adaptor_.getPoolQueuedTxCount() == lastTxSetSize_ &&
+    if (txQueuedCount_ > 0 && txQueuedCount_ == txQueuedCount &&
         sinceClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
 
-    lastTxSetSize_ = adaptor_.getPoolQueuedTxCount();
+    txQueuedCount_ = txQueuedCount;
 
     return false;
 }
@@ -1334,7 +1341,7 @@ HotstuffConsensus::startRoundInternal(
     acquired_.clear();
     curProposalCache_.clear();
 
-    lastTxSetSize_ = 0;
+    txQueuedCount_ = 0;
 
     if (recover)
     {
