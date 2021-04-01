@@ -2832,7 +2832,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 
                 auto const v = getPeerWithTree(
                     app_.peerManager(schemaId), schemaId, txHash, this);
-                if (!v)
+                if (v)
                 {
                     packet.set_requestcookie(id());
                     v->send(std::make_shared<Message>(
