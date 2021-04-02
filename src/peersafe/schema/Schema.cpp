@@ -352,7 +352,7 @@ public:
               *this,
               SchemaImp::journal("StateManager")))
 
-        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this)),
+        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
 
@@ -1009,6 +1009,7 @@ public:
         getTempNodeCache().sweep();
         getValidations().expire();
         getInboundLedgers().sweep();
+        getConnectionPool().sweep();
         m_acceptedLedgerCache.sweep();
         cachedSLEs_.expire();
 

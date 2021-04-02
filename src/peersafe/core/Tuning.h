@@ -44,6 +44,10 @@ namespace ripple {
 
 	uint32_t const LAST_LEDGERSEQ_PASS	= 8;
 
+    uint32_t const MAX_CONNECTION_IN_POOL  = 100;
+
+    //connection will close after 60s
+    uint64_t const CONNECTION_TIMEOUT   = 60;
 } // ripple
 
 #endif

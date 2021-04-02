@@ -1,10 +1,11 @@
-#pragma once
+#ifndef PEERSAFE_CONNECTION_POOL_H_INCLUDED
+#define PEERSAFE_CONNECTION_POOL_H_INCLUDED
 
 #include <memory>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/schema/Schema.h>
-#include <peersafe/core/Tuning.h>
 #include <ripple/basics/chrono.h>
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
 
@@ -111,3 +112,4 @@ public:
     Schema& app_;
 };
 }
+#endif
