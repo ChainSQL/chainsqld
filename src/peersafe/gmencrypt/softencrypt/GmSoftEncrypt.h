@@ -92,7 +92,7 @@ public:
     bool generatePubFromPri(
         const unsigned char* pPriUC,
         int priLen,
-        std::vector<unsigned char>& publicKey);
+        std::vector<unsigned char>& publicKey) override;
     //SM2 Sign&Verify
     unsigned long SM2ECCSign(
         std::pair<int, int> pri4SignInfo,
