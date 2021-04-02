@@ -38,6 +38,7 @@
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/app/table/TableStatusDB.h>
+#include <peersafe/app/misc/ConnectionPool.h>
 #include <iostream> 
 #include <fstream>
 #include <regex>
@@ -482,7 +483,7 @@ Json::Value getInfoByRPContext(RPC::JsonContext& context, std::string&sSql, Acco
 }
 
 
-Json::Value getLedgerTableInfo(RPC::JsonContext& context, const std::string& sql, std::set <std::string>& setDBTableNames,
+Json::Value getLedgerTableInfo(TxStore& txStore, const std::string& sql, std::set <std::string>& setDBTableNames,
 							   std::set < std::pair<AccountID, std::string>  >& setOwnerID2TableName)
 {
 
@@ -493,7 +494,7 @@ Json::Value getLedgerTableInfo(RPC::JsonContext& context, const std::string& sql
 	{
 		std::string rule;
 
-		Json::Value val = context.app.getTxStore().txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
+		Json::Value val = txStore.txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
 		if (val.isMember(jss::error))
 		{
 			return val;
@@ -515,7 +516,7 @@ Json::Value getLedgerTableInfo(RPC::JsonContext& context, const std::string& sql
 }
 
 
-Json::Value getLedgerTableInfo(RPC::JsonContext& context,AccountID& accountID, std::set <std::string>& setDBTableNames,
+Json::Value getLedgerTableInfo(RPC::JsonContext& context,TxStore& txStore,AccountID& accountID, std::set <std::string>& setDBTableNames,
 							   std::set < std::pair<AccountID,std::string>  >& setOwnerID2TableName)
 {
 	std::string sSql;
@@ -529,7 +530,6 @@ Json::Value getLedgerTableInfo(RPC::JsonContext& context,AccountID& accountID, s
 	for (auto nameInDB : setDBTableNames)
 	{
 		Json::Value ret;
-		TxStore& txStore = context.app.getTxStore();
 		Json::Value val = txStore.txHistory("select Owner,TableName from SyncTableState where TableNameInDB='" + nameInDB + "';");
 		if (val.isMember(jss::error))
 		{
@@ -748,11 +748,17 @@ Json::Value doGetRecord(RPC::JsonContext&  context)
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value result;
 	Json::Value& tables_json = tx_json["Tables"];
-	TxStore* pTxStore = &context.app.getTxStore();
+	auto unit = context.app.getConnectionPool().getAvailable();
+	TxStore* pTxStore = &(*unit->store_);
 	if (tables_json.size() == 1)//getTableStorage first_storage related
+	{		
 		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+		unit->unlock();
+	}
 
 	result = pTxStore->txHistory(context);
+	if(unit->islocked())
+		unit->unlock();
 
 	if (ret.isMember(jss::error))
 	{
@@ -832,23 +838,30 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 		return RPC::invalid_field_error(jss::sql);
 	}
 
+	auto unit = context.app.getConnectionPool().getAvailable();
+	TxStore& txStore = *unit->store_;
 	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(context, sql, setNameInDB,setOwnerID2TableName);
+	ret = getLedgerTableInfo(txStore, sql, setNameInDB,setOwnerID2TableName);
 
 	//check table exist on chain  
 	ret = checkTableExistOnChain(context, setOwnerID2TableName);
 	if (ret.isMember(jss::error))
+	{
+		unit->unlock();
 		return ret;
+	}
 
 	std::string catenatedSql;
 	ret = checkOperationRuleForSql(context, sql, setOwnerID2TableName, catenatedSql);
 	if (ret.isMember(jss::error))
 	{
+		unit->unlock();
 		return ret;
 	}
 
-	ret = queryBySql(context.app.getTxStore(), catenatedSql);
+	ret = queryBySql(txStore, catenatedSql);
+	unit->unlock();
 
 	if (ret.isMember(jss::error))
 	{
@@ -878,13 +891,16 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 	if (!isDBConfigured(context.app))
 		return rpcError(rpcNODB);
 
+	auto unit = context.app.getConnectionPool().getAvailable();
+	TxStore& txStore = *unit->store_;
+	
 	AccountID accountID;
-
 	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(context, accountID, setNameInDB, setOwnerID2TableName);
+	ret = getLedgerTableInfo(context,txStore, accountID, setNameInDB, setOwnerID2TableName);
 	if (ret.isMember(jss::error))
 	{
+		unit->unlock();
 		return ret;
 	}
 
@@ -892,6 +908,7 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 	ret = checkAuthForSql(context,accountID,setOwnerID2TableName);
 	if (ret.isMember(jss::error))
 	{
+		unit->unlock();
 		return ret;
 	}
 
@@ -899,10 +916,12 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 	ret = checkOperationRuleForSqlUser(context, accountID, setOwnerID2TableName, catenatedSql);
 	if (ret.isMember(jss::error))
 	{
+		unit->unlock();
 		return ret;
 	}
 
 	ret = queryBySql(context.app.getTxStore(), catenatedSql);
+	unit->unlock();
 	if (ret.isMember(jss::error))
 	{
 		return ret;
@@ -936,11 +955,20 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 
 	Json::Value& tx_json(context.params["tx_json"]);
 	Json::Value& tables_json = tx_json["Tables"];
-	TxStore* pTxStore = &context.app.getTxStore();
-	if (tables_json.size() == 1)//getTableStorage first_storage related
-		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
 
-	return pTxStore->txHistory2d(context);
+	auto unit = context.app.getConnectionPool().getAvailable();
+	TxStore& txStore = *unit->store_;
+	TxStore* pTxStore = &(*unit->store_);
+	if (tables_json.size() == 1)//getTableStorage first_storage related
+	{
+		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+		unit->unlock();
+	}
+	
+	auto retVec = pTxStore->txHistory2d(context);
+	if(unit->islocked())
+		unit->unlock();
+	return retVec;
 }
 
 void buildRaw(Json::Value& condition, std::string& rule)

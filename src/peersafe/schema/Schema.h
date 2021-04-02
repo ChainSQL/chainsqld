@@ -74,6 +74,7 @@ class PeerReservationTable;
 class DatabaseCon;
 class SHAMapStore;
 class SchemaManager;
+class ConnectionPool;
 
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
@@ -212,6 +213,8 @@ public:
     getTxPool() = 0;
     virtual StateManager&
     getStateManager() = 0;
+    virtual ConnectionPool&
+    getConnectionPool() = 0;
 
     virtual PathRequests&
     getPathRequests() = 0;
