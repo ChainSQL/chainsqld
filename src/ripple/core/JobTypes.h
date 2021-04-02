@@ -59,7 +59,7 @@ add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000ms,  45
 add(	jtVIEW_CHANGE,	 "viewchange",				maxLimit, false, 500ms,   1500ms);
 add(    jtTXN_DATA,      "fetchTxnData",            1,        false, 0ms,     0ms);
 add(    jtWAL,           "writeAhead",              maxLimit, false, 1000ms,  2500ms);
-add(    jtCONSENSUS_t,   "trustedConsensus",        maxLimit, false, 500ms,  1500ms);
+add(    jtCONSENSUS_t,   "trustedConsensus",        1,        false, 500ms,  1500ms);
 add(    jtWRITE,         "writeObjects",            maxLimit, false, 1750ms,  2500ms);
 add(    jtACCEPT,        "acceptLedger",            maxLimit, false, 0ms,     0ms);
 add(    jtSWEEP,         "sweep",                   maxLimit, false, 0ms,     0ms);
