@@ -114,6 +114,10 @@ walletPropose(Json::Value const& params)
             else
             {
                 std::string priKeyStrDe58 = decodeBase58Token(gmPriStr, TokenType::AccountSecret);
+                if (priKeyStrDe58.empty())
+                {
+                    return rpcError(rpcINVALID_PARAMS);
+                }
                 SecretKey secKey(Slice(priKeyStrDe58.c_str(), priKeyStrDe58.size()));
                 secKey.keyTypeInt_ = KeyType::gmalg;
                 auto pubKey = derivePublicKey(keyType, secKey);
