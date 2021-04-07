@@ -957,7 +957,6 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	Json::Value& tables_json = tx_json["Tables"];
 
 	auto unit = context.app.getConnectionPool().getAvailable();
-	TxStore& txStore = *unit->store_;
 	TxStore* pTxStore = &(*unit->store_);
 	if (tables_json.size() == 1)//getTableStorage first_storage related
 	{
