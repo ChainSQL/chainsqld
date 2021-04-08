@@ -3425,54 +3425,6 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             checkSchemaTx(lpAccepted, *vt.second);
         }
     }
-    //// test createSchema code
-    //{
-    //		//return;
-    //		SchemaParams params{};
-    //		params.account = calcAccountID(generateKeyPair(KeyType::secp256k1,
-    //generateSeed("masterpassphrase")).first); 		params.admin = params.account;
-    //		params.schema_id = lpAccepted->info().hash;
-    //		params.schema_name = to_string(params.schema_id);
-    //		params.anchor_ledger_hash = params.schema_id;
-    //		params.peer_list = { "127.0.0.1 5127" };
-    //		params.strategy = SchemaStragegy::with_state;
-
-    //		auto seed = parseBase58<Seed>("xnGpDQqYxMguNsMaGqgFvDJ93Gzkf");
-    //		auto private_key = generateSecretKey(KeyType::secp256k1, *seed);
-    //		auto base58NodePublic = derivePublicKey(KeyType::secp256k1,
-    //private_key); 		std::cout << strHex(base58NodePublic) <<std::endl;
-
-    //		seed = parseBase58<Seed>("xxHnJmmnyqXeQiPPFYjE54whuQKCN");
-    //		private_key = generateSecretKey(KeyType::secp256k1, *seed);
-    //		base58NodePublic = derivePublicKey(KeyType::secp256k1,
-    //private_key); 		std::cout << strHex(base58NodePublic) << std::endl;
-    //		//auto oPublic_key =
-    //ripple::getPublicKey("xn2LEqGs7Xpz1DMYqYJjiP5727h8c");
-    //		//std::cout << strHex(*oPublic_key) << std::endl;
-    //
-    //		std::pair<PublicKey, bool> validator =
-    //std::make_pair(base58NodePublic, true);
-    //		params.validator_list.push_back(validator);
-
-    //		static  bool bInit = true;
-    //		if ( lpAccepted->info().seq == 3 &&
-    //!(app_.app().getSchemaManager().contains(params.schema_id)) && bInit ){
-
-    //			try
-    //			{
-    //				auto newSchema =
-    //app_.app().getSchemaManager().createSchema(app_.app().config(), params);
-    //				newSchema->initBeforeSetup();
-    //				newSchema->setup();
-    //				bInit = false;
-    //			}
-    //			catch (std::exception const& e)
-    //			{
-    //				JLOG(m_journal.fatal()) << e.what();
-    //			}
-    //		}
-    //}
-    //// test code end
 }
 
 void
