@@ -2802,8 +2802,12 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         JLOG(p_journal_.warn()) << "GetLedger: SchemaId invalid";
         return;
     }
-    uint256 schemaId;
-    memcpy(schemaId.begin(), packet.schemaid().data(), 32);
+
+    auto tup = getSchemaInfo("TMGetLedger:", packet.schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+
     reply.set_schemaid(schemaId.begin(), uint256::size());
 
     if (packet.itype() == protocol::liTS_CANDIDATE)
