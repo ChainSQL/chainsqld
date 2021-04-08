@@ -152,19 +152,13 @@ Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::ve
 	}
 
 	AccountID ownerID;
-	AccountID accountID;
-	std::shared_ptr<ReadView const> ledgerConst;
-	auto result = RPC::lookupLedger(ledgerConst, context);
-	if (!ledgerConst)
-		return result;
+    AccountID accountID;
 	std::string ownerStr = tx_json[jss::Owner].asString();
 	auto jvAcceptedOwner = RPC::accountFromString(ownerID, ownerStr, true);
 	if (jvAcceptedOwner)
 	{
 		return jvAcceptedOwner;
 	}
-	if (!ledgerConst->exists(keylet::account(ownerID)))
-		return rpcError(rpcACT_NOT_FOUND);
 
 	std::string accountStr = tx_json[jss::Account].asString();
 	auto jvAcceptedAccount = RPC::accountFromString(accountID, accountStr, true);
@@ -172,8 +166,6 @@ Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::ve
 	{
 		return jvAcceptedAccount;
 	}
-	if (!ledgerConst->exists(keylet::account(accountID)))
-		return rpcError(rpcACT_NOT_FOUND);
 
 	Json::Value &tables_json = tx_json[jss::Tables];
 	if (!tables_json.isArray())
@@ -245,18 +237,11 @@ Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::ve
 	}
 
 	std::string rule;
-	auto ledger = context.ledgerMaster.getValidatedLedger();
+    auto ledger = context.ledgerMaster.getValidatedLedger();
 	if (ledger)
 	{
 		auto id = keylet::table(ownerID);
 		auto const tablesle = ledger->read(id);
-
-		//judge if account is activated
-		auto key = keylet::account(accountID);
-		if (!ledger->exists(key))
-		{
-			return rpcError(rpcACT_NOT_FOUND);
-		}
 
 		if (tablesle)
 		{
@@ -729,15 +714,15 @@ checkOperationRuleForSqlUser(RPC::JsonContext& context,const AccountID& accountI
 
 Json::Value doGetRecord(RPC::JsonContext&  context)
 {
-	Json::Value ret = checkSig(context); 
-	if (ret.isMember(jss::error))
-		return ret;
+    Json::Value ret = checkSig(context);
+    if (ret.isMember(jss::error))
+        return ret;
 
 	uint160 nameInDB = beast::zero;
-	std::vector<ripple::uint160> vecNameInDB;
-	ret = checkForSelect(context, nameInDB, vecNameInDB);
-	if (ret.isMember(jss::error))
-		return ret;
+    std::vector<ripple::uint160> vecNameInDB;
+    ret = checkForSelect(context, nameInDB, vecNameInDB);
+    if (ret.isMember(jss::error))
+        return ret;
 
 	//db connection is null
 	if (!isDBConfigured(context.app))
