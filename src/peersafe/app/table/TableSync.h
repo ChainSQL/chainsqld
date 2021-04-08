@@ -92,7 +92,7 @@ private:
     bool
     initTableItems();
 	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
-    bool CreateTableItems();
+    void CreateTableItems();
     //check ledger according to the skip node
     bool CheckTheReplyIsValid(std::shared_ptr <protocol::TMTableData> const& m);
     bool CheckSyncDataBy256thLedger(std::shared_ptr <TableSyncItem> pItem, LedgerIndex index, uint256 ledgerHash);    

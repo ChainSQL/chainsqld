@@ -896,91 +896,95 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
 	return std::make_pair(pItem, "");
 }
 
-bool TableSync::CreateTableItems()
+void TableSync::CreateTableItems()
 {
-    bool ret = false;
-    try
-    {
-        auto section = cfg_.section(ConfigSection::syncTables());
-        const std::vector<std::string> lines = section.lines();       
+    // 1.read data from config
+    auto section = cfg_.section(ConfigSection::syncTables());
+    const std::vector<std::string> lines = section.lines();
 
-        //1.read data from config
-        for (std::string line : lines)
-		{
-			auto ret = CreateOneItem(TableSyncItem::SyncTarget_db, line);			
+    for (std::string line : lines)
+	{
+        try
+        {
+            auto ret = CreateOneItem(TableSyncItem::SyncTarget_db, line);
             if (ret.first != NULL)
             {
                 std::lock_guard lock(mutexlistTable_);
                 listTableInfo_.push_back(ret.first);
-				//this set can only be modified here
+                // this set can only be modified here
                 std::string temKey = to_string(ret.first->GetAccount()) +
                     ret.first->GetTableName();
                 setTableInCfg[temKey] = line;
             }
         }
-		
-        //2.read from state table
-		auto ledger = app_.getLedgerMaster().getValidatedLedger();
-		//read chainId
-		uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
-
-        std::list<std::tuple<std::string, std::string, std::string, bool> > list;
-        app_.getTableStatusDB().GetAutoListFromDB(chainId, list); 
-
-        std::string owner, tablename, time;
-        bool isAutoSync;
-
-        for (auto tuplelem : list)
-        {            
-            std::tie(owner, tablename, time, isAutoSync) = tuplelem;
-
-            AccountID accountID;
-            try
-            {
-				auto pOwner = ripple::parseBase58<AccountID>(owner);
-				if (pOwner)
-					accountID = *pOwner;
-				else
-				{
-					JLOG(journal_.error()) <<
-						"ripple::parseBase58<AccountID> parse failed" << owner;
-					continue;
-				}
-            }
-            catch (std::exception const& e)
-            {
-                JLOG(journal_.warn()) <<
-                    "ripple::parseBase58<AccountID> exception" << e.what();
-            }
-
-            std::shared_ptr <TableSyncItem> pItem = NULL;
-            pItem = GetRightItem(accountID, tablename, "", TableSyncItem::SyncTarget_db,false);
-            if (pItem != NULL)
-            {   
-                //if time > cond_time then set stop
-                if (pItem->GetCondition().utime > 0 &&
-                    pItem->GetCondition().utime < std::stoi(time))
-                {
-                    listTableInfo_.remove(pItem);
-                    app_.getTableStatusDB().UpdateStateDB(owner, tablename, false);//update audoSync flag
-                }
-            }       
-            else
-			{
-				std::shared_ptr<TableSyncItem> pAutoSynItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-				pAutoSynItem->Init(accountID, tablename, time, true);
-				listTableInfo_.push_back(pAutoSynItem);
-            }           
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.error())
+                << "CreateTableItems, sync_tables config line: " << line
+                << " exception: " << e.what();
+            continue;
         }
-        ret = true;
     }
-    catch (std::exception const& e)
+		
+    //2.read from state table
+	auto ledger = app_.getLedgerMaster().getValidatedLedger();
+	//read chainId
+	uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
+
+    std::list<std::tuple<std::string, std::string, std::string, bool> > list;
+    app_.getTableStatusDB().GetAutoListFromDB(chainId, list);
+
+    std::string owner, tablename, time;
+    bool isAutoSync;
+
+    for (auto tuplelem : list)
     {
-        JLOG(journal_.error()) <<
-            "create table item exception " << e.what();
-        ret = false;
+        std::tie(owner, tablename, time, isAutoSync) = tuplelem;
+
+        AccountID accountID;
+        try
+        {
+            if (auto pOwner = ripple::parseBase58<AccountID>(owner); pOwner)
+            {
+                accountID = *pOwner;
+            }
+            else
+            {
+                JLOG(journal_.error())
+                    << "CreateTableItems, ripple::parseBase58<AccountID> "
+                       "parse failed "
+                    << owner;
+                continue;
+            }
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn())
+                << "CreateTableItems, ripple::parseBase58<AccountID> "
+                   "exception: "
+                << e.what();
+            continue;
+        }
+
+        std::shared_ptr <TableSyncItem> pItem = NULL;
+        pItem = GetRightItem(accountID, tablename, "", TableSyncItem::SyncTarget_db,false);
+        if (pItem != NULL)
+        {
+            //if time > cond_time then set stop
+            if (pItem->GetCondition().utime > 0 &&
+                pItem->GetCondition().utime < std::stoi(time))
+            {
+                listTableInfo_.remove(pItem);
+                app_.getTableStatusDB().UpdateStateDB(owner, tablename, false);//update audoSync flag
+            }
+        }
+        else
+		{
+			std::shared_ptr<TableSyncItem> pAutoSynItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
+			pAutoSynItem->Init(accountID, tablename, time, true);
+			listTableInfo_.push_back(pAutoSynItem);
+        }
     }
-    return ret;
 }
 
 bool TableSync::isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType)
