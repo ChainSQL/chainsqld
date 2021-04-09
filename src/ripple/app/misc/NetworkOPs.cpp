@@ -1181,9 +1181,11 @@ NetworkOPsImp::processHeartbeatTimer()
             setMode(OperatingMode::CONNECTED);
     }
 
-    mConsensus.timerEntry(app_.timeKeeper().closeTime());
+    auto now = app_.timeKeeper().closeTime();
 
-    app_.getTxPool().timerEntry();
+    mConsensus.timerEntry(now);
+
+    app_.getTxPool().timerEntry(now);
 
     tryCheckSubTx();
 
