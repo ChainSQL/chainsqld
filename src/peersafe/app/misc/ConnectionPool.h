@@ -61,7 +61,6 @@ struct ConnectionUnit
 class ConnectionPool
 {
 public:
-public:
     ConnectionPool(Schema& app) : app_(app)
     {
     }
@@ -106,7 +105,13 @@ public:
             }
         }
     }
-    private:
+    int
+    count()
+    {
+        return vecPool_.size();
+    }
+
+private:
     std::vector<std::shared_ptr<ConnectionUnit>> vecPool_;
     std::mutex mtx_;
     Schema& app_;

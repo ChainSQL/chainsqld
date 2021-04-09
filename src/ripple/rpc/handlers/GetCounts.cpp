@@ -33,6 +33,7 @@
 #include <ripple/protocol/jss.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/shamap/ShardFamily.h>
+#include <peersafe/app/misc/ConnectionPool.h>
 
 namespace ripple {
 
@@ -102,6 +103,7 @@ getCountsJson(Schema& app, int minObjectCount)
     ret[jss::node_hit_rate] = app.getNodeStore().getCacheHitRate();
     ret[jss::ledger_hit_rate] = app.getLedgerMaster().getCacheHitRate();
     ret[jss::AL_hit_rate] = app.getAcceptedLedgerCache().getHitRate();
+    ret["Connection_Count_For_Get"] = app.getConnectionPool().count();
 
     ret[jss::fullbelow_size] =
         static_cast<int>(app.getNodeFamily().getFullBelowCache(0)->size());

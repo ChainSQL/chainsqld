@@ -43,13 +43,14 @@
 #include <fstream>
 #include <regex>
 #include <ripple/basics/Slice.h>
+#include <boost/format.hpp>
 
 namespace ripple {
 
 #define MAX_DIFF_TOLERANCE 3
 
 void buildRaw(Json::Value& condition, std::string& rule);
-int getDiff(RPC::JsonContext& context, const std::vector<ripple::uint160>& vec);
+int getDiff(RPC::JsonContext& context,TxStore& txStore, const std::vector<ripple::uint160>& vec);
 
 //from rpc or http
 Json::Value doRpcSubmit(RPC::JsonContext& context)
@@ -730,31 +731,25 @@ Json::Value doGetRecord(RPC::JsonContext&  context)
 		return rpcError(rpcNODB);
 	}
 
-	Json::Value& tx_json(context.params["tx_json"]);
-	Json::Value result;
-	Json::Value& tables_json = tx_json["Tables"];
-	auto unit = context.app.getConnectionPool().getAvailable();
-	TxStore* pTxStore = &(*unit->store_);
-	if (tables_json.size() == 1)//getTableStorage first_storage related
-	{		
-		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
-		unit->unlock();
-	}
+    auto unit = context.app.getConnectionPool().getAvailable();
+    TxStore* pTxStore = &(*unit->store_);
+	//Json::Value& tx_json(context.params["tx_json"]);
+	//Json::Value& tables_json = tx_json["Tables"];
+	//if (tables_json.size() == 1)//getTableStorage first_storage related
+	//{		
+	//	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+	//	unit->unlock();
+	//}
 
-	result = pTxStore->txHistory(context);
-	if(unit->islocked())
-		unit->unlock();
-
-	if (ret.isMember(jss::error))
-	{
-		return result;
-	}
-	else
-	{
+	ret = pTxStore->txHistory(context);
+    if (!ret.isMember(jss::error))
+    {
 		//diff between the latest ledgerseq in db and the real newest ledgerseq
-		result[jss::diff] = getDiff(context, vecNameInDB);
-		return result;
+        ret[jss::diff] = getDiff(context, *pTxStore, vecNameInDB);
 	}	
+	if (unit->islocked())
+        unit->unlock();
+        return ret;
 }
 
 Json::Value queryBySql(TxStore& txStore,std::string& sql)
@@ -846,10 +841,10 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 	}
 
 	ret = queryBySql(txStore, catenatedSql);
-	unit->unlock();
 
 	if (ret.isMember(jss::error))
 	{
+        unit->unlock();
 		return ret;
 	}
 
@@ -860,7 +855,8 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
 	}
 
-	ret[jss::diff] = getDiff(context, vecNameInDB);
+	ret[jss::diff] = getDiff(context,txStore, vecNameInDB);
+    unit->unlock();
 
 	return ret;
 }
@@ -905,10 +901,10 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 		return ret;
 	}
 
-	ret = queryBySql(context.app.getTxStore(), catenatedSql);
-	unit->unlock();
+	ret = queryBySql(txStore, catenatedSql);
 	if (ret.isMember(jss::error))
 	{
+        unit->unlock();
 		return ret;
 	}
 
@@ -919,7 +915,8 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
 	}
 
-	ret[jss::diff] = getDiff(context, vecNameInDB);
+	ret[jss::diff] = getDiff(context,txStore, vecNameInDB);
+    unit->unlock();
 
 	return ret;
 }
@@ -938,16 +935,16 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	if (!isDBConfigured(context.app))
 		return std::make_pair(result, "Db not configured.");
 
-	Json::Value& tx_json(context.params["tx_json"]);
-	Json::Value& tables_json = tx_json["Tables"];
 
 	auto unit = context.app.getConnectionPool().getAvailable();
-	TxStore* pTxStore = &(*unit->store_);
-	if (tables_json.size() == 1)//getTableStorage first_storage related
-	{
-		pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
-		unit->unlock();
-	}
+    TxStore* pTxStore = &(*unit->store_);
+    //Json::Value& tx_json(context.params["tx_json"]);
+    //Json::Value& tables_json = tx_json["Tables"];
+	//if (tables_json.size() == 1)//getTableStorage first_storage related
+	//{
+	//	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+	//	unit->unlock();
+	//}
 	
 	auto retVec = pTxStore->txHistory2d(context);
 	if(unit->islocked())
@@ -1111,22 +1108,67 @@ Json::Value doGetUserToken(RPC::JsonContext& context)
 	return ret;
 }
 //////////////////////////////////////////////////////////////////////////
-int getDiff(RPC::JsonContext& context, const std::vector<ripple::uint160>& vec)
+bool 
+readSyncSeq(
+    RPC::JsonContext& context,
+    TxStore& txStore,
+    std::string nameInDB,
+    LedgerIndex& seq)
+{
+    bool ret = false;
+    try
+    {
+        LockedSociSession sql_session = txStore.getDatabaseCon()->checkoutDb();
+
+        static std::string const prefix(
+            R"(select LedgerSeq from SyncTableState
+            WHERE )");
+
+        std::string sql = boost::str(
+            boost::format(prefix + (R"(TableNameInDB = '%s';)")) % nameInDB);
+
+        boost::optional<std::string> LedgerSeq;
+
+        soci::statement st =
+            (sql_session->prepare << sql,
+             soci::into(LedgerSeq));
+
+        bool dbret = st.execute(true);
+
+        if (dbret)
+        {
+            if (LedgerSeq && !LedgerSeq.value().empty())
+                seq = std::stoi(LedgerSeq.value());
+            ret = true;
+        }
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(context.app.journal("RPCHandler").error())
+            << "ReadSyncDB exception" << e.what();
+    }
+    return ret;
+}
+
+int
+getDiff(
+    RPC::JsonContext& context,
+    TxStore& txStore,
+	const std::vector<ripple::uint160>& vec)
 {
 	int diff = 0;
 	LedgerIndex txnseq, seq;
 	uint256 txnhash, hash, txnupdatehash;
-	if (context.app.getTxStoreDBConn().GetDBConn() == nullptr ||
-		context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
-	{
-		return diff;
-	}
 	//current max-ledgerseq in network
 	auto validIndex = context.app.getLedgerMaster().getValidLedgerIndex();
 	for (auto iter = vec.begin(); iter != vec.end(); iter++)
 	{
 		//get ledgerseq in db
-		context.app.getTableStatusDB().ReadSyncDB(to_string(*iter), txnseq, txnhash, seq, hash, txnupdatehash);
+        readSyncSeq(
+            context,
+            txStore,
+            to_string(*iter),
+            seq);
 		int nTmpDiff = validIndex - seq;
 		if (diff < nTmpDiff)
 		{
