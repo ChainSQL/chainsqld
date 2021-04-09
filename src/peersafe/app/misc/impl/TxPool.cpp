@@ -58,8 +58,14 @@ TxPool::insertTx(
         return telTX_POOL_FULL;
     }
 
-    TER ter = tefPAST_SEQ;
-    std::unique_lock lock(mutexSet_);
+    std::unique_lock<std::shared_mutex> lock(mutexSet_);
+
+    if (mInLedgerCache.count(transaction->getID()) > 0)
+    {
+        JLOG(j_.info()) << "Inserting a applied Tx: " << transaction->getID();
+        return tesSUCCESS;
+    }
+
     auto result = mTxsSet.insert(transaction);
 
     if (result.second)
@@ -69,27 +75,25 @@ TxPool::insertTx(
         if (mTxsHash.emplace(make_pair(transaction->getID(), result.first))
                 .second)
         {
-            ter = tesSUCCESS;
             // Init sync_status
             if (mSyncStatus.pool_start_seq == 0)
             {
                 mSyncStatus.pool_start_seq = ledgerSeq;
             }
+            return tesSUCCESS;
         }
         else
         {
             JLOG(j_.error())
                 << "mTxsHash.emplace failed, Tx: " << transaction->getID();
             mTxsSet.erase(transaction);
-            ter = telLOCAL_ERROR;
+            return telLOCAL_ERROR;
         }
     }
-    else
-    {
-        JLOG(j_.info()) << "Inserting a exist Tx: " << transaction->getID();
-    }
 
-    return ter;
+    JLOG(j_.info()) << "Inserting a exist Tx: " << transaction->getID();
+
+    return tefPAST_SEQ;
 }
 
 void
@@ -104,12 +108,14 @@ TxPool::removeTxs(
     {
         for (auto const& item : cSet)
         {
-            if (!txExists(item.key()))
-                continue;
-
+            std::unique_lock<std::shared_mutex> lock(mutexSet_);
+            if (mTxsHash.count(item.key()) <= 0)
+            {
+                mInLedgerCache.insert(item.key());
+            }
+            else
             {
                 // If not exist, throw std::out_of_range exception.
-                std::unique_lock<std::shared_mutex> lock(mutexSet_);
                 iterSet = mTxsHash.at(item.key());
                 // remove from Tx pool.
                 mTxsHash.erase(item.key());
@@ -226,7 +232,7 @@ TxPool::isAvailable()
 }
 
 void
-TxPool::timerEntry()
+TxPool::timerEntry(NetClock::time_point const& now)
 {
     if (!isAvailable())
     {
@@ -241,6 +247,16 @@ TxPool::timerEntry()
                 prevLedger->info().seq,
                 prevLedger->info().parentHash);
         }
+    }
+
+    if (now - mDeleteTime >= inLedgerCacheDeleteInterval)
+    {
+        {
+            std::unique_lock<std::shared_mutex> lock(mutexSet_);
+            beast::expire(mInLedgerCache, inLedgerCacheLiveTime);
+        }
+
+        mDeleteTime = now;
     }
 }
 

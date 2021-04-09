@@ -24,6 +24,7 @@
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/basics/base_uint.h>
+#include <ripple/beast/container/aged_unordered_set.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/TER.h>
@@ -93,6 +94,8 @@ public:
     TxPool(Schema& app, beast::Journal j)
         : app_(app)
         , mMaxTxsInPool(app.getOPs().getConsensusParms().txPOOL_CAPACITY)
+        , mInLedgerCache(ripple::stopwatch())
+        , mDeleteTime(app.timeKeeper().closeTime())
         , j_(j)
     {
     }
@@ -155,7 +158,7 @@ public:
     isAvailable();
 
     void
-    timerEntry();
+    timerEntry(NetClock::time_point const& now);
 
     void
     checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash);
@@ -174,6 +177,9 @@ private:
     TransactionSet mTxsSet;
     std::unordered_map<uint256, TransactionSet::iterator> mTxsHash;
 
+    beast::aged_unordered_set<uint256> mInLedgerCache;
+    NetClock::time_point mDeleteTime;
+
     std::map<LedgerIndex, H256Set> mAvoidBySeq;
     std::unordered_map<uint256, LedgerIndex> mAvoidByHash;
 
@@ -181,6 +187,9 @@ private:
 
     beast::Journal j_;
 };
+
+static std::chrono::seconds const inLedgerCacheLiveTime(60);
+static std::chrono::seconds const inLedgerCacheDeleteInterval(5);
 
 }  // namespace ripple
 #endif
