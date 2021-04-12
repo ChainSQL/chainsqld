@@ -740,16 +740,27 @@ Json::Value doGetRecord(RPC::JsonContext&  context)
 	//	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
 	//	unit->unlock();
 	//}
-
-	ret = pTxStore->txHistory(context);
-    if (!ret.isMember(jss::error))
+    try
     {
-		//diff between the latest ledgerseq in db and the real newest ledgerseq
-        ret[jss::diff] = getDiff(context, *pTxStore, vecNameInDB);
-	}	
-	if (unit->islocked())
-        unit->unlock();
-        return ret;
+        ret = pTxStore->txHistory(context);
+        if (!ret.isMember(jss::error))
+        {
+            // diff between the latest ledgerseq in db and the real newest
+            // ledgerseq
+            ret[jss::diff] = getDiff(context, *pTxStore, vecNameInDB);
+        }
+        if (unit->islocked())
+            unit->unlock();
+	}
+    catch (std::exception const& e)
+    {
+        JLOG(context.app.journal("RPCHandler").error())
+            << "doGetRecord exception" << e.what();
+        if (unit->islocked())
+            unit->unlock();
+	}
+
+    return ret;
 }
 
 Json::Value queryBySql(TxStore& txStore,std::string& sql)
@@ -822,41 +833,56 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 	TxStore& txStore = *unit->store_;
 	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(txStore, sql, setNameInDB,setOwnerID2TableName);
+    try
+    {
+        ret = getLedgerTableInfo(txStore, sql, setNameInDB, setOwnerID2TableName);
 
-	//check table exist on chain  
-	ret = checkTableExistOnChain(context, setOwnerID2TableName);
-	if (ret.isMember(jss::error))
-	{
-		unit->unlock();
-		return ret;
-	}
+        // check table exist on chain
+        ret = checkTableExistOnChain(context, setOwnerID2TableName);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
 
-	std::string catenatedSql;
-	ret = checkOperationRuleForSql(context, sql, setOwnerID2TableName, catenatedSql);
-	if (ret.isMember(jss::error))
-	{
-		unit->unlock();
-		return ret;
-	}
+        std::string catenatedSql;
+        ret = checkOperationRuleForSql(
+            context, sql, setOwnerID2TableName, catenatedSql);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
 
-	ret = queryBySql(txStore, catenatedSql);
+        ret = queryBySql(txStore, catenatedSql);
 
-	if (ret.isMember(jss::error))
-	{
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
+
+        // diff between the latest ledgerseq in db and the real newest ledgerseq
+        std::vector<ripple::uint160> vecNameInDB;
+        for (std::set<std::string>::iterator iter = setNameInDB.begin();
+             iter != setNameInDB.end();
+             ++iter)
+        {
+            vecNameInDB.push_back(
+                ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
+        }
+
+        ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
         unit->unlock();
-		return ret;
 	}
-
-	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	std::vector<ripple::uint160> vecNameInDB;
-	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
-	{
-		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
+    catch (std::exception const& e)
+    {
+        if (unit->islocked())
+			unit->unlock();
+        JLOG(context.app.journal("RPCHandler").error())
+            << "doGetRecordBySql exception" << e.what();
 	}
-
-	ret[jss::diff] = getDiff(context,txStore, vecNameInDB);
-    unit->unlock();
+	
 
 	return ret;
 }
@@ -878,45 +904,59 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
 	AccountID accountID;
 	std::set <std::string> setNameInDB;
 	std::set < std::pair<AccountID, std::string>  > setOwnerID2TableName;
-	ret = getLedgerTableInfo(context,txStore, accountID, setNameInDB, setOwnerID2TableName);
-	if (ret.isMember(jss::error))
-	{
-		unit->unlock();
-		return ret;
-	}
+    try
+    {
+        ret = getLedgerTableInfo(
+            context, txStore, accountID, setNameInDB, setOwnerID2TableName);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
 
-	//check table authority
-	ret = checkAuthForSql(context,accountID,setOwnerID2TableName);
-	if (ret.isMember(jss::error))
-	{
-		unit->unlock();
-		return ret;
-	}
+        // check table authority
+        ret = checkAuthForSql(context, accountID, setOwnerID2TableName);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
 
-	std::string catenatedSql;
-	ret = checkOperationRuleForSqlUser(context, accountID, setOwnerID2TableName, catenatedSql);
-	if (ret.isMember(jss::error))
-	{
-		unit->unlock();
-		return ret;
-	}
+        std::string catenatedSql;
+        ret = checkOperationRuleForSqlUser(
+            context, accountID, setOwnerID2TableName, catenatedSql);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
 
-	ret = queryBySql(txStore, catenatedSql);
-	if (ret.isMember(jss::error))
-	{
+        ret = queryBySql(txStore, catenatedSql);
+        if (ret.isMember(jss::error))
+        {
+            unit->unlock();
+            return ret;
+        }
+
+        // diff between the latest ledgerseq in db and the real newest ledgerseq
+        std::vector<ripple::uint160> vecNameInDB;
+        for (std::set<std::string>::iterator iter = setNameInDB.begin();
+             iter != setNameInDB.end();
+             ++iter)
+        {
+            vecNameInDB.push_back(
+                ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
+        }
+
+        ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
         unit->unlock();
-		return ret;
-	}
-
-	//diff between the latest ledgerseq in db and the real newest ledgerseq
-	std::vector<ripple::uint160> vecNameInDB;
-	for (std::set<std::string>::iterator iter = setNameInDB.begin(); iter != setNameInDB.end(); ++iter)
-	{
-		vecNameInDB.push_back(ripple::from_hex_text<ripple::uint160>(to_string(*iter)));
-	}
-
-	ret[jss::diff] = getDiff(context,txStore, vecNameInDB);
-    unit->unlock();
+    }
+    catch (std::exception const& e)
+    {
+        unit->unlock();
+        JLOG(context.app.journal("RPCHandler").error())
+            << "doGetRecordBySqlUser exception" << e.what();
+    }	
 
 	return ret;
 }
@@ -945,11 +985,21 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
 	//	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
 	//	unit->unlock();
 	//}
-	
-	auto retVec = pTxStore->txHistory2d(context);
-	if(unit->islocked())
-		unit->unlock();
-	return retVec;
+    try
+    {
+        auto retVec = pTxStore->txHistory2d(context);
+        if (unit->islocked())
+            unit->unlock();
+        return retVec;
+    }
+    catch (std::exception const& e)
+    {
+        if (unit->islocked())
+            unit->unlock();
+        JLOG(context.app.journal("RPCHandler").error())
+            << "doGetRecord2D exception" << e.what();
+        return std::make_pair(result, "Exception occurred.");
+    }	
 }
 
 void buildRaw(Json::Value& condition, std::string& rule)
