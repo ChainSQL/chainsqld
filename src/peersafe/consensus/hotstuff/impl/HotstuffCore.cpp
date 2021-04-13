@@ -160,11 +160,15 @@ bool HotstuffCore::VerifyQC(const QuorumCertificate& qc) {
 
     if (qc.certified_block().round > 0)
     {
-        if (epoch_state_->verifier->checkVotingPower(signatures) == false)
-        {
-            JLOG(journal_.error()) << "VerifyQC checkVotingPower failed, signatures size: " << signatures.size();
-            return false;
-        }
+        // No need to verify when voting, other peers will check it in
+        // HotstuffConsensus::verifyLedgerInfo
+        //if (epoch_state_->verifier->checkVotingPower(signatures) == false)
+        //{
+        //    JLOG(journal_.error())
+        //        << "VerifyQC checkVotingPower failed, signatures size: "
+        //        << signatures.size();
+        //    return false;
+        //}
 
         if (qc.ledger_info().ledger_info.consensus_data_hash != hash)
         {
