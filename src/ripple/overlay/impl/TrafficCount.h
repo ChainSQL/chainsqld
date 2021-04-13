@@ -73,6 +73,7 @@ public:
         transaction,
         validatorlist,
         consensus,
+        sync_schema,
         shards,  // shard-related traffic
 
         get_table,
@@ -191,6 +192,7 @@ protected:
         {"transactions"},       // category::transaction
         {"validator_lists"},    // category::validatorlist
         {"consensus"},          // category::consensus
+        {"sync_schema"},
         {"shards"},          // category::shards
         {"get table data"},
         {"set_get"},                                    // category::get_set

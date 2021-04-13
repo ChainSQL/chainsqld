@@ -189,6 +189,13 @@ RCLConsensus::gotTxSet(NetClock::time_point const& now, RCLTxSet const& txSet)
     }
 }
 
+void
+RCLConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
+{
+    std::lock_guard _{mutex_};
+    consensus_->onDeleteUntrusted(nowUntrusted);
+}
+
 //! @see Consensus::simulate
 void
 RCLConsensus::simulate(

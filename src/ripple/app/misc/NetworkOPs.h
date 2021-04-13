@@ -176,6 +176,8 @@ public:
     // network state machine
     virtual void
     setGenesisLedgerIndex(LedgerIndex seq) = 0;
+    virtual void
+    onDeleteUntrusted(hash_set<NodeID> const& removed) = 0;
     virtual bool
     beginConsensus(uint256 const& netLCL) = 0;
     virtual void
@@ -185,6 +187,10 @@ public:
         std::shared_ptr<PeerImp> peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m) = 0;
+    virtual void
+    peerSyncSchema(
+        std::shared_ptr<PeerImp> peer,
+        std::shared_ptr<protocol::TMSyncSchema> const& m) = 0;
     virtual void
     setStandAlone() = 0;
     virtual void

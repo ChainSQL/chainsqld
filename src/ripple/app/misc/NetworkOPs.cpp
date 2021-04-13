@@ -35,6 +35,7 @@
 #include <ripple/app/ledger/OpenLedger.h>
 #include <ripple/app/ledger/OrderBookDB.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/PendingSaves.h>
 #include <ripple/app/main/LoadManager.h>
 #include <ripple/app/misc/AmendmentTable.h>
 #include <ripple/app/misc/HashRouter.h>
@@ -410,6 +411,8 @@ private:
 public:
     void
     setGenesisLedgerIndex(LedgerIndex seq) override;
+    void
+    onDeleteUntrusted(hash_set<NodeID> const& removed) override;
     bool
     beginConsensus(uint256 const& networkClosed) override;
     void
@@ -419,6 +422,11 @@ public:
         std::shared_ptr<PeerImp> peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m) override;
+
+    void
+    peerSyncSchema(
+        std::shared_ptr<PeerImp> peer,
+        std::shared_ptr<protocol::TMSyncSchema> const& m) override;
 
     void
     setStandAlone() override
@@ -2074,6 +2082,12 @@ NetworkOPsImp::setGenesisLedgerIndex(LedgerIndex seq)
     mConsensus.setGenesisLedgerIndex(seq);
 }
 
+void
+NetworkOPsImp::onDeleteUntrusted(hash_set<NodeID> const& removed)
+{
+    mConsensus.onDeleteUntrusted(removed);
+}
+
 bool
 NetworkOPsImp::beginConsensus(uint256 const& networkClosed)
 {
@@ -2106,8 +2120,16 @@ NetworkOPsImp::beginConsensus(uint256 const& networkClosed)
 
     if (prevLedger->rules().enabled(featureNegativeUNL))
         app_.validators().setNegativeUNL(prevLedger->negativeUNL());
-    TrustChanges const changes = app_.validators().updateTrusted(
-        app_.getValidations().getCurrentNodeIDs());
+
+    TrustChanges const changes = app_.validators().updateTrustedAndBroadcast(
+        app_.getValidations().getCurrentNodeIDs(),
+        app_.schemaId(),
+        closingInfo.seq,
+        mConsensus.consensusType() == ConsensusType::HOTSTUFF
+            ? mConsensus.getCurrentTurn()
+            : 0,
+        app_.peerManager(),
+        app_.getHashRouter());
 
     if (!changes.added.empty() || !changes.removed.empty())
         app_.getValidations().trustChanged(changes.added, changes.removed);
@@ -2195,6 +2217,134 @@ NetworkOPsImp::peerConsensusMessage(
     if (mConsensus.peerConsensusMessage(peer, isTrusted, m))
     {
         app_.peerManager().relay(*m, consensusMessageUniqueId(*m));
+    }
+}
+
+void
+NetworkOPsImp::peerSyncSchema(
+    std::shared_ptr<PeerImp> peer,
+    std::shared_ptr<protocol::TMSyncSchema> const& m)
+{
+    if (m->type() == protocol::TMSyncSchema::ssApplyValidators)
+    {
+        auto ledger =
+            app_.app().getLedgerMaster().getLedgerBySeq(m->ledgerseq());
+        if (!ledger)
+        {
+            JLOG(m_journal.warn())
+                << "syncSchema: ledger " << m->ledgerseq() << " not found";
+            return;
+        }
+
+        AcceptedLedger::pointer aLedger;
+        try
+        {
+            aLedger = app_.app().getAcceptedLedgerCache().fetch(ledger->info().hash);
+            if (!aLedger)
+            {
+                aLedger = std::make_shared<AcceptedLedger>(
+                    ledger, app_.app().accountIDCache(), app_.app().logs());
+                app_.app().getAcceptedLedgerCache().canonicalize_replace_client(
+                    ledger->info().hash, aLedger);
+            }
+        }
+        catch (std::exception const&)
+        {
+            JLOG(m_journal.warn())
+                << "syncSchema: An accepted ledger was missing nodes";
+            app_.app().getLedgerMaster().failedSave(
+                ledger->info().seq, ledger->info().hash);
+            // Clients can now trust the database for information about this
+            // ledger sequence.
+            app_.app().pendingSaves().finishWork(ledger->info().seq);
+            return;
+        }
+
+        auto alTx = aLedger->getTxn(m->txindex());
+        if (alTx && alTx->getTransactionID() == uint256{m->txhash()} &&
+            alTx->getResult() == tesSUCCESS &&
+            alTx->getTxnType() == ttSCHEMA_MODIFY &&
+            alTx->getTxn()->getFieldH256(sfSchemaID) == app_.schemaId())
+        {
+            std::shared_ptr<STTx const> stTxn = alTx->getTxn();
+            std::vector<PublicKey> validators;
+            bool bOperatingSelf = false;
+
+            for (auto& validator : stTxn->getFieldArray(sfValidators))
+            {
+                auto publicKey =
+                    PublicKey(makeSlice(validator.getFieldVL(sfPublicKey)));
+                if (app_.getValidationPublicKey() == publicKey)
+                    bOperatingSelf = true;
+                validators.push_back(publicKey);
+            }
+
+            if (bOperatingSelf)
+            {
+                JLOG(m_journal.info()) << "syncSchema: operating self";
+                return;
+            }
+
+            auto const disp =
+                app_.validators().applySchemaModifyAndBroadcast(
+                    m->ledgerseq(),
+                    (SchemaModifyOp)stTxn->getFieldU16(sfOpType),
+                    m->txindex(),
+                    uint256{m->txhash()},
+                    validators,
+                    *this,
+                    app_.schemaId(),
+                    app_.peerManager(),
+                    app_.getHashRouter());
+
+            switch (disp)
+            {
+                case ListDisposition::accepted:
+                    JLOG(m_journal.info())
+                        << "Applied new sync schema from peer "
+                        << peer->getRemoteAddress();
+                    break;
+                case ListDisposition::same_sequence:
+                    JLOG(m_journal.warn())
+                        << "Sync schema with current sequence from peer "
+                        << peer->getRemoteAddress();
+                    peer->charge(Resource::feeUnwantedData);
+                    break;
+                case ListDisposition::stale:
+                    JLOG(m_journal.warn()) << "Stale sync schema from peer "
+                                           << peer->getRemoteAddress();
+                    peer->charge(Resource::feeMediumBurdenPeer);
+                    break;
+                default:
+                    assert(false);
+            }
+        }
+        else
+        {
+            JLOG(m_journal.warn()) << "syncSchema: transaction check failed";
+            peer->charge(Resource::feeHighBurdenPeer);
+            return;
+        }
+    }
+    else if (m->type() == protocol::TMSyncSchema::ssUpdateValidators)
+    {
+        LedgerIndex curSeq = m_ledgerMaster.getCurrentLedgerIndex();
+        uint64_t curTurn = mConsensus.getCurrentTurn();
+
+        if (curSeq > m->updateseq() ||
+            (curSeq == m->updateseq() && curTurn >= m->updateturn()))
+        {
+            JLOG(m_journal.info()) << "Update validators on consensus ledger "
+                                   << curSeq << " and current turn " << curTurn
+                                   << " from peer " << peer->getRemoteAddress();
+            app_.validators().updateTrustedAndBroadcast(
+                app_.getValidations().getCurrentNodeIDs(),
+                app_.schemaId(),
+                curSeq,
+                curTurn,
+                app_.peerManager(),
+                app_.getHashRouter());
+        }
     }
 }
 
@@ -3648,9 +3798,19 @@ NetworkOPsImp::checkSchemaTx(
 		//update validators list
 		if (!bOperatingSelf)
 		{
-			app_.app().getSchema(schemaID).validators().applySchemaModify(vecValidators,
-				stTxn->getFieldU16(sfOpType) == (uint8_t)SchemaModifyOp::add);
-		}		
+            app_.app()
+                .validators(schemaID)
+                .applySchemaModifyAndBroadcast(
+                    alAccepted->seq(),
+                    (SchemaModifyOp)stTxn->getFieldU16(sfOpType),
+                    alTx.getIndex(),
+                    stTxn->getTransactionID(),
+                    vecValidators,
+                    app_.app().getOPs(schemaID),
+                    schemaID,
+                    app_.app().peerManager(schemaID),
+                    app_.app().getHashRouter(schemaID));
+		}
 
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);

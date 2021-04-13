@@ -157,6 +157,12 @@ public:
     bool
     waitingForInit() const override final;
 
+    uint64_t
+    getCurrentTurn() const override final;
+
+    void
+    onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted) override final;
+
 private:
     inline uint64_t
     timeSinceOpen() const

@@ -406,7 +406,10 @@ public:
     onModeChange(ConsensusMode before, ConsensusMode after);
 
     virtual void
-    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger);
+    onConsensusReached(
+        bool bWaitingInit,
+        Ledger_t previousLedger,
+        uint64_t curTurn);
 
 private:
 };

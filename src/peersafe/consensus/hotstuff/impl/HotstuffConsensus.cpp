@@ -213,6 +213,7 @@ HotstuffConsensus::getJson(bool full) const
 {
     using std::to_string;
     using Int = Json::Value::Int;
+    using UInt = Json::Value::UInt;
 
     Json::Value ret(Json::objectValue);
 
@@ -234,6 +235,8 @@ HotstuffConsensus::getJson(bool full) const
             ret["ledger_seq"] = previousLedger_.seq() + 1;
         }
     }
+
+    ret["new_round"] = static_cast<UInt>(newRound_);
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
@@ -265,6 +268,12 @@ HotstuffConsensus::waitingForInit() const
     return /*(previousLedger_.seq() == GENESIS_LEDGER_INDEX) &&*/
         (std::chrono::duration_cast<std::chrono::seconds>(now_ - startTime_)
              .count() < adaptor_.parms().initTIME.count());
+}
+
+uint64_t
+HotstuffConsensus::getCurrentTurn() const
+{
+    return newRound_;
 }
 
 bool
@@ -573,6 +582,8 @@ HotstuffConsensus::commit(const hotstuff::ExecutedBlock& executedBlock)
 bool
 HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
 {
+    newRound_ = prevInfo.round + 1;
+
     if (waitingForInit())
     {
         JLOG(j_.warn()) << "I'm waiting for initial ledger";
@@ -594,7 +605,7 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
         prevInfo.ledger_info.seq == previousLedger_.seq() &&
         adaptor_.parms().omitEMPTY && prevInfo.round > 0)
     {
-        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_);
+        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_, newRound_);
         if (bWaitingInit_)
         {
             bWaitingInit_ = false;

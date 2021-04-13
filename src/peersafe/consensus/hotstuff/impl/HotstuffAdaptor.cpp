@@ -99,9 +99,9 @@ HotstuffAdaptor::HotstuffAdaptor(
 }
 
 void
-HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
+HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t newRound)
 {
-    Adaptor::onConsensusReached(bWaitingInit, previousLedger);
+    Adaptor::onConsensusReached(bWaitingInit, previousLedger, newRound);
 
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >

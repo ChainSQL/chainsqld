@@ -340,7 +340,7 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
 }
 
 void
-Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
+Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t curTurn)
 {
     app_.getLedgerMaster().onConsensusReached(
         bWaitingInit, previousLedger.ledger_);
@@ -382,8 +382,13 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger)
             mode() != ConsensusMode::wrongLedger);
     }
 
-    app_.validators().updateTrusted(
-        app_.getValidations().getCurrentNodeIDs());
+    app_.validators().updateTrustedAndBroadcast(
+        app_.getValidations().getCurrentNodeIDs(),
+        app_.schemaId(),
+        previousLedger.seq() + 1,
+        curTurn,
+        app_.peerManager(),
+        app_.getHashRouter());
 }
 
 }  // namespace ripple

@@ -20,15 +20,13 @@
 #ifndef RIPPLE_APP_CONSENSUS_RCLCONSENSUS_H_INCLUDED
 #define RIPPLE_APP_CONSENSUS_RCLCONSENSUS_H_INCLUDED
 
-
+#include <ripple/app/main/Application.h>
 #include <ripple/basics/chrono.h>
 #include <ripple/beast/utility/Journal.h>
-#include <ripple/app/main/Application.h>
+#include <mutex>
 #include <peersafe/consensus/Adaptor.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/ConsensusParams.h>
-#include <mutex>
-
 
 namespace ripple {
 
@@ -81,6 +79,12 @@ public:
     RCLConsensus&
     operator=(RCLConsensus const&) = delete;
 
+    inline ConsensusType
+    consensusType() const
+    {
+        return type_;
+    }
+
     inline ConsensusPhase
     phase()
     {
@@ -105,6 +109,12 @@ public:
         consensus_->GENESIS_LEDGER_INDEX = seq;
     }
 
+    inline uint64_t
+    getCurrentTurn() const
+    {
+        return consensus_->getCurrentTurn();
+    }
+
     //! @see Consensus::startRound
     void
     startRound(
@@ -118,7 +128,8 @@ public:
     void
     timerEntry(NetClock::time_point const& now);
 
-    bool waitingForInit()
+    bool
+    waitingForInit()
     {
         return consensus_->waitingForInit();
     }
@@ -174,6 +185,14 @@ public:
         return adaptor_->mode();
     }
 
+    bool
+    checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
+
+    // ----------------------------------------------------------------------
+    // for Pop consensus
+    void
+    onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted);
+
     // ----------------------------------------------------------------------
     // RPC ledger_accept interfaces
     void
@@ -181,9 +200,7 @@ public:
         NetClock::time_point const& now,
         boost::optional<std::chrono::milliseconds> consensusDelay);
 
-    bool
-    checkLedgerAccept(std::shared_ptr<Ledger const> const& ledger);
-
+    // ----------------------------------------------------------------------
     static ConsensusType
     stringToConsensusType(std::string const& s);
 

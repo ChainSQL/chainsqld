@@ -89,6 +89,9 @@ public:
     bool
     waitingForInit() const override final;
 
+    uint64_t
+    getCurrentTurn() const override final;
+
     // Overwrite CommandManager extract interface.
     bool
     canExtract() override final;
@@ -253,6 +256,8 @@ private:
     hotstuff::Epoch epoch_ = 0;
     bool configChanged_ = false;
     TxSet_t::ID epochChangeHash_;
+
+    hotstuff::Round newRound_ = 0;
 
     bool bWaitingInit_ = true;
 

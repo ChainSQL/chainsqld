@@ -25,6 +25,7 @@
 #include <ripple/basics/base64.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/protocol/STValidation.h>
+#include <ripple/protocol/digest.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/messages.h>
 #include <boost/regex.hpp>
@@ -941,8 +942,8 @@ ValidatorList::calculateQuorum(
     //    std::ceil(effectiveUnlSize * 0.8f), std::ceil(unlSize * 0.6f)));
 
     //// Use lower quorum specified via command line if the normal quorum
-    ///appears / unreachable based on the number of recently received
-    ///validations.
+    /// appears / unreachable based on the number of recently received
+    /// validations.
     // if (minimumQuorum_ && *minimumQuorum_ < quorum && seenSize < quorum)
     //{
     //    quorum = *minimumQuorum_;
@@ -954,52 +955,218 @@ ValidatorList::calculateQuorum(
     // return quorum;
 }
 
-void
-ValidatorList::applySchemaModify(
+ListDisposition
+ValidatorList::applySchemaModifyAndBroadcast(
+    LedgerIndex ledgerSeq,
+    SchemaModifyOp opType,
+    int txIndex,
+    uint256 const& txHash,
     std::vector<PublicKey> const& validators,
-    bool bAdd)
+    NetworkOPs& networkOPs,
+    uint256 const& schemaID,
+    PeerManager& overlay,
+    HashRouter& hashRouter)
 {
-    PublicKey local;
-    auto it = publisherLists_.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(local),
-        std::forward_as_tuple());
-    if (bAdd)
+    auto const result = applySchemaModify(
+        ledgerSeq, opType, txIndex, txHash, validators, networkOPs);
+
+    auto const disposition = result.disposition;
+
+    bool broadcast = disposition == ListDisposition::accepted ||
+        disposition == ListDisposition::same_sequence;
+
+    if (broadcast)
     {
-        for (auto& val : validators)
+        auto const suppressionID = sha512Half(
+            protocol::TMSyncSchema::ssApplyValidators,
+            ledgerSeq,
+            txIndex,
+            txHash);
+
+        auto const toSkip = hashRouter.shouldRelay(suppressionID);
+
+        if (toSkip)
         {
-            // update publisherLists_
-            if (std::find(
-                    it.first->second.list.begin(),
-                    it.first->second.list.end(),
-                    val) == it.first->second.list.end())
+            protocol::TMSyncSchema msg;
+            msg.set_type(protocol::TMSyncSchema::ssApplyValidators);
+            msg.set_ledgerseq(ledgerSeq);
+            msg.set_txindex(txIndex);
+            msg.set_txhash(txHash.begin(), txHash.size());
+            msg.set_schemaid(schemaID.begin(), schemaID.size());
+
+            auto const sequence = *result.sequence;
+
+            // Can't use overlay.foreach here because we need to modify
+            // the peer, and foreach provides a const&
+            auto message =
+                std::make_shared<Message>(msg, protocol::mtSYNC_SCHEMA);
+            for (auto& peer : overlay.getActivePeers())
             {
-                it.first->second.list.push_back(val);
+                if (toSkip->count(peer->id()) == 0)
+                {
+                    peer->send(message);
+
+                    JLOG(j_.info())
+                        << "Sent sync schema with sequence " << sequence << "("
+                        << (sequence >> 32) << ":"
+                        << (sequence & std::numeric_limits<uint32_t>::max())
+                        << ")"
+                        << " to " << peer->getRemoteAddress().to_string()
+                        << " (" << peer->id() << ")";
+                    // Don't send it next time.
+                    hashRouter.addSuppressionPeer(suppressionID, peer->id());
+                }
             }
-            // update keyListings_
-            keyListings_.insert({val, 1});
-			pendingValidators_.push_back(val);
         }
     }
-    else
+
+    return disposition;
+}
+
+ValidatorList::PublisherListStats
+ValidatorList::applySchemaModify(
+    LedgerIndex ledgerSeq,
+    SchemaModifyOp opType,
+    int txIndex,
+    uint256 const& txHash,
+    std::vector<PublicKey> const& validators,
+    NetworkOPs& networkOPs)
+{
+    PublisherListStats result{ListDisposition::invalid};
+
     {
-        for (auto& val : validators)
+        std::unique_lock<std::shared_timed_mutex> lock{mutex_};
+
+        PublicKey local;
+        auto it = publisherLists_.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(local),
+            std::forward_as_tuple());
+        PublisherList& publisher = it.first->second;
+
+        // check sequence
+        size_t const sequence = ((size_t)ledgerSeq << 32) + txIndex;
+        if (sequence < publisher.sequence)
+            return PublisherListStats{ListDisposition::stale};
+        else if (sequence == publisher.sequence)
+            return PublisherListStats{ListDisposition::same_sequence};
+
+        // do apply
+        publisher.sequence = sequence;
+        publisher.hash = txHash;
+
+        result.disposition = ListDisposition::accepted;
+        result.publisherKey = local;
+        result.available = publisher.available;
+        result.sequence = publisher.sequence;
+
+        for (auto const& val : validators)
         {
-            // update publisherLists_
-            auto iter = std::find(
-                it.first->second.list.begin(),
-                it.first->second.list.end(),
-                val);
-            if (iter != it.first->second.list.end())
+            auto iter =
+                std::find(publisher.list.begin(), publisher.list.end(), val);
+
+            if (opType == SchemaModifyOp::add)
             {
-                it.first->second.list.erase(iter);
+                assert(iter == publisher.list.end());
+
+                publisher.list.push_back(val);
+                ++keyListings_[val];
+                pendingValidators_.push_back(val);
             }
-            // update keyListings_
-            keyListings_.erase(val);
+            else if (opType == SchemaModifyOp::del)
+            {
+                assert(iter != publisher.list.end());
+
+                publisher.list.erase(iter);
+                if (keyListings_[val] <= 1)
+                    keyListings_.erase(val);
+                else
+                    --keyListings_[val];
+            }
         }
-		hash_set<NodeID> tmp;
-		updateTrusted(tmp);
     }
+
+    if (opType == SchemaModifyOp::del)
+    {
+        hash_set<NodeID> seenValidators{};
+        TrustChanges const changes = updateTrusted(seenValidators);
+        if (changes.removed.size())
+        {
+            networkOPs.onDeleteUntrusted(changes.removed);
+        }
+    }
+
+    return result;
+}
+
+TrustChanges
+ValidatorList::updateTrustedAndBroadcast(
+    hash_set<NodeID> const& seenValidators,
+    uint256 const& schemaID,
+    LedgerIndex curSeq,
+    uint64_t curTurn,
+    PeerManager& overlay,
+    HashRouter& hashRouter)
+{
+    TrustChanges const changes = updateTrusted(seenValidators);
+
+    if (schemaID != beast::zero && changes.added.size())
+    {
+        PublicKey local;
+        auto it = publisherLists_.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(local),
+            std::forward_as_tuple());
+        PublisherList& publisher = it.first->second;
+        auto const sequence = publisher.sequence;
+        LedgerIndex ledgerSeq = (sequence >> 32);
+        int txIndex = (sequence & std::numeric_limits<uint32_t>::max());
+
+        auto const suppressionID = sha512Half(
+            protocol::TMSyncSchema::ssUpdateValidators,
+            ledgerSeq,
+            txIndex,
+            publisher.hash,
+            curSeq,
+            curTurn);
+
+        auto const toSkip = hashRouter.shouldRelay(suppressionID);
+
+        if (toSkip)
+        {
+            protocol::TMSyncSchema msg;
+            msg.set_type(protocol::TMSyncSchema::ssUpdateValidators);
+            msg.set_ledgerseq(ledgerSeq);
+            msg.set_txindex(txIndex);
+            msg.set_txhash(publisher.hash.begin(), publisher.hash.size());
+            msg.set_updateseq(curSeq);
+            msg.set_updateturn(curTurn);
+            msg.set_schemaid(schemaID.begin(), schemaID.size());
+
+            auto message =
+                std::make_shared<Message>(msg, protocol::mtSYNC_SCHEMA);
+            for (auto& peer : overlay.getActivePeers())
+            {
+                if (toSkip->count(peer->id()) == 0)
+                {
+                    peer->send(message);
+
+                    JLOG(j_.info())
+                        << "Sent sync schema with sequence " << sequence << "("
+                        << (sequence >> 32) << ":"
+                        << (sequence & std::numeric_limits<uint32_t>::max())
+                        << ") and current consensus ledger sequence " << curSeq
+                        << ":" << curTurn << " to "
+                        << peer->getRemoteAddress().to_string() << " ("
+                        << peer->id() << ")";
+                    // Don't send it next time.
+                    hashRouter.addSuppressionPeer(suppressionID, peer->id());
+                }
+            }
+        }
+    }
+
+    return changes;
 }
 
 TrustChanges
@@ -1091,7 +1258,7 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
         resetValidators();
     }
 
-	pendingValidators_.clear();
+    pendingValidators_.clear();
 
     return trustChanges;
 }

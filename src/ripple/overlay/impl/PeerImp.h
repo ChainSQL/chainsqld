@@ -598,6 +598,8 @@ public:
     onMessage(std::shared_ptr<protocol::TMTableData> const& m);
     void
     onMessage(std::shared_ptr<protocol::TMConsensus> const& m);
+    void
+    onMessage(std::shared_ptr<protocol::TMSyncSchema> const& m);
 
 private:
     State
@@ -637,6 +639,11 @@ private:
         uint256 schemaId,
         Job& job,
         std::shared_ptr<protocol::TMConsensus> const& packet);
+
+    void
+    syncSchema(
+        uint256 schemaId,
+        std::shared_ptr<protocol::TMSyncSchema> const& packet);
 
     void
     getLedger(std::shared_ptr<protocol::TMGetLedger> const& packet);

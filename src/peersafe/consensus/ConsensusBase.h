@@ -107,7 +107,16 @@ public:
     virtual bool
     waitingForInit() const = 0;
 
+    virtual uint64_t
+    getCurrentTurn() const { return 0; }
+
     // -----------------------------------------------------------------------
+
+    // Pop sepcific, for child schema deleted validators
+    virtual void
+    onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
+    {
+    }
 
     // Rpca specific
     virtual void

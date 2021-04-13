@@ -256,6 +256,7 @@ PopConsensus::getJson(bool full) const
 {
     using std::to_string;
     using Int = Json::Value::Int;
+    using UInt = Json::Value::UInt;
 
     Json::Value ret(Json::objectValue);
 
@@ -280,6 +281,8 @@ PopConsensus::getJson(bool full) const
             ret["ledger_seq"] = previousLedger_.seq() + 1;
         }
     }
+
+    ret["view"] = static_cast<UInt>(view_);
 
     ret["phase"] = to_string(phase_);
     if (phase_ == ConsensusPhase::open)
@@ -339,6 +342,51 @@ PopConsensus::waitingForInit() const
     return /*previousLedger_.seq() == GENESIS_LEDGER_INDEX &&*/
         (std::chrono::duration_cast<std::chrono::seconds>(now_ - *startTime_)
              .count() < adaptor_.parms().initTIME.count());
+}
+
+uint64_t
+PopConsensus::getCurrentTurn() const
+{
+    return view_;
+}
+
+void
+PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
+{
+    JLOG(j_.info()) << "On deleted untrusted validators do checkVoting";
+
+    for (auto iter : txSetCached_)
+    {
+        for (auto it = iter.second.begin(); it != iter.second.end();)
+        {
+            if (nowUntrusted.count(calcNodeID(*it)))
+            {
+                it = iter.second.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+        }
+    }
+
+    if (setID_ && txSetVoted_.count(*setID_))
+    {
+        std::set<PublicKey> &voted = txSetVoted_[*setID_];
+        for (auto it = voted.begin(); it != voted.end();)
+        {
+            if (nowUntrusted.count(calcNodeID(*it)))
+            {
+                it = voted.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+        }
+    }
+
+    checkVoting();
 }
 
 // -------------------------------------------------------------------

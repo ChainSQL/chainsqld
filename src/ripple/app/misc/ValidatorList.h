@@ -21,6 +21,7 @@
 #define RIPPLE_APP_MISC_VALIDATORLIST_H_INCLUDED
 
 #include <ripple/app/misc/Manifest.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/UnorderedContainers.h>
 #include <ripple/core/TimeKeeper.h>
@@ -28,9 +29,9 @@
 #include <ripple/json/json_value.h>
 #include <ripple/protocol/PublicKey.h>
 #include <ripple/protocol/Protocol.h>
+#include <peersafe/schema/SchemaParams.h>
 #include <boost/iterator/counting_iterator.hpp>
 #include <boost/range/adaptors.hpp>
-
 #include <mutex>
 #include <shared_mutex>
 #include <numeric>
@@ -315,6 +316,15 @@ public:
     std::vector<std::string>
     loadLists();
 
+    TrustChanges
+    updateTrustedAndBroadcast(
+        hash_set<NodeID> const& seenValidators,
+        uint256 const& schemaID,
+        LedgerIndex curSeq,
+        uint64_t curTurn,
+        PeerManager& overlay,
+        HashRouter& hashRouter);
+
     /** Update trusted nodes
 
         Reset the trusted nodes based on latest manifests, received validations,
@@ -333,6 +343,18 @@ public:
     TrustChanges
     updateTrusted(hash_set<NodeID> const& seenValidators);
 
+    ListDisposition
+    applySchemaModifyAndBroadcast(
+        LedgerIndex ledgerSeq,
+        SchemaModifyOp opType,
+        int txIndex,
+        uint256 const& txHash,
+        std::vector<PublicKey> const& validators,
+        NetworkOPs& networkOPs,
+        uint256 const& schemaID,
+        PeerManager& overlay,
+        HashRouter& hashRouter);
+
 	/** Apply SchemaModify transaction
 		
 		Reset the following structures:
@@ -341,7 +363,14 @@ public:
 
 		And call updateTrusted when onConsensusReached called
 	 */
-	void applySchemaModify(std::vector<PublicKey>const& validators,bool bAdd);
+    ValidatorList::PublisherListStats
+    applySchemaModify(
+        LedgerIndex ledgerSeq,
+        SchemaModifyOp opType,
+        int txIndex,
+        uint256 const& txHash,
+        std::vector<PublicKey> const& validators,
+        NetworkOPs& networkOPs);
 
     /** Get quorum value for current trusted key set
 

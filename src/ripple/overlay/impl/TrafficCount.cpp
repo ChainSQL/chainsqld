@@ -48,11 +48,14 @@ TrafficCount::categorize(
     if (type == protocol::mtTRANSACTION)
         return TrafficCount::category::transaction;
 
+    if (type == protocol::mtVALIDATORLIST)
+        return TrafficCount::category::validatorlist;
+
     if (type == protocol::mtCONSENSUS)
         return TrafficCount::category::consensus;
 
-    if (type == protocol::mtVALIDATORLIST)
-        return TrafficCount::category::validatorlist;
+    if (type == protocol::mtSYNC_SCHEMA)
+        return TrafficCount::category::sync_schema;
 
 
     if(type == protocol::mtGET_TABLE)

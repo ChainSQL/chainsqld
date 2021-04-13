@@ -211,23 +211,26 @@ PeerImp::dispatch()
         for (auto item : app_.getSchemaManager())
         {
             auto vecKeys = item.second->validators().validators();
-			auto vecPendingKeys = item.second->validators().pendingValidators();
-			bool bShoundAdd = false;
-			if (item.first == beast::zero)// add to main chain with no validators check.
-			{
-				bShoundAdd = true;
-			}
-			if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_)
-				!= vecKeys.end())
-			{
-				bShoundAdd = true;
-			}
-			if (std::find(vecPendingKeys.begin(), vecPendingKeys.end(), *publicValidate_)
-				!= vecPendingKeys.end())
-			{
-				bShoundAdd = true;
-			}
-			if(bShoundAdd)
+            auto vecPendingKeys = item.second->validators().pendingValidators();
+            bool bShoundAdd = false;
+            if (item.first ==
+                beast::zero)  // add to main chain with no validators check.
+            {
+                bShoundAdd = true;
+            }
+            if (std::find(vecKeys.begin(), vecKeys.end(), *publicValidate_) !=
+                vecKeys.end())
+            {
+                bShoundAdd = true;
+            }
+            if (std::find(
+                    vecPendingKeys.begin(),
+                    vecPendingKeys.end(),
+                    *publicValidate_) != vecPendingKeys.end())
+            {
+                bShoundAdd = true;
+            }
+            if (bShoundAdd)
             {
                 std::lock_guard sl(schemaInfoMutex_);
                 schemaInfo_.emplace(item.first, SchemaInfo());
@@ -2551,6 +2554,79 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
         });
 }
 
+void
+PeerImp::onMessage(std::shared_ptr<protocol::TMSyncSchema> const& m)
+{
+    if (!stringIsUint256Sized(m->schemaid()) ||
+        !stringIsUint256Sized(m->txhash()))
+    {
+        charge(Resource::feeInvalidRequest);
+        JLOG(p_journal_.warn()) << "TMSyncSchema: data invalid";
+        return;
+    }
+
+    auto tup = getSchemaInfo("TMSyncSchema:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+    auto pap = app_.getSchemaManager().getSchema(schemaId);
+    if (!pap)
+    {
+        JLOG(p_journal_.warn())
+            << "TMSyncSchema: schema " << schemaId << " removed";
+        return;
+    }
+
+    uint256 const txHash{m->txhash()};
+    uint256 suppressionID = beast::zero;
+
+    switch (m->type())
+    {
+        case protocol::TMSyncSchema::ssApplyValidators:
+            suppressionID = sha512Half(
+                protocol::TMSyncSchema::ssApplyValidators,
+                m->ledgerseq(),
+                m->txindex(),
+                txHash);
+            break;
+        case protocol::TMSyncSchema::ssUpdateValidators:
+            if (!m->has_updateseq() || !m->has_updateturn())
+            {
+                JLOG(p_journal_.warn())
+                    << "SyncSchema: missing update ledger sequence or turn";
+                charge(Resource::feeHighBurdenPeer);
+                return;
+            }
+            suppressionID = sha512Half(
+                protocol::TMSyncSchema::ssUpdateValidators,
+                m->ledgerseq(),
+                m->txindex(),
+                txHash,
+                m->updateseq(),
+                m->updateturn());
+            break;
+        default:
+            JLOG(p_journal_.warn()) << "SyncSchema: type invalid";
+            charge(Resource::feeHighBurdenPeer);
+            break;
+    }
+
+    if (!pap->getHashRouter().addSuppressionPeer(suppressionID, id_))
+    {
+        JLOG(p_journal_.debug())
+            << "TMSyncSchema: received duplicate sync schema";
+        charge(Resource::feeUnwantedData);
+        return;
+    }
+
+    std::weak_ptr<PeerImp> weak = shared_from_this();
+    app_.getJobQueue().addJob(
+        jtSYNC_SCHEMA, "syncSchema", [weak, schemaId, m](Job&) {
+            if (auto peer = weak.lock())
+                peer->syncSchema(schemaId, m);
+        });
+}
+
 //--------------------------------------------------------------------------
 
 void
@@ -2720,6 +2796,30 @@ PeerImp::checkConsensus(
 
     app_.getOPs(schemaId).peerConsensusMessage(
         shared_from_this(), isTrusted, packet);
+}
+
+void
+PeerImp::syncSchema(
+    uint256 schemaId,
+    std::shared_ptr<protocol::TMSyncSchema> const& packet)
+{
+    auto schema = app_.getSchemaManager().getSchema(schemaId);
+    if (!schema)
+    {
+        JLOG(p_journal_.warn())
+            << "syncSchema: schema " << schemaId << " removed";
+        return;
+    }
+
+    if (app_.getLedgerMaster().getValidLedgerIndex() < packet->ledgerseq())
+    {
+        JLOG(p_journal_.warn())
+            << "syncSchema: ledger " << packet->ledgerseq() << " is not valid";
+        charge(Resource::feeUnwantedData);
+        return;
+    }
+
+    schema->getOPs().peerSyncSchema(shared_from_this(), packet);
 }
 
 // Returns the set of peers that can help us get

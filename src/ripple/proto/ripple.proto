@@ -27,6 +27,7 @@ enum MessageType
     mtPEER_SHARD_INFO       = 53;
     mtVALIDATORLIST         = 54;
     mtCONSENSUS             = 55;
+    mtSYNC_SCHEMA           = 56;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -432,4 +433,20 @@ message TMConsensus
     optional uint32     signFlags       = 5;
     optional uint32     hops            = 6;
     required bytes 		schemaId        = 7;
+}
+
+message TMSyncSchema
+{
+    enum SyncSchemaType {
+        ssApplyValidators  = 1;
+        ssUpdateValidators = 2;
+    }
+
+    required SyncSchemaType type       = 1;
+    required uint32         ledgerSeq  = 2;
+    required uint32         txIndex    = 3;
+    required bytes          txHash     = 4;
+    optional uint64         updateTurn = 5;
+    optional uint32         updateSeq  = 6;
+    required bytes          schemaId   = 7;
 }

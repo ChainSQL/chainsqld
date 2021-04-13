@@ -79,6 +79,8 @@ protocolMessageName(int type)
             return "table_data";
         case protocol::mtCONSENSUS:
             return "consensus";
+        case protocol::mtSYNC_SCHEMA:
+            return "sync_schema";
         default:
             break;
     }
@@ -379,6 +381,10 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
             break;
         case protocol::mtCONSENSUS:
             success = detail::invoke<protocol::TMConsensus>(
+                *header, buffers, handler);
+            break;
+        case protocol::mtSYNC_SCHEMA:
+            success = detail::invoke<protocol::TMSyncSchema>(
                 *header, buffers, handler);
             break;
         default:

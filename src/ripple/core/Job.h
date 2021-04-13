@@ -67,7 +67,7 @@ enum JobType {
 	jtLEDGER_REQ,    // Peer request ledger/txnset data
 	jtLEDGER_DATA,   // Received data for a ledger we're acquiring
 
-	jtVIEW_CHANGE,	 // Recv view_change msg.
+	jtSYNC_SCHEMA,	 // Recv view_change msg.
     jtTXN_DATA,      // Fetch a proposed set
     jtWAL,           // Write-ahead logging
     jtWRITE,         // Write out hashed objects

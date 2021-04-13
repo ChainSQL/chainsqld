@@ -56,7 +56,7 @@ add(    jtTRANSACTION,   "transaction",             maxLimit, false, 250ms,   10
 add(    jtBATCH,         "batch",                   maxLimit, false, 250ms,   1000ms);
 add(    jtADVANCE,       "advanceLedger",           maxLimit, false, 0ms,     0ms);
 add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000ms,  4500ms);
-add(	jtVIEW_CHANGE,	 "viewchange",				maxLimit, false, 500ms,   1500ms);
+add(	jtSYNC_SCHEMA,	 "syncSchema",				1,        false, 500ms,   1500ms);
 add(    jtTXN_DATA,      "fetchTxnData",            1,        false, 0ms,     0ms);
 add(    jtWAL,           "writeAhead",              maxLimit, false, 1000ms,  2500ms);
 add(    jtCONSENSUS_t,   "trustedConsensus",        1,        false, 500ms,  1500ms);

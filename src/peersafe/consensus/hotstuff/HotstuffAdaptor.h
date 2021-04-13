@@ -82,7 +82,8 @@ public:
     }
 
     void
-    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger) override final;
+    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t newRound)
+        override final;
 
     // Overwrite ProposerElection interfaces.
     Author
