@@ -253,6 +253,13 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	}
 
 	CONFIG_DIR = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
+	CONFIG_FILE = CONFIG_DIR / "chainsqld.cfg";
+    if(boost::filesystem::exists(CONFIG_FILE))
+    {
+        //In case the cfg has been modified.
+        return;
+    }
+
 	if(!boost::filesystem::exists(CONFIG_DIR))
 	{
 		boost::system::error_code ec;
@@ -313,8 +320,6 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 	 }
 	 section("validators").append(validatorList);
 
-
-	 CONFIG_FILE = CONFIG_DIR / "chainsqld.cfg";
 	 {
 		 std::ofstream outfile(CONFIG_FILE.generic_string());
 		 outfile << *this;

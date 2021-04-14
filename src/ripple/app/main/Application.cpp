@@ -1101,8 +1101,8 @@ ApplicationImp::setup()
     if (!schema_main->setup())
         return false;
 
-    if (!loadSubChains())
-        return false;
+    // if (!loadSubChains())
+    //     return false;
 
     {
         try
