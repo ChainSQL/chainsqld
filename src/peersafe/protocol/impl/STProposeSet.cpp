@@ -20,6 +20,8 @@
 
 #include <ripple/protocol/jss.h>
 #include <peersafe/protocol/STProposeSet.h>
+#include <ripple/app/consensus/RCLCxTx.h>
+#include <peersafe/schema/Schema.h>
 
 
 namespace ripple {
@@ -93,7 +95,8 @@ STProposeSet::STProposeSet(
     NodeID const& nodeid,
     PublicKey const& publicKey,
     std::uint32_t ledgerSeq,
-    std::uint64_t view)
+    std::uint64_t view,
+    RCLTxSet const& set)
     : STObject(getFormat(), sfProposeSet)
     , proposeSeq_(proposeSeq)
     , position_(position)
@@ -116,6 +119,20 @@ STProposeSet::STProposeSet(
 
     setFieldU32(sfLedgerSequence, ledgerSeq);
     setFieldU64(sfView, view);
+
+    if (set.map_ != nullptr)
+    {
+        STArray txs;
+        auto& txMap = *set.map_;
+        for (auto const& item : txMap)
+        {
+            STObject obj(sfNewFields);
+            obj.setFieldH256(sfTransactionHash, item.key());
+            obj.setFieldVL(sfRaw, item.slice());
+            txs.push_back(obj);
+        }
+        setFieldArray(sfTransactions, txs);
+    }
 }
 
 void STProposeSet::changePosition(
@@ -134,6 +151,32 @@ void STProposeSet::changePosition(
     {
         ++proposeSeq_;
         setFieldU32(sfSequence, proposeSeq_);
+    }
+}
+
+std::shared_ptr<RCLTxSet>
+STProposeSet::getTxSet(Schema& app) const
+{
+    if (isFieldPresent(sfTransactions))
+    {
+        auto initialSet = std::make_shared<SHAMap>(
+            SHAMapType::TRANSACTION, app.getNodeFamily());
+        initialSet->setUnbacked();
+
+        auto& txs = getFieldArray(sfTransactions);
+        for (auto& obj : txs)
+        {
+            uint256 txID = obj.getFieldH256(sfTransactionHash);
+            auto raw = obj.getFieldVL(sfRaw);
+            Serializer s(raw.data(), raw.size());
+            initialSet->addItem(
+                SHAMapItem(txID, std::move(s)), true, false);
+        }
+        return std::make_shared<RCLTxSet>(initialSet);
+    }
+    else
+    {
+        return nullptr;
     }
 }
 
@@ -183,7 +226,8 @@ SOTemplate const& STProposeSet::getFormat()
             { sfParentHash,       soeREQUIRED },    // previousledger Hash
             { sfCloseTime,        soeREQUIRED },    // closeTime
             { sfLedgerSequence,   soeOPTIONAL },
-            { sfView,             soeOPTIONAL }
+            { sfView,             soeOPTIONAL },
+            { sfTransactions,     soeOPTIONAL },
 
         };
     };

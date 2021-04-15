@@ -316,6 +316,7 @@ SField const sfTables          (access, STI_ARRAY, 51, "Tables");
 SField const sfUsers           (access, STI_ARRAY, 52, "Users");	
 SField const sfValidators      (access, STI_ARRAY, 53, "Validators");
 SField const sfPeerList        (access, STI_ARRAY, 54, "PeerList");
+SField const sfTransactions    (access, STI_ARRAY, 55, "Transactions");
 
 // array of objects (uncommon)
 SField const sfMajorities(access, STI_ARRAY, 16, "Majorities");

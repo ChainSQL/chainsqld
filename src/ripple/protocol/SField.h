@@ -614,6 +614,7 @@ extern SField const sfTables;
 extern SField const sfUsers;
 extern SField const sfValidators;
 extern SField const sfPeerList;
+extern SField const sfTransactions;
 
 // certificate
 extern SF_Blob const sfCertificate;

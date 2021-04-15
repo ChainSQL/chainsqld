@@ -53,6 +53,8 @@ struct PopConsensusParms
 
     bool omitEMPTY = true;
 
+    bool proposeTxSetDetail = false;
+
     // The minimum tx limit for leader to propose a tx-set after
     // half-MinBlockTime
     const unsigned minTXS_IN_LEDGER_ADVANCE = 5000;
@@ -74,6 +76,7 @@ struct PopConsensusParms
         ret["time_out"] = static_cast<Int>(consensusTIMEOUT.count());
         ret["omit_empty_block"] = omitEMPTY;
         ret["init_time"] = static_cast<Int>(initTIME.count());
+        ret["propose_txset_detail"] = proposeTxSetDetail;
 
         return ret;
     }

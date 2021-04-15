@@ -65,6 +65,7 @@ Message::compress()
             case protocol::mtGET_OBJECTS:
             case protocol::mtVALIDATORLIST:
             case protocol::mtSYNC_SCHEMA:
+            case protocol::mtCONSENSUS:
                 return true;
             case protocol::mtPING:
             case protocol::mtCLUSTER:
@@ -74,7 +75,6 @@ Message::compress()
             case protocol::mtSHARD_INFO:
             case protocol::mtGET_PEER_SHARD_INFO:
             case protocol::mtPEER_SHARD_INFO:
-            case protocol::mtCONSENSUS:
                 break;
         }
         return false;

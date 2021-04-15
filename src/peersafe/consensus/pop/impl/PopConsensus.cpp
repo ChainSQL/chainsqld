@@ -215,7 +215,8 @@ PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
                 adaptor_.nodeID(),
                 adaptor_.valPublic(),
                 previousLedger_.seq() + 1,
-                view_)));
+                view_,
+                RCLTxSet(nullptr))));
 
         if (phase_ == ConsensusPhase::open)
             phase_ = ConsensusPhase::establish;
@@ -243,12 +244,12 @@ PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
         }
     }
 
-    // check to see if final condition reached.
-    if (result_)
-    {
-        checkVoting();
-        return;
-    }
+    // // check to see if final condition reached.
+    // if (result_)
+    // {
+    //     checkVoting();
+    //     return;
+    // }
 }
 
 Json::Value
@@ -1014,6 +1015,12 @@ PopConsensus::peerProposalInternal(
         ++rawCloseTimes_.peers[newPeerProp.closeTime()];
     }
 
+    auto pSet = newPeerProp.getTxSet(adaptor_.app_);
+    if (pSet != nullptr && pSet->map_ != nullptr)
+    {
+        gotTxSet(now_, *pSet);
+    }
+    else if(!result_)
     {
         auto const ait = acquired_.find(newPeerProp.position());
         if (ait == acquired_.end())
@@ -1026,6 +1033,10 @@ PopConsensus::peerProposalInternal(
         // gotTxSet once it arrives
         if (auto set = adaptor_.acquireTxSet(newPeerProp.position()))
             gotTxSet(now_, *set);
+    }
+    if (result_)
+    {
+        checkVoting();
     }
 
     return true;

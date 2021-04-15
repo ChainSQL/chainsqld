@@ -28,7 +28,8 @@
 
 namespace ripple {
 
-
+class RCLTxSet;
+class Schema;
 class STProposeSet final : public STObject, public CountedObject<STProposeSet>
 {
 public:
@@ -70,7 +71,8 @@ public:
         NodeID const& nodeid,
         PublicKey const& publicKey,
         std::uint32_t ledgerSeq,
-        std::uint64_t view);
+        std::uint64_t view,
+        RCLTxSet const& set);
 
     STBase*
     copy(std::size_t n, void* buf) const override
@@ -108,6 +110,9 @@ public:
     Blob getSerialized() const;
 
     Json::Value getJson() const;
+
+    std::shared_ptr<RCLTxSet>
+    getTxSet(Schema& app) const;
 
 private:
     //! The sequence number of these positions taken by this node

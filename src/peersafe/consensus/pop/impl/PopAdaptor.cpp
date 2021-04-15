@@ -92,6 +92,8 @@ PopAdaptor::PopAdaptor(
 
         parms_.omitEMPTY = app.config().loadConfig(
             SECTION_CONSENSUS, "omit_empty_block", parms_.omitEMPTY);
+        parms_.proposeTxSetDetail = app.config().loadConfig(
+            SECTION_CONSENSUS,"propose_txset_detail",parms_.proposeTxSetDetail);
     }
 }
 
@@ -157,16 +159,19 @@ PopAdaptor::onCollectFinish(
     initialSet = initialSet->snapShot(false);
     auto setHash = initialSet->getHash().as_uint256();
 
-    return Result{std::move(initialSet),
-                  RCLCxPeerPos::Proposal{RCLCxPeerPos::Proposal::seqJoin,
-                                         setHash,
-                                         prevLedger->info().hash,
-                                         closeTime,
-                                         app_.timeKeeper().closeTime(),
-                                         nodeID_,
-                                         valPublic_,
-                                         prevLedger->info().seq + 1,
-                                         view}};
+    auto proposal = RCLCxPeerPos::Proposal{
+        RCLCxPeerPos::Proposal::seqJoin,
+        setHash,
+        prevLedger->info().hash,
+        closeTime,
+        app_.timeKeeper().closeTime(),
+        nodeID_,
+        valPublic_,
+        prevLedger->info().seq + 1,
+        view,
+        parms_.proposeTxSetDetail ? initialSet : RCLTxSet(nullptr)
+    };
+    return Result{std::move(initialSet), std::move(proposal)};
 }
 
 void
