@@ -1207,7 +1207,7 @@ getDiff(
 	const std::vector<ripple::uint160>& vec)
 {
 	int diff = 0;
-	LedgerIndex txnseq, seq;
+	LedgerIndex seq;
 	uint256 txnhash, hash, txnupdatehash;
 	//current max-ledgerseq in network
 	auto validIndex = context.app.getLedgerMaster().getValidLedgerIndex();
