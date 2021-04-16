@@ -244,12 +244,12 @@ PopConsensus::gotTxSet(NetClock::time_point const& now, TxSet_t const& txSet)
         }
     }
 
-    // // check to see if final condition reached.
-    // if (result_)
-    // {
-    //     checkVoting();
-    //     return;
-    // }
+    // check to see if final condition reached.
+    if (result_)
+    {
+        checkVoting();
+        return;
+    }
 }
 
 Json::Value
