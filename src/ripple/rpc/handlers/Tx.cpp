@@ -473,6 +473,8 @@ populateJsonResponse(
 Json::Value
 doTxJson(RPC::JsonContext& context)
 {
+    if (!context.app.config().useTxTables())
+        return rpcError(rpcNOT_ENABLED);
     // Deserialize and validate JSON arguments
 
     if (!context.params.isMember(jss::transaction))
@@ -511,6 +513,13 @@ doTxJson(RPC::JsonContext& context)
 std::pair<org::zxcl::rpc::v1::GetTransactionResponse, grpc::Status>
 doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
 {
+    if (!context.app.config().useTxTables())
+    {
+        return {
+            {},
+            {grpc::StatusCode::UNIMPLEMENTED, "Not enabled in configuration."}};
+    }
+
     // return values
     org::zxcl::rpc::v1::GetTransactionResponse response;
     grpc::Status status = grpc::Status::OK;
@@ -545,6 +554,8 @@ doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
 
 Json::Value doTxCount(RPC::JsonContext& context)
 {
+    if (!context.app.config().useTxTables())
+        return rpcError(rpcNOT_ENABLED);
 	Json::Value ret(Json::objectValue);
 	ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
 	ret["all"] = context.app.getMasterTransaction().getTxCount(false);

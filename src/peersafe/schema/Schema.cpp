@@ -811,44 +811,48 @@ public:
         {
             auto setup = setup_DatabaseCon(*config_, m_journal);
 
-            // transaction database
-            mTxnDB = std::make_unique<DatabaseCon>(
-                setup,
-                TxDBName,
-                TxDBPragma,
-                TxDBInit,
-                DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &logs()});
-            mTxnDB->getSession() << boost::str(
-                boost::format("PRAGMA cache_size=-%d;") %
-                kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
-
-            if (!setup.standAlone || setup.startUp == Config::LOAD ||
-                setup.startUp == Config::LOAD_FILE ||
-                setup.startUp == Config::REPLAY)
+            if (config_->useTxTables())
             {
-                // Check if AccountTransactions has primary key
-                std::string cid, name, type;
-                std::size_t notnull, dflt_value, pk;
-                soci::indicator ind;
-                soci::statement st =
-                    (mTxnDB->getSession().prepare
-                         << ("PRAGMA table_info(AccountTransactions);"),
-                     soci::into(cid),
-                     soci::into(name),
-                     soci::into(type),
-                     soci::into(notnull),
-                     soci::into(dflt_value, ind),
-                     soci::into(pk));
+                // transaction database
+                mTxnDB = std::make_unique<DatabaseCon>(
+                    setup,
+                    TxDBName,
+                    TxDBPragma,
+                    TxDBInit,
+                    DatabaseCon::CheckpointerSetup{
+                        &app_.getJobQueue(), &logs()});
+                mTxnDB->getSession() << boost::str(
+                    boost::format("PRAGMA cache_size=-%d;") %
+                    kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
 
-                st.execute();
-                while (st.fetch())
+                if (!setup.standAlone || setup.startUp == Config::LOAD ||
+                    setup.startUp == Config::LOAD_FILE ||
+                    setup.startUp == Config::REPLAY)
                 {
-                    if (pk == 1)
+                    // Check if AccountTransactions has primary key
+                    std::string cid, name, type;
+                    std::size_t notnull, dflt_value, pk;
+                    soci::indicator ind;
+                    soci::statement st =
+                        (mTxnDB->getSession().prepare
+                             << ("PRAGMA table_info(AccountTransactions);"),
+                         soci::into(cid),
+                         soci::into(name),
+                         soci::into(type),
+                         soci::into(notnull),
+                         soci::into(dflt_value, ind),
+                         soci::into(pk));
+
+                    st.execute();
+                    while (st.fetch())
                     {
-                        JLOG(m_journal.fatal())
-                            << "AccountTransactions database "
-                               "should not have a primary key";
-                        return false;
+                        if (pk == 1)
+                        {
+                            JLOG(m_journal.fatal())
+                                << "AccountTransactions database "
+                                   "should not have a primary key";
+                            return false;
+                        }
                     }
                 }
             }
@@ -944,53 +948,57 @@ public:
                 app_.signalStop();
             }
 
-            DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
-            boost::filesystem::path dbPath = dbSetup.dataDir / TxDBName;
-            boost::system::error_code ec;
-            boost::optional<std::uint64_t> dbSize =
-                boost::filesystem::file_size(dbPath, ec);
-            if (ec)
+            if (config_->useTxTables())
             {
-                JLOG(m_journal.error())
-                    << "Error checking transaction db file size: "
-                    << ec.message();
-                dbSize.reset();
-            }
+                DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
+                boost::filesystem::path dbPath = dbSetup.dataDir / TxDBName;
+                boost::system::error_code ec;
+                boost::optional<std::uint64_t> dbSize =
+                    boost::filesystem::file_size(dbPath, ec);
+                if (ec)
+                {
+                    JLOG(m_journal.error())
+                        << "Error checking transaction db file size: "
+                        << ec.message();
+                    dbSize.reset();
+                }
 
-            auto db = mTxnDB->checkoutDb();
-            static auto const pageSize = [&] {
-                std::uint32_t ps;
-                *db << "PRAGMA page_size;", soci::into(ps);
-                return ps;
-            }();
-            static auto const maxPages = [&] {
-                std::uint32_t mp;
-                *db << "PRAGMA max_page_count;", soci::into(mp);
-                return mp;
-            }();
-            std::uint32_t pageCount;
-            *db << "PRAGMA page_count;", soci::into(pageCount);
-            std::uint32_t freePages = maxPages - pageCount;
-            std::uint64_t freeSpace =
-                safe_cast<std::uint64_t>(freePages) * pageSize;
-            // JLOG(m_journal.info())
-            //	<< "Transaction DB pathname: " << dbPath.string()
-            //	<< "; file size: " << dbSize.value_or(-1) << " bytes"
-            //	<< "; SQLite page size: " << pageSize << " bytes"
-            //	<< "; Free pages: " << freePages
-            //	<< "; Free space: " << freeSpace << " bytes; "
-            //	<< "Note that this does not take into account available disk "
-            //	"space.";
+                auto db = mTxnDB->checkoutDb();
+                static auto const pageSize = [&] {
+                    std::uint32_t ps;
+                    *db << "PRAGMA page_size;", soci::into(ps);
+                    return ps;
+                }();
+                static auto const maxPages = [&] {
+                    std::uint32_t mp;
+                    *db << "PRAGMA max_page_count;", soci::into(mp);
+                    return mp;
+                }();
+                std::uint32_t pageCount;
+                *db << "PRAGMA page_count;", soci::into(pageCount);
+                std::uint32_t freePages = maxPages - pageCount;
+                std::uint64_t freeSpace =
+                    safe_cast<std::uint64_t>(freePages) * pageSize;
+                // JLOG(m_journal.info())
+                //	<< "Transaction DB pathname: " << dbPath.string()
+                //	<< "; file size: " << dbSize.value_or(-1) << " bytes"
+                //	<< "; SQLite page size: " << pageSize << " bytes"
+                //	<< "; Free pages: " << freePages
+                //	<< "; Free space: " << freeSpace << " bytes; "
+                //	<< "Note that this does not take into account available
+                // disk " 	"space.";
 
-            if (freeSpace < megabytes(512))
-            {
-                JLOG(m_journal.fatal())
-                    << "Free SQLite space for transaction db is less than "
-                       "512MB. To fix this, rippled must be executed with the "
-                       "\"--vacuum\" parameter before restarting. "
-                       "Note that this activity can take multiple days, "
-                       "depending on database size.";
-                app_.signalStop();
+                if (freeSpace < megabytes(512))
+                {
+                    JLOG(m_journal.fatal())
+                        << "Free SQLite space for transaction db is less than "
+                           "512MB. To fix this, rippled must be executed with "
+                           "the "
+                           "\"--vacuum\" parameter before restarting. "
+                           "Note that this activity can take multiple days, "
+                           "depending on database size.";
+                    app_.signalStop();
+                }
             }
         }
 

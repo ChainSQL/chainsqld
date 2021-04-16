@@ -998,6 +998,7 @@ saveValidatedLedger(
         *db << boost::str(deleteLedger % seq);
     }
 
+    if (app.config().useTxTables())
     {
         auto db = app.getTxnDB().checkoutDb();
 

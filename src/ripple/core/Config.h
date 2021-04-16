@@ -118,6 +118,7 @@ private:
     */
     bool signingEnabled_ = false;
 
+    bool USE_TX_TABLES = true;
 public:
     bool doImport = false;
     bool nodeToShard = false;
@@ -271,6 +272,12 @@ public:
     canSign() const
     {
         return signingEnabled_;
+    }
+
+    bool
+    useTxTables() const
+    {
+        return USE_TX_TABLES;
     }
 
     template<typename T>

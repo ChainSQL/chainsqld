@@ -525,6 +525,8 @@ populateJsonResponse(
 Json::Value
 doAccountTxJson(RPC::JsonContext& context)
 {
+    if (!context.app.config().useTxTables())
+        return rpcError(rpcNOT_ENABLED);
     auto& params = context.params;
     AccountTxArgs args;
     Json::Value response;
@@ -582,6 +584,12 @@ doAccountTxGrpc(
     RPC::GRPCContext<org::zxcl::rpc::v1::GetAccountTransactionHistoryRequest>&
         context)
 {
+    if (!context.app.config().useTxTables())
+    {
+        return {
+            {},
+            {grpc::StatusCode::UNIMPLEMENTED, "Not enabled in configuration."}};
+    }
     // return values
     org::zxcl::rpc::v1::GetAccountTransactionHistoryResponse response;
     grpc::Status status = grpc::Status::OK;

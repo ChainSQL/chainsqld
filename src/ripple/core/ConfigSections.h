@@ -132,6 +132,8 @@ struct ConfigSection
 #define SECTION_SCHEMAS					"schemas"
 #define SECTION_SCHEMA					"schema"
 
+#define LEDGER_TXS_TABLES               "ledger_tx_tables"
+
 }  // namespace ripple
 
 #endif
