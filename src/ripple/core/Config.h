@@ -219,7 +219,8 @@ public:
 	std::string					 SCHEMA_PATH;
 	bool					     AUTO_ACCEPT_NEW_SCHEMA = false;
 	bool						 ONLY_VALIDATE_FOR_SCHEMA = false;
-
+    
+    bool                         BATCH_BROADCAST = false;
 public:
     Config() : j_{beast::Journal::getNullSink()}
     {

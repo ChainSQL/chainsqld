@@ -851,6 +851,12 @@ private:
     SubInfoMapType&
     getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
 
+    void
+    addToBroadCast(std::set<uint256> const& vec);
+
+    void
+    broadCastTxs();
+
 private:
 
     // XXX Split into more locks.
@@ -937,6 +943,10 @@ private:
     std::vector<TransactionStatus> mTransactions;
 
     StateAccounting accounting_{};
+
+    std::set<uint256> mTxToBroadCast;
+    std::mutex mutexBroad_;
+    bool m_bBroadThread = false;
 
 private:
     struct Stats
@@ -1197,6 +1207,9 @@ NetworkOPsImp::processHeartbeatTimer()
 
     tryCheckSubTx();
 
+    if(app_.config().BATCH_BROADCAST)
+        broadCastTxs();
+
     const ConsensusPhase currPhase = mConsensus.phase();
     if (mLastConsensusPhase != currPhase)
     {
@@ -1215,6 +1228,39 @@ NetworkOPsImp::tryCheckSubTx()
         m_bCheckTxThread = true;
         m_job_queue.addJob(jtCheckSubTx, "NetOPs.processSubTx", [this](Job&) {
             processSubTxTimer();
+        });
+    }
+}
+
+void
+NetworkOPsImp::broadCastTxs()
+{
+    if(!m_bBroadThread && mTxToBroadCast.size() > 0)
+    {
+        m_bBroadThread = true;
+        m_job_queue.addJob(jtBROADCASTBATCH, "NetOPs.boradcastTxs", [this](Job&) {
+            std::set<uint256> transactions;
+            {
+                std::unique_lock lock(mutexBroad_);
+                mTxToBroadCast.swap(transactions);
+            }
+            protocol::TMTransactions txs;
+            for (auto key : transactions)
+            {
+                Serializer s;
+                auto ec{rpcSUCCESS};
+                auto tx = app_.getMasterTransaction().fetch(key, ec);
+                tx->getSTransaction()->add(s);
+                auto pTx = txs.add_transactions();
+                pTx->set_rawtransaction(s.data(), s.size());
+            }
+            txs.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+            std::set<std::uint32_t> toSkip;
+            app_.peerManager().foreach(send_if_not(
+                std::make_shared<Message>(txs, protocol::mtTRANSACTIONS),
+                peer_in_set(toSkip)));       
+            m_bBroadThread = false;
         });
     }
 }
@@ -1675,6 +1721,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
         if (auto const l = m_ledgerMaster.getValidatedLedger())
             validatedLedgerIndex = l->info().seq;
 
+        std::set<uint256> setTxToBrod;
         auto newOL = app_.openLedger().current();
         for (TransactionStatus& e : transactions)
         {
@@ -1786,26 +1833,33 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                  (e.result.ter == terQUEUED)) &&
                 !enforceFailHard)
             {
-                auto const toSkip =
-                    app_.getHashRouter().shouldRelay(e.transaction->getID());
-
-                if (toSkip)
+                if(e.local && app_.config().BATCH_BROADCAST)
                 {
-                    protocol::TMTransaction tx;
-                    Serializer s;
+                    setTxToBrod.insert(e.transaction->getID());
+                }
+                else
+                {
+                    auto const toSkip =
+                       app_.getHashRouter().shouldRelay(e.transaction->getID());
 
-                    e.transaction->getSTransaction()->add(s);
-                    tx.set_rawtransaction(s.data(), s.size());
-                    tx.set_status(protocol::tsCURRENT);
-                    tx.set_receivetimestamp(
-                        app_.timeKeeper().now().time_since_epoch().count());
-                    tx.set_deferred(e.result.ter == terQUEUED);
-                    tx.set_schemaid(app_.schemaId().begin(), uint256::size());
-                    // FIXME: This should be when we received it
-                    app_.peerManager().foreach(send_if_not(
-                        std::make_shared<Message>(tx, protocol::mtTRANSACTION),
-                        peer_in_set(*toSkip)));
-                    e.transaction->setBroadcast();
+                    if (toSkip)
+                    {
+                       protocol::TMTransaction tx;
+                       Serializer s;
+
+                       e.transaction->getSTransaction()->add(s);
+                       tx.set_rawtransaction(s.data(), s.size());
+                       tx.set_status(protocol::tsCURRENT);
+                       tx.set_receivetimestamp(
+                           app_.timeKeeper().now().time_since_epoch().count());
+                       tx.set_deferred(e.result.ter == terQUEUED);
+                       tx.set_schemaid(app_.schemaId().begin(), uint256::size());
+                       // FIXME: This should be when we received it
+                       app_.peerManager().foreach(send_if_not(
+                           std::make_shared<Message>(tx, protocol::mtTRANSACTION),
+                           peer_in_set(*toSkip)));
+                       e.transaction->setBroadcast();
+                    }
                 }
             }
 
@@ -1818,7 +1872,9 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     *validatedLedgerIndex, fee, accountSeq, availableSeq);
             }
         }
+        addToBroadCast(setTxToBrod);
     }
+
 
     batchLock.lock();
 
@@ -1839,6 +1895,13 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
     mDispatchState = DispatchState::none;
 }
 
+
+void
+NetworkOPsImp::addToBroadCast(std::set<uint256> const& setTxs)
+{
+    std::unique_lock lock(mutexBroad_);
+    mTxToBroadCast.insert(setTxs.begin(),setTxs.end());
+}
 //
 // Owner functions
 //

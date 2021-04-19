@@ -581,6 +581,8 @@ public:
     void
     onMessage(std::shared_ptr<protocol::TMTransaction> const& m);
     void
+    onMessage(std::shared_ptr<protocol::TMTransactions> const& m);
+    void
     onMessage(std::shared_ptr<protocol::TMGetLedger> const& m);
     void
     onMessage(std::shared_ptr<protocol::TMLedgerData> const& m);

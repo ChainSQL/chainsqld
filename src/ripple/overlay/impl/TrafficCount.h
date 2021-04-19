@@ -71,6 +71,7 @@ public:
         overlay,    // overlay management
         manifests,  // manifest management
         transaction,
+        transaction_batch,
         validatorlist,
         consensus,
         sync_schema,
@@ -190,6 +191,7 @@ protected:
         {"overhead_overlay"},   // category::overlay
         {"overhead_manifest"},  // category::manifests
         {"transactions"},       // category::transaction
+	{"transactions_batch"},
         {"validator_lists"},    // category::validatorlist
         {"consensus"},          // category::consensus
         {"sync_schema"},

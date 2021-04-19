@@ -52,6 +52,7 @@ enum JobType {
     jtRPC,           // A websocket command from the client
 
     jtUPDATE_PF,     // Update pathfinding requests
+    jtBROADCASTBATCH,
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
 

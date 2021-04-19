@@ -946,9 +946,11 @@ Config::loadFromString(std::string const& fileContents)
                 "the maximum number of allowed peers (peers_max)");
         }
     }
-    std::string ledgerTxDbType;
+
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
     get_if_exists(ledgerTxTablesSection, "use_tx_tables", USE_TX_TABLES);
+
+    get_if_exists(section("consensus"), "batch_broadcast", BATCH_BROADCAST);
 }
 
 boost::filesystem::path

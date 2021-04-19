@@ -50,6 +50,8 @@ TrafficCount::categorize(
 
     if (type == protocol::mtVALIDATORLIST)
         return TrafficCount::category::validatorlist;
+    if (type == protocol::mtTRANSACTIONS)
+        return TrafficCount::category::transaction_batch;
 
     if (type == protocol::mtCONSENSUS)
         return TrafficCount::category::consensus;

@@ -28,6 +28,7 @@ enum MessageType
     mtVALIDATORLIST         = 54;
     mtCONSENSUS             = 55;
     mtSYNC_SCHEMA           = 56;
+	mtTRANSACTIONS			= 57;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -156,6 +157,17 @@ message TMTransaction
 	required bytes schemaId			  		= 5;
 }
 
+message TMTransactionSingle
+{
+	required bytes rawTransaction           = 1;
+    optional bytes txid                     = 2; 
+}
+
+message TMTransactions
+{
+	repeated TMTransactionSingle   transactions       	= 1;
+	required bytes schemaId			  					= 2;
+}
 
 enum NodeStatus
 {

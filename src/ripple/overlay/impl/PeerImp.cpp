@@ -1760,6 +1760,88 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
 }
 
 void
+PeerImp::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
+{
+    if (sanity_.load() == Sanity::insane)
+        return;
+
+    auto tup = getSchemaInfo("TMTransactions:", m->schemaid());
+    if (!get<0>(tup))
+        return;
+    uint256 schemaId = get<1>(tup);
+
+    try
+    {
+	    JLOG(p_journal_.info()) << "Got txs: " << m->transactions().size();
+        for (int i = 0; i < m->transactions().size(); ++i)
+        {
+            SerialIter sit(makeSlice(m->transactions(i).rawtransaction()));
+            auto stx = std::make_shared<STTx const>(sit);
+            uint256 txID = stx->getTransactionID();
+            if (app_.getTxPool(schemaId).txExists(txID))
+            {
+                return;
+            }
+            int flags;
+            constexpr std::chrono::seconds tx_interval = 10s;
+
+            //if (!app_.getHashRouter(schemaId).shouldProcess(
+            //        txID, id_, flags, tx_interval))
+            //{
+            //    // we have seen this transaction recently
+            //    if (flags & SF_BAD)
+            //    {
+            //        fee_ = Resource::feeInvalidSignature;
+            //        JLOG(p_journal_.debug())
+            //            << "Ignoring known bad tx " << txID;
+            //    }
+
+            //    return;
+            //}
+
+            JLOG(p_journal_.debug()) << "Got tx " << txID;
+
+            bool checkSignature = true;
+
+            // The maximum number of transactions to have in the job queue.
+            constexpr int max_transactions = 65536;
+            if (app_.getJobQueue().getJobCount(jtTRANSACTION) >
+                max_transactions)
+            {
+                overlay_.incJqTransOverflow();
+                JLOG(p_journal_.info()) << "Transaction queue is full";
+            }
+            else if (
+                app_.getLedgerMaster(schemaId).getValidatedLedgerAge() > 4min)
+            {
+                JLOG(p_journal_.trace())
+                    << "No new transactions until synchronized";
+            }
+            else
+            {
+                app_.getJobQueue().addJob(
+                    jtTRANSACTION,
+                    "recvTransaction->checkTransaction",
+                    [weak = std::weak_ptr<PeerImp>(shared_from_this()),
+                     flags,
+                     checkSignature,
+                     stx,
+                     schemaId](Job&) {
+                        if (auto peer = weak.lock())
+                            peer->checkTransaction(
+                                schemaId, flags, checkSignature, stx);
+                    });
+            }
+        }
+    }
+    catch (std::exception const&)
+    {
+        JLOG(p_journal_.warn())
+            << "TMTransactions invalid: ";
+    }
+}
+
+void
 PeerImp::onMessage(std::shared_ptr<protocol::TMGetLedger> const& m)
 {
     fee_ = Resource::feeMediumBurdenPeer;

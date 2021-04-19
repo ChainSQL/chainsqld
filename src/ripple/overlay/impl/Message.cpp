@@ -66,6 +66,7 @@ Message::compress()
             case protocol::mtVALIDATORLIST:
             case protocol::mtSYNC_SCHEMA:
             case protocol::mtCONSENSUS:
+            case protocol::mtTRANSACTIONS:
                 return true;
             case protocol::mtPING:
             case protocol::mtCLUSTER:

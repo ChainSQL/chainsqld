@@ -309,6 +309,7 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
 
     bool success;
 
+    std::cout<<"!!!message_type="<<header->message_type<<std::endl;
     switch (header->message_type)
     {
         case protocol::mtMANIFESTS:
@@ -345,6 +346,10 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
             break;
         case protocol::mtTRANSACTION:
             success = detail::invoke<protocol::TMTransaction>(
+                *header, buffers, handler);
+            break;
+        case protocol::mtTRANSACTIONS:
+            success = detail::invoke<protocol::TMTransactions>(
                 *header, buffers, handler);
             break;
         case protocol::mtGET_LEDGER:

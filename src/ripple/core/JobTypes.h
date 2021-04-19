@@ -53,6 +53,7 @@ add(    jtCLIENT,        "clientCommand",           maxLimit, false, 2000ms,  50
 add(    jtRPC,           "RPC",                     maxLimit, false, 0ms,     0ms);
 add(    jtUPDATE_PF,     "updatePaths",             maxLimit, false, 0ms,     0ms);
 add(    jtTRANSACTION,   "transaction",             maxLimit, false, 250ms,   1000ms);
+add(    jtBROADCASTBATCH,"transaction_batch",       1,        false, 250ms,   1000ms);
 add(    jtBATCH,         "batch",                   maxLimit, false, 250ms,   1000ms);
 add(    jtADVANCE,       "advanceLedger",           maxLimit, false, 0ms,     0ms);
 add(    jtPUBLEDGER,     "publishNewLedger",        maxLimit, false, 3000ms,  4500ms);
