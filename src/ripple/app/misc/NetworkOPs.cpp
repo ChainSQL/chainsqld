@@ -852,7 +852,7 @@ private:
     getCompatibleSubInfoMap(InfoSub::ACOUNT_TYPE eType);
 
     void
-    addToBroadCast(std::set<uint256> const& vec);
+    addToBroadCast(std::vector<uint256> const& vec);
 
     void
     broadCastTxs();
@@ -944,7 +944,7 @@ private:
 
     StateAccounting accounting_{};
 
-    std::set<uint256> mTxToBroadCast;
+    std::vector<uint256> mTxToBroadCast;
     std::mutex mutexBroad_;
     bool m_bBroadThread = false;
 
@@ -1239,10 +1239,21 @@ NetworkOPsImp::broadCastTxs()
     {
         m_bBroadThread = true;
         m_job_queue.addJob(jtBROADCASTBATCH, "NetOPs.boradcastTxs", [this](Job&) {
-            std::set<uint256> transactions;
+            std::vector<uint256> transactions;
+            if (mTxToBroadCast.size() < MAX_BROAD_CAST_BATCH)
             {
                 std::unique_lock lock(mutexBroad_);
                 mTxToBroadCast.swap(transactions);
+            }
+            else
+            {
+                std::unique_lock lock(mutexBroad_);
+                transactions = std::move(std::vector<uint256>(
+                    mTxToBroadCast.begin(),
+                    mTxToBroadCast.begin() + MAX_BROAD_CAST_BATCH));
+                mTxToBroadCast.erase(
+                    mTxToBroadCast.begin(),
+                    mTxToBroadCast.begin() + MAX_BROAD_CAST_BATCH);
             }
             protocol::TMTransactions txs;
             for (auto key : transactions)
@@ -1721,7 +1732,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
         if (auto const l = m_ledgerMaster.getValidatedLedger())
             validatedLedgerIndex = l->info().seq;
 
-        std::set<uint256> setTxToBrod;
+        std::vector<uint256> vecTxToBrod;
         auto newOL = app_.openLedger().current();
         for (TransactionStatus& e : transactions)
         {
@@ -1835,7 +1846,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             {
                 if(e.local && app_.config().BATCH_BROADCAST)
                 {
-                    setTxToBrod.insert(e.transaction->getID());
+                    vecTxToBrod.push_back(e.transaction->getID());
                 }
                 else
                 {
@@ -1872,7 +1883,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     *validatedLedgerIndex, fee, accountSeq, availableSeq);
             }
         }
-        addToBroadCast(setTxToBrod);
+        addToBroadCast(vecTxToBrod);
     }
 
 
@@ -1897,10 +1908,10 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
 
 void
-NetworkOPsImp::addToBroadCast(std::set<uint256> const& setTxs)
+NetworkOPsImp::addToBroadCast(std::vector<uint256> const& vecTxs)
 {
     std::unique_lock lock(mutexBroad_);
-    mTxToBroadCast.insert(setTxs.begin(),setTxs.end());
+    mTxToBroadCast.insert(mTxToBroadCast.end(),vecTxs.begin(), vecTxs.end());
 }
 //
 // Owner functions

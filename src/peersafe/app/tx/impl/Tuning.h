@@ -34,6 +34,8 @@ namespace ripple {
 	int const RAW_SHOW_SIZE = 2048;
 
 	int const MAX_VALIDATOR_SCHEMA_COUNT = 5;
+
+	int const MAX_BROAD_CAST_BATCH = 10000;
 } // ripple
 
 #endif
