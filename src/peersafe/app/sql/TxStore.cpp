@@ -54,7 +54,6 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
 		database_name += ".db"
 		dbType = "sqlite";
 	}
-        ;
     else
         dbType = "mycat";
 
