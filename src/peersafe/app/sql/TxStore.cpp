@@ -50,8 +50,11 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     std::pair<std::string, bool> db_type = setup.sync_db.find("type");
     if (db_type.second == false || db_type.first.empty())
         ;
-	else if (db_type.first.compare("sqlite")==0)
-        database_name += ".db";
+	else if (db_type.first.compare("sqlite")==0){
+		database_name += ".db"
+		dbType = "sqlite";
+	}
+        ;
     else
         dbType = "mycat";
 
