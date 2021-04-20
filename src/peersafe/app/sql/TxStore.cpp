@@ -51,7 +51,7 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     if (db_type.second == false || db_type.first.empty())
         ;
 	else if (db_type.first.compare("sqlite")==0){
-		database_name += ".db"
+		database_name += ".db";
 		dbType = "sqlite";
 	}
     else
