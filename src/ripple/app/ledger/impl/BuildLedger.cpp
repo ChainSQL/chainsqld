@@ -204,7 +204,7 @@ buildLedger(
                 applyTransactions(app, built, txns, failedTxns, accum, j);
 
             if (!txns.empty() || !failedTxns.empty())
-                JLOG(j.debug()) << "Applied " << applied << " transactions; "
+                JLOG(j.warn()) << "Applied " << applied << " transactions; "
                                 << failedTxns.size() << " failed and "
                                 << txns.size() << " will be retried.";
             else

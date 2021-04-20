@@ -272,7 +272,7 @@ Transactor::checkSeq(PreclaimContext const& ctx)
 	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
 		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
 	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
+		JLOG(ctx.j.info()) << "checkSeq: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
 			"view.seq=" << ctx.view.seq();
 		return tefMAX_LEDGER;
 	}
@@ -284,7 +284,7 @@ Transactor::checkSeq(PreclaimContext const& ctx)
     if (!sle)
     {
         JLOG(ctx.j.trace())
-            << "applyTransaction: delay: source account does not exist "
+            << "checkSeq: delay: source account does not exist "
             << toBase58(ctx.tx.getAccountID(sfAccount));
         return terNO_ACCOUNT;
     }
@@ -297,7 +297,7 @@ Transactor::checkSeq(PreclaimContext const& ctx)
         if (a_seq < t_seq)
         {
             JLOG(ctx.j.warn()) <<
-                "applyTransaction: Account:"<<toBase58(ctx.tx.getAccountID(sfAccount)) <<" has future sequence number " <<
+                "checkSeq: Account:"<<toBase58(ctx.tx.getAccountID(sfAccount)) <<" has future sequence number " <<
                 "a_seq=" << a_seq << " t_seq=" << t_seq;
             return terPRE_SEQ;
         }
@@ -305,7 +305,7 @@ Transactor::checkSeq(PreclaimContext const& ctx)
         if (ctx.view.txExists(ctx.tx.getTransactionID()))
             return tefALREADY;
 
-        JLOG(ctx.j.trace()) << "applyTransaction: has past sequence number "
+        JLOG(ctx.j.trace()) << "checkSeq: has past sequence number "
                             << "a_seq=" << a_seq << " t_seq=" << t_seq;
         return tefPAST_SEQ;
     }
@@ -327,7 +327,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     if (a_seq == 0)
     {
         JLOG(ctx.j.info())
-            << "applyTransaction: delay: source account does not exist "
+            << "checkSeq2: delay: source account does not exist "
             << toBase58(ctx.tx.getAccountID(sfAccount));
         return terNO_ACCOUNT;
     }
@@ -340,14 +340,14 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
             // ctx.app.getStateManager().resetAccountSeq(id);
 
             JLOG(ctx.j.info())
-                << "applyTransaction: has future sequence number, Account: "
+                << "checkSeq2: has future sequence number, Account: "
                 << toBase58(ctx.tx.getAccountID(sfAccount))
                 << " a_seq=" << a_seq << " t_seq=" << t_seq;
             return terPRE_SEQ;
         }
 
         JLOG(ctx.j.info())
-            << "applyTransaction: has past sequence number, Account: "
+            << "checkSeq2: has past sequence number, Account: "
             << toBase58(ctx.tx.getAccountID(sfAccount)) << " a_seq=" << a_seq
             << " t_seq=" << t_seq;
         return tefPAST_SEQ;
@@ -356,7 +356,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
         (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
     {
-        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence "
+        JLOG(ctx.j.info()) << "checkSeq2: tx LastLedgerSequence "
                            << ctx.tx.getFieldU32(sfLastLedgerSequence)
                            << "view.seq=" << ctx.view.seq();
         return tefMAX_LEDGER;
