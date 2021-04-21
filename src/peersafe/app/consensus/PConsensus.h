@@ -1004,7 +1004,7 @@ PConsensus<Adaptor>::phaseCollecting()
 
 			rawCloseTimes_.self = now_;
 
-			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get()));
+			result_.emplace(adaptor_.onCollectFinish(previousLedger_, transactions_, now_,view_, mode_.get(),omitEmpty_));
 			result_->roundTime.reset(clock_.now());
 			setID_ = result_->set.id();
 			extraTimeOut_ = true;

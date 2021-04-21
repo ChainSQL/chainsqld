@@ -282,7 +282,8 @@ class RCLConsensus
 			std::vector<uint256> const& transactions,
 			NetClock::time_point const& closeTime,
 			std::uint64_t const& view,
-			ConsensusMode mode);
+			ConsensusMode mode,
+            bool omitEmpty);
 
 		void onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView);
         /** Process the accepted ledger.

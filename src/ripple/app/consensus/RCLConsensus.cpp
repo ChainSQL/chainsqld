@@ -450,7 +450,8 @@ RCLConsensus::Adaptor::onCollectFinish(
 	std::vector<uint256> const& transactions,
 	NetClock::time_point const& closeTime,
 	std::uint64_t const& view,
-	ConsensusMode mode) -> Result
+	ConsensusMode mode,
+    bool omitEmpty) -> Result
 {
 	const bool wrongLCL = mode == ConsensusMode::wrongLedger;
 	const bool proposing = mode == ConsensusMode::proposing;
@@ -469,6 +470,7 @@ RCLConsensus::Adaptor::onCollectFinish(
 	initialSet->setUnbacked();
 
 	// Build SHAMap containing all transactions in our open ledger
+    std::map<AccountID, int> mapAccount2Seq;
 	for (auto const& txID : transactions)
 	{
 		auto tx = app_.getMasterTransaction().fetch(txID, false);
@@ -477,7 +479,15 @@ RCLConsensus::Adaptor::onCollectFinish(
 			JLOG(j_.error()) << "fetch transaction " + to_string(txID) + "failed";
 			continue;
 		}
-			
+
+		auto act = tx->getSTransaction()->getAccountID(sfAccount);
+        auto seq = tx->getSTransaction()->getFieldU32(sfSequence);
+        //save smallest account-sequence
+        if (mapAccount2Seq.find(act) == mapAccount2Seq.end() || seq < mapAccount2Seq[act])
+        {
+            mapAccount2Seq[act] = seq;
+        }
+
 		JLOG(j_.trace()) << "Adding open ledger TX " << txID;
 		Serializer s(2048);
 		tx->getSTransaction()->add(s);
@@ -486,6 +496,29 @@ RCLConsensus::Adaptor::onCollectFinish(
 			true,
 			false);
 	}
+
+    //check empty tx-set
+    if(mapAccount2Seq.size() > 0 && omitEmpty)
+    {
+        bool bHasSeqOk = false;
+        for (auto it = mapAccount2Seq.begin(); it != mapAccount2Seq.end(); it++)
+        {
+            auto sle = prevLedger->read(keylet::account(it->first));
+            std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
+            if (a_seq == it->second)
+            {
+                bHasSeqOk = true;
+                break;
+            }
+        }
+        //If all tx has wrong sequence,make an empty tx-set
+        if (!bHasSeqOk)
+        {
+            JLOG(j_.warn()) << "onCollectFinish no tx sequence ok,will use empty tx-set";
+            initialSet = std::make_shared<SHAMap>(
+                SHAMapType::TRANSACTION, app_.family(), SHAMap::version{ 1 });
+        } 
+    }    
 
 	// Add pseudo-transactions to the set
 	if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
