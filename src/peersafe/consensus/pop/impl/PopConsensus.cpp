@@ -610,25 +610,6 @@ PopConsensus::phaseCollecting()
             return;
         }
 
-        int tx_count = transactions_.size();
-
-        // if time for this block's tx-set reached
-        bool bTimeReached = sinceOpen >= adaptor_.parms().maxBLOCK_TIME;
-        if (tx_count < adaptor_.parms().maxTXS_IN_LEDGER && !bTimeReached)
-        {
-            H256Set txs;
-
-            adaptor_.topTransactions(
-                adaptor_.parms().maxTXS_IN_LEDGER - tx_count,
-                previousLedger_.seq() + 1,
-                txs);
-
-            for (auto const& tx : txs)
-            {
-                transactions_.push_back(tx);
-            }
-        }
-
         if (finalCondReached(sinceOpen, sinceClose))
         {
             /**
@@ -636,6 +617,15 @@ PopConsensus::phaseCollecting()
             2. propose position
             3. add position to self
             */
+            H256Set txs;
+            adaptor_.topTransactions(
+                adaptor_.parms().maxTXS_IN_LEDGER,
+                previousLedger_.seq() + 1,
+                txs);
+            for (auto const& tx : txs)
+            {
+                transactions_.push_back(tx);
+            }
 
             rawCloseTimes_.self = now_;
 
@@ -702,20 +692,21 @@ PopConsensus::finalCondReached(int64_t sinceOpen, int64_t sinceLastClose)
     if (sinceLastClose >= adaptor_.parms().maxBLOCK_TIME)
         return true;
 
+    auto transaction_size = adaptor_.getPoolQueuedTxCount();
     if (adaptor_.parms().maxTXS_IN_LEDGER >=
             adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
-        transactions_.size() >= adaptor_.parms().maxTXS_IN_LEDGER &&
+        transaction_size >= adaptor_.parms().maxTXS_IN_LEDGER &&
         sinceLastClose >= adaptor_.parms().minBLOCK_TIME / 2)
     {
         return true;
     }
 
-    if (transactions_.size() > 0 && lastTxSetSize_ > 0 &&
-        transactions_.size() == lastTxSetSize_ &&
+    if (transaction_size > 0 && lastTxSetSize_ > 0 &&
+        transaction_size == lastTxSetSize_ &&
         sinceLastClose >= adaptor_.parms().minBLOCK_TIME)
         return true;
 
-    lastTxSetSize_ = transactions_.size();
+    lastTxSetSize_ = transaction_size;
 
     return false;
 }
