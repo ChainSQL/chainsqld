@@ -713,33 +713,34 @@ checkOperationRuleForSqlUser(RPC::JsonContext& context,const AccountID& accountI
 }
 
 
-Json::Value doGetRecord(RPC::JsonContext&  context)
+Json::Value
+doGetRecord(RPC::JsonContext& context)
 {
     Json::Value ret = checkSig(context);
     if (ret.isMember(jss::error))
         return ret;
 
-	uint160 nameInDB = beast::zero;
+    uint160 nameInDB = beast::zero;
     std::vector<ripple::uint160> vecNameInDB;
     ret = checkForSelect(context, nameInDB, vecNameInDB);
     if (ret.isMember(jss::error))
         return ret;
 
-	//db connection is null
-	if (!isDBConfigured(context.app))
-	{
-		return rpcError(rpcNODB);
-	}
+    // db connection is null
+    if (!isDBConfigured(context.app))
+    {
+        return rpcError(rpcNODB);
+    }
 
     auto unit = context.app.getConnectionPool().getAvailable();
     TxStore* pTxStore = &(*unit->store_);
-	//Json::Value& tx_json(context.params["tx_json"]);
-	//Json::Value& tables_json = tx_json["Tables"];
-	//if (tables_json.size() == 1)//getTableStorage first_storage related
-	//{		
-	//	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
-	//	unit->unlock();
-	//}
+    // Json::Value& tx_json(context.params["tx_json"]);
+    // Json::Value& tables_json = tx_json["Tables"];
+    // if (tables_json.size() == 1)//getTableStorage first_storage related
+    //{
+    //	pTxStore = &context.app.getTableStorage().GetTxStore(nameInDB);
+    //	unit->unlock();
+    //}
     try
     {
         ret = pTxStore->txHistory(context);
@@ -751,14 +752,14 @@ Json::Value doGetRecord(RPC::JsonContext&  context)
         }
         if (unit->islocked())
             unit->unlock();
-	}
+    }
     catch (std::exception const& e)
     {
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecord exception" << e.what();
         if (unit->islocked())
             unit->unlock();
-	}
+    }
 
     return ret;
 }
