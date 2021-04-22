@@ -248,8 +248,9 @@ private:
     NetClock::time_point startTime_;
     NetClock::time_point initAnnounceTime_;
     NetClock::time_point now_;
-    NetClock::time_point openTime_;
     NetClock::time_point consensusTime_;
+    uint64_t openTime_;
+    uint64_t consensusTimeMil_;
 
     uint64_t txQueuedCount_;
 
@@ -273,6 +274,8 @@ private:
         uint256,
         std::vector<hotstuff::StateCompute::AsyncCompletedHander>>
         blockAcquiring_;
+    NetClock::time_point sweepTime_;
+    std::chrono::seconds const sweepInterval_{10};
 };
 
 }  // namespace ripple

@@ -33,7 +33,7 @@ namespace ripple {
 
 enum {
     // Ideal number of peers to start with
-    startPeers = 2,
+    startPeers = 1,
 
     // How many rounds to keep a set
     setKeepRounds = 3,

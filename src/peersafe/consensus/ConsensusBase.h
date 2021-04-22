@@ -30,6 +30,14 @@
 
 namespace ripple {
 
+enum ConsensusType : std::uint8_t {
+    RPCA = 0,
+    POP = 1,
+    HOTSTUFF = 2,
+
+    UNKNOWN,
+};
+
 enum ConsensusMessageType {
     mtPROPOSESET = 0,
     mtVALIDATION = 1,

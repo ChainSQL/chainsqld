@@ -23,11 +23,13 @@ namespace ripple {
 namespace hotstuff {
 
 VoteData::VoteData(
-	const BlockInfo& proposed,
-	const BlockInfo& parent)
-: proposed_(proposed)
-, parent_(parent) {
-
+    const BlockInfo& proposed,
+    const BlockInfo& parent,
+    std::size_t tc)
+    : proposed_(proposed)
+    , parent_(parent)
+    , tc_(tc)
+{
 }
 
 VoteData::~VoteData() {
@@ -35,8 +37,9 @@ VoteData::~VoteData() {
 
 VoteData VoteData::New(
 	const BlockInfo& proposed,
-	const BlockInfo& parent) {
-	VoteData vote_data(proposed, parent);
+	const BlockInfo& parent,
+    std::size_t tc) {
+	VoteData vote_data(proposed, parent, tc);
 	//vote_data.proposed_ = proposed;
 	//vote_data.parent_ = parent;
 	return vote_data;
@@ -49,6 +52,7 @@ HashValue VoteData::hash() const {
 	hash_append(h, parent_.id);
     hash_append(h, proposed_.ledger_info.hash);
     hash_append(h, parent_.ledger_info.hash);
+    hash_append(h, tc_);
     if (proposed_.next_epoch_state)
     {
         hash_append(h, proposed_.next_epoch_state->epoch);

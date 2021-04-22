@@ -45,7 +45,7 @@
 
 namespace ripple {
 
-
+class Peer;
 class ValidatorKeys;
 class LocalTxs;
 
@@ -328,6 +328,10 @@ public:
 
     void
     signAndSendMessage(protocol::TMConsensus& consensus);
+    void
+    signAndSendMessage(
+        std::shared_ptr<Peer> peer,
+        protocol::TMConsensus& consensus);
     void
     signAndSendMessage(
         PublicKey const& pubKey,

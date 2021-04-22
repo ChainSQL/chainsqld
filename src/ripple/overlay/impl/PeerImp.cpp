@@ -638,11 +638,11 @@ PeerImp::close()
         overlay_.incPeerDisconnect();
         if (m_inbound)
         {
-            JLOG(journal_.debug()) << "Closed";
+            JLOG(journal_.info()) << remote_address_ << " Closed";
         }
         else
         {
-            JLOG(journal_.info()) << "Closed";
+            JLOG(journal_.info()) << remote_address_ << " Closed";
         }
     }
 }

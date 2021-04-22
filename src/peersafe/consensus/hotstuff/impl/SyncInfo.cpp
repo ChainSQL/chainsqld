@@ -76,58 +76,72 @@ bool SyncInfo::hasNewerCertificate(const SyncInfo& sync_info) const {
 	return false;
 }
 
-bool SyncInfo::Verify(ValidatorVerifier* validator) {
-	Epoch epoch = highest_quorum_cert_.certified_block().epoch;
-	if (epoch != HighestCommitCert().certified_block().epoch) {
-		JLOG(debugLog().error())
-			<< "Verify sync_info failed."
-			<< "Mismatch epoch: Expected epoch is " << epoch
-			<< ", but HQC's epoch in local is " 
-			<< HighestCommitCert().certified_block().epoch;
-		return false;
-	}
+bool
+SyncInfo::Verify(ValidatorVerifier* validator)
+{
+    if (verified)
+    {
+        JLOG(debugLog().info()) << "SyncInfo has be verified";
+        return true;
+    }
 
-	if (highest_timeout_cert_
-		&& epoch != highest_timeout_cert_->timeout().epoch) { 
-		JLOG(debugLog().error())
-			<< "Verify sync_info failed."
-			<< "Mismatch epoch: Expected epoch is " << epoch
-			<< ", but HTC's epoch in local is " 
-			<< highest_timeout_cert_->timeout().epoch;
-		return false;
-	}
+    Epoch epoch = highest_quorum_cert_.certified_block().epoch;
 
-	if (highest_quorum_cert_.certified_block().round < HighestCommitCert().certified_block().round) {
-		JLOG(debugLog().error())
-			<< "Verify sync_info failed."
-			<< "Mismatch round: Expecte round " 
-			<< highest_quorum_cert_.certified_block().round
-			<< " is lower than HQC's round "
-			<< HighestCommitCert().certified_block().round
-			<< " in local";
-		return false;
-	}
+    if (epoch != HighestCommitCert().certified_block().epoch)
+    {
+        JLOG(debugLog().error()) << "Verify sync_info failed."
+                                 << "Mismatch epoch: Expected epoch is "
+                                 << epoch << ", but HQC's epoch in local is "
+                                 << HighestCommitCert().certified_block().epoch;
+        return false;
+    }
 
-	if (highest_quorum_cert_.Verify(validator) == false) {
-		JLOG(debugLog().error())
-			<< "Verify HQC failed."
-			<< "HQC's round is " 
-			<< highest_quorum_cert_.certified_block().round;
-		return false;
-	}
+    if (highest_timeout_cert_ &&
+        epoch != highest_timeout_cert_->timeout().epoch)
+    {
+        JLOG(debugLog().error()) << "Verify sync_info failed."
+                                 << "Mismatch epoch: Expected epoch is "
+                                 << epoch << ", but HTC's epoch in local is "
+                                 << highest_timeout_cert_->timeout().epoch;
+        return false;
+    }
 
-	//if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) == false)
-	//	return false;
+    if (highest_quorum_cert_.certified_block().round <
+        HighestCommitCert().certified_block().round)
+    {
+        JLOG(debugLog().error())
+            << "Verify sync_info failed."
+            << "Mismatch round: Expecte round "
+            << highest_quorum_cert_.certified_block().round
+            << " is lower than HQC's round "
+            << HighestCommitCert().certified_block().round << " in local";
+        return false;
+    }
 
-	if (highest_timeout_cert_ && highest_timeout_cert_->Verify(validator) == false) {
-		JLOG(debugLog().error())
-			<< "Verify HTC failed"
-			<< "HTC's round is " 
-			<< highest_timeout_cert_->timeout().round;
-		return false;
-	}
-	
-	return true;
+    if (highest_quorum_cert_.Verify(validator) == false)
+    {
+        JLOG(debugLog().error())
+            << "Verify HQC failed."
+            << "HQC's round is "
+            << highest_quorum_cert_.certified_block().round;
+        return false;
+    }
+
+    // if (highest_commit_cert_ && highest_commit_cert_->Verify(validator) ==
+    // false) 	return false;
+
+    if (highest_timeout_cert_ &&
+        highest_timeout_cert_->Verify(validator) == false)
+    {
+        JLOG(debugLog().error())
+            << "Verify HTC failed"
+            << "HTC's round is " << highest_timeout_cert_->timeout().round;
+        return false;
+    }
+
+    verified = true;
+
+    return true;
 }
     
 } // namespace hotstuff

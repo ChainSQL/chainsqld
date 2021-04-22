@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <chrono>
+#include <peersafe/app/util/Common.h>
 #include <peersafe/consensus/hotstuff/HotstuffConsensus.h>
 #include <peersafe/consensus/hotstuff/impl/Config.h>
 #include <peersafe/consensus/hotstuff/impl/RecoverData.h>
@@ -87,6 +88,23 @@ HotstuffConsensus::startRound(
     ConsensusMode startMode =
         proposing ? ConsensusMode::proposing : ConsensusMode::observing;
 
+    // We were handed the wrong ledger
+    if (prevLedger.id() != prevLedgerID)
+    {
+        // try to acquire the correct one
+        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID))
+        {
+            prevLedger = *newLedger;
+        }
+        else  // Unable to acquire the correct ledger
+        {
+            startMode = ConsensusMode::wrongLedger;
+            JLOG(j_.info())
+                << "Entering consensus with: " << previousLedger_.id();
+            JLOG(j_.info()) << "Correct LCL is: " << prevLedgerID;
+        }
+    }
+
     startRoundInternal(now, prevLedgerID, prevLedger, startMode, !startup_);
 }
 
@@ -97,6 +115,12 @@ HotstuffConsensus::timerEntry(NetClock::time_point const& now)
         return;
 
     now_ = now;
+
+    if (now - sweepTime_ >= sweepInterval_)
+    {
+        blockAcquiring_.sweep();
+        sweepTime_ = now;
+    }
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
@@ -202,9 +226,25 @@ HotstuffConsensus::gotTxSet(
         acquired_.emplace(id, txSet);
     }
 
+    LedgerIndex curMaxSeq = 0;
+
+    auto it = nextProposalCache_.rbegin();
+    if (it != nextProposalCache_.rend())
+    {
+        curMaxSeq = it->first;
+        JLOG(j_.info()) << "current highest proposal sequence: " << curMaxSeq;
+    }
+
     for (auto it : curProposalCache_[id])
     {
-        hotstuff_->handleProposal(it.second->block());
+        if (it.second->block().getLedgerInfo().seq >= curMaxSeq)
+            adaptor_.getJobQueue().addJob(
+                jtACCEPT, "handle_proposal", [=](Job&) {
+                    this->hotstuff_->handleProposal(it.second->block());
+                });
+            //hotstuff_->handleProposal(it.second->block());
+        else
+            JLOG(j_.warn()) << "proposal for txSet " << id << " is stale";
     }
 }
 
@@ -284,25 +324,13 @@ HotstuffConsensus::canExtract()
         return false;
     }
 
-    long long sinceClose;
+    auto sinceClose = timeSinceLastClose().count();
 
-    if (openTime_ < consensusTime_)
+    if (sinceClose <= 0)
     {
-        // Case omit empty block, last close time maybe very big
         sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         now_ - consensusTime_)
+                         adaptor_.closeTime() - consensusTime_)
                          .count();
-    }
-    else
-    {
-        sinceClose = timeSinceLastClose().count();
-
-        if (sinceClose <= 0)
-        {
-            sinceClose = std::chrono::duration_cast<std::chrono::milliseconds>(
-                             adaptor_.closeTime() - consensusTime_)
-                             .count();
-        }
     }
 
     auto txQueuedCount = adaptor_.getPoolQueuedTxCount();
@@ -311,8 +339,21 @@ HotstuffConsensus::canExtract()
                     << " txQueuedCount: " << txQueuedCount
                     << " txQueuedCount_: " << txQueuedCount_;
 
-    if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
-        return true;
+    if (openTime_ < consensusTimeMil_)
+    {
+        // Case omit empty block, last close time maybe very big
+        auto sinceConsensus =
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                now_ - consensusTime_)
+                .count();
+        if (sinceConsensus >= adaptor_.parms().maxBLOCK_TIME)
+            return true;
+    }
+    else
+    {
+        if (sinceClose >= adaptor_.parms().maxBLOCK_TIME)
+            return true;
+    }
 
     if (adaptor_.parms().maxTXS_IN_LEDGER >=
             adaptor_.parms().minTXS_IN_LEDGER_ADVANCE &&
@@ -335,11 +376,6 @@ boost::optional<hotstuff::Command>
 HotstuffConsensus::extract(hotstuff::BlockData& blockData)
 {
     // Build new ledger
-    if (!adaptor_.isPoolAvailable())
-    {
-        return boost::none;
-    }
-
     if (configChanged_)
     {
         JLOG(j_.info())
@@ -503,7 +539,7 @@ HotstuffConsensus::compute(
         std::chrono::milliseconds{0},
         failed);
 
-    JLOG(j_.info()) << "built ledger: " << built.id();
+    JLOG(j_.info()) << "built ledger: " << built.seq() << ":" << built.id();
 
     result.ledger_info = built.ledger_->info();
     result.parent_ledger_info =
@@ -591,6 +627,7 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
     }
 
     consensusTime_ = now_;
+    consensusTimeMil_ = utcTime();
 
     ScopedLockType sl(lock_);
 
@@ -772,8 +809,8 @@ HotstuffConsensus::broadcast(
     adaptor_.broadcast(*proposal);
 
     adaptor_.getJobQueue().addJob(
-        jtCONSENSUS_t, "broadcast_proposal", [this, block](Job&) {
-            ScopedLockType _(this->adaptor_.peekConsensusMutex());
+        jtACCEPT, "handle_proposal", [this, block](Job&) {
+            //ScopedLockType _(this->adaptor_.peekConsensusMutex());
             this->hotstuff_->handleProposal(block);
         });
 }
@@ -1000,6 +1037,7 @@ HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
     {
         JLOG(j_.warn()) << "we are fall behind";
         prevLedgerID_ = info.parentHash;
+        adaptor_.acquireLedger(info.parentHash);
         nextProposalCache_[info.seq][payload->author] = proposal;
         return;
     }
@@ -1021,7 +1059,10 @@ HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
         return;
     }
 
-    hotstuff_->handleProposal(proposal->block());
+    adaptor_.getJobQueue().addJob(jtACCEPT, "handle_proposal", [=](Job&) {
+        this->hotstuff_->handleProposal(proposal->block());
+    });
+    //hotstuff_->handleProposal(proposal->block());
 }
 
 void
@@ -1121,12 +1162,15 @@ HotstuffConsensus::peerBlockData(
 
         if (!verify(executedBlock.block, executedBlock.state_compute_result))
         {
-            JLOG(j_.warn()) << "acquired block " << executedBlock.block.id()
-                            << " , but verify failed";
+            JLOG(j_.warn())
+                << "acquired block " << executedBlock.block.id()
+                << " round: " << executedBlock.block.block_data().round
+                << ", but verify failed";
             return;
         }
 
         JLOG(j_.info()) << "acquired block " << executedBlock.block.id()
+                        << " round: " << executedBlock.block.block_data().round
                         << " success";
 
         auto hanlders = blockAcquiring_.fetch(executedBlock.block.id());
@@ -1342,7 +1386,7 @@ HotstuffConsensus::startRoundInternal(
     JLOG(j_.info()) << "startRoundInternal";
 
     now_ = now;
-    openTime_ = now;
+    openTime_ = utcTime();
 
     mode_.set(mode, adaptor_);
 
@@ -1368,6 +1412,7 @@ HotstuffConsensus::startRoundInternal(
             startup_ = true;
             startTime_ = now;
             consensusTime_ = now;
+            sweepTime_ = now;
         }
 
         hotstuff::EpochState init_epoch_state;
@@ -1381,7 +1426,10 @@ HotstuffConsensus::startRoundInternal(
         nextProposalCache_.clear();
     }
 
-    checkCache();
+    if (mode != ConsensusMode::wrongLedger)
+    {
+        checkCache();
+    }
 }
 
 void

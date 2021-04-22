@@ -23,7 +23,7 @@ namespace ripple {
 namespace hotstuff {
 
 Vote::Vote()
-    : vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+    : vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash()), 0))
     , author_()
     , ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()),
                                                         ZeroHash()})

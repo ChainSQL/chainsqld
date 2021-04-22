@@ -454,13 +454,19 @@ PeerManagerImpl::send(protocol::TMConsensus& m)
 }
 
 void
-PeerManagerImpl::send(PublicKey const& pubKey, protocol::TMConsensus& m)
+PeerManagerImpl::send(std::shared_ptr<Peer> peer, protocol::TMConsensus& m)
 {
     auto const sm = std::make_shared<Message>(m, protocol::mtCONSENSUS);
 
+    peer->send(sm);
+}
+
+void
+PeerManagerImpl::send(PublicKey const& pubKey, protocol::TMConsensus& m)
+{
     if (auto peer = findPeerByValPublicKey(pubKey))
     {
-        peer->send(sm);
+        send(peer, m);
     }
 }
 

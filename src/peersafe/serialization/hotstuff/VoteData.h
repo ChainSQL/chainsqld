@@ -34,6 +34,7 @@ void serialize(
     const unsigned int /*version*/) {
 	ar & vote_data.proposed();
 	ar & vote_data.parent();
+    ar & vote_data.tc();
 }
 
 } // namespace serialization

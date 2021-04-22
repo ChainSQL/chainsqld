@@ -30,14 +30,6 @@
 
 namespace ripple {
 
-enum ConsensusType {
-    RPCA = 0,
-    POP = 1,
-    HOTSTUFF = 2,
-
-    UNKNOWN,
-};
-
 class InboundTransactions;
 class LocalTxs;
 class LedgerMaster;

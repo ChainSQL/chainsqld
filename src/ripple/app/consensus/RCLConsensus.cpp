@@ -156,6 +156,12 @@ RCLConsensus::peerConsensusMessage(
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
 {
+    if (m->msgtype() == ConsensusMessageType::mtACQUIREBLOCK)
+    {
+        // Don't need mutex.
+        return consensus_->peerConsensusMessage(peer, isTrusted, m);
+    }
+
     ScopedLockType _{mutex_};
     return consensus_->peerConsensusMessage(peer, isTrusted, m);
 }

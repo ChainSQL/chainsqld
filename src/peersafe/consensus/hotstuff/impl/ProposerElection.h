@@ -31,12 +31,17 @@ public:
 		return GetValidProposer(round) == author;
 	}
 
-	bool IsValidProposal(const Block& block) const {
-		if (block.block_data().block_type == BlockData::Proposal)
-			return IsValidProposer(block.block_data().payload->author, block.block_data().round);
-		else
-			return false;
-	}
+	bool
+        IsValidProposal(const Block& block) const
+        {
+            if (block.block_data().block_type == BlockData::Proposal)
+                return IsValidProposer(
+                    block.block_data().payload->author,
+                    block.block_data().round +
+                        block.block_data().quorum_cert.vote_data().tc());
+            else
+                return false;
+        }
 
 	/// Return the valid proposer for a given round (this information can be
 	/// used by e.g., voters for choosing the destinations for sending their votes to).

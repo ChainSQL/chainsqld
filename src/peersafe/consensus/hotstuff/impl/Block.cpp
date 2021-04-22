@@ -98,7 +98,7 @@ Block Block::new_genesis_block(
 	genesis_block_info.epoch = epoch;
 
 	// genesis VoteData
-	VoteData genesis_vote_data = VoteData::New(genesis_block_info, genesis_block_info);
+	VoteData genesis_vote_data = VoteData::New(genesis_block_info, genesis_block_info, 0);
 	// genesis LedgerInfo
 	LedgerInfoWithSignatures::LedgerInfo genesis_ledger{genesis_block_info, genesis_vote_data.hash()};
 	// genesis QuorumCertificate

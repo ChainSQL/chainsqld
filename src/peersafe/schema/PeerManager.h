@@ -71,6 +71,10 @@ public:
 
     /* Send a consensus message to specified peer */
     virtual void
+    send(std::shared_ptr<Peer> peer, protocol::TMConsensus& m) = 0;
+
+    /* Send a consensus message to specified peer */
+    virtual void
     send(PublicKey const& pubKey, protocol::TMConsensus& m) = 0;
 
     /** Relay a consensus meessage. */

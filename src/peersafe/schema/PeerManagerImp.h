@@ -89,6 +89,9 @@ public:
     send(protocol::TMConsensus& m) override;
 
     void
+    send(std::shared_ptr<Peer> peer, protocol::TMConsensus& m) override;
+
+    void
     send(PublicKey const& pubKey, protocol::TMConsensus& m) override;
 
     void

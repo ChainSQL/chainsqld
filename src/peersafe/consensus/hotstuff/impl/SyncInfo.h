@@ -64,6 +64,8 @@ private:
 	QuorumCertificate highest_quorum_cert_;
 	boost::optional<QuorumCertificate> highest_commit_cert_;
 	boost::optional<TimeoutCertificate> highest_timeout_cert_;
+
+    bool verified = false;
 };
 
 /////////////////////////////////////////////////////////////////////////////////////

@@ -62,6 +62,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
 #include <peersafe/gmencrypt/GmCheck.h>
+#include <peersafe/consensus/ConsensusBase.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -440,14 +441,25 @@ LedgerMaster::addHeldTransaction(
 // jumping to that ledger. This helps defend agains some rare hostile or
 // insane majority scenarios.
 bool
-LedgerMaster::canBeCurrent(std::shared_ptr<Ledger const> const& ledger)
+LedgerMaster::canBeCurrent(
+    std::shared_ptr<Ledger const> const& ledger,
+    ConsensusType type)
 {
     assert(ledger);
 
     // Never jump to a candidate ledger that precedes our
     // last validated ledger
 
-    auto validLedger = getValidatedLedger();
+    std::shared_ptr<Ledger const> validLedger = nullptr;
+    if (type == ConsensusType::HOTSTUFF)
+    {
+        validLedger = getClosedLedger();
+    }
+    else
+    {
+        validLedger = getValidatedLedger();
+    }
+
     if (validLedger && (ledger->info().seq < validLedger->info().seq))
     {
         JLOG(m_journal.trace())
@@ -2268,7 +2280,7 @@ LedgerMaster::doAdvance(std::unique_lock<std::recursive_mutex>& sl)
             {
                 {
                     ScopedUnlock sul{sl};
-                    JLOG(m_journal.debug())
+                    JLOG(m_journal.info())
                         << "tryAdvance publishing seq " << ledger->info().seq;
                     setFullLedger(ledger, true, true);
                 }

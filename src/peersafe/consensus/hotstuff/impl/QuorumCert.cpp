@@ -44,7 +44,7 @@ bool LedgerInfoWithSignatures::Verify(ValidatorVerifier* validator) {
 //////////////////////////////////////////////////////////////////////////////////
 
 QuorumCertificate::QuorumCertificate()
-: vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash())))
+: vote_data_(VoteData::New(BlockInfo(ZeroHash()), BlockInfo(ZeroHash()), 0))
 , signed_ledger_info_(LedgerInfoWithSignatures::LedgerInfo{BlockInfo(ZeroHash()), ZeroHash()}) {
 
 }

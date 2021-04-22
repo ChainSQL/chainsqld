@@ -26,6 +26,7 @@
 #include <peersafe/consensus/hotstuff/HotstuffAdaptor.h>
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/PeerManager.h>
 
 namespace ripple {
 
@@ -75,10 +76,10 @@ HotstuffAdaptor::HotstuffAdaptor(
                 SECTION_CONSENSUS,
                 "time_out",
                 parms_.consensusTIMEOUT.count()))};
-        if (parms_.consensusTIMEOUT.count() < 2 * parms_.maxBLOCK_TIME + 3000)
+        if (parms_.consensusTIMEOUT.count() < 2 * parms_.maxBLOCK_TIME + 1000)
         {
             parms_.consensusTIMEOUT =
-                std::chrono::milliseconds{2 * parms_.maxBLOCK_TIME + 3000};
+                std::chrono::milliseconds{2 * parms_.maxBLOCK_TIME + 1000};
         }
 
         // default: 90s
@@ -132,7 +133,14 @@ HotstuffAdaptor::onExtractTransactions(
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
 
     H256Set txs;
-    topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
+    if (isPoolAvailable())
+    {
+        topTransactions(parms_.maxTXS_IN_LEDGER, prevLedger.seq() + 1, txs);
+    }
+    else
+    {
+        JLOG(j_.warn()) << "onExtractTransactions: tx pool is not available";
+    }
 
     auto initialSet =
         std::make_shared<SHAMap>(SHAMapType::TRANSACTION, app_.getNodeFamily());
@@ -219,10 +227,19 @@ HotstuffAdaptor::sendVote(PublicKey const& pubKey, STVote const& vote)
     consensus.set_msgtype(ConsensusMessageType::mtVOTE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send VOTE to leader (Publickey index)"
-                    << getPubIndex(pubKey);
-
-    signAndSendMessage(pubKey, consensus);
+    if (auto peer = app_.peerManager().findPeerByValPublicKey(pubKey))
+    {
+        JLOG(j_.info()) << "send VOTE to leader (Publickey index)"
+                        << getPubIndex(pubKey) << " "
+                        << peer->getRemoteAddress();
+        signAndSendMessage(peer, consensus);
+    }
+    else
+    {
+        JLOG(j_.warn()) << "send VOTE to leader (Publickey index)"
+                        << getPubIndex(pubKey) << ":"
+                        << toBase58(TokenType::NodePublic, pubKey) << " closed";
+    }
 }
 
 void
@@ -250,10 +267,19 @@ HotstuffAdaptor::acquireBlock(PublicKey const& pubKey, uint256 const& hash)
     consensus.set_msgtype(ConsensusMessageType::mtACQUIREBLOCK);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "acquiring Executedblock " << hash << " from peer "
-                    << getPubIndex(pubKey);
-
-    signAndSendMessage(pubKey, consensus);
+    if (auto peer = app_.peerManager().findPeerByValPublicKey(pubKey))
+    {
+        JLOG(j_.info()) << "acquiring Executedblock " << hash << " from peer "
+                        << getPubIndex(pubKey) << " "
+                        << peer->getRemoteAddress();
+        signAndSendMessage(peer, consensus);
+    }
+    else
+    {
+        JLOG(j_.warn()) << "acquiring Executedblock " << hash << "from peer "
+                        << getPubIndex(pubKey) << ":"
+                        << toBase58(TokenType::NodePublic, pubKey) << " closed";
+    }
 }
 
 void
@@ -269,8 +295,9 @@ HotstuffAdaptor::sendBLock(
     consensus.set_msgtype(ConsensusMessageType::mtBLOCKDATA);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    JLOG(j_.info()) << "send ExecutedBlock to peer "
-                    << getPubIndex(peer->getValPublic());
+    JLOG(j_.info()) << "send ExecutedBlock " << block.block.id() << " to peer "
+                    << getPubIndex(peer->getValPublic()) << " "
+                    << peer->getRemoteAddress();
 
     signMessage(consensus);
 

@@ -46,12 +46,12 @@ void HotstuffCore::Initialize(Epoch epoch, Round round) {
 
 Block HotstuffCore::SignProposal(const BlockData& proposal) {
 	// verify author
-	if (VerifyAuthor(proposal.author()) == false) {
-		JLOG(journal_.error())
-			<< "InvalideProposal: "
-			<< "miss match author " << proposal.author();
-		return Block::empty();
-	}
+	//if (VerifyAuthor(proposal.author()) == false) {
+	//	JLOG(journal_.error())
+	//		<< "InvalideProposal: "
+	//		<< "miss match author " << proposal.author();
+	//	return Block::empty();
+	//}
 	// verify epoch
 	if (VerifyEpoch(proposal.epoch) == false) {
 		JLOG(journal_.error())
@@ -107,31 +107,40 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
         return false;
     }
 
-	if (VerifyAndUpdatePreferredRound(proposed_block.block_data().quorum_cert) == false)
-		return false;
-	// if already voted on this round, send back the previous vote.
-	if (safety_data_.last_vote
-		&& safety_data_.last_vote->vote_data().parent().round > 0) {
-		if (safety_data_.last_vote->vote_data().proposed().round == proposed_block.block_data().round) {
-			safety_data_.last_voted_round = proposed_block.block_data().round;
-			vote = safety_data_.last_vote.get();
-            JLOG(journal_.info())
-                << "Construct And Signed vote:"
-                << "use last vote";
-			return true;
-		}
+    if (VerifyAndUpdatePreferredRound(
+            proposed_block.block_data().quorum_cert) == false)
+    {
+        return false;
+    }
 
-		if (VerifyAndUpdateLastVoteRound(proposed_block.block_data().round) == false)
-			return false;
-	}
+	// if already voted on this round, send back the previous vote.
+    auto last_vote = safety_data_.last_vote;
+    if (last_vote && last_vote->vote_data().parent().round > 0)
+    {
+        if (last_vote->vote_data().proposed().round ==
+            proposed_block.block_data().round)
+        {
+            JLOG(journal_.info()) << "Construct And Signed vote:"
+                                  << "use last vote";
+            vote = *last_vote;
+            safety_data_.last_voted_round = proposed_block.block_data().round;
+            return true;
+        }
+
+        if (VerifyAndUpdateLastVoteRound(proposed_block.block_data().round) ==
+            false)
+        {
+            return false;
+        }
+    }
 
 	//if (VerifyAndUpdateLastVoteRound(proposed_block.block_data().round) == false)
 	//	return false;
 
-	auto ret = ExtensionCheck(executed_block);
-	if (std::get<0>(ret) == false)
+	auto result = ExtensionCheck(executed_block);
+	if (!result.first)
 		return false;
-	VoteData vote_data = std::get<1>(ret);
+	VoteData vote_data = result.second;
 	LedgerInfoWithSignatures::LedgerInfo ledger_info = ConstructLedgerInfo(proposed_block);
 
 	Signature signature;
@@ -144,6 +153,27 @@ bool HotstuffCore::ConstructAndSignVote(const ExecutedBlock& executed_block, Vot
 
 	safety_data_.last_vote = vote;
 	return true;
+}
+
+void
+HotstuffCore::resetVoteTimeoutCount(Vote& vote, std::size_t tc)
+{
+    vote.vote_data() = VoteData::New(
+        vote.vote_data().proposed(), vote.vote_data().parent(), tc);
+
+    HashValue hash = vote.vote_data().hash();
+
+    Signature signature;
+    epoch_state_->verifier->signature(hash, signature);
+
+    auto& ledger_info = vote.ledger_info();
+    ledger_info.consensus_data_hash = hash;
+
+    vote = Vote::New(
+        epoch_state_->verifier->Self(),
+        vote.vote_data(),
+        ledger_info,
+        signature);
 }
 
 bool HotstuffCore::VerifyAuthor(const Author& author) {
@@ -230,25 +260,30 @@ bool HotstuffCore::VerifyAndUpdateLastVoteRound(Round round) {
 	return true;
 }
 
-std::tuple<bool, VoteData> HotstuffCore::ExtensionCheck(const ExecutedBlock& executed_block) {
-	Block proposed_block = executed_block.block;
-	if (state_compute_->verify(proposed_block, executed_block.state_compute_result) == false) {
-		JLOG(journal_.error())
-			<< "extension check falled."
-			<< "Round is " << executed_block.block.block_data().round;
-		HashValue zero_hash = HashValue();
-		BlockInfo empyt_block_info(zero_hash);
-		return std::make_tuple(false, VoteData::New(empyt_block_info, empyt_block_info));
-	}
+std::pair<bool, VoteData>
+HotstuffCore::ExtensionCheck(const ExecutedBlock& executed_block)
+{
+    Block proposed_block = executed_block.block;
+    if (state_compute_->verify(
+            proposed_block, executed_block.state_compute_result) == false)
+    {
+        JLOG(journal_.error())
+            << "extension check falled."
+            << "Round is " << executed_block.block.block_data().round;
+        HashValue zero_hash = HashValue();
+        BlockInfo empyt_block_info(zero_hash);
+        return std::make_pair(
+            false, VoteData::New(empyt_block_info, empyt_block_info, 0));
+    }
 
-	return std::make_tuple(
-		true,
-		VoteData::New(
-			proposed_block.gen_block_info(
-				executed_block.state_compute_result.ledger_info, 
-				executed_block.state_compute_result.epoch_state),
-			proposed_block.block_data().quorum_cert.certified_block())
-	);
+    return std::make_pair(
+        true,
+        VoteData::New(
+            proposed_block.gen_block_info(
+                executed_block.state_compute_result.ledger_info,
+                executed_block.state_compute_result.epoch_state),
+            proposed_block.block_data().quorum_cert.certified_block(),
+            proposed_block.block_data().quorum_cert.vote_data().tc()));
 }
 
 /// Produces a LedgerInfo that either commits a block based upon the 3-chain

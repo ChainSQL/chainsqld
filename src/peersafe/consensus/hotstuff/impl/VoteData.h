@@ -29,9 +29,8 @@ class VoteData {
 public:
 	~VoteData();
 
-	static VoteData New(
-		const BlockInfo& proposed,
-		const BlockInfo& parent);
+	static VoteData
+    New(const BlockInfo& proposed, const BlockInfo& parent, std::size_t tc);
 
 	BlockInfo& proposed() {
 		return proposed_;
@@ -49,25 +48,43 @@ public:
 		return parent_;
 	}
 
+    std::size_t&
+    tc()
+    {
+        return tc_;
+    }
+
+    std::size_t
+    tc() const
+    {
+        return tc_;
+    }
+
 	HashValue hash() const;
 
 	bool Verify() const;
 
-	//friend class ripple::Serialization;
-	// only for serialization
-	VoteData()
-	: proposed_(ZeroHash())
-	, parent_(ZeroHash()) {} // only for constructing in Serilization
+	// friend class ripple::Serialization;
+    // only for serialization
+    VoteData()
+        : proposed_(ZeroHash())
+        , parent_(ZeroHash())
+        , tc_(0)
+    {
+    }  // only for constructing in Serilization
 
 private:
 	VoteData(
 		const BlockInfo& proposed,
-		const BlockInfo& parent);
+		const BlockInfo& parent,
+        std::size_t tc);
 
 	/// Contains all the block information needed for voting for the proposed round.
 	BlockInfo proposed_;
 	/// Contains all the block information for the block the proposal is extending.
 	BlockInfo parent_;
+    /// timeout count
+    std::size_t tc_;
 };
 
 } // namespace hotstuff

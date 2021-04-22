@@ -98,7 +98,7 @@ public:
 
 	bool isTimeout() const;
 	Timeout timeout() const;
-	//Timeout timeout(const Round& offset);
+
 private:
 	/// The data of the vote
 	VoteData vote_data_;

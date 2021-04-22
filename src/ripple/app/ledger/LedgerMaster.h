@@ -50,6 +50,7 @@ namespace ripple {
 
 class Peer;
 class Transaction;
+enum ConsensusType : std::uint8_t;
 
 // Tracks the current ledger and any ledgers in the process of closing
 // Tracks ledger history
@@ -194,7 +195,9 @@ public:
         see if it can be the network's current ledger
     */
     bool
-    canBeCurrent(std::shared_ptr<Ledger const> const& ledger);
+    canBeCurrent(
+        std::shared_ptr<Ledger const> const& ledger,
+        ConsensusType type);
 
     void
     switchLCL(std::shared_ptr<Ledger const> const& lastClosed);

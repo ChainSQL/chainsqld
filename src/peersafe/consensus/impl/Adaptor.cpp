@@ -200,6 +200,20 @@ Adaptor::signAndSendMessage(protocol::TMConsensus& consensus)
 
 void
 Adaptor::signAndSendMessage(
+    std::shared_ptr<Peer> peer,
+    protocol::TMConsensus& consensus)
+{
+    signMessage(consensus);
+
+    // suppress it if we receive it
+    app_.getHashRouter().addSuppression(consensusMessageUniqueId(consensus));
+
+    // Send signed consensus message to all of our directly connected peers
+    app_.peerManager().send(peer, consensus);
+}
+
+void
+Adaptor::signAndSendMessage(
     PublicKey const& pubKey,
     protocol::TMConsensus& consensus)
 {

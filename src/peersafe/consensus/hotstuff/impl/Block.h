@@ -51,6 +51,7 @@ public:
 	/// The round of a block is an internal monotonically increasing counter used by Consensus
 	/// protocol.
 	Round round;
+    /// timestamp
 	int64_t timestamp_msecs;
 	/// Contains the quorum certified ancestor and whether the quorum certified ancestor was
 	/// voted on successfully

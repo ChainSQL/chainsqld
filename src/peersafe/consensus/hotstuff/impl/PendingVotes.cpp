@@ -64,7 +64,12 @@ PendingVotes::insertVote(
     auto previously_seen_vote = author_to_vote_.find(vote.author());
     if (previously_seen_vote != author_to_vote_.end())
     {
-        if (li_digest !=
+        if (vote.vote_data().tc() != previously_seen_vote->second.vote_data().tc())
+        {
+            // Erase the previous vote
+            author_to_vote_.erase(vote.author());
+        }
+        else if (li_digest !=
             previously_seen_vote->second.ledger_info().consensus_data_hash)
         {
             JLOG(debugLog().warn()) << "An anutor " << vote.author()
@@ -113,20 +118,20 @@ PendingVotes::insertVote(
 
     // We couldn't form a QuorumCertificate,
     // let's check if we can create a TimeoutCertificate
-    if (vote.isTimeout())
-    {
-        Timeout timoeut = vote.timeout();
-        Signature signature = vote.timeout_signature().get();
-        TimeoutCertificate partial_tc =
-            maybe_partial_timeout_cert_.get_value_or(
-                TimeoutCertificate(timoeut));
-        partial_tc.addSignature(vote.author(), signature);
-        if (verifer->checkVotingPower(partial_tc.signatures()))
-        {
-            timeoutCert = partial_tc;
-            return VoteReceptionResult::NewTimeoutCertificate;
-        }
-    }
+    //if (vote.isTimeout())
+    //{
+    //    Timeout timoeut = vote.timeout();
+    //    Signature signature = vote.timeout_signature().get();
+    //    TimeoutCertificate partial_tc =
+    //        maybe_partial_timeout_cert_.get_value_or(
+    //            TimeoutCertificate(timoeut));
+    //    partial_tc.addSignature(vote.author(), signature);
+    //    if (verifer->checkVotingPower(partial_tc.signatures()))
+    //    {
+    //        timeoutCert = partial_tc;
+    //        return VoteReceptionResult::NewTimeoutCertificate;
+    //    }
+    //}
 
     return VoteReceptionResult::VoteAdded;
 }
