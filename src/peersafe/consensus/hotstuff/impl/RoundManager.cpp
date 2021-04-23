@@ -372,6 +372,15 @@ RoundManager::ProcessProposal(const Block& proposal)
         return 1;
     }
 
+    if (proposal.block_data().timestamp_msecs <= proposal.block_data()
+                                                     .quorum_cert.vote_data()
+                                                     .proposed()
+                                                     .timestamp_msecs)
+    {
+        JLOG(journal_.warn()) << "proposal timestamp lags behind the previous";
+        return 1;
+    }
+
     Round proposal_round = proposal.block_data().round;
     Vote vote;
     if (ExecuteAndVote(proposal, vote) == false)
