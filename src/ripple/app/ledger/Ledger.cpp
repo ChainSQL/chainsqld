@@ -934,15 +934,15 @@ saveValidatedLedger(
     // TODO(tom): Fix this hard-coded SQL!
     JLOG(j.trace()) << "saveValidatedLedger " << (current ? "" : "fromAcquire ")
                     << seq;
-    static boost::format deleteLedger(
+    boost::format deleteLedger(
         "DELETE FROM Ledgers WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans1(
+    boost::format deleteTrans1(
         "DELETE FROM Transactions WHERE LedgerSeq = %u;");
-    static boost::format deleteTrans2(
+    boost::format deleteTrans2(
         "DELETE FROM AccountTransactions WHERE LedgerSeq = %u;");
-    static boost::format deleteAcctTrans(
+    boost::format deleteAcctTrans(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
-	static boost::format deleteTrans3(
+	boost::format deleteTrans3(
 		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
 
     if (!ledger->info().accountHash.isNonZero())
@@ -1082,7 +1082,7 @@ saveValidatedLedger(
     }
 
     {
-        static std::string addLedger(
+        static std::string const addLedger(
             R"sql(INSERT OR REPLACE INTO Ledgers
                 (LedgerHash,LedgerSeq,PrevHash,TotalCoins,ClosingTime,PrevClosingTime,
                 CloseTimeRes,CloseFlags,AccountSetHash,TransSetHash)
@@ -1469,7 +1469,7 @@ storePeersafeSql(
         "(TransID, TransType, TxSeq, LedgerSeq, Owner, Name)"
         " VALUES ";
 
-    static boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");
+    boost::format bfTrans("('%s', '%s', '%lld', '%d', '%s', '%s')");
 
     auto format = TxFormats::getInstance().findByType(txType);
     assert(format != nullptr);

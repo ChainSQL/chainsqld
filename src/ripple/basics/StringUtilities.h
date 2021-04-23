@@ -66,7 +66,7 @@ inline bool IsNumerialStr_Decimal(std::string str)
 
 inline static std::string sqlEscape (std::string const& strSrc)
 {
-    static boost::format f("X'%s'");
+    boost::format f("X'%s'");
     return str(boost::format(f) % strHex(strSrc));
 }
 
