@@ -3467,6 +3467,12 @@ NetworkOPsImp::getServerStatus()
 {
     auto const& consensusInfo = getConsensusInfo(false);
 
+    if (consensusInfo.isMember("initialized") &&
+        !consensusInfo["initialized"].asBool())
+    {
+        return "abnormal";
+    }
+
     // Time out in milliseconds
     auto timeout = std::chrono::milliseconds(std::numeric_limits<
                   Json::Value::Int>::max());
