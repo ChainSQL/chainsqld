@@ -2369,16 +2369,25 @@ protected:
 		return columns.size();
 	}
 
-	std::string build_createtable_sql() override {
-		std::string& tablename = tables_[0];
-		std::vector<std::string> columns;
-		analyse_fields_and_build_colunms(columns);
-		std::string columns_str;
-		std::string sql = (boost::format("CREATE TABLE if not exists %s (%s)")
-			% tablename
-			% columns_str).str();
-		return sql;
-	}
+	std::string
+    build_createtable_sql() override
+    {
+        std::string& tablename = tables_[0];
+        std::vector<std::string> columns;
+        analyse_fields_and_build_colunms(columns);
+        std::string columns_str;
+        for (size_t idx = 0; idx < columns.size(); idx++)
+        {
+            std::string& element = columns[idx];
+            columns_str += element;
+            columns_str += " ";
+        }
+        std::string sql =
+            (boost::format("CREATE TABLE if not exists %s (%s)") %
+                tablename % columns_str)
+                .str();
+        return sql;
+    }
 
 	int execute_createtable_sql() override {
 		// first drop the same of a table when create a table
