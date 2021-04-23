@@ -112,7 +112,7 @@ public:
     */
     RCLTxSet(std::shared_ptr<SHAMap> m) : map_{std::move(m)}
     {
-        assert(map_);
+        //assert(map_);
     }
 
     /** Constructor from a previously created MutableTxSet
