@@ -309,7 +309,7 @@ invokeProtocolMessage(Buffers const& buffers, Handler& handler)
 
     bool success;
 
-    std::cout<<"!!!message_type="<<header->message_type<<std::endl;
+    //std::cout<<"!!!message_type="<<header->message_type<<std::endl;
     switch (header->message_type)
     {
         case protocol::mtMANIFESTS:
