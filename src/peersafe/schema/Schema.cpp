@@ -1208,25 +1208,6 @@ SchemaImp::setup()
 
         startGenesisLedger();
     }
-    else if (startUp == Config::NEWCHAIN_WITHSTATE)
-    {
-        auto validLedger = app_.getLedgerMaster().getLedgerByHash(
-            schema_params_.anchor_ledger_hash);
-
-        if (validLedger == nullptr)
-        {
-            JLOG(m_journal.warn()) << "start up new chain with state error: ledger "
-                                   << to_string(schema_params_.anchor_ledger_hash) << " not found! ";
-            return false;  
-        }
-        JLOG(m_journal.info()) << "NEWCHAIN_WITHSTATE from ledger="
-                               << to_string(schema_params_.anchor_ledger_hash);
-
-        if (!startGenesisLedger(validLedger))
-        {
-            return false;
-        }
-    }
     else
     {
         static const unsigned TRY_ANCESTOR = 3;
@@ -1262,7 +1243,33 @@ SchemaImp::setup()
 
         if (offset >= TRY_ANCESTOR)
         {
-            startGenesisLedger();
+            // try load firstly
+            if (startUp == Config::NEWCHAIN_WITHSTATE)
+            {
+                auto validLedger = app_.getLedgerMaster().getLedgerByHash(
+                    schema_params_.anchor_ledger_hash);
+
+                if (validLedger == nullptr)
+                {
+                    JLOG(m_journal.warn())
+                        << "start up new chain with state error: ledger "
+                        << to_string(schema_params_.anchor_ledger_hash)
+                        << " not found! ";
+                    return false;
+                }
+                JLOG(m_journal.info())
+                    << "NEWCHAIN_WITHSTATE from ledger="
+                    << to_string(schema_params_.anchor_ledger_hash);
+
+                if (!startGenesisLedger(validLedger))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                startGenesisLedger();
+            }            
         }
     }
 
