@@ -177,11 +177,13 @@ enum error_code_i {
 
 	rpcNO_SCHEMA			 = 124,
 	rpcSCHEMA_CREATED		 = 125,
+    rpcSCHEMA_NOTMEMBER      = 126,
 
-    rpcTXN_BIGGER_THAN_MAXSIZE  = 126,
-    rpcINVALID_TRANSACTION      = 127,
+    rpcTXN_BIGGER_THAN_MAXSIZE  = 127,
+    rpcINVALID_TRANSACTION      = 128,
+    
     rpcLAST =
-        rpcTXN_BIGGER_THAN_MAXSIZE  // rpcLAST should always equal the last code.=
+        rpcINVALID_TRANSACTION  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.

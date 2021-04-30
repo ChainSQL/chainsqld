@@ -1383,7 +1383,9 @@ LedgerMaster::checkSubChains()
             {
                 JLOG(m_journal.info())
                     << "Creating schema when checkSubChains:" << schemaId;
-                app_.getOPs().createSchema(sle, false);
+                auto schemaPath = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaId);
+                bool bForceCreate = boost::filesystem::exists(schemaPath);
+                app_.getOPs().createSchema(sle, bForceCreate);
             }
         }
         else

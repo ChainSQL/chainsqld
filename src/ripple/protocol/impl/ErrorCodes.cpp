@@ -142,6 +142,7 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
 	{ rpcSQL_MULQUERY_NOT_SUPPORT, "mulQueryNotSupport", "OperationRule Table not support multi_table sql_query." },
 	{ rpcNO_SCHEMA,			    "schemaNotExist",		"No schema with the specified shema_id exist." },
 	{ rpcSCHEMA_CREATED,	    "schemaCreated",		"Schema have already been created,will not create again." },
+    { rpcSCHEMA_NOTMEMBER,	    "cannotJoinSchema",		"You are not a member of this schema." },
     { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." }
 
     // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");

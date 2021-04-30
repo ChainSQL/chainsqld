@@ -3754,16 +3754,19 @@ NetworkOPsImp::createSchema(
     params.readFromSle(sleSchema);
 
     bool bShouldCreate = bForce;
-    for (auto& validator : params.validator_list)
+    if (!bShouldCreate)
     {
-        if (!bShouldCreate &&
-            (validator.second || app_.config().AUTO_ACCEPT_NEW_SCHEMA) &&
-            app_.app().getValidationPublicKey().size() != 0 &&
-            validator.first == app_.app().getValidationPublicKey())
+        for (auto& validator : params.validator_list)
         {
-            bShouldCreate = true;
+            if ((validator.second || app_.config().AUTO_ACCEPT_NEW_SCHEMA) &&
+                app_.app().getValidationPublicKey().size() != 0 &&
+                validator.first == app_.app().getValidationPublicKey())
+            {
+                bShouldCreate = true;
+            }
         }
     }
+
     if (!bShouldCreate)
         return std::make_pair(true, "");
 

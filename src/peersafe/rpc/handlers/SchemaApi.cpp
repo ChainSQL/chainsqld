@@ -157,6 +157,20 @@ Json::Value doSchemaAccept(RPC::JsonContext& context)
 
 	Json::Value jvResult(Json::objectValue);
 
+	SchemaParams params{};
+	params.readFromSle(sleSchema);
+	bool bShouldCreate = false;
+	for (auto& validator : params.validator_list)
+    {
+        if (context.app.app().getValidationPublicKey().size() != 0 &&
+            validator.first == context.app.app().getValidationPublicKey())
+        {
+            bShouldCreate = true;
+        }
+    }
+	if (!bShouldCreate)
+		return rpcError(rpcSCHEMA_NOTMEMBER);
+
 	auto ret = context.app.getOPs().createSchema(sleSchema, true);
 	if (!ret.first)
 	{
