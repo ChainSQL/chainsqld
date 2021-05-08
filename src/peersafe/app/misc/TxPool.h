@@ -131,7 +131,7 @@ public:
         return mTxsSet.size() - mAvoidByHash.size();
     }
 
-    // Get at most specified counts of Tx fron TxPool.
+    // Get at most specified counts of Tx from TxPool.
     uint64_t
     topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set);
 
