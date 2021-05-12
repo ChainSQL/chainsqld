@@ -160,7 +160,6 @@ OpenView::apply (MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet) c
     else
     {
         // shard
-
         for (auto const& item : txs_)
         {
             if (to.rawTxInsert(item.first,

@@ -142,18 +142,18 @@ forceValidity(HashRouter& router, uint256 const& txid,
 
 std::pair<STer, bool>
 apply (Application& app, OpenView& view,
-    STTx const& tx, ApplyFlags flags,
+    STTx const& tx, std::uint32_t baseTxIndex, ApplyFlags flags,
         beast::Journal j)
 {
     STAmountSO saved(view.info().parentCloseTime);
     auto pfresult = preflight(app, view.rules(), tx, flags, j);
     auto pcresult = preclaim(pfresult, app, view);
-    return doApply(pcresult, app, view);
+    return doApply(pcresult, app, view, baseTxIndex);
 }
 
 ApplyResult
 applyTransaction (Application& app, OpenView& view,
-    STTx const& txn,
+    STTx const& txn, std::uint32_t baseTxIndex,
         bool retryAssured, ApplyFlags flags,
             beast::Journal j)
 {
@@ -170,7 +170,7 @@ applyTransaction (Application& app, OpenView& view,
     try
     {
         auto const result = apply(app,
-            view, txn, flags, j);
+            view, txn, baseTxIndex, flags, j);
         if (result.second)
         {
             JLOG (j.debug())

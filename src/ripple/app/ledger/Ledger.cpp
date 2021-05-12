@@ -940,7 +940,8 @@ static bool saveValidatedLedger(
 
         std::string const ledgerSeq(std::to_string(seq));
 
-        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
+        // Max shard count = 100, MaxTxsInLedger = 10000
+        std::uint64_t iTxSeq = (uint64_t)seq * 100 * 10000;
 
         for (auto const& vt : aLedger->getMap())
         {
@@ -1024,7 +1025,8 @@ static bool saveValidatedLedger(
 
         *db << boost::str(deleteTrans3 % seq);
 
-        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
+        // Max shard count = 100, MaxTxsInLedger = 10000
+        std::uint64_t iTxSeq = (uint64_t)seq * 100 * 10000;
         for (auto const& vt : aLedger->getMap())
         {
             storePeersafeSql(db, vt.second->getTxn(), iTxSeq++, seq, app);

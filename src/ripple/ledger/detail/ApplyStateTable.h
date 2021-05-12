@@ -65,7 +65,7 @@ public:
     apply (RawView& to) const;
 
     void
-    apply (OpenView& to, STTx const& tx,
+    apply (OpenView& to, STTx const& tx, std::uint32_t baseTxIndex,
         TER ter, boost::optional<
             STAmount> const& deliver,
                 beast::Journal j);

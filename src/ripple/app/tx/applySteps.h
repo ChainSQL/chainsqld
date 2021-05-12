@@ -276,7 +276,7 @@ calculateConsequences(PreflightResult const& preflightResult);
 */
 std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
-    Application& app, OpenView& view);
+    Application& app, OpenView& view, std::uint32_t baseTxIndex);
 
 }
 

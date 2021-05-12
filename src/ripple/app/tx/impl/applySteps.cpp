@@ -331,7 +331,7 @@ calculateConsequences(PreflightResult const& preflightResult)
 
 std::pair<STer, bool>
 doApply(PreclaimResult const& preclaimResult,
-    Application& app, OpenView& view)
+    Application& app, OpenView& view, std::uint32_t baseTxIndex)
 {
     if (preclaimResult.view.seq() != view.seq())
     {
@@ -344,7 +344,7 @@ doApply(PreclaimResult const& preclaimResult,
         //if (!preclaimResult.likelyToClaimFee)
         //    return{ preclaimResult.ter, false };
         ApplyContext ctx(app, view,
-            preclaimResult.tx, preclaimResult.ter,
+            preclaimResult.tx, baseTxIndex, preclaimResult.ter,
                 preclaimResult.baseFee, preclaimResult.flags,
                     preclaimResult.j);
         return invoke_apply(ctx);

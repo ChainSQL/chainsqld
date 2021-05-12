@@ -32,10 +32,10 @@ ApplyViewImpl::ApplyViewImpl(
 
 void
 ApplyViewImpl::apply (OpenView& to,
-    STTx const& tx, TER ter,
+    STTx const& tx, std::uint32_t baseTxIndex, TER ter,
         beast::Journal j)
 {
-    items_.apply(to, tx, ter, deliver_, j);
+    items_.apply(to, tx, baseTxIndex, ter, deliver_, j);
 }
 
 std::size_t

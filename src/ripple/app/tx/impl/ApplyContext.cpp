@@ -30,11 +30,12 @@
 namespace ripple {
 
 ApplyContext::ApplyContext(Application& app_,
-    OpenView& base, STTx const& tx_, TER preclaimResult_,
+    OpenView& base, STTx const& tx_, std::uint32_t baseTxIndex, TER preclaimResult_,
         std::uint64_t baseFee_, ApplyFlags flags,
             beast::Journal journal_)
     : app(app_)
     , tx(tx_)
+    , baseTxIndex_(baseTxIndex)
     , preclaimResult(preclaimResult_)
     , baseFee(baseFee_)
     , journal(journal_)
@@ -53,7 +54,7 @@ ApplyContext::discard()
 void
 ApplyContext::apply(TER ter)
 {
-    view_->apply(base_, tx, ter, journal);
+    view_->apply(base_, tx, baseTxIndex_, ter, journal);
 }
 
 std::size_t

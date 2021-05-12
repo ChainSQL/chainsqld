@@ -180,11 +180,11 @@ void Lookup::saveLedgerThread()
             JLOG(journal_.info()) << "Building ledger " << saveOrAcquire;
             // Reset tx-meta transactionIndex field
             auto timeStart = utcTime();
-            uint32 count = resetMetaIndex(saveOrAcquire);
-            JLOG(journal_.info()) << "resetMetaIndex tx count: " << count
-                << " time used: " << utcTime() - timeStart << "ms";
-            // Save ledger.
-            timeStart = utcTime();
+            //uint32 count = resetMetaIndex(saveOrAcquire);
+            //JLOG(journal_.info()) << "resetMetaIndex tx count: " << count
+            //    << " time used: " << utcTime() - timeStart << "ms";
+            //// Save ledger.
+            //timeStart = utcTime();
             saveLedger(saveOrAcquire);
             JLOG(journal_.info()) << "saveLedger time used:" << utcTime() - timeStart << "ms";
 

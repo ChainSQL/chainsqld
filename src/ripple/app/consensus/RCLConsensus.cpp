@@ -977,6 +977,16 @@ applyTransactions(
 {
     auto j = app.journal("LedgerConsensus");
 
+    std::uint32_t baseTxIndex = 0;
+    if (app.getShardManager().myShardRole() == ShardManager::SHARD)
+    {
+        baseTxIndex = (app.getShardManager().node().shardID() - 1) * MaxTxsInLedger;
+    }
+    else
+    {
+        baseTxIndex = app.getShardManager().shardCount() * MaxTxsInLedger;
+    }
+
     auto& set = *(cSet.map_);
     CanonicalTXSet retriableTxs(set.getHash().as_uint256());
     std::shared_ptr<CanonicalTXSet> processedTxs = std::make_shared<CanonicalTXSet>(set.getHash().as_uint256());
@@ -1015,7 +1025,7 @@ applyTransactions(
             try
             {
                 switch (applyTransaction(
-                    app, view, *it->second, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
+                    app, view, *it->second, baseTxIndex, certainRetry, tapNO_CHECK_SIGN | tapForConsensus, j))
                 {
                 case ApplyResult::Success:
                     processedTxs->insert(it->second);
@@ -1192,7 +1202,7 @@ RCLConsensus::Adaptor::buildLCL(
             // Special case, we are replaying a ledger close
             for (auto& tx : replay->txns_)
                 applyTransaction(
-                    app_, accum, *tx.second, false, tapNO_CHECK_SIGN | tapForConsensus, j_);
+                    app_, accum, *tx.second, 0, false, tapNO_CHECK_SIGN | tapForConsensus, j_);
         }
         else
         {

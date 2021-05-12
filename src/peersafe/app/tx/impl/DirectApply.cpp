@@ -140,7 +140,7 @@ namespace ripple {
 			if (!preclaimResult.likelyToClaimFee)
 				return preclaimResult.ter;
 			ApplyContext ctx(app, view.openView(),
-				preclaimResult.tx, preclaimResult.ter,
+				preclaimResult.tx, 0, preclaimResult.ter,
 				preclaimResult.baseFee, preclaimResult.flags,
 				preclaimResult.j);
 			ApplyViewImpl& viewImpl = (ApplyViewImpl&)view;

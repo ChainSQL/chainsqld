@@ -222,7 +222,7 @@ OpenLedger::apply_one (Application& app, OpenView& view,
         // reasons, and it can still be recovered, try to put it
         // directly into the open ledger, else drop it.
         if (queueResult.first == telCAN_NOT_QUEUE && shouldRecover)
-            return ripple::apply(app, view, *tx, flags, j);
+            return ripple::apply(app, view, *tx, 0, flags, j);
         return queueResult;
     }();
     if (result.second ||

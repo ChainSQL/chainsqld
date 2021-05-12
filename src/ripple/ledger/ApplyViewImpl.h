@@ -55,7 +55,7 @@ public:
     */
     void
     apply (OpenView& to,
-        STTx const& tx, TER ter,
+        STTx const& tx, std::uint32_t baseTxIndex, TER ter,
             beast::Journal j);
 
     /** Set the amount of currency delivered.

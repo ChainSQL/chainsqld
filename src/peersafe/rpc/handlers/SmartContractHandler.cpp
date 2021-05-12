@@ -177,7 +177,7 @@ Json::Value doContractCall(RPC::Context& context)
 	OpenLedger& openLedgerTemp = appTemp.openLedger();
 	//OpenView& openViewTemp = const_cast<OpenView&>(*openLedgerTemp.current());
 	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(*openLedgerTemp.current());
-	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, tesSUCCESS, openViewTemp->fees().base,
+	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, 0, tesSUCCESS, openViewTemp->fees().base,
 		tapNO_CHECK_SIGN, appTemp.journal("ContractLocalCall"));
 
 	auto localCallRet = doEVMCall(applyContext);

@@ -122,7 +122,7 @@ forceValidity(HashRouter& router, uint256 const& txid,
 */
 std::pair<STer, bool>
 apply (Application& app, OpenView& view,
-    STTx const& tx, ApplyFlags flags,
+    STTx const& tx, std::uint32_t baseTxIndex, ApplyFlags flags,
         beast::Journal journal);
 
 
@@ -149,7 +149,7 @@ enum class ApplyResult
 */
 ApplyResult
 applyTransaction(Application& app, OpenView& view,
-    STTx const& tx, bool retryAssured, ApplyFlags flags,
+    STTx const& tx, std::uint32_t baseTxIndex, bool retryAssured, ApplyFlags flags,
     beast::Journal journal);
 
 // ca verify

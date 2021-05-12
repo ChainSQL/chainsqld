@@ -281,7 +281,7 @@ TxQ::MaybeTx::apply(Application& app, OpenView& view)
     auto pcresult = preclaim(
         *pfresult, app, view);
 
-    return doApply(pcresult, app, view);
+    return doApply(pcresult, app, view, 0);
 }
 
 TxQ::TxQAccount::TxQAccount(std::shared_ptr<STTx const> const& txn)
@@ -519,7 +519,7 @@ TxQ::tryClearAccountQueue(Application& app, OpenView& view,
     // Apply the current tx. Because the state of the view has been changed
     // by the queued txs, we also need to preclaim again.
     auto const pcresult = preclaim(pfresult, app, view);
-    auto txResult = doApply(pcresult, app, view);
+    auto txResult = doApply(pcresult, app, view, 0);
 
     if (txResult.second)
     {
@@ -608,7 +608,7 @@ TxQ::apply(Application& app, OpenView& view,
         (view.rules().enabled(featureFeeEscalation));
     if (!allowEscalation)
     {
-        return ripple::apply(app, view, *tx, flags, j);
+        return ripple::apply(app, view, *tx, 0, flags, j);
     }
 
     auto const account = (*tx)[sfAccount];
@@ -995,7 +995,7 @@ TxQ::apply(Application& app, OpenView& view,
         ripple::STer txnResult;
         bool didApply;
 
-        std::tie(txnResult, didApply) = doApply(pcresult, app, view);
+        std::tie(txnResult, didApply) = doApply(pcresult, app, view, 0);
 
         JLOG(j_.trace()) << "Transaction " <<
             transactionID <<
