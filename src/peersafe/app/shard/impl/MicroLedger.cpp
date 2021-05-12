@@ -320,7 +320,6 @@ bool MicroLedger::sameShard(std::shared_ptr<SLE>& sle, Application& app) const
     }
     case ltTABLELIST:
     {
-        sAccountID = sle->getAccountID(sfOwner);
         auto &aTableEntries = sle->peekFieldArray(sfTableEntries);
         if (aTableEntries.size() == 0)
         {
