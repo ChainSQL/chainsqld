@@ -715,6 +715,8 @@ void
 PopConsensus::checkVoting()
 {
     ScopedLockType sl(lock_);
+    if (phase_ == ConsensusPhase::accepted)
+        return;
 
     // can only establish consensus if we already took a stance
     assert(result_);
@@ -1006,9 +1008,11 @@ PopConsensus::peerProposalInternal(
         ++rawCloseTimes_.peers[newPeerProp.closeTime()];
     }
 
+    bool bGotSet = false;
     auto pSet = newPeerProp.getTxSet(adaptor_.app_);
     if (pSet != nullptr && pSet->map_ != nullptr)
     {
+        bGotSet = true;
         gotTxSet(now_, *pSet);
     }
     else if(!result_)
@@ -1023,10 +1027,14 @@ PopConsensus::peerProposalInternal(
         // spawn a request for it and return none/nullptr.  It will call
         // gotTxSet once it arrives
         if (auto set = adaptor_.acquireTxSet(newPeerProp.position()))
+        {
+            bGotSet = true;
             gotTxSet(now_, *set);
+        }
     }
-    if (result_)
+    if (result_ && !bGotSet)
     {
+        // There is checkVoting in gotTxSet,don't do it again.
         checkVoting();
     }
 
