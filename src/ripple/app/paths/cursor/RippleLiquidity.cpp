@@ -120,7 +120,7 @@ void rippleLiquidity (
     if (saPrv == zero || saCur == zero)
         return;
 
-	bool bHasFee = saFeeMin != "0" || saFeeMax != "1000000000000";
+    bool bHasFee = saFeeMin != "0" || saFeeMax != "1000000000000";
     if (qualityIn >= qualityOut && !bHasFee)
     {
         // You're getting better quality than you asked for, so no fee.

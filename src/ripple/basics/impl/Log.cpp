@@ -187,8 +187,8 @@ Logs::write (beast::severities::Severity level, std::string const& partition,
     file_.writeln (s);
     if (! silent_)
         std::cerr << s << '\n';
-	if (app_ != NULL)
-		app_->getOPs().pubLogs(s);
+    if (app_ != NULL)
+        app_->getOPs().pubLogs(s);
     // VFALCO TODO Fix console output
     //if (console)
     //    out_.write_console(s);

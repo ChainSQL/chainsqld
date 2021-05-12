@@ -91,8 +91,8 @@ TrafficCount::category TrafficCount::categorize (
     if (type == protocol::mtVALIDATION)
         return TrafficCount::category::CT_validation;
 
-	if (type == protocol::mtVIEW_CHANGE)
-		return TrafficCount::category::CT_view_change;
+    if (type == protocol::mtVIEW_CHANGE)
+        return TrafficCount::category::CT_view_change;
 
     if (type == protocol::mtPROPOSE_LEDGER)
         return TrafficCount::category::CT_proposal;
@@ -101,8 +101,8 @@ TrafficCount::category TrafficCount::categorize (
         return inbound ? TrafficCount::category::CT_get_trans :
             TrafficCount::category::CT_share_trans;
 
-	if (type == protocol::mtTRANSACTIONS)
-		return TrafficCount::category::CT_transactions;
+    if (type == protocol::mtTRANSACTIONS)
+        return TrafficCount::category::CT_transactions;
 
     if (type == protocol::mtMICROLEDGER_SUBMIT)
         return TrafficCount::category::CT_micro_ledger;

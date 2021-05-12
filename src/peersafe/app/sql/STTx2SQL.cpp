@@ -556,24 +556,25 @@ public:
 		std::string error_message_;
 	};
 
-	DisposeSQL(BuildSQL::BUILDTYPE type, DatabaseCon* dbconn)
-	: tables_()
-	, tables_obj_()
-	, fields_()
-	, orders_()
-	, limit_()
-	, group_()
-	, having_()
-	, build_type_(type)
-	, index_(0)	
-	, conditions_()
-	, db_conn_(dbconn)
-	, condition_(Json::ValueType::nullValue)
-	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_()
-	, indi_null(soci::i_null){
+    DisposeSQL(BuildSQL::BUILDTYPE type, DatabaseCon* dbconn)
+        : tables_()
+        , tables_obj_()
+        , fields_()
+        , orders_()
+        , limit_()
+        , group_()
+        , having_()
+        , indi_null(soci::i_null)
+        , build_type_(type)
+        , index_(0)
+        , conditions_()
+        , db_conn_(dbconn)
+        , condition_(Json::ValueType::nullValue)
+        , join_on_condition_(Json::ValueType::nullValue)
+        , last_error_()
+    {
 
-	}
+    }
 
 	virtual ~DisposeSQL() {
 
@@ -3701,23 +3702,26 @@ std::pair<std::vector<std::vector<Json::Value>>, std::string> TxStore::txHistory
 	return helper::query_directly2d(tx_json, databasecon_, buildsql.get(),select_limit_);
 }
 
-Json::Value TxStore::txHistory(std::string sql) {
+Json::Value TxStore::txHistory(std::string sql)
+{
     Json::Value obj;
     if (databasecon_ == nullptr)
         return rpcError(rpcNODB);
-	std::shared_ptr<BuildSQL> buildsql = nullptr;
-	
-	if (boost::iequals(db_type_, "sqlite"))
-		buildsql = std::make_shared<BuildSqlite>(BuildSQL::BUILD_SELECT_SQL, databasecon_);
+
+    std::shared_ptr<BuildSQL> buildsql = nullptr;
+
+    if (boost::iequals(db_type_, "sqlite"))
+        buildsql = std::make_shared<BuildSqlite>(BuildSQL::BUILD_SELECT_SQL, databasecon_);
     else if (boost::iequals(db_type_, "mycat") || boost::iequals(db_type_, "mysql"))
         buildsql = std::make_shared<BuildMySQL>(BuildSQL::BUILD_SELECT_SQL, databasecon_);
 
     if (buildsql == nullptr)
     {
-		std::string errMsg = "Initial buildsql failed.";
-		return RPC::make_error(rpcINTERNAL, errMsg);
+        std::string errMsg = "Initial buildsql failed.";
+        return RPC::make_error(rpcINTERNAL, errMsg);
     }
 
-	return helper::query_directly(databasecon_, sql, select_limit_);
+    return helper::query_directly(databasecon_, sql, select_limit_);
 }
+
 }	// namespace ripple

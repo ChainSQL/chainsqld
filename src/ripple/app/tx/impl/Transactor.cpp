@@ -297,14 +297,14 @@ Transactor::checkSeq (PreclaimContext const& ctx)
             (sle->getFieldH256 (sfAccountTxnID) != ctx.tx.getFieldH256 (sfAccountTxnID)))
         return tefWRONG_PRIOR;
 
-	if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
-		(ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
-	{
-		JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence " << ctx.tx.getFieldU32(sfLastLedgerSequence) <<
-			"view.seq=" << ctx.view.seq();
-		return tefMAX_LEDGER;
-	}
-        
+    if (ctx.tx.isFieldPresent(sfLastLedgerSequence) &&
+        (ctx.view.seq() > ctx.tx.getFieldU32(sfLastLedgerSequence)))
+    {
+        JLOG(ctx.j.info()) << "applyTransaction: tx LastLedgerSequence "
+            << ctx.tx.getFieldU32(sfLastLedgerSequence)
+            << "view.seq=" << ctx.view.seq();
+        return tefMAX_LEDGER;
+    }
 
     return tesSUCCESS;
 }
@@ -874,39 +874,39 @@ Transactor::operator()()
 
 	//if ((terResult == tecOVERSIZE) ||
 	//    (!isTecClaim (terResult) && !(view().flags() & tapRETRY)))
-	if (!isTesSuccess(terResult))
-	{
-		// only claim the transaction fee
-		JLOG(j_.debug()) <<
-			"Reprocessing tx " << txID << " to only claim fee";
+    if (!isTesSuccess(terResult))
+    {
+        // only claim the transaction fee
+        JLOG(j_.debug()) <<
+            "Reprocessing tx " << txID << " to only claim fee";
 
-		std::vector<uint256> removedOffers;
-		if (terResult == tecOVERSIZE)
-		{
-			ctx_.visit(
-				[&removedOffers](
-					uint256 const& index,
-					bool isDelete,
-					std::shared_ptr <SLE const> const& before,
-					std::shared_ptr <SLE const> const& after)
-			{
-				if (isDelete)
-				{
-					assert(before && after);
-					if (before && after &&
-						(before->getType() == ltOFFER) &&
-						(before->getFieldAmount(sfTakerPays) == after->getFieldAmount(sfTakerPays)))
-					{
-						// Removal of offer found or made unfunded
-						removedOffers.push_back(index);
-					}
-				}
-			});
-		}
+        std::vector<uint256> removedOffers;
+        if (terResult == tecOVERSIZE)
+        {
+            ctx_.visit(
+                [&removedOffers](
+                    uint256 const& index,
+                    bool isDelete,
+                    std::shared_ptr <SLE const> const& before,
+                    std::shared_ptr <SLE const> const& after)
+            {
+                if (isDelete)
+                {
+                    assert(before && after);
+                    if (before && after &&
+                        (before->getType() == ltOFFER) &&
+                        (before->getFieldAmount(sfTakerPays) == after->getFieldAmount(sfTakerPays)))
+                    {
+                        // Removal of offer found or made unfunded
+                        removedOffers.push_back(index);
+                    }
+                }
+            });
+        }
 
-		claimFee(fee, terResult, removedOffers);
-		//didApply = true;
-	}
+        claimFee(fee, terResult, removedOffers);
+        //didApply = true;
+    }
 
     if (didApply)
     {

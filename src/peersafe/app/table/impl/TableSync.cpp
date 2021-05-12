@@ -38,18 +38,18 @@
 
 namespace ripple {
 TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
-    : app_(app)
-    , journal_(journal)
-    , cfg_(cfg)    
-    , checkSkipNode_("SkipNode", 65536, 450, stopwatch(),
-        app_.journal("TaggedCache"))
+        : app_(app)
+        , journal_(journal)
+        , cfg_(cfg)
+        , checkSkipNode_("SkipNode", 65536, 450, stopwatch(),
+            app_.journal("TaggedCache"))
 {
     bTableSyncThread_ = false;
     bLocalSyncThread_ = false;
-    bInitTableItems_  = false;
+    bInitTableItems_ = false;
 
-    if (app.getTxStoreDBConn().GetDBConn() == nullptr || 
-		app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+    if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
+        app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
         bIsHaveSync_ = false;
     else
         bIsHaveSync_ = true;
@@ -61,16 +61,20 @@ TableSync::TableSync(Application& app, Config& cfg, beast::Journal journal)
         bAutoLoadTable_ = atoi(value.c_str());
     }
     else
+    {
         bAutoLoadTable_ = false;
+    }
 
-	auto press_switch = cfg_.section(ConfigSection::pressSwitch());
-	if (press_switch.values().size() > 0)
-	{
-		auto value = press_switch.values().at(0);
-		bPressSwitchOn_ = atoi(value.c_str());
-	}
-	else
-		bPressSwitchOn_ = false;
+    auto press_switch = cfg_.section(ConfigSection::pressSwitch());
+    if (press_switch.values().size() > 0)
+    {
+        auto value = press_switch.values().at(0);
+        bPressSwitchOn_ = atoi(value.c_str());
+    }
+    else
+    {
+        bPressSwitchOn_ = false;
+    }
 }
 
 TableSync::~TableSync()

@@ -187,12 +187,12 @@ appendHello (beast::http::fields& h,
         h.insert ("Remote-IP", beast::IP::to_string (
             beast::IP::AddressV4(hello.remote_ip())));
 
-	// shard related
-	if (hello.has_shardrole())
-		h.insert("Shard-Role", std::to_string(hello.shardrole()));
+    // shard related
+    if (hello.has_shardrole())
+        h.insert("Shard-Role", std::to_string(hello.shardrole()));
 
-	if (hello.has_shardindex())
-		h.insert("Shard-Index", std::to_string(hello.shardindex()));
+    if (hello.has_shardindex())
+        h.insert("Shard-Index", std::to_string(hello.shardindex()));
 }
 
 std::vector<ProtocolVersion>

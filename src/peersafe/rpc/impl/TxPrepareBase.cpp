@@ -195,9 +195,9 @@ Json::Value TxPrepareBase::prepareGetRaw()
 
 Json::Value TxPrepareBase::prepareBase()
 {
-	auto ret = checkBaseInfo(tx_json_, app_, ws_);
-	if (ret.isMember(jss::error))
-		return ret;
+    auto ret = checkBaseInfo(tx_json_, app_, ws_);
+    if (ret.isMember(jss::error))
+        return ret;
 
     if (tx_json_.isMember(jss::OperationRule))
     {
@@ -209,31 +209,31 @@ Json::Value TxPrepareBase::prepareBase()
     if (ret.isMember(jss::error))
         return ret;
 
-	//actually, this fun get base info: account ,stableName ,nameInDB
-	ret = prepareDBName();
-	if (ret.isMember(jss::error))
-		return ret;
-    
-	//prepare raw for recreate operation
+    //actually, this fun get base info: account ,stableName ,nameInDB
+    ret = prepareDBName();
+    if (ret.isMember(jss::error))
+        return ret;
+
+    //prepare raw for recreate operation
     ret = prepareGetRaw();
     if (ret.isMember(jss::error))
-        return ret;	
+        return ret;
 
-	if (!ws_)
-	{
-		ret = prepareRawEncode();
-		if (ret.isMember(jss::error))
-			return ret;
-	}
+    if (!ws_)
+    {
+        ret = prepareRawEncode();
+        if (ret.isMember(jss::error))
+            return ret;
+    }
 
-	ret = prepareStrictMode();
-	if (ret.isMember(jss::error))
-		return ret;   
+    ret = prepareStrictMode();
+    if (ret.isMember(jss::error))
+        return ret;
 
-	if(app_.getTableSync().IsPressSwitchOn())
-		preparePressData();
+    if (app_.getTableSync().IsPressSwitchOn())
+        preparePressData();
 
-	return ret;
+    return ret;
 }
 
 void TxPrepareBase::preparePressData()
@@ -267,50 +267,50 @@ std::string TxPrepareBase::getNameInDB(const std::string& sAccount, const std::s
 {
     if (u160NameInDB_ == beast::zero)
         return "";
-	return to_string(u160NameInDB_);
+    return to_string(u160NameInDB_);
 }
 
 Json::Value TxPrepareBase::prepareStrictMode()
 {
-	Json::Value ret(Json::objectValue);
-	auto& tx_json = getTxJson();
+    Json::Value ret(Json::objectValue);
+    auto& tx_json = getTxJson();
 
-	if (!isStrictModeOpType((TableOpType)tx_json[jss::OpType].asInt()))  return ret;
-	if (!tx_json.isMember(jss::Raw))		                             return ret;
-	if (!tx_json_.isMember(jss::StrictMode) || !tx_json_[jss::StrictMode].asBool())
-		return ret;
-	//parse raw
-	std::string sRaw;
-	if (tx_json[jss::Raw].isArray())				
-		sRaw = tx_json[jss::Raw].toStyledString();
-	else         				                    
-		sRaw = tx_json[jss::Raw].asString();
-	if (ws_)
-	{
-		auto rawPair = strUnHex(sRaw);
-		if (!rawPair.second)
-		{
-			return RPC::make_error(rpcRAW_INVALID, "Raw should be hexed");
-		}
-		sRaw = strCopy(rawPair.first);
-	}
+    if (!isStrictModeOpType((TableOpType)tx_json[jss::OpType].asInt()))  return ret;
+    if (!tx_json.isMember(jss::Raw))		                             return ret;
+    if (!tx_json_.isMember(jss::StrictMode) || !tx_json_[jss::StrictMode].asBool())
+        return ret;
+    //parse raw
+    std::string sRaw;
+    if (tx_json[jss::Raw].isArray())
+        sRaw = tx_json[jss::Raw].toStyledString();
+    else
+        sRaw = tx_json[jss::Raw].asString();
+    if (ws_)
+    {
+        auto rawPair = strUnHex(sRaw);
+        if (!rawPair.second)
+        {
+            return RPC::make_error(rpcRAW_INVALID, "Raw should be hexed");
+        }
+        sRaw = strCopy(rawPair.first);
+    }
 
-	uint256 checkHashNew;
-	uint256 checkHash;
-	if (T_CREATE != tx_json[jss::OpType].asInt())
-	{
-		auto retPair = getCheckHash(to_string(ownerID_), sTableName_);
-		if (retPair.first.isZero())
-			return RPC::make_error(rpcTAB_NOT_EXIST, "Please make sure table exist or to be created in this transaction");
-		checkHash = retPair.first;
-	}
+    uint256 checkHashNew;
+    uint256 checkHash;
+    if (T_CREATE != tx_json[jss::OpType].asInt())
+    {
+        auto retPair = getCheckHash(to_string(ownerID_), sTableName_);
+        if (retPair.first.isZero())
+            return RPC::make_error(rpcTAB_NOT_EXIST, "Please make sure table exist or to be created in this transaction");
+        checkHash = retPair.first;
+    }
 
-	ret = prepareCheckHash(sRaw, checkHash, checkHashNew);
-	if (ret.isMember(jss::error))
-		return ret;
-    if(isStrictModeOpType((TableOpType)(tx_json[jss::OpType].asInt())))
+    ret = prepareCheckHash(sRaw, checkHash, checkHashNew);
+    if (ret.isMember(jss::error))
+        return ret;
+    if (isStrictModeOpType((TableOpType)(tx_json[jss::OpType].asInt())))
         updateCheckHash(to_string(ownerID_), sTableName_, checkHashNew);
-	return ret;
+    return ret;
 }
 
 std::pair<uint256, Json::Value> TxPrepareBase::getCheckHash(const std::string& sAccountId, const std::string& sTableName)
@@ -498,7 +498,7 @@ Json::Value TxPrepareBase::parseTableName()
 	return json;
 }
 
-Json::Value TxPrepareBase::prepareCheckHash(const std::string& sRaw,const uint256& checkHash,uint256& checkHashNew)
+Json::Value TxPrepareBase::prepareCheckHash(const std::string& sRaw, const uint256& checkHash, uint256& checkHashNew)
 {
     int opType = tx_json_[jss::OpType].asInt();
     if (opType == T_CREATE)
@@ -506,16 +506,16 @@ Json::Value TxPrepareBase::prepareCheckHash(const std::string& sRaw,const uint25
     else
         checkHashNew = sha512Half(makeSlice(sRaw), checkHash);
 
-	if (tx_json_.isMember(jss::StrictMode))
-	{
+    if (tx_json_.isMember(jss::StrictMode))
+    {
         if (tx_json_[jss::StrictMode].asBool())
-            tx_json_[jss::TxCheckHash] = to_string(checkHashNew);            
+            tx_json_[jss::TxCheckHash] = to_string(checkHashNew);
 
-        tx_json_.removeMember(jss::StrictMode);		
-	}
-	
-	Json::Value ret(Json::objectValue);
-	return ret;
+        tx_json_.removeMember(jss::StrictMode);
+    }
+
+    Json::Value ret(Json::objectValue);
+    return ret;
 }
 
 std::pair<Blob, Json::Value> TxPrepareBase::getPassBlob(AccountID& ownerId, AccountID& userId,

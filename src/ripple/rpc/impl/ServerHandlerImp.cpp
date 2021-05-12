@@ -697,38 +697,38 @@ ServerHandlerImp::processRequest (Port const& port,
     if (usage.warn())
         result[jss::warning] = jss::load;
 
-	//if trasaction operation,
-	//remove tx_blob & tx_json field,and make tx_id parallel with result
-	Json::Value tx_id(Json::nullValue);
-	if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash) 
-		&& !result[jss::tx_json].isMember("Signers"))
-	{
-		std::string txType = result[jss::tx_json][jss::TransactionType].asString();
-		if (isChainSqlTableType(txType))
-		{
-			tx_id = std::move(result[jss::tx_json][jss::hash]);
+    //if trasaction operation,
+    //remove tx_blob & tx_json field,and make tx_id parallel with result
+    Json::Value tx_id(Json::nullValue);
+    if (result.isMember(jss::tx_json) && result[jss::tx_json].isMember(jss::hash)
+        && !result[jss::tx_json].isMember("Signers"))
+    {
+        std::string txType = result[jss::tx_json][jss::TransactionType].asString();
+        if (isChainSqlTableType(txType))
+        {
+            tx_id = std::move(result[jss::tx_json][jss::hash]);
 
-			result.removeMember(jss::tx_json);
+            result.removeMember(jss::tx_json);
 
-			if (result.isMember(jss::tx_blob))
-			{
-				result.removeMember(jss::tx_blob);
-			}
-		}
-	}
-	if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
-	{
-		if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
-		{
-			for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
-			{
-				std::string sDest = "";
-				TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
+            if (result.isMember(jss::tx_blob))
+            {
+                result.removeMember(jss::tx_blob);
+            }
+        }
+    }
+    if (result.isMember(jss::request) && result[jss::request].isMember(jss::tx_json))
+    {
+        if (strMethod == "t_dump" || strMethod == "t_dumpstop" || strMethod == "t_audit" || strMethod == "t_auditstop")
+        {
+            for (int i = 0; i < result[jss::request][jss::tx_json].size(); i++)
+            {
+                std::string sDest = "";
+                TransGBK_UTF8(result[jss::request][jss::tx_json][i].asString(), sDest, false);
 
-				result[jss::request][jss::tx_json][i] = sDest;
-			}
-		}
-	}
+                result[jss::request][jss::tx_json][i] = sDest;
+            }
+        }
+    }
 
     Json::Value reply (Json::objectValue);
     reply[jss::result] = std::move (result);

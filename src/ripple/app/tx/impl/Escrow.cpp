@@ -645,8 +645,8 @@ EscrowCancel::doApply()
         ctx_.view().info().parentCloseTime.time_since_epoch().count() <=
             (*slep)[sfCancelAfter])
         return tecNO_PERMISSION;
-	AccountID const account = (*slep)[sfAccount];
-	STAmount const& amount = (*slep)[sfAmount];
+    AccountID const account = (*slep)[sfAccount];
+    STAmount const& amount = (*slep)[sfAmount];
 
     // Remove escrow from owner directory
     {
