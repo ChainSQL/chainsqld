@@ -43,7 +43,7 @@ FinalLedger::FinalLedger(
 
     for (auto const& microLedger : microLedgers)
     {
-        mTxsHashes.insert(mTxsHashes.end(), microLedger->txHashes().begin(), microLedger->txHashes().end());
+        mTxsHashes.insert(microLedger->txHashes().begin(), microLedger->txHashes().end());
 
         mMicroLedgers.emplace(microLedger->shardID(), microLedger->ledgerHash());
     }
@@ -95,9 +95,12 @@ FinalLedger::FinalLedger(protocol::TMFinalLedgerSubmit const& m)
 
 	for (int i = 0; i < finalLedger.txhashes().size(); i++)
 	{
-		TxID txHash;
-		memcpy(txHash.begin(), finalLedger.txhashes(i).data(), 32);
-		mTxsHashes.push_back(txHash);
+        protocol::TxHash const& txHash = finalLedger.txhashes(i);
+		TxID id;
+        uint256 treeNodeHash;
+		memcpy(id.begin(), txHash.id().data(), 32);
+        memcpy(treeNodeHash.begin(), txHash.treenodeid().data(), 32);
+		mTxsHashes.emplace(id, treeNodeHash);
 	}
 
     if (finalLedger.has_txshamaproothash())
@@ -165,9 +168,11 @@ void FinalLedger::compose(protocol::TMFinalLedgerSubmit& ms)
     m.set_closeflags(mCloseFlags);
 
     // Transaction hashes
-    for (auto const& it : mTxsHashes)
+    for (auto const& txHash : mTxsHashes)
     {
-        m.add_txhashes(it.data(), it.size());
+        protocol::TxHash& h = *m.add_txhashes();
+        h.set_id(txHash.first.data(), txHash.first.size());
+        h.set_treenodeid(txHash.second.data(), txHash.second.size());
     }
 
     // Tx shamap root hash
@@ -234,9 +239,11 @@ void FinalLedger::apply(Ledger& to, bool withTxs)
 
     if (withTxs)
     {
-        for (auto const& tx : mTxsHashes)
+        for (auto const& txHash : mTxsHashes)
         {
-            to.rawTxInsert(tx,
+            to.txNodeHashInsert(txHash.first, txHash.second);
+
+            to.rawTxInsert(txHash.first,
                 std::make_shared<Serializer>(0),
                 std::make_shared<Serializer>(0));
         }

@@ -55,7 +55,7 @@ protected:
     uint32                                      mShardCount;
     std::int64_t                                mDropsDestroyed;    //
 
-    std::vector<TxID>                           mTxsHashes;         // All transactions hash set in this MicroLedger.
+    std::unordered_map<TxID, uint256>           mTxsHashes;         // All transactions hash and tree node hash in SHAMap.
     std::unordered_map<TxID, TxMetaPair>        mTxWithMetas;       // Serialized transactions with meta data maped by TxID;
 
     std::map<uint256,
@@ -70,14 +70,15 @@ protected:
     uint256 computeTxWithMetaHash();
 
 	void readMicroLedger(protocol::MicroLedger const& m);
-	void readTxHashes(::google::protobuf::RepeatedPtrField<std::string> const& hashes);
+	void readTxHashes(::google::protobuf::RepeatedPtrField<::protocol::TxHash> const& hashes);
 	void readStateDelta(::google::protobuf::RepeatedPtrField<::protocol::StateDelta> const& stateDeltas);
     void readTxWithMeta(::google::protobuf::RepeatedPtrField <::protocol::TxWithMeta> const& txWithMetas);
 
 public:
     MicroLedger() = delete;
 	MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta = true);
-    MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet = nullptr);
+    MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view);
+    MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet);
 
     inline LedgerIndex seq()
     {
@@ -134,9 +135,9 @@ public:
         return mHashSet.TxsRootHash;
     }
 
-    inline void addTxID(TxID txID)
+    inline void addTxID(TxID txID, uint256 nh)
     {
-        mTxsHashes.push_back(txID);
+        mTxsHashes.emplace(txID, nh);
     }
 
     inline void setDropsDestroyed(std::int64_t drops)

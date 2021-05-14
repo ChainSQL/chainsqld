@@ -591,6 +591,15 @@ Ledger::rawReplace(std::shared_ptr<SLE> const& sle)
 }
 
 void
+Ledger::txNodeHashInsert(key_type const& key, uint256 const& nh)
+{
+    auto const result = txToNodeHashes_.emplace(key, nh);
+    if (!result.second)
+        LogicError("txNodeHashInsert: duplicate_tx: " +
+            to_string(key));
+}
+
+void
 Ledger::rawTxInsert (uint256 const& key,
     std::shared_ptr<Serializer const
         > const& txn, std::shared_ptr<
@@ -603,8 +612,21 @@ Ledger::rawTxInsert (uint256 const& key,
         metaData->getDataLength () + 16);
     s.addVL (txn->peekData ());
     s.addVL (metaData->peekData ());
-    auto item = std::make_shared<
-        SHAMapItem const> (key, std::move(s));
+
+    std::shared_ptr<SHAMapItem const> item;
+
+    auto const& iter = txToNodeHashes_.find(key);
+    if (iter != txToNodeHashes_.end())
+    {
+        item = std::make_shared<
+            SHAMapItem const>(key, std::move(s), iter->second);
+    }
+    else
+    {
+        item = std::make_shared<
+            SHAMapItem const>(key, std::move(s));
+    }
+
     if (! txMap().addGiveItem
             (std::move(item), true, true))
         LogicError("duplicate_tx: " + to_string(key));

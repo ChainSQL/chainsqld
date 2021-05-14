@@ -128,6 +128,10 @@ void
 OpenView::apply (TxsRawView& to) const
 {
     items_.apply(to);
+
+    for (auto const& item : txToNodeHashes_)
+        to.txNodeHashInsert(item.first, item.second);
+
     for (auto const& item : txs_)
         to.rawTxInsert (item.first,
             item.second.first,
@@ -135,44 +139,68 @@ OpenView::apply (TxsRawView& to) const
 }
 
 void
-OpenView::apply (MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet) const
+OpenView::apply(MicroLedger& to) const
 {
     to.setDropsDestroyed(items_.dropsDestroyed().drops());
 
-    if (txSet)
+    for (auto const& item : txs_)
     {
-        // committee microledger transactions
-        for (auto const& item : *txSet)
-        {
-            auto const& txID = item.second->getTransactionID();
-            auto iter = txs_.find(txID);
-            if (iter != txs_.end())
-            {
-                if (to.rawTxInsert(iter->first,
-                    iter->second.first,
-                    iter->second.second))
-                {
-                    to.addTxID(txID);
-                }
-            }
-        }
-    }
-    else
-    {
-        // shard
-        for (auto const& item : txs_)
-        {
-            if (to.rawTxInsert(item.first,
+        if (to.rawTxInsert(item.first,
                 item.second.first,
                 item.second.second))
-            {
-                to.addTxID(item.first);
-            }
-        }
-
-        for (auto const& item : items_.items())
         {
-            to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+            Serializer s(item.second.first->getDataLength() +
+                item.second.second->getDataLength() + 16);
+            s.addVL(item.second.first->peekData());
+            s.addVL(item.second.second->peekData());
+
+            auto mapItem = std::make_shared<
+                SHAMapItem const>(item.first, std::move(s));
+            uint256 nh = sha512Half(
+                HashPrefix::txNode,
+                makeSlice(mapItem->peekData()),
+                mapItem->key());
+
+            to.addTxID(item.first, nh);
+        }
+    }
+
+    for (auto const& item : items_.items())
+    {
+        to.addStateDelta(*base_, item.first, item.second.first, item.second.second);
+    }
+}
+
+void
+OpenView::apply(MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet) const
+{
+    to.setDropsDestroyed(items_.dropsDestroyed().drops());
+
+    // committee microledger transactions
+    for (auto const& item : *txSet)
+    {
+        auto const& txID = item.second->getTransactionID();
+        auto iter = txs_.find(txID);
+        if (iter != txs_.end())
+        {
+            if (to.rawTxInsert(iter->first,
+                    iter->second.first,
+                    iter->second.second))
+            {
+                Serializer s(iter->second.first->getDataLength() +
+                    iter->second.second->getDataLength() + 16);
+                s.addVL(iter->second.first->peekData());
+                s.addVL(iter->second.second->peekData());
+
+                auto mapItem = std::make_shared<
+                    SHAMapItem const>(iter->first, std::move(s));
+                uint256 nh = sha512Half(
+                    HashPrefix::txNode,
+                    makeSlice(mapItem->peekData()),
+                    mapItem->key());
+
+                to.addTxID(txID, nh);
+            }
         }
     }
 }
@@ -325,6 +353,15 @@ OpenView::rawTxInsert (key_type const& key,
         std::make_pair(txn, metaData));
     if (! result.second)
         LogicError("rawTxInsert: duplicate TX id" +
+            to_string(key));
+}
+
+void
+OpenView::txNodeHashInsert(key_type const& key, uint256 const& nh)
+{
+    auto const result = txToNodeHashes_.emplace(key, nh);
+    if (!result.second)
+        LogicError("txNodeHashInsert: duplicate TX id" +
             to_string(key));
 }
 

@@ -415,6 +415,11 @@ message TMViewChange
 
 //---------------------------------------------------------------------------------
 
+message TxHash {
+    required bytes      ID                  = 1;
+    required bytes      treeNodeID          = 2;
+}
+
 message StateDelta {
 	required bytes 		key					= 1;
     required uint32     action              = 2;
@@ -435,7 +440,7 @@ message MicroLedger {
 
     required int64      dropsDestroyed      = 5;
 
-    repeated bytes	    txHashes            = 6;    // All transactions hash set in this MicroLedger
+    repeated TxHash	    txHashes            = 6;    // All transactions hash set in this MicroLedger
     repeated StateDelta stateDeltas         = 7;    // The state changes by the transactions in this MicroLedger
     optional bytes      txWMHashRoot        = 8;    // The transactions with meta data hash(Shamap not yet in use now)
 
@@ -458,7 +463,7 @@ message FinalLedger {
 	required uint32     closeTimeResolution = 6;
 	required uint32 	closeFlags			= 7;
 	
-    repeated bytes      txHashes            = 8;    // All transactions hash set in this FinalBlock
+    repeated TxHash     txHashes            = 8;    // All transactions hash set in this FinalBlock
     optional bytes      txShaMapRootHash    = 9;    // The final transactions Shamap root hash
 
     repeated StateDelta stateDeltas         = 10;   // The state changes by the transactions in this FinalLedger

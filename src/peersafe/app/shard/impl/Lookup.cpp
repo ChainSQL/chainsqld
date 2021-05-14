@@ -241,30 +241,30 @@ bool Lookup::checkLedger(LedgerIndex seq)
     return false;
 }
 
-uint32 Lookup::resetMetaIndex(LedgerIndex seq)
-{
-    uint32 metaIndex = 0;
-    beast::Journal j = app_.journal("TxMeta");
-
-    std::uint32_t shardCount = getFinalLedger(seq)->getMicroLedgerCount() - 1;
-
-    for (uint32 shardIndex = 1; shardIndex <= shardCount; shardIndex++)
-    {
-        std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
-        for (auto const& txHash : microLedger->txHashes())
-        {
-            microLedger->setMetaIndex(txHash, metaIndex++, j);
-        }
-    }
-
-    std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, 0);
-    for (auto const& txHash : microLedger->txHashes())
-    {
-        microLedger->setMetaIndex(txHash, metaIndex++, j);
-    }
-
-    return metaIndex;
-}
+//uint32 Lookup::resetMetaIndex(LedgerIndex seq)
+//{
+//    uint32 metaIndex = 0;
+//    beast::Journal j = app_.journal("TxMeta");
+//
+//    std::uint32_t shardCount = getFinalLedger(seq)->getMicroLedgerCount() - 1;
+//
+//    for (uint32 shardIndex = 1; shardIndex <= shardCount; shardIndex++)
+//    {
+//        std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, shardIndex);
+//        for (auto const& txHash : microLedger->txHashes())
+//        {
+//            microLedger->setMetaIndex(txHash, metaIndex++, j);
+//        }
+//    }
+//
+//    std::shared_ptr<MicroLedger> microLedger = getMicroLedger(seq, 0);
+//    for (auto const& txHash : microLedger->txHashes())
+//    {
+//        microLedger->setMetaIndex(txHash, metaIndex++, j);
+//    }
+//
+//    return metaIndex;
+//}
 
 void Lookup::saveLedger(LedgerIndex seq)
 {

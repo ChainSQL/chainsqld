@@ -98,6 +98,10 @@ public:
 class TxsRawView : public RawView
 {
 public:
+    virtual
+    void
+    txNodeHashInsert(ReadView::key_type const& key, uint256 const& nh) = 0;
+
     /** Add a transaction to the tx map.
 
         Closed ledgers must have metadata,

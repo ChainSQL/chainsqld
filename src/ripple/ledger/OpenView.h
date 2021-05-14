@@ -69,6 +69,7 @@ private:
 
     Rules rules_;
     txs_map txs_;
+    std::map<key_type, uint256> txToNodeHashes_;
     LedgerInfo info_;
     ReadView const* base_;
     detail::RawStateTable items_;
@@ -169,7 +170,10 @@ public:
     apply (TxsRawView& to) const;
 
     void
-    apply (MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet = nullptr) const;
+    apply(MicroLedger& to) const;
+
+    void
+    apply(MicroLedger& to, std::shared_ptr<CanonicalTXSet const> txSet) const;
 
     // ReadView
 
@@ -247,6 +251,8 @@ public:
         ZXCAmount const& fee) override;
 
     // TxsRawView
+    void
+    txNodeHashInsert(key_type const& key, uint256 const& nh) override;
 
     void
     rawTxInsert (key_type const& key,

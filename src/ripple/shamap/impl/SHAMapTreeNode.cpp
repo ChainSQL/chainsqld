@@ -197,9 +197,16 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
             if (u.isZero ())
                 Throw<std::runtime_error> ("invalid TM node");
 
-            auto item = std::make_shared<SHAMapItem const> (u, s.peekData ());
+            auto item = std::make_shared<SHAMapItem>(u, s.peekData());
+
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_MD, seq, hash);
+
+            if (s.size() == 2)
+            {
+                // size 2 record the txn and metaData length [0, 0]
+                item->fixedHash() = hash.as_uint256();
+            }
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_MD, seq);
         }
         else if (type == 5)
@@ -345,9 +352,17 @@ SHAMapAbstractNode::make(Slice const& rawNode, std::uint32_t seq, SHANodeFormat 
             uint256 txID;
             s.get256 (txID, s.getLength () - 32);
             s.chop (32);
-            auto item = std::make_shared<SHAMapItem const> (txID, s.peekData ());
+            auto item = std::make_shared<SHAMapItem> (txID, s.peekData ());
             if (hashValid)
                 return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_MD, seq, hash);
+            if (s.size() == 2)
+            {
+                // size 2 record the txn and metaData length [0, 0]
+                assert(hash.as_uint256() != beast::zero);
+                if (hash.as_uint256() == beast::zero)
+                    Throw<std::runtime_error>("Tx node is empty and hash is zero");
+                item->fixedHash() = hash.as_uint256();
+            }
             return std::make_shared<SHAMapTreeNode>(item, tnTRANSACTION_MD, seq);
         }
         else
@@ -409,10 +424,17 @@ SHAMapTreeNode::updateHash()
     }
     else if (mType == tnTRANSACTION_MD)
     {
-        //nh = sha512Half(HashPrefix::txNode,
-        //    makeSlice(mItem->peekData()),
-        //        mItem->key());
-        nh = sha512Half(HashPrefix::txNode, mItem->key());
+        if (mItem->fixedHash() != beast::zero)
+        {
+            nh = mItem->fixedHash();
+        }
+        else
+        {
+            nh = sha512Half(HashPrefix::txNode,
+                makeSlice(mItem->peekData()),
+                mItem->key());
+        }
+        //nh = sha512Half(HashPrefix::txNode, mItem->key());
     }
     else
         assert (false);

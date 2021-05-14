@@ -28,18 +28,42 @@ class SHAMap;
 SHAMapItem::SHAMapItem (uint256 const& tag, Blob const& data)
     : tag_(tag)
     , data_(data)
+    , fixedHash_(beast::zero)
 {
 }
 
 SHAMapItem::SHAMapItem (uint256 const& tag, const Serializer& data)
     : tag_ (tag)
     , data_(data.peekData())
+    , fixedHash_(beast::zero)
 {
 }
 
 SHAMapItem::SHAMapItem (uint256 const& tag, Serializer&& data)
     : tag_ (tag)
     , data_(std::move(data.modData()))
+    , fixedHash_(beast::zero)
+{
+}
+
+SHAMapItem::SHAMapItem(uint256 const& tag, Blob const& data, uint256 const& fixedHash)
+    : tag_(tag)
+    , data_(data)
+    , fixedHash_(fixedHash)
+{
+}
+
+SHAMapItem::SHAMapItem(uint256 const& tag, const Serializer& data, uint256 const& fixedHash)
+    : tag_(tag)
+    , data_(data.peekData())
+    , fixedHash_(fixedHash)
+{
+}
+
+SHAMapItem::SHAMapItem(uint256 const& tag, Serializer&& data, uint256 const& fixedHash)
+    : tag_(tag)
+    , data_(std::move(data.modData()))
+    , fixedHash_(fixedHash)
 {
 }
 

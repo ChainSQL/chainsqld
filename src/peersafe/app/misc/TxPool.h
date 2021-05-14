@@ -108,7 +108,7 @@ public:
 
     // When block validated, remove Txs from pool and avoid set.
 	void removeTxs(SHAMap const& cSet,int const ledgerSeq,uint256 const& prevHash);
-    void removeTxs(std::vector<TxID> const& txHashes, int const ledgerSeq, uint256 const& prevHash);
+    void removeTxs(std::unordered_map<TxID, uint256> const& txHashes, int const ledgerSeq, uint256 const& prevHash);
 	void removeTx(uint256 const& hash);
 
     // Update avoid set when receiving a Tx set from peers.

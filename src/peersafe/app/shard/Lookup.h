@@ -141,7 +141,7 @@ public:
     void saveLedgerThread();
     bool findNewLedgerToSave(LedgerIndex &toSaveOrAcquire);
     bool checkLedger(LedgerIndex seq);
-    uint32 resetMetaIndex(LedgerIndex seq);
+    //uint32 resetMetaIndex(LedgerIndex seq);
 	void saveLedger(LedgerIndex seq);
     bool doAcquire(LedgerHash const& hash, LedgerIndex seq);
 

@@ -36,11 +36,15 @@ class SHAMapItem
 private:
     uint256    tag_;
     Blob       data_;
+    uint256    fixedHash_;  // fixed tree node hash in SHAMap
 
 public:
     SHAMapItem (uint256 const& tag, Blob const & data);
     SHAMapItem (uint256 const& tag, Serializer const& s);
     SHAMapItem (uint256 const& tag, Serializer&& s);
+    SHAMapItem (uint256 const& tag, Blob const & data, uint256 const& fixedHash);
+    SHAMapItem (uint256 const& tag, Serializer const& s, uint256 const& fixedHash);
+    SHAMapItem (uint256 const& tag, Serializer&& s, uint256 const& fixedHash);
 
     Slice slice() const;
 
@@ -50,6 +54,9 @@ public:
 
     std::size_t size() const;
     void const* data() const;
+
+    uint256& fixedHash();
+    uint256 const& fixedHash() const;
 };
 
 //------------------------------------------------------------------------------
@@ -87,6 +94,20 @@ Blob const&
 SHAMapItem::peekData() const
 {
     return data_;
+}
+
+inline
+uint256&
+SHAMapItem::fixedHash()
+{
+    return fixedHash_;
+}
+
+inline
+uint256 const&
+SHAMapItem::fixedHash() const
+{
+    return fixedHash_;
 }
 
 } // ripple

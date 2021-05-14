@@ -223,6 +223,8 @@ public:
     //
     // TxsRawView
     //
+    void
+    txNodeHashInsert(key_type const& key, uint256 const& nh) override;
 
     void
     rawTxInsert (uint256 const& key,
@@ -322,6 +324,8 @@ private:
     peek (Keylet const& k) const;
 
     bool mImmutable;
+
+    std::map<key_type, uint256> txToNodeHashes_;
 
     std::shared_ptr<SHAMap> txMap_;
     std::shared_ptr<SHAMap> stateMap_;

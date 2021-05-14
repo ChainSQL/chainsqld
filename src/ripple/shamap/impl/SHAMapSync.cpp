@@ -481,9 +481,12 @@ SHAMapAddNode SHAMap::addRootNode (SHAMapHash const& hash, Slice const& rootNode
 
     assert (seq_ >= 1);
     auto node = SHAMapAbstractNode::make(
-        rootNode, 0, format, SHAMapHash{}, false, f_.journal ());
-    if (!node || !node->isValid() || node->getNodeHash () != hash)
-        return SHAMapAddNode::invalid ();
+        rootNode, 0, format, hash, false, f_.journal ());
+    if (!node || !node->isValid() || node->getNodeHash() != hash)
+    {
+        JLOG(journal_.warn()) << "Corrupt root node received";
+        return SHAMapAddNode::invalid();
+    }
 
     if (backed_)
         canonicalize (hash, node);
@@ -545,6 +548,17 @@ SHAMap::addKnownNode (const SHAMapNodeID& node, Slice const& rawNode,
 
         if (iNode == nullptr)
         {
+            if (newNode->getType() == SHAMapAbstractNode::tnTRANSACTION_MD)
+            {
+                auto item = static_cast<SHAMapTreeNode*>(newNode.get())->peekItem();
+                // size 2 record the txn and metaData length [0, 0]
+                if (item->size() == 2)
+                {
+                    const_cast<SHAMapItem*>(item.get())->fixedHash() = childHash.as_uint256();
+                    newNode->updateHash();
+                }
+            }
+
             if (!newNode || !newNode->isValid() || childHash != newNode->getNodeHash ())
             {
                 JLOG(journal_.warn()) << "Corrupt node received";

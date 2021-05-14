@@ -164,7 +164,7 @@ void TxPool::removeTxs(SHAMap const& cSet, int const ledgerSeq, uint256 const& p
 	checkSyncStatus(ledgerSeq, prevHash);
 }
 
-void TxPool::removeTxs(std::vector<TxID> const& txHashes, int const ledgerSeq, uint256 const& prevHash)
+void TxPool::removeTxs(std::unordered_map<TxID, uint256> const& txHashes, int const ledgerSeq, uint256 const& prevHash)
 {
     std::lock_guard<std::mutex> lock(mutexTxPoll_);
 
@@ -181,19 +181,19 @@ void TxPool::removeTxs(std::vector<TxID> const& txHashes, int const ledgerSeq, u
     {
         try
         {
-            if (!txExists(txHash))
+            if (!txExists(txHash.first))
                 continue;
 
             // If not exist, throw std::out_of_range exception.
-            iterSet = mTxsHash.at(txHash);
+            iterSet = mTxsHash.at(txHash.first);
 
             // remove from Tx pool.
-            mTxsHash.erase(txHash);
+            mTxsHash.erase(txHash.first);
             mTxsSet.erase(iterSet);
 
             // remove from avoid set.
-            if (mAvoid.find(txHash) != mAvoid.end())
-                mAvoid.erase(txHash);
+            if (mAvoid.find(txHash.first) != mAvoid.end())
+                mAvoid.erase(txHash.first);
 
             count++;
         }

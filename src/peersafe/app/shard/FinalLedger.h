@@ -43,8 +43,8 @@ private:
     uint32                          mCloseTimeResolution;
     uint32                          mCloseFlags;
 
-    std::vector<TxID>               mTxsHashes;                 // All transactions hash set in this FinalBlock.
-    uint256                         mTxShaMapRootHash;          // The final transactions Shamap root hash.
+    std::unordered_map<TxID, uint256>   mTxsHashes;             // All transactions hash set in this FinalBlock.
+    uint256                             mTxShaMapRootHash;      // The final transactions Shamap root hash.
 
     detail::RawStateTable           mStateDelta;                // The state changes by the transactions in this FinalLedger.
     uint256                         mStateShaMapRootHash;       // The final state Shamap root hash.
@@ -84,8 +84,7 @@ public:
         return mStateDelta;
     }
 
-    inline auto getTxHashes()
-        -> std::vector<TxID> const&
+    inline auto const& getTxHashes()
     {
         return mTxsHashes;
     }

@@ -30,6 +30,31 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
+MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta)
+{
+    readMicroLedger(m.microledger());
+    readSignature(m.signatures());
+
+    // The Message probably not have txWithMeta source data.
+    // But it contains txWithMeta root hash. So, don't compute
+    // txWithMeta root hash here, and check it late if it takes
+    // the source data.
+    computeHash(withTxMeta);
+}
+
+MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view)
+    : mSeq(seq_)
+    , mViewChange(viewChange)
+    , mShardID(shardID_)
+    , mShardCount(shardCount)
+{
+    assert(!view.open());
+
+    view.apply(*this);
+
+    computeHash(true);
+}
+
 MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, LedgerIndex seq_, OpenView const& view, std::shared_ptr<CanonicalTXSet const> txSet)
     : mSeq(seq_)
     , mViewChange(viewChange)
@@ -43,18 +68,6 @@ MicroLedger::MicroLedger(uint64 viewChange, uint32 shardID_, uint32 shardCount, 
     computeHash(true);
 }
 
-MicroLedger::MicroLedger(protocol::TMMicroLedgerSubmit const& m, bool withTxMeta)
-{
-    readMicroLedger(m.microledger());
-    readSignature(m.signatures());
-
-    // The Message probably not have txWithMeta source data.
-    // But it contains txWithMeta root hash. So, don't compute
-    // txWithMeta root hash here, and check it late if it takes
-    // the source data.
-    computeHash(withTxMeta);
-}
-
 void MicroLedger::computeHash(bool withTxMeta)
 {
     using beast::hash_append;
@@ -64,7 +77,8 @@ void MicroLedger::computeHash(bool withTxMeta)
         sha512_half_hasher txRootHash;
         for (auto const& txHash : mTxsHashes)
         {
-            hash_append(txRootHash, txHash);
+            hash_append(txRootHash, txHash.first);
+            hash_append(txRootHash, txHash.second);
         }
         mHashSet.TxsRootHash = static_cast<typename sha512_half_hasher::result_type>(txRootHash);
     }
@@ -120,8 +134,8 @@ uint256 MicroLedger::computeTxWithMetaHash()
     {
         for (auto const& txHash : mTxsHashes)
         {
-            hash_append(txWMRootHash, mTxWithMetas.at(txHash).first->slice());
-            hash_append(txWMRootHash, mTxWithMetas.at(txHash).second->slice());
+            hash_append(txWMRootHash, mTxWithMetas.at(txHash.first).first->slice());
+            hash_append(txWMRootHash, mTxWithMetas.at(txHash.first).second->slice());
         }
     }
     catch (std::exception const&)
@@ -145,7 +159,9 @@ void MicroLedger::compose(protocol::TMMicroLedgerSubmit& ms, bool withTxMeta) co
     // Transaction hashes.
     for (auto const& it : mTxsHashes)
     {
-        m.add_txhashes(it.data(), it.size());
+        protocol::TxHash& h = *m.add_txhashes();
+        h.set_id(it.first.data(), it.first.size());
+        h.set_treenodeid(it.second.data(), it.second.size());
     }
 
     // Transaction with meta data root hash.
@@ -986,7 +1002,8 @@ void MicroLedger::apply(OpenView& to, beast::Journal& j, Application& app) const
 
     for (auto const& it : mTxsHashes)
     {
-        to.rawTxInsert(it,
+        to.txNodeHashInsert(it.first, it.second);
+        to.rawTxInsert(it.first,
             std::make_shared<Serializer>(0),    // tx
             std::make_shared<Serializer>(0));   // meta
     }
@@ -1021,13 +1038,18 @@ void MicroLedger::readMicroLedger(protocol::MicroLedger const& m)
 	readStateDelta(m.statedeltas());
 	readTxWithMeta(m.txwithmetas());
 }
-void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField< ::std::string> const& hashes)
+void MicroLedger::readTxHashes(::google::protobuf::RepeatedPtrField<::protocol::TxHash> const& hashes)
 {
 	for (int i = 0; i < hashes.size(); i++)
 	{
-		TxID txHash;
-		memcpy(txHash.begin(), hashes.Get(i).data(), 32);
-		mTxsHashes.push_back(txHash);
+        const protocol::TxHash& txHash = hashes.Get(i);
+
+        uint256 id;
+        uint256 treeNodeID;
+
+		memcpy(id.begin(), txHash.id().data(), 32);
+        memcpy(treeNodeID.begin(), txHash.treenodeid().data(), 32);
+		mTxsHashes.emplace(id, treeNodeID);
 	}
 }
 
@@ -1087,9 +1109,9 @@ bool MicroLedger::checkValidity(std::unique_ptr <ValidatorList> const& list, boo
         }
 
         // Check all tx-meta corresponds to tx-hashes
-        for (TxID const& hash : mTxsHashes)
+        for (auto const& hash : mTxsHashes)
         {
-            if (!hasTxWithMeta(hash))
+            if (!hasTxWithMeta(hash.first))
                 return false;
         }
 
