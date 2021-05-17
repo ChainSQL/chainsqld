@@ -22,4 +22,5 @@ deployToGithub:
       - master
       - develop
       - feature/newConsensus
+      - feature/shard
       - feature/schema
