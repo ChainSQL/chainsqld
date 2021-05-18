@@ -556,8 +556,12 @@ Json::Value doTxCount(RPC::JsonContext& context)
 {
     if (!context.app.config().useTxTables())
         return rpcError(rpcNOT_ENABLED);
+    bool bChainsql = false;
+    if (context.params.isMember(jss::chainsql_tx))
+        bChainsql = context.params[jss::chainsql_tx].asBool();
     Json::Value ret(Json::objectValue);
-    ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
+    if(bChainsql)
+        ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
     ret["all"] = context.app.getMasterTransaction().getTxCount(false);
 
     return ret;
