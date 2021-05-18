@@ -3698,7 +3698,8 @@ bool STTx2SQL::check_raw(const Json::Value& raw, const uint16_t optype) {
 	}
 
 	Json::UInt size = raw.size();
-	if (size == 0) {
+    // fix an issue: when delete all data from table, raw array size is 0
+	if (size == 0 && optype != BuildSQL::BUILD_DELETE_SQL) {
 		return false;
 	}
 
