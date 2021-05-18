@@ -595,6 +595,7 @@ JSS ( engine_result_message_detail );  // out: NetworkOPs, Submit
 JSS ( field );
 JSS ( gas_price );  // out: TxQ
 JSS ( OpType );     // out: Tx OpType
+JSS ( chainsql_tx );
  
 JSS ( SchemaCreate );
 JSS ( SchemaModify );
