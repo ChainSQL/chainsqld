@@ -33,7 +33,7 @@ char const* const versionString =
     //  The build version number. You must edit this for each release
     //  and follow the format described at http://semver.org/
     //
-        "1.1.4-pop"
+        "1.1.5-pop"
 
 #if defined(DEBUG) || defined(SANITIZER)
        "+"
