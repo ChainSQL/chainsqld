@@ -351,7 +351,7 @@ public:
     virtual bool waitingForInit() = 0;
 
     virtual std::pair<bool, std::string>
-    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce) = 0;
+    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce,bool bFromLoad = false) = 0;
 };
 
 //------------------------------------------------------------------------------

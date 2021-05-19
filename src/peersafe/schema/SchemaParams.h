@@ -30,6 +30,7 @@ namespace ripple {
 		uint256			anchor_ledger_hash;
 		std::vector<std::pair<PublicKey, bool>> validator_list;
 		std::vector<std::string>				peer_list;
+		bool			fromLoad = false;
 	public:
 		SchemaID schemaId()
 		{

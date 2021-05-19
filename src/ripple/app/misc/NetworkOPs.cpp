@@ -748,7 +748,7 @@ public:
     }
 
     std::pair<bool, std::string>
-    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce)
+    createSchema(const std::shared_ptr<SLE const>& schema, bool bForce, bool bFromLoad = false)
         override;
 
     //--------------------------------------------------------------------------
@@ -3748,10 +3748,11 @@ NetworkOPsImp::transJson(
 std::pair<bool, std::string>
 NetworkOPsImp::createSchema(
     const std::shared_ptr<SLE const>& sleSchema,
-    bool bForce)
+    bool bForce, bool bFromLoad/* = false*/)
 {
     SchemaParams params{};
     params.readFromSle(sleSchema);
+    params.fromLoad = bFromLoad;
 
     bool bShouldCreate = bForce;
     if (!bShouldCreate)

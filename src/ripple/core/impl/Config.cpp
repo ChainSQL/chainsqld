@@ -254,7 +254,7 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
 
 	CONFIG_DIR = boost::filesystem::path(config.SCHEMA_PATH) / to_string(schemaParams.schema_id);
 	CONFIG_FILE = CONFIG_DIR / "chainsqld.cfg";
-    if(boost::filesystem::exists(CONFIG_FILE))
+    if(boost::filesystem::exists(CONFIG_FILE) && schemaParams.fromLoad)
     {
         //In case the cfg has been modified.
         return;
