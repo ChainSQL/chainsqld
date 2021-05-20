@@ -337,9 +337,6 @@ public:
     int
     fdRequired() const override;
 
-    bool
-    loadSubChains();
-
     //--------------------------------------------------------------------------
 
     Logs&
@@ -1101,9 +1098,6 @@ ApplicationImp::setup()
     if (!schema_main->setup())
         return false;
 
-    // if (!loadSubChains())
-    //     return false;
-
     {
         try
         {
@@ -1217,161 +1211,6 @@ ApplicationImp::fdRequired() const
 
     // The minimum number of file descriptors we need is 1024:
     return std::max(1024, needed);
-}
-
-bool
-ApplicationImp::loadSubChains()
-{
-    // return;
-    // 1 parse the schema_info
-    // 2 create the sub chain
-
-    boost::filesystem::path schemaPath = config_->SCHEMA_PATH;
-
-    if (schemaPath.empty() || !boost::filesystem::exists(schemaPath))
-    {
-        return true;
-    }
-
-    std::string schemaInfo("schema_info");
-
-    std::vector<boost::filesystem::path> paths;
-
-    for (auto const& entry :
-         boost::filesystem::recursive_directory_iterator(schemaPath))
-    {
-        std::string fileName = entry.path().filename().string();
-        if (boost::filesystem::is_regular_file(entry) && schemaInfo == fileName)
-        {
-            paths.emplace_back(entry.path());
-            // std::cout << entry.path().string()<< std::endl;
-        }
-    }
-
-    for (auto item : paths)
-    {
-        boost::filesystem::ifstream file(item);
-        std::string str;
-        std::vector<std::string> filenames;
-        while (getline(file, str))
-        {
-            filenames.push_back(str);
-        }
-
-        if (filenames.size() != 7)
-            Throw<std::runtime_error>("Invalid info in schema_info");
-
-        std::string sSchemaId = filenames[0];
-        auto schemaId = ripple::from_hex_text<ripple::uint256>(sSchemaId);
-        SchemaParams params{};
-        bool bShouldCreate = false;
-        // To Modify: use sle to judge if schema should be created.
-        auto ledger = getLedgerMaster(beast::zero).getValidatedLedger();
-        if (ledger->seq() > 1)
-        {
-            auto sle = ledger->read(Keylet(ltSCHEMA, schemaId));
-            if (!sle)
-            {
-                JLOG(m_journal.warn())
-                    << "Read sle for schema:" << to_string(schemaId)
-                    << " failed";
-                continue;
-            }
-            params.readFromSle(sle);
-            for (auto validator : params.validator_list)
-            {
-                if (validator.first == getValidationPublicKey())
-                {
-                    bShouldCreate = true;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            std::string sSchemaName = filenames[1];
-            std::string sAcountID = filenames[2];
-            std::string sStragegy = filenames[3];
-
-            std::string sAnchorLedgerHash = filenames[4];
-            std::string sValidatorInfo = filenames[5];
-            std::string sPeerListInfo = filenames[6];
-
-            params.account = *ripple::parseBase58<AccountID>(sAcountID);
-            params.admin = params.account;
-            params.schema_id = schemaId;
-            params.schema_name = sSchemaName;
-            params.anchor_ledger_hash =
-                ripple::from_hex_text<ripple::uint256>(sAnchorLedgerHash);
-            params.strategy = boost::iequals(sStragegy, "1")
-                ? SchemaStragegy::new_chain
-                : SchemaStragegy::with_state;
-
-            boost::split(
-                params.peer_list, sPeerListInfo, boost::is_any_of(";"));
-
-            std::vector<std::string> vValidatorInfo;
-            boost::split(vValidatorInfo, sValidatorInfo, boost::is_any_of(";"));
-
-            for (auto item : vValidatorInfo)
-            {
-                std::vector<std::string> vValidator;
-                boost::split(vValidator, item, boost::is_any_of(" "));
-
-                if (vValidator.size() != 2)
-                    Throw<std::runtime_error>(
-                        "Invalid validator info in schema_info");
-
-                boost::optional<PublicKey> pk = parseBase58<PublicKey>(
-                    TokenType::NodePublic, vValidator[0]);
-                bool bValid = boost::iequals(vValidator[0], "1") ? true : false;
-
-                std::pair<PublicKey, bool> validator =
-                    std::make_pair(*pk, bValid);
-                params.validator_list.push_back(validator);
-
-                if (*pk == getValidationPublicKey())
-                    bShouldCreate = true;
-            }
-        }
-        if (!bShouldCreate)
-        {
-            JLOG(m_journal.warn())
-                << "Schema:" << to_string(schemaId) << " will not be created.";
-            continue;
-        }
-
-        JLOG(m_journal.info())
-            << "Schema:" << to_string(schemaId) << " begin create.";
-
-        auto config = std::make_shared<Config>();
-        std::string config_path =
-            (boost::format("%1%/%2%/%3%") % config_->SCHEMA_PATH % sSchemaId %
-             "chainsqld.cfg")
-                .str();
-        config->setup(
-            config_path,
-            config_->quiet(),
-            config_->silent(),
-            config->standalone());
-
-        auto newSchema = getSchemaManager().createSchema(config, params);
-        if (!newSchema->initBeforeSetup())
-        {
-            getSchemaManager().removeSchema(newSchema->schemaId());
-            return false;
-        }
-
-        if (!newSchema->setup())
-        {
-            getSchemaManager().removeSchema(newSchema->schemaId());
-            return false;
-        }
-
-        JLOG(m_journal.info())
-            << "Schema:" << to_string(schemaId) << " created.";
-    }
-    return true;
 }
 
 //------------------------------------------------------------------------------
