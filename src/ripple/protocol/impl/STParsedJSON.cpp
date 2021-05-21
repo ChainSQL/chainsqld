@@ -874,39 +874,6 @@ parseObject(
 
                     break;
 
-                //case STI_ACCOUNT:
-                //    if (value.isObject() && fieldName == sfUser.fieldName)
-                //    {
-                //        try
-                //        {
-                //            auto ret = parseObject(
-                //                json_name + "." + fieldName,
-                //                value,
-                //                field,
-                //                depth + 1,
-                //                error);
-                //            if (!ret)
-                //                return boost::none;
-                //            data.emplace_back(std::move(*ret));
-                //        }
-                //        catch (std::exception const&)
-                //        {
-                //            error = invalid_data(json_name, fieldName);
-                //            return boost::none;
-                //        }
-                //    }
-                //    else
-                //    {
-                //        auto leaf = parseLeaf(
-                //            json_name, fieldName, &inName, value, error);
-
-                //        if (!leaf)
-                //            return boost::none;
-
-                //        data.emplace_back(std::move(*leaf));
-                //    }
-                //    break;
-
                 // Everything else (types that don't recurse).
                 default: {
                     auto leaf =

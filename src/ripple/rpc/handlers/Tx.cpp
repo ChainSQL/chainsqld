@@ -785,7 +785,7 @@ doTxMerkelVerify(RPC::JsonContext& context)
     {
         std::string hash = context.params[jss::ledger][jss::hash].asString();
         if (!isHexID(hash))
-            return false;
+            return rpcError(rpcNOT_IMPL);
         info.hash = from_hex_text<uint256>(hash);
 
         if (calculateLedgerHash(info) != info.hash)
@@ -809,7 +809,7 @@ doTxMerkelVerify(RPC::JsonContext& context)
             ? context.params[jss::hash].asString()
             : context.params[jss::tx_json][jss::hash].asString();
         if (!isHexID(hash))
-            return false;
+            return rpcError(rpcNOT_IMPL);
 
         if (sttx.first->getTransactionID() != from_hex_text<uint256>(hash))
         {
