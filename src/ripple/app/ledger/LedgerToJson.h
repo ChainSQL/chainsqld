@@ -83,6 +83,10 @@ serializeHex(STObject const& o)
 {
     return strHex(serializeBlob(o));
 }
+
+bool
+fromJson(LedgerInfo& info, Json::Value json);
+
 }  // namespace ripple
 
 #endif

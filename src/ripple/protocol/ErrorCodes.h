@@ -78,7 +78,7 @@ enum error_code_i {
     // unused                  27,
     // unused                  28,
     rpcTXN_NOT_FOUND = 29,
-    // unused                  30,
+    rpcTXN_NOT_VALIDATED = 30,
 
     // Malformed command
     rpcINVALID_PARAMS = 31,
@@ -181,9 +181,10 @@ enum error_code_i {
 
     rpcTXN_BIGGER_THAN_MAXSIZE  = 127,
     rpcINVALID_TRANSACTION      = 128,
+
+    rpcBAD_PROOF             = 129,
     
-    rpcLAST =
-        rpcINVALID_TRANSACTION  // rpcLAST should always equal the last code.=
+    rpcLAST = rpcBAD_PROOF  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.

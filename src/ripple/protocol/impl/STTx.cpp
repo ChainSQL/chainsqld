@@ -519,7 +519,8 @@ STTx::getJson() const
     return getJson(JsonOptions::none);
 }
 
-Json::Value STTx::getJson(JsonOptions) const
+Json::Value
+STTx::getJson(JsonOptions) const
 {
     Json::Value ret = STObject::getJson(JsonOptions::none);
     ret[jss::hash] = to_string(getTransactionID());

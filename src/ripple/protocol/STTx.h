@@ -20,14 +20,14 @@
 #ifndef RIPPLE_PROTOCOL_STTX_H_INCLUDED
 #define RIPPLE_PROTOCOL_STTX_H_INCLUDED
 
+#include <ripple/json/impl/json_assert.h>
 #include <ripple/protocol/PublicKey.h>
-#include <ripple/protocol/STObject.h>
 #include <ripple/protocol/STArray.h>
+#include <ripple/protocol/STObject.h>
 #include <ripple/protocol/SecretKey.h>
 #include <ripple/protocol/TxFormats.h>
 #include <boost/container/flat_set.hpp>
 #include <boost/logic/tribool.hpp>
-#include <ripple/json/impl/json_assert.h>
 #include <functional>
 
 namespace ripple {
@@ -60,12 +60,13 @@ public:
 
     STTx(STTx const& other) = default;
 
-    explicit STTx (SerialIter& sit) noexcept (false);
-    explicit STTx (SerialIter&& sit) noexcept (false) : STTx(sit) {}
+    explicit STTx(SerialIter& sit) noexcept(false);
+    explicit STTx(SerialIter&& sit) noexcept(false) : STTx(sit)
+    {
+    }
 
-    explicit STTx (STObject&& object);
-    explicit STTx (Json::Value& o0bj, AccountID accountID);
-
+    explicit STTx(STObject&& object);
+    explicit STTx(Json::Value& o0bj, AccountID accountID);
 
     /** Constructs a transaction.
 
@@ -73,11 +74,15 @@ public:
         any fields that the callback function adds to the object
         that's passed in.
     */
-    STTx (
-        TxType type,
-        std::function<void(STObject&)> assembler);
+    STTx(TxType type, std::function<void(STObject&)> assembler);
+
 private:
-	static void getOneTx(std::vector<STTx>& vec, STTx const& tx, std::string sTableNameInDB = "");
+    static void
+    getOneTx(
+        std::vector<STTx>& vec,
+        STTx const& tx,
+        std::string sTableNameInDB = "");
+
 public:
     STBase*
     copy(std::size_t n, void* buf) const override
@@ -113,50 +118,67 @@ public:
         return tx_type_;
     }
 
-	bool isChainSqlTableType() const
-	{
+    bool
+    isChainSqlTableType() const
+    {
         return checkChainsqlTableType(tx_type_);
-	}
+    }
 
-	void addSubTx(STTx const& tx) const
-	{
-		pTxs_->push_back(tx);
-	}
+    void
+    addSubTx(STTx const& tx) const
+    {
+        pTxs_->push_back(tx);
+    }
 
-	std::vector<STTx> const& getSubTxs() const
-	{
-		return *pTxs_;
-	}
+    std::vector<STTx> const&
+    getSubTxs() const
+    {
+        return *pTxs_;
+    }
 
-    void addLog(Json::Value& jsonLog) const
+    void
+    addLog(Json::Value& jsonLog) const
     {
         paJsonLog_->append(jsonLog);
     }
 
-    Json::Value const& getLogs() const
+    Json::Value const&
+    getLogs() const
     {
         return *paJsonLog_;
     }
 
-    static bool checkChainsqlTableType(TxType txType)
+    static bool
+    checkChainsqlTableType(TxType txType)
     {
-        return txType == ttTABLELISTSET || txType == ttSQLSTATEMENT || txType == ttSQLTRANSACTION;
+        return txType == ttTABLELISTSET || txType == ttSQLSTATEMENT ||
+            txType == ttSQLTRANSACTION;
     }
 
-    static bool checkChainsqlContractType(TxType txType)
+    static bool
+    checkChainsqlContractType(TxType txType)
     {
         return txType == ttCONTRACT;
     }
 
-	static std::pair<std::shared_ptr<STTx>, std::string> parseSTTx(Json::Value& obj, AccountID accountID);
+    static std::pair<std::shared_ptr<STTx>, std::string>
+    parseSTTx(Json::Value& obj, AccountID accountID);
 
-	static std::vector<STTx> getTxs(STTx const& tx, std::string sTableNameInDB = "", std::shared_ptr<STObject const> contractRawMetadata = NULL,bool includeAssert = true);
+    static std::vector<STTx>
+    getTxs(
+        STTx const& tx,
+        std::string sTableNameInDB = "",
+        std::shared_ptr<STObject const> contractRawMetadata = NULL,
+        bool includeAssert = true);
 
-	bool isCrossChainUpload() const;
+    bool
+    isCrossChainUpload() const;
 
-	std::string buildRaw(std::string sOperationRule) const;
+    std::string
+    buildRaw(std::string sOperationRule) const;
 
-    Blob getSigningPubKey () const
+    Blob
+    getSigningPubKey() const
     {
         return getFieldVL(sfSigningPubKey);
     }
@@ -181,9 +203,12 @@ public:
         return tid_;
     }
 
-	Json::Value getJson() const;
-    Json::Value getJson (JsonOptions options) const override;
-    Json::Value getJson (JsonOptions options, bool binary) const;
+    Json::Value
+    getJson() const;
+    Json::Value
+    getJson(JsonOptions options) const override;
+    Json::Value
+    getJson(JsonOptions options, bool binary) const;
 
     void
     sign(PublicKey const& publicKey, SecretKey const& secretKey);
@@ -195,9 +220,9 @@ public:
     std::pair<bool, std::string>
     checkSign(RequireFullyCanonicalSig requireCanonicalSig) const;
 
-	// certificate sign
-	std::pair<bool, std::string>
-		checkCertSign() const;
+    // certificate sign
+    std::pair<bool, std::string>
+    checkCertSign() const;
 
     // SQL Functions with metadata.
     static std::string const&
@@ -214,9 +239,22 @@ public:
         char status,
         std::string const& escapedMetaData) const;
 
-    void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
-	uint256 getParentTxID() const { return tidParent_;  }
-    bool isSubTransaction() const   {  return !tidParent_.isZero();  }
+    void
+    setParentTxID(const uint256& tidParent)
+    {
+        tidParent_ = tidParent;
+    }
+    uint256
+    getParentTxID() const
+    {
+        return tidParent_;
+    }
+    bool
+    isSubTransaction() const
+    {
+        return !tidParent_.isZero();
+    }
+
 private:
     std::pair<bool, std::string>
     checkSingleSign(RequireFullyCanonicalSig requireCanonicalSig) const;
@@ -224,13 +262,14 @@ private:
     std::pair<bool, std::string>
     checkMultiSign(RequireFullyCanonicalSig requireCanonicalSig) const;
 
-	void buildRaw(Json::Value& condition, std::string& rule) const;
+    void
+    buildRaw(Json::Value& condition, std::string& rule) const;
 
     uint256 tidParent_;
     uint256 tid_;
     TxType tx_type_;
-	std::shared_ptr<std::vector<STTx>> pTxs_;
-    std::shared_ptr<Json::Value> paJsonLog_;    
+    std::shared_ptr<std::vector<STTx>> pTxs_;
+    std::shared_ptr<Json::Value> paJsonLog_;
 };
 
 bool

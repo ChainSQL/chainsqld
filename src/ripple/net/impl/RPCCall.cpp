@@ -1307,7 +1307,7 @@ private:
         return jvRequest;
     }
 
-    // tx <transaction_id>
+    // tx <transaction_id> [binary] [num] [num]
     Json::Value
     parseTx(Json::Value const& jvParams)
     {
@@ -1325,6 +1325,22 @@ private:
 
             jvRequest[jss::min_ledger] = jvParams[1u + offset].asString();
             jvRequest[jss::max_ledger] = jvParams[2u + offset].asString();
+        }
+
+        jvRequest[jss::transaction] = jvParams[0u].asString();
+        return jvRequest;
+    }
+
+    // tx <transaction_id> [binary]
+    Json::Value
+    parseTxMerkelProof(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest{Json::objectValue};
+
+        if (jvParams.size() == 2)
+        {
+            if (jvParams[1u].asString() == jss::binary)
+                jvRequest[jss::binary] = true;
         }
 
         jvRequest[jss::transaction] = jvParams[0u].asString();
@@ -1601,6 +1617,7 @@ public:
             {"stop", &RPCParser::parseAsIs, 0, 0},
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
+            {"tx_merkel_proof", &RPCParser::parseTxMerkelProof, 1, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_history", &RPCParser::parseTxHistory, 1, 1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},

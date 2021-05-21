@@ -18,18 +18,34 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 //==============================================================================
 
 
+#include <cctype>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
 
-uint64_t utcTime()
+uint64_t
+utcTime()
 {
 	auto tp = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
 	auto tmp = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
 
 	return tmp.count();
+}
+
+bool
+isHexID(std::string const& txid)
+{
+    if (txid.size() != 64)
+        return false;
+
+    auto const ret =
+        std::find_if(txid.begin(), txid.end(), [](std::string::value_type c) {
+            return !std::isxdigit(static_cast<unsigned char>(c));
+        });
+
+    return (ret == txid.end());
 }
 
 

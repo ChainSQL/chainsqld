@@ -149,8 +149,7 @@ HotstuffAdaptor::onExtractTransactions(
     // Build SHAMap containing all transactions in our open ledger
     for (auto const& txID : txs)
     {
-        auto ec{rpcSUCCESS};
-        auto tx = app_.getMasterTransaction().fetch(txID, ec);
+        auto tx = app_.getMasterTransaction().fetch(txID);
         if (!tx)
         {
             JLOG(j_.error())

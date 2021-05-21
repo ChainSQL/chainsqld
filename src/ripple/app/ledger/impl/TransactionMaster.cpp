@@ -87,8 +87,7 @@ std::vector<STTx> TransactionMaster::getTxs(STTx const& stTx, std::string sTable
 		{
 			if (ledgerSeq == 0)
 			{
-				error_code_i errr{rpcSUCCESS};
-				auto txn = fetch(stTx.getTransactionID(), errr);
+				auto txn = fetch(stTx.getTransactionID());
 				if (txn)
 					ledgerSeq = txn->getLedger();
 			}
@@ -116,14 +115,14 @@ TransactionMaster::fetch_from_cache(uint256 const& txnID)
 }
 
 std::shared_ptr<Transaction>
-TransactionMaster::fetch(uint256 const& txnID, error_code_i& ec)
+TransactionMaster::fetch(uint256 const& txnID)
 {
     auto txn = fetch_from_cache(txnID);
 
     if (txn)
         return txn;
 
-    txn = Transaction::load(txnID, mApp, ec);
+    txn = Transaction::load(txnID, mApp);
 
     if (!txn)
         return txn;
@@ -136,8 +135,7 @@ TransactionMaster::fetch(uint256 const& txnID, error_code_i& ec)
 boost::variant<Transaction::pointer, bool>
 TransactionMaster::fetch(
     uint256 const& txnID,
-    ClosedInterval<uint32_t> const& range,
-    error_code_i& ec)
+    ClosedInterval<uint32_t> const& range)
 {
     using pointer = Transaction::pointer;
 
@@ -147,7 +145,7 @@ TransactionMaster::fetch(
         return txn;
 
     boost::variant<Transaction::pointer, bool> v =
-        Transaction::load(txnID, mApp, range, ec);
+        Transaction::load(txnID, mApp, range);
 
     if (v.which() == 0 && boost::get<pointer>(v))
         mCache.canonicalize_replace_client(txnID, boost::get<pointer>(v));

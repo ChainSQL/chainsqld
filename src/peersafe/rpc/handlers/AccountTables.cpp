@@ -87,8 +87,7 @@ Json::Value doGetAccountTables(RPC::JsonContext&  context)
                 tmp[jss::tx_hash] = to_string(txHash);
                 if (bGetDetailInfo)
                 {
-					auto ec{ rpcSUCCESS };
-                    auto  tx = context.app.getMasterTransaction().fetch(txHash, ec);
+                    auto  tx = context.app.getMasterTransaction().fetch(txHash);
 					if (tx)
 					{
 						auto  pTx = tx->getSTransaction();

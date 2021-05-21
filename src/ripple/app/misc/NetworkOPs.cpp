@@ -1259,8 +1259,7 @@ NetworkOPsImp::broadCastTxs()
             for (auto key : transactions)
             {
                 Serializer s;
-                auto ec{rpcSUCCESS};
-                auto tx = app_.getMasterTransaction().fetch(key, ec);
+                auto tx = app_.getMasterTransaction().fetch(key);
                 tx->getSTransaction()->add(s);
                 auto pTx = txs.add_transactions();
                 pTx->set_rawtransaction(s.data(), s.size());

@@ -328,22 +328,20 @@ public:
     getJson(JsonOptions options, bool binary = false) const;
 
     static pointer
-    load(uint256 const& id, Schema& app, error_code_i& ec);
+    load(uint256 const& id, Schema& app);
 
     static boost::variant<Transaction::pointer, bool>
     load(
         uint256 const& id,
         Schema& app,
-        ClosedInterval<uint32_t> const& range,
-        error_code_i& ec);
+        ClosedInterval<uint32_t> const& range);
 
 private:
     static boost::variant<Transaction::pointer, bool>
     load(
         uint256 const& id,
         Schema& app,
-        boost::optional<ClosedInterval<uint32_t>> const& range,
-        error_code_i& ec);
+        boost::optional<ClosedInterval<uint32_t>> const& range);
 
     uint256 mTransactionID;
 

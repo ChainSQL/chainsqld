@@ -74,8 +74,7 @@ doTxHistory(RPC::JsonContext& context)
         {
 
 			uint256 txID = from_hex_text<uint256>(stxnHash.value());
-            auto ec{ rpcSUCCESS };
-			auto txn = context.app.getMasterTransaction().fetch(txID, ec);
+			auto txn = context.app.getMasterTransaction().fetch(txID);
 			if (!txn) {
 				continue;
 			}

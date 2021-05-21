@@ -767,9 +767,8 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 			if (bConfidential)
 			{
 				confidential_ = true;
-				auto ec{ rpcSUCCESS };
 				std::shared_ptr<STTx const> pTx = nullptr;
-				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash),ec);
+				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash));
 
                 if (!pTransaction) {
                     std::string errMsg = "fetch transaction " + to_string(table.getFieldH256(sfCreatedTxnHash)) + " failed";

@@ -462,3 +462,14 @@ message TMSyncSchema
     optional uint32         updateSeq  = 6;
     required bytes          schemaId   = 7;
 }
+
+message TMSHAMapProof
+{
+    message Level {
+        required uint32 branch = 1;
+        repeated bytes  nodeID = 2;
+    }
+
+    repeated Level level  = 1;
+    required bytes rootID = 2;
+}

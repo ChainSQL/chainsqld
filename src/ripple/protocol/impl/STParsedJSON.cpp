@@ -283,6 +283,10 @@ parseLeaf(
         case STI_UINT16:
             try
             {
+                constexpr auto minValue =
+                    std::numeric_limits<std::uint16_t>::min();
+                constexpr auto maxValue =
+                    std::numeric_limits<std::uint16_t>::max();
                 if (value.isString())
                 {
                     std::string const strValue = value.asString();
@@ -290,7 +294,22 @@ parseLeaf(
                     if (!strValue.empty() &&
                         ((strValue[0] < '0') || (strValue[0] > '9')))
                     {
-                        if (field == sfTransactionType)
+                        if (field == sfTransactionResult)
+                        {
+                            auto ter = transCode(strValue);
+
+                            if (!ter || TERtoInt(*ter) < minValue ||
+                                TERtoInt(*ter) > maxValue)
+                            {
+                                error = out_of_range(json_name, fieldName);
+                                return ret;
+                            }
+
+                            ret = detail::make_stvar<STUInt16>(
+                                field,
+                                static_cast<std::uint16_t>(TERtoInt(*ter)));
+                        }
+                        else if (field == sfTransactionType)
                         {
                             TxType const txType(
                                 TxFormats::getInstance().findTypeByName(
@@ -855,6 +874,39 @@ parseObject(
 
                     break;
 
+                //case STI_ACCOUNT:
+                //    if (value.isObject() && fieldName == sfUser.fieldName)
+                //    {
+                //        try
+                //        {
+                //            auto ret = parseObject(
+                //                json_name + "." + fieldName,
+                //                value,
+                //                field,
+                //                depth + 1,
+                //                error);
+                //            if (!ret)
+                //                return boost::none;
+                //            data.emplace_back(std::move(*ret));
+                //        }
+                //        catch (std::exception const&)
+                //        {
+                //            error = invalid_data(json_name, fieldName);
+                //            return boost::none;
+                //        }
+                //    }
+                //    else
+                //    {
+                //        auto leaf = parseLeaf(
+                //            json_name, fieldName, &inName, value, error);
+
+                //        if (!leaf)
+                //            return boost::none;
+
+                //        data.emplace_back(std::move(*leaf));
+                //    }
+                //    break;
+
                 // Everything else (types that don't recurse).
                 default: {
                     auto leaf =
@@ -951,7 +1003,11 @@ parseArray(
                 return boost::none;
             }
 
-            if (ret->getFName().fieldType != STI_OBJECT)
+            if (ret->getFName().fieldType != STI_OBJECT &&
+                (objectName != sfUser.fieldName ||
+                 ret->getFName().fieldType != STI_ACCOUNT) &&
+                (objectName != sfEntry.fieldName ||
+                 ret->getFName().fieldType != STI_ENTRY))
             {
                 error = non_object_in_array(ss.str(), i);
                 return boost::none;

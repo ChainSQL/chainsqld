@@ -325,8 +325,7 @@ namespace ripple {
 		auto result = std::make_tuple("db_success", "", "");
 		for (auto& info : txList_)
 		{
-			auto ec{ rpcSUCCESS };
-			auto txn = app_.getMasterTransaction().fetch(info.uTxHash, ec);
+			auto txn = app_.getMasterTransaction().fetch(info.uTxHash);
 			if (txn) {
 				app_.getOPs().pubTableTxs(accountID_, sTableName_, *txn->getSTransaction(), result, false);
 			}

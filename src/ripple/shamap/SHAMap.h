@@ -299,6 +299,9 @@ public:
     void
     invariants() const;
 
+    Blob
+    genNodeProof(uint256 key) const;
+
 private:
     using SharedPtrNodeStack = std::stack<
         std::pair<std::shared_ptr<SHAMapAbstractNode>, SHAMapNodeID>>;

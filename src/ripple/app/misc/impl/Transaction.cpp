@@ -179,9 +179,9 @@ Transaction::pointer Transaction::transactionFromSHAMapValidated(
 }
 
 Transaction::pointer
-Transaction::load(uint256 const& id, Schema& app, error_code_i& ec)
+Transaction::load(uint256 const& id, Schema& app)
 {
-	auto v = load(id, app, boost::none, ec);
+	auto v = load(id, app, boost::none);
 	if (v.which() == 0)
 		return boost::get<Transaction::pointer>(v);
     return nullptr;
@@ -191,20 +191,18 @@ boost::variant<Transaction::pointer, bool>
 Transaction::load(
     uint256 const& id,
     Schema& app,
-    ClosedInterval<uint32_t> const& range,
-    error_code_i& ec)
+    ClosedInterval<uint32_t> const& range)
 {
     using op = boost::optional<ClosedInterval<uint32_t>>;
 
-    return load(id, app, op{range}, ec);
+    return load(id, app, op{range});
 }
 
 boost::variant<Transaction::pointer, bool>
 Transaction::load(
     uint256 const& id,
     Schema& app,
-    boost::optional<ClosedInterval<uint32_t>> const& range,
-    error_code_i& ec)
+    boost::optional<ClosedInterval<uint32_t>> const& range)
 {
     std::string sql =
         "SELECT LedgerSeq,Status "

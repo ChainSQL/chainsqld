@@ -46,7 +46,7 @@ public:
     fetch_from_cache(uint256 const&);
 
     std::shared_ptr<Transaction>
-    fetch(uint256 const&, error_code_i& ec);
+    fetch(uint256 const&);
 
     /**
      * Fetch transaction from the cache or database.
@@ -60,8 +60,7 @@ public:
     boost::variant<Transaction::pointer, bool>
     fetch(
         uint256 const&,
-        ClosedInterval<uint32_t> const& range,
-        error_code_i& ec);
+        ClosedInterval<uint32_t> const& range);
 
     std::shared_ptr<STTx const>
     fetch(

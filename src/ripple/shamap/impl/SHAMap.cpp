@@ -19,6 +19,7 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/shamap/SHAMap.h>
+#include "ripple.pb.h"
 
 namespace ripple {
 
@@ -77,24 +78,23 @@ SHAMap::genesisSnapShot(Family& f) const
     auto ret = std::make_shared<SHAMap>(type_, f);
     SHAMap& newMap = *ret;
 
-    newMap.seq_       = 1;
+    newMap.seq_ = 1;
     newMap.ledgerSeq_ = 0;
-    newMap.root_      = root_->clone(1);
-    newMap.backed_    = backed_;
+    newMap.root_ = root_->clone(1);
+    newMap.backed_ = backed_;
 
     // Stack of {parent,index,child} pointers representing
     using StackEntry = std::pair<std::shared_ptr<SHAMapInnerNode>, int>;
     std::stack<StackEntry, std::vector<StackEntry>> stack;
 
     auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
-    
+
     // set seq of all nodes equal to 1
     int pos = 0;
-    while (1) {
-
+    while (1)
+    {
         while (pos < 16)
         {
-
             if (node->isEmptyBranch(pos))
             {
                 ++pos;
@@ -103,8 +103,10 @@ SHAMap::genesisSnapShot(Family& f) const
             {
                 int branch = pos;
                 auto child = node->getChild(pos++);
-                if (child){
-                    if (child->isInner()) {
+                if (child)
+                {
+                    if (child->isInner())
+                    {
                         // save our place and work on this node
                         stack.emplace(std::move(node), branch);
                         // The semantics of this changes when we move to c++-20
@@ -113,7 +115,9 @@ SHAMap::genesisSnapShot(Family& f) const
                         node = std::static_pointer_cast<SHAMapInnerNode>(
                             std::move(child));
                         pos = 0;
-                    }else{
+                    }
+                    else
+                    {
                         child->setSeq(1);
                     }
                 }
@@ -1275,6 +1279,71 @@ SHAMap::invariants() const
          leaf = peekNextItem(leaf->peekItem()->key(), stack))
         ;
     node->invariants(true);
+}
+
+Blob
+SHAMap::genNodeProof(uint256 key) const
+{
+    SharedPtrNodeStack stack;
+    if (!walkTowardsKey(key, &stack) || stack.empty())
+    {
+        return {};
+    }
+
+    auto leaf = std::dynamic_pointer_cast<SHAMapTreeNode>(stack.top().first);
+    stack.pop();
+
+    if (!leaf || (leaf->peekItem()->key() != key))
+        return {};
+
+    protocol::TMSHAMapProof proof;
+
+    if (stack.empty())
+    {
+        uint256 const& rootID = leaf->getNodeHash().as_uint256();
+        proof.set_rootid(rootID.data(), rootID.size());
+    }
+    else
+    {
+        //auto exclude = leaf->getNodeHash().as_uint256();
+        while (!stack.empty())
+        {
+            auto node =
+                std::static_pointer_cast<SHAMapInnerNode>(stack.top().first);
+            SHAMapNodeID nodeID = stack.top().second;
+            stack.pop();
+
+            protocol::TMSHAMapProof_Level& level = *proof.add_level();
+
+            level.set_branch(node->getBranch());
+
+            for (int i = 0; i < 16; ++i)
+            {
+                if (!node->isEmptyBranch(i))
+                {
+                    uint256 const& nodeID = node->getChildHash(i).as_uint256();
+                    //if (nodeID != exclude)
+                        level.add_nodeid(nodeID.data(), nodeID.size());
+                }
+            }
+
+            //exclude = node->getNodeHash().as_uint256();
+
+            if (nodeID.isRoot())
+            {
+                uint256 rootID = node->getNodeHash().as_uint256();
+                proof.set_rootid(rootID.data(), rootID.size());
+            }
+        }
+    }
+
+    std::string s;
+    proof.SerializeToString(&s);
+
+    Blob b;
+    b.assign(s.begin(), s.end());
+
+    return b;
 }
 
 }  // namespace ripple

@@ -114,6 +114,7 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
     {rpcSTREAM_MALFORMED, "malformedStream", "Stream malformed."},
     {rpcTOO_BUSY, "tooBusy", "The server is too busy to help you now."},
     {rpcTXN_NOT_FOUND, "txnNotFound", "Transaction not found."},
+    {rpcTXN_NOT_VALIDATED, "txnNotValidated", "Transaction not validated."},
     {rpcUNKNOWN_COMMAND, "unknownCmd", "Unknown method."},
     {rpcSENDMAX_MALFORMED, "sendMaxMalformed", "SendMax amount malformed."},
 
@@ -143,7 +144,8 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
 	{ rpcNO_SCHEMA,			    "schemaNotExist",		"No schema with the specified shema_id exist." },
 	{ rpcSCHEMA_CREATED,	    "schemaCreated",		"Schema have already been created,will not create again." },
     { rpcSCHEMA_NOTMEMBER,	    "cannotJoinSchema",		"You are not a member of this schema." },
-    { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." }
+    { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." },
+    { rpcBAD_PROOF,             "badProof",            "verify proof failed."}
 
     // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
     // add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");

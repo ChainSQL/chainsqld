@@ -22,6 +22,7 @@
 #include <ripple/basics/base_uint.h>
 #include <ripple/rpc/Context.h>
 #include <ripple/rpc/DeliveredAmount.h>
+#include <peersafe/app/util/Common.h>
 
 #include <date/date.h>
 
@@ -285,6 +286,49 @@ getJson(LedgerFill const& fill)
     Json::Value json;
     fillJson(json, fill);
     return json;
+}
+
+bool
+fromJson(LedgerInfo &info, Json::Value json)
+{
+    if (!json.isObject() || !json.isMember(jss::ledger_index) ||
+        !json.isMember(jss::total_coins) || !json.isMember(jss::parent_hash) ||
+        !json.isMember(jss::transaction_hash) ||
+        !json.isMember(jss::account_hash) ||
+        !json.isMember(jss::parent_close_time) ||
+        !json.isMember(jss::close_time) ||
+        !json.isMember(jss::close_time_resolution) ||
+        !json.isMember(jss::close_flags))
+        return false;
+
+    info.seq = json[jss::ledger_index].asUInt();
+    info.drops = beast::lexicalCastThrow<ZXCAmount::value_type>(
+        json[jss::total_coins].asString());
+
+    std::string id = json[jss::parent_hash].asString();
+    if (!isHexID(id))
+        return false;
+    info.parentHash = from_hex_text<uint256>(id);
+
+    id = json[jss::transaction_hash].asString();
+    if (!isHexID(id))
+        return false;
+    info.txHash = from_hex_text<uint256>(id);
+
+    id = json[jss::account_hash].asString();
+    if (!isHexID(id))
+        return false;
+    info.accountHash = from_hex_text<uint256>(id);
+
+    info.parentCloseTime = NetClock::time_point{
+        NetClock::duration{json[jss::parent_close_time].asUInt()}};
+    info.closeTime = NetClock::time_point{
+        NetClock::duration{json[jss::close_time].asUInt()}};
+    info.closeTimeResolution =
+        NetClock::duration{json[jss::close_time_resolution].asUInt()};
+    info.closeFlags = json[jss::close_flags].asInt();
+
+    return true;
 }
 
 }  // namespace ripple

@@ -141,6 +141,10 @@ doTransactionEntry(RPC::JsonContext&);
 Json::Value
 doTxJson(RPC::JsonContext&);
 Json::Value
+doTxMerkelProof(RPC::JsonContext&);
+Json::Value
+doTxMerkelVerify(RPC::JsonContext&);
+Json::Value
 doTxHistory(RPC::JsonContext&);
 Json::Value
 doUnlList(RPC::JsonContext&);

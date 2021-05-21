@@ -223,6 +223,8 @@ public:
     bool
     isEmptyBranch(int m) const;
     int
+    getBranch() const;
+    int
     getBranchCount() const;
     SHAMapHash const&
     getChildHash(int m) const;
@@ -312,6 +314,9 @@ public:  // public only to SHAMap
     getString(SHAMapNodeID const&) const override;
     bool
     updateHash() override;
+
+    bool
+    verifyProof(Blob const& proofBlob, uint256 const& rootHash);
 };
 
 // SHAMapAbstractNode
@@ -390,6 +395,12 @@ inline bool
 SHAMapInnerNode::isEmptyBranch(int m) const
 {
     return (mIsBranch & (1 << m)) == 0;
+}
+
+inline int
+SHAMapInnerNode::getBranch() const
+{
+    return mIsBranch;
 }
 
 inline SHAMapHash const&

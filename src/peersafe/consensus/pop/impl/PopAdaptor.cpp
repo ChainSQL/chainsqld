@@ -125,8 +125,7 @@ PopAdaptor::onCollectFinish(
     std::map<AccountID, int> mapAccount2Seq;
     for (auto const& txID : transactions)
     {
-        auto ec{rpcSUCCESS};
-        auto tx = app_.getMasterTransaction().fetch(txID, ec);
+        auto tx = app_.getMasterTransaction().fetch(txID);
         if (!tx)
         {
             JLOG(j_.error())

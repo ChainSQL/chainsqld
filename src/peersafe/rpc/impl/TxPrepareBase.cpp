@@ -177,8 +177,7 @@ Json::Value TxPrepareBase::prepareGetRaw()
 
 	table_BaseInfo baseinfo = app_.getLedgerMaster().getTableBaseInfo(app_.getLedgerMaster().getValidLedgerIndex(), ownerID_, sTableName_);
 
-	auto ec{ rpcSUCCESS };
-	auto txn = app_.getMasterTransaction().fetch(baseinfo.createdTxnHash, ec);
+	auto txn = app_.getMasterTransaction().fetch(baseinfo.createdTxnHash);
 	if (!txn)
 	{
 		std::string errMsg = "can not find create tx in local disk,please change node or try later";
