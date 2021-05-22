@@ -78,6 +78,7 @@ Json::Value doTransactionEntry      (RPC::Context&);
 Json::Value doGetCrossChainTx		(RPC::Context&);
 Json::Value doTx                    (RPC::Context&);
 Json::Value doTxHistory				(RPC::Context&);
+Json::Value doTxResult              (RPC::Context&);
 Json::Value doTxCount				(RPC::Context&);
 Json::Value doUnlList               (RPC::Context&);
 Json::Value doUnsubscribe           (RPC::Context&);

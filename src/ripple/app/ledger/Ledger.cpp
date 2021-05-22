@@ -970,11 +970,13 @@ static bool saveValidatedLedger (
                 JLOG (j.warn())
                     << vt.second->getTxn()->getJson(0);
             }
+			std::string token, human;
+            transResultInfo(vt.second->getResult(), token, human);
 
             *db <<
                (STTx::getMetaSQLInsertReplaceHeader () +
                 vt.second->getTxn ()->getMetaSQL (
-                    seq, vt.second->getEscMeta ()) + ";");
+                    seq, vt.second->getEscMeta (),token) + ";");
                         
             storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
 

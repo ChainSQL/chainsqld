@@ -496,6 +496,7 @@ JSS ( tx_json );                    // in/out: TransactionSign
 JSS ( tx_signing_hash );            // out: TransactionSign
 JSS ( tx_unsigned );                // out: TransactionSign
 JSS ( txn_count );                  // out: NetworkOPs
+JSS ( tx_status );
 
 
 JSS(txn_success);                   // out: NetworkOPs

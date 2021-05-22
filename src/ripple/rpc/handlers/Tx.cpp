@@ -279,6 +279,49 @@ Json::Value doTx (RPC::Context& context)
     return ret;
 }
 
+Json::Value doTxResult(RPC::Context& context)
+{
+	if (!context.params.isMember(jss::transaction))
+		return rpcError(rpcINVALID_PARAMS);
+
+	auto const txid = context.params[jss::transaction].asString();
+
+	if (!isHexTxID(txid))
+		return rpcError(rpcNOT_IMPL);
+	auto txHash = from_hex_text<uint256>(txid);
+
+	std::string sql = "SELECT LedgerSeq, TxResult FROM Transactions WHERE TransID='";
+	sql.append(txid);    
+	sql.append("';");
+
+	Json::Value ret(Json::objectValue);
+	boost::optional<std::uint32_t> LedgerSeq;
+	boost::optional<std::string> TxResult;
+	{
+		auto db = context.app.getTxnDB().checkoutDb();
+
+		soci::statement st = (db->prepare << sql,
+			soci::into(LedgerSeq),
+			soci::into(TxResult));
+		st.execute(); 
+		if (st.fetch())
+		{
+			ret[jss::ledger_index] = *LedgerSeq;
+			ret[jss::transaction_result] = *TxResult;
+			ret[jss::tx_status] = "validated";
+		}
+		else if(nullptr != context.app.getMasterTransaction().fetch(txHash,false))
+		{
+			ret[jss::tx_status] = "pending";
+		}
+		else
+		{
+			ret[jss::tx_status] = "not_found";
+		}
+	}
+	return ret;
+}
+
 Json::Value doTxCount(RPC::Context& context)
 {
 	Json::Value ret(Json::objectValue);

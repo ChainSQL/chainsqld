@@ -149,6 +149,7 @@ Handler handlerArray[] {
     {   "transaction_entry",    byRef (&doTransactionEntry),   Role::USER,  NO_CONDITION  },
     {   "tx",                   byRef (&doTx),                 Role::USER,  NEEDS_NETWORK_CONNECTION  },
     {   "tx_history",           byRef (&doTxHistory),          Role::USER,  NO_CONDITION  },
+    {   "tx_result",            byRef (&doTxResult),           Role::USER,  NO_CONDITION  },
     {   "unl_list",             byRef (&doUnlList),            Role::USER,  NO_CONDITION  },
     {   "validation_create",    byRef (&doValidationCreate),   Role::ADMIN, NO_CONDITION  },
     {   "validation_seed",      byRef (&doValidationSeed),     Role::ADMIN, NO_CONDITION  },

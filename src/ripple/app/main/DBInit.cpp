@@ -44,6 +44,7 @@ const char* TxnDBInit[] =
         FromSeq     BIGINT UNSIGNED,            \
         LedgerSeq   BIGINT UNSIGNED,            \
         Status      CHARACTER(1),               \
+        TxResult    CHARACTER(20),              \
         RawTxn      BLOB,                       \
         TxnMeta     BLOB                        \
     );",
