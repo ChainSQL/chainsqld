@@ -1067,12 +1067,13 @@ saveValidatedLedger(
                 JLOG(j.warn())
                     << acceptedLedgerTx->getTxn()->getJson(JsonOptions::none);
             }
+			std::string token, human;
+            transResultInfo(acceptedLedgerTx->getResult(), token, human);
 
-            *db
-                << (STTx::getMetaSQLInsertReplaceHeader() +
-                    acceptedLedgerTx->getTxn()->getMetaSQL(
-                        seq, acceptedLedgerTx->getEscMeta()) +
-                    ";");
+            *db <<
+               (STTx::getMetaSQLInsertReplaceHeader () +
+                acceptedLedgerTx->getTxn ()->getMetaSQL (
+                    seq, acceptedLedgerTx->getEscMeta (),token) + ";");
 
             storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
 			iTxSeq++;
