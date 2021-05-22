@@ -914,6 +914,7 @@ Json::Value doTxResult(RPC::Context& context)
 	sql.append("';");
 
 	Json::Value ret(Json::objectValue);
+	ret[jss::tx_hash] = txid;
 	boost::optional<std::uint32_t> LedgerSeq;
 	boost::optional<std::string> TxResult;
 	{
