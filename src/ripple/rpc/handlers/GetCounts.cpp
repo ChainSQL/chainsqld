@@ -86,7 +86,8 @@ Json::Value doGetCounts (RPC::Context& context)
     if (dbKB > 0)
         ret[jss::dbKBLedger] = dbKB;
 
-    dbKB = getKBUsedDB (context.app.getTxnDB ().getSession ());
+    if (app.config().useTxTables())
+        dbKB = getKBUsedDB (context.app.getTxnDB ().getSession ());
 
     if (dbKB > 0)
         ret[jss::dbKBTransaction] = dbKB;

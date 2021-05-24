@@ -82,6 +82,7 @@ namespace ripple {
 #define SECTION_PCONSENSUS              "pconsensus"
 
 #define SECTION_PATH_X509               "x509_crt_path"
+#define LEDGER_TXS_TABLES               "ledger_tx_tables"
 
 } // ripple
 

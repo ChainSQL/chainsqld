@@ -39,6 +39,8 @@ namespace ripple {
 // }
 Json::Value doTxHistory (RPC::Context& context)
 {
+	if (!context.app.config().useTxTables())
+		return rpcError(rpcNOT_ENABLED);
     context.loadType = Resource::feeMediumBurdenRPC;
 
     if (!context.params.isMember (jss::start))

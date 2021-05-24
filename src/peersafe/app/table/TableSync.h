@@ -83,7 +83,6 @@ public:
 
     void SetHaveSyncFlag(bool haveSync);
 
-	std::vector <uint256> getTxsFromDb(uint32 TxnLgrSeq, std::string sAccountID);
 	//press test table name
 	std::string GetPressTableName();
 	bool IsPressSwitchOn();

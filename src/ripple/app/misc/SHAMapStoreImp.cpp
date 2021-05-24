@@ -300,6 +300,9 @@ SHAMapStoreImp::run()
     transactionDb_ = &app_.getTxnDB();
     ledgerDb_ = &app_.getLedgerDB();
 
+	if (app_.config().useTxTables())
+		transactionDb_ = &app_.getTxnDB();
+
     if (setup_.advisoryDelete)
         canDelete_ = state_db_.getCanDelete ();
 
@@ -719,6 +722,8 @@ SHAMapStoreImp::clearPrior (LedgerIndex lastRotated)
     if (health())
         return;
 
+	if (!app_.config().useTxTables())
+		return;
     clearSql (*transactionDb_, lastRotated,
         "SELECT MIN(LedgerSeq) FROM Transactions;",
         "DELETE FROM Transactions WHERE LedgerSeq < %u;");

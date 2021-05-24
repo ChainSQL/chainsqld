@@ -203,6 +203,9 @@ namespace ripple {
 
 Json::Value doTx (RPC::Context& context)
 {
+	if (!context.app.config().useTxTables())
+		return rpcError(rpcNOT_ENABLED);
+
     if (!context.params.isMember (jss::transaction))
         return rpcError (rpcINVALID_PARAMS);
 
@@ -281,6 +284,9 @@ Json::Value doTx (RPC::Context& context)
 
 Json::Value doTxResult(RPC::Context& context)
 {
+	if (!context.app.config().useTxTables())
+		return rpcError(rpcNOT_ENABLED);
+
 	if (!context.params.isMember(jss::transaction))
 		return rpcError(rpcINVALID_PARAMS);
 
@@ -325,6 +331,9 @@ Json::Value doTxResult(RPC::Context& context)
 
 Json::Value doTxCount(RPC::Context& context)
 {
+	if (!context.app.config().useTxTables())
+		return rpcError(rpcNOT_ENABLED);
+
 	Json::Value ret(Json::objectValue);
 	ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
 	ret["all"] = context.app.getMasterTransaction().getTxCount(false);

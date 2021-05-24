@@ -46,6 +46,9 @@ namespace ripple {
 // }
 Json::Value doAccountTx (RPC::Context& context)
 {
+	if (!context.app.config().useTxTables())
+		return rpcError(rpcNOT_ENABLED);
+
     auto& params = context.params;
 
     int limit = params.isMember (jss::limit) ?

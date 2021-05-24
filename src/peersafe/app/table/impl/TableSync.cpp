@@ -102,35 +102,6 @@ void TableSync::GetTxRecordInfo(LedgerIndex iCurSeq, AccountID accountID, std::s
     hash = iter->getFieldH256(sfTxnLedgerHash);
 }
 
-std::vector <uint256> TableSync::getTxsFromDb(uint32 TxnLgrSeq, std::string /*sAccountID*/)
-{
-    std::vector <uint256> txs;
-
-    static std::string const prefix(
-        R"(select TransID from Transactions WHERE )");
-
-    std::string sql = boost::str(boost::format(
-        prefix +
-        (R"(LedgerSeq = '%d' and (TransType = 'SQLStatement' or TransType = 'TableListSet' or TransType = 'SQLTransaction');)"))
-        % TxnLgrSeq);
-
-    std::string stxnHash;
-    {
-        auto db = app_.getTxnDB().checkoutDb();
-
-        soci::statement st = (db->prepare << sql,
-            soci::into(stxnHash));
-  
-        st.execute();
-
-        while (st.fetch())
-        {
-            txs.push_back(from_hex_text<uint256>(stxnHash));
-        }
-    }
-    return txs;
-}
-
 bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash,std::string sNameInDB, protocol::TMTableData &m)
 {
 	m.set_tablename(sNameInDB);

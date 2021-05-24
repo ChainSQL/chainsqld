@@ -178,6 +178,7 @@ public:
     std::string                 SSL_VERIFY_DIR;
 
 
+	bool                        USE_TX_TABLES = true;
     // Thread pool configuration
     std::size_t                 WORKERS = 0;
 
@@ -186,7 +187,6 @@ public:
     boost::optional<std::uint16_t> rpc_port;
 
     std::unordered_set<uint256, beast::uhash<>> features;
-
 public:
     Config() = default;
 
@@ -208,6 +208,10 @@ public:
     bool quiet() const { return QUIET; }
     bool silent() const { return SILENT; }
     bool standalone() const { return RUN_STANDALONE; }
+	bool useTxTables() const
+	{
+		return USE_TX_TABLES;
+	}
 };
 
 } // ripple
