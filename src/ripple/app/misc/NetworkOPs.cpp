@@ -2946,7 +2946,7 @@ NetworkOPsImp::getAccountTxs(
                 txnMeta.clear();
 
             auto txn = Transaction::transactionFromSQL(
-                ledgerSeq, status, rawTxn, app_);
+                ledgerSeq, status, rawTxn, txnMeta, app_);
 
             if (txnMeta.empty())
             {  // Work around a bug that could leave the metadata missing
@@ -3059,20 +3059,41 @@ NetworkOPsImp::getTxsAccount(
         convertBlobsToTxResult(ret, ledger_index, status, rawTxn, rawMeta, app);
     };
 
-    accountTxPage(
-        app_,
-        app_.getTxnDB(),
-        app_.accountIDCache(),
-        std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
-        bound,
-        account,
-        minLedger,
-        maxLedger,
-        forward,
-        marker,
-        limit,
-        bUnlimited,
-        page_length);
+    if (app_.config().SAVE_TX_RAW)
+    {
+        accountTxPageSQL(
+            app_,
+            app_.getTxnDB(),
+            app_.accountIDCache(),
+            std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
+            bound,
+            account,
+            minLedger,
+            maxLedger,
+            forward,
+            marker,
+            limit,
+            bUnlimited,
+            page_length);
+    }
+    else
+    {
+        accountTxPage(
+            app_,
+            app_.getTxnDB(),
+            app_.accountIDCache(),
+            std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
+            bound,
+            account,
+            minLedger,
+            maxLedger,
+            forward,
+            marker,
+            limit,
+            bUnlimited,
+            page_length);
+    }
+    
 
     return ret;
 }
@@ -3099,20 +3120,41 @@ NetworkOPsImp::getTxsAccountB(
         ret.emplace_back(strHex(rawTxn), strHex(rawMeta), ledgerIndex);
     };
 
-    accountTxPage(
-        app_,
-        app_.getTxnDB(),
-        app_.accountIDCache(),
-        std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
-        bound,
-        account,
-        minLedger,
-        maxLedger,
-        forward,
-        marker,
-        limit,
-        bUnlimited,
-        page_length);
+    if (app_.config().SAVE_TX_RAW)
+    {
+        accountTxPageSQL(
+            app_,
+            app_.getTxnDB(),
+            app_.accountIDCache(),
+            std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
+            bound,
+            account,
+            minLedger,
+            maxLedger,
+            forward,
+            marker,
+            limit,
+            bUnlimited,
+            page_length);
+    }
+    else
+    {
+        accountTxPage(
+            app_,
+            app_.getTxnDB(),
+            app_.accountIDCache(),
+            std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
+            bound,
+            account,
+            minLedger,
+            maxLedger,
+            forward,
+            marker,
+            limit,
+            bUnlimited,
+            page_length);
+    }
+
     return ret;
 }
 

@@ -142,7 +142,7 @@ Handler const handlerArray[]{
     {"stop", byRef(&doStop), Role::ADMIN, NO_CONDITION},
     {"transaction_entry", byRef(&doTransactionEntry), Role::USER, NO_CONDITION},
     {"tx", byRef(&doTxJson), Role::USER, NEEDS_NETWORK_CONNECTION},
-    {"tx_result",byRef (&doTxResult)),Role::USER, NO_CONDITION},
+    {"tx_result",byRef(&doTxResult), Role::USER, NO_CONDITION},
     {"tx_merkel_proof", byRef(&doTxMerkelProof), Role::USER, NEEDS_NETWORK_CONNECTION},
     {"tx_merkel_verify", byRef(&doTxMerkelVerify), Role::USER, NO_CONDITION},
     {"tx_history", byRef(&doTxHistory), Role::USER, NO_CONDITION},

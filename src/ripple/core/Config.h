@@ -118,7 +118,6 @@ private:
     */
     bool signingEnabled_ = false;
 
-    bool USE_TX_TABLES = true;
 public:
     bool doImport = false;
     bool nodeToShard = false;
@@ -206,6 +205,8 @@ public:
     // Amendment majority time
     std::chrono::seconds AMENDMENT_MAJORITY_TIME = defaultAmendmentMajorityTime;
 
+	bool                        USE_TX_TABLES = true;
+	bool                        SAVE_TX_RAW = false;
     // Thread pool configuration
     std::size_t WORKERS = 0;
 

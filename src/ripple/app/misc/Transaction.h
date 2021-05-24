@@ -77,6 +77,7 @@ public:
         boost::optional<std::uint64_t> const& ledgerSeq,
         boost::optional<std::string> const& status,
         Blob const& rawTxn,
+        Blob const& txnMeta,
         Schema& schema);
 
     static
@@ -85,6 +86,7 @@ public:
         boost::optional<std::uint64_t> const& ledgerSeq,
         boost::optional<std::string> const& status,
         Blob const& rawTxn,
+        Blob const& txnMeta,
         Schema& app);
 
     static
@@ -104,8 +106,8 @@ public:
         Schema& app);
 
     static
-    TransStatus
-    sqlTransactionStatus(boost::optional<std::string> const& status);
+        TransStatus
+        sqlTransactionStatus(boost::optional<std::string> const& status);
 
     std::shared_ptr<STTx const> const&
     getSTransaction()
@@ -113,12 +115,12 @@ public:
         return mTransaction;
     }
 
-	std::shared_ptr<STTx const> const& getSTransaction() const
-	{
-		return mTransaction;
-	}
+    std::shared_ptr<STTx const> const& getSTransaction() const
+    {
+        return mTransaction;
+    }
 
-    uint256 const& getID () const
+    uint256 const& getID() const
     {
         return mTransactionID;
     }
@@ -135,12 +137,12 @@ public:
         return mStatus;
     }
 
-    STer getResult ()
+    STer getResult()
     {
         return mResult;
     }
 
-    void setResult (STer terResult)
+    void setResult(STer terResult)
     {
         mResult = terResult;
     }
@@ -167,6 +169,16 @@ public:
     setApplying()
     {
         mApplying = true;
+    }
+
+    void setMeta(Blob const& metaTxn)
+    {
+        mMetaTxn = std::move(metaTxn);
+    }
+
+    Blob& getMeta()
+    {
+        return mMetaTxn;
     }
 
     /**
@@ -357,6 +369,7 @@ private:
     boost::optional<CurrentLedgerState> currentLedgerState_;
 
     std::shared_ptr<STTx const> mTransaction;
+    Blob            mMetaTxn;
     Schema& mApp;
     beast::Journal j_;
 };

@@ -1016,6 +1016,13 @@ saveValidatedLedger(
             uint256 transactionID = acceptedLedgerTx->getTransactionID();
 
             app.getMasterTransaction().inLedger(transactionID, seq);
+            auto transaction =
+                app.getMasterTransaction().fetch_from_cache(transactionID);
+            if (transaction)
+            {
+                Blob metaBlob = acceptedLedgerTx->getMetaBlob();
+                transaction->setMeta(metaBlob);
+            }
 
             std::string const txnId(to_string(transactionID));
             std::string const txnSeq(
@@ -1073,7 +1080,8 @@ saveValidatedLedger(
             *db <<
                (STTx::getMetaSQLInsertReplaceHeader () +
                 acceptedLedgerTx->getTxn ()->getMetaSQL (
-                    seq, acceptedLedgerTx->getEscMeta (),token) + ";");
+                    seq, acceptedLedgerTx->getEscMeta (),token,
+                    app.config().SAVE_TX_RAW) + ";");
 
             storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
 			iTxSeq++;
@@ -1486,7 +1494,7 @@ storePeersafeSql(
         while (itN != txsNoRepeat.end())
         {
             auto& tablesN = (*itN).getFieldArray(sfTables);
-            if (tablesN.size() <= 0)
+            if (tablesN.size() <= 0)  
                 break;
             auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
 

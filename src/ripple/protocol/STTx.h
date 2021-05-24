@@ -229,7 +229,8 @@ public:
     getMetaSQLInsertReplaceHeader();
 
     std::string getMetaSQL (
-        std::uint32_t inLedger, std::string const& escapedMetaData,std::string resultToken) const;
+        std::uint32_t inLedger, std::string const& escapedMetaData,
+        std::string resultToken = "tesSUCCESS", bool bSaveRaw = false) const;
 
     std::string
     getMetaSQL(
@@ -237,7 +238,8 @@ public:
         std::uint32_t inLedger,
         char status,
         std::string const& escapedMetaData,
-        std::string resultToken) const;
+        std::string resultToken,
+        bool bSaveRaw) const;
 
     void
     setParentTxID(const uint256& tidParent)

@@ -328,12 +328,20 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
         }
         else
         {
-            auto rawMeta = ledger->txRead(txn->getID()).second;
-            if (rawMeta)
+            if (!context.app.config().SAVE_TX_RAW)
             {
+                auto rawMeta = ledger->txRead(txn->getID()).second;
+                if (rawMeta) {
+                    result.meta = std::make_shared<TxMeta>(
+                        txn->getID(), ledger->seq(), *rawMeta);
+                    ok = true;
+                }
+            }
+            else
+            {
+                result.meta = std::make_shared<TxMeta>(txn->getID(),
+                    ledger->seq(), txn->getMeta(), context.app.journal("TxMeta"));
                 ok = true;
-                result.meta = std::make_shared<TxMeta>(
-                    txn->getID(), ledger->seq(), *rawMeta);
             }
         }
         if (ok)
@@ -898,7 +906,7 @@ doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
     return populateProtoResponse(res, args, context);
 }
 
-Json::Value doTxResult(RPC::Context& context)
+Json::Value doTxResult(RPC::JsonContext& context)
 {
 	if (!context.params.isMember(jss::transaction))
 		return rpcError(rpcINVALID_PARAMS);
@@ -930,7 +938,7 @@ Json::Value doTxResult(RPC::Context& context)
 			ret[jss::transaction_result] = *TxResult;
 			ret[jss::tx_status] = "validated";
 		}
-		else if(nullptr != context.app.getMasterTransaction().fetch(txHash,false))
+		else if(nullptr != context.app.getMasterTransaction().fetch_from_cache(txHash))
 		{
 			ret[jss::tx_status] = "pending";
 		}

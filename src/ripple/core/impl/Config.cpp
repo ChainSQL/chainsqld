@@ -929,26 +929,9 @@ Config::loadFromString(std::string const& fileContents)
         }
     }
 
-    // This doesn't properly belong here, but check to make sure that the
-    // value specified for network_quorum is achievable:
-    {
-        auto pm = PEERS_MAX;
-
-        // FIXME this apparently magic value is actually defined as a constant
-        //       elsewhere (see defaultMaxPeers) but we handle this check here.
-        if (pm == 0)
-            pm = 21;
-
-        if (NETWORK_QUORUM > pm)
-        {
-            Throw<std::runtime_error>(
-                "The minimum number of required peers (network_quorum) exceeds "
-                "the maximum number of allowed peers (peers_max)");
-        }
-    }
-
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
     get_if_exists(ledgerTxTablesSection, "use_tx_tables", USE_TX_TABLES);
+    get_if_exists(ledgerTxTablesSection, "save_tx_binary", SAVE_TX_RAW);
 
     get_if_exists(section("consensus"), "batch_broadcast", BATCH_BROADCAST);
 }

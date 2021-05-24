@@ -59,6 +59,24 @@ accountTxPage(
     int limit,
     bool bAdmin,
     std::uint32_t page_length);
+
+void
+accountTxPageSQL(
+    Schema& app,
+    DatabaseCon& connection,
+    AccountIDCache const& idCache,
+    std::function<void(std::uint32_t)> const& onUnsavedLedger,
+    std::function<
+        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        onTransaction,
+    AccountID const& account,
+    std::int32_t minLedger,
+    std::int32_t maxLedger,
+    bool forward,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
+    int limit,
+    bool bAdmin,
+    std::uint32_t page_length);
 }  // namespace ripple
 
 #endif

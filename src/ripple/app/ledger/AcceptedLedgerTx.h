@@ -122,6 +122,11 @@ public:
     {
         return mJson;
     }
+    Blob&
+    getMetaBlob()
+    {
+        return mRawMeta;
+    }
 
 private:
     std::shared_ptr<ReadView const> mLedger;

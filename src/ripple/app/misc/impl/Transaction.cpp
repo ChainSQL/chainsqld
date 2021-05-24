@@ -92,6 +92,7 @@ Transaction::transactionFromSQL(
     boost::optional<std::uint64_t> const& ledgerSeq,
     boost::optional<std::string> const& status,
     Blob const& rawTxn,
+    Blob const& txnMeta,
 	Schema& app)
 {
     std::uint32_t const inLedger =
@@ -100,10 +101,12 @@ Transaction::transactionFromSQL(
     SerialIter it(makeSlice(rawTxn));
     auto txn = std::make_shared<STTx const>(it);
     std::string reason;
-    auto tr = std::make_shared<Transaction>(txn, reason, app);
-
-    tr->setStatus(sqlTransactionStatus(status));
-    tr->setLedger(inLedger);
+    auto tr = std::make_shared<Transaction> (
+        txn, reason, app);
+    tr->setMeta(txnMeta);
+    
+    tr->setStatus (sqlTransactionStatus (status));
+    tr->setLedger (inLedger);
     return tr;
 }
 
@@ -111,9 +114,10 @@ Transaction::pointer Transaction::transactionFromSQLValidated(
     boost::optional<std::uint64_t> const& ledgerSeq,
     boost::optional<std::string> const& status,
     Blob const& rawTxn,
+    Blob const& txnMeta,
     Schema& app)
 {
-    auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, app);
+    auto ret = transactionFromSQL(ledgerSeq, status, rawTxn, txnMeta, app);
 
 	auto retPair = checkValidity(app, app.getHashRouter(),
 		*ret->getSTransaction(), app.
@@ -213,16 +217,56 @@ Transaction::load(
 
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
+    if (app.config().SAVE_TX_RAW)
     {
-        auto db = app.getTxnDB ().checkoutDb ();
+		std::string sql = "SELECT LedgerSeq,Status,RawTxn,TxnMeta "
+			"FROM Transactions WHERE TransID='";
+		sql.append(to_string(id));
+		sql.append("';");
 
-        *db << sql, soci::into (ledgerSeq), soci::into (status);
-        if (!db->got_data ())
-            return {};
+		boost::optional<std::uint64_t> ledgerSeq;
+		boost::optional<std::string> status;
+		Blob rawTxn;
+        Blob txnMeta;
+		{
+			auto db = app.getTxnDB().checkoutDb();
+			soci::blob sociRawTxnBlob(*db);
+            soci::blob sociTxnMetaBlob(*db);
+			soci::indicator rti;
+            soci::indicator mti;
+
+			*db << sql, soci::into(ledgerSeq), soci::into(status),
+				soci::into(sociRawTxnBlob, rti),soci::into(sociTxnMetaBlob, mti);
+			if (!db->got_data() || rti != soci::i_ok)
+				return {};
+
+			convert(sociRawTxnBlob, rawTxn);
+            convert(sociTxnMetaBlob, txnMeta);
+		}
+
+		return Transaction::transactionFromSQLValidated(
+			ledgerSeq, status, rawTxn,txnMeta, app);
     }
+    else
+    {
+		std::string sql = "SELECT LedgerSeq,Status "
+			"FROM Transactions WHERE TransID='";
+		sql.append(to_string(id));
+		sql.append("';");
 
-    return Transaction::transactionFromSHAMapValidated(
-        ledgerSeq, status, id, app);
+		boost::optional<std::uint64_t> ledgerSeq;
+		boost::optional<std::string> status;
+		{
+			auto db = app.getTxnDB().checkoutDb();
+
+			*db << sql, soci::into(ledgerSeq), soci::into(status);
+			if (!db->got_data())
+				return {};
+		}
+
+		return Transaction::transactionFromSHAMapValidated(
+			ledgerSeq, status, id, app);
+    }    
 }
 
 // options 1 to include the date of the transaction

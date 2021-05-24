@@ -84,8 +84,8 @@ getCountsJson(Schema& app, int minObjectCount)
     if (dbKB > 0)
         ret[jss::dbKBLedger] = dbKB;
 
-    if(app.config().useTxTables())
-        dbKB = getKBUsedDB(app.getTxnDB().getSession());
+    if (app.config().useTxTables())
+        dbKB = getKBUsedDB (app.getTxnDB ().getSession ());
 
     if (dbKB > 0)
         ret[jss::dbKBTransaction] = dbKB;
