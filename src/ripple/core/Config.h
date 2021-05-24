@@ -179,6 +179,7 @@ public:
 
 
 	bool                        USE_TX_TABLES = true;
+	bool                        SAVE_TX_RAW = false;
     // Thread pool configuration
     std::size_t                 WORKERS = 0;
 

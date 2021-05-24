@@ -191,14 +191,15 @@ public:
     getMetaSQLInsertReplaceHeader ();
 
     std::string getMetaSQL (
-        std::uint32_t inLedger, std::string const& escapedMetaData,std::string resultToken) const;
+        std::uint32_t inLedger, std::string const& escapedMetaData,std::string resultToken, bool bSaveRaw) const;
 
     std::string getMetaSQL (
         Serializer rawTxn,
         std::uint32_t inLedger,
         char status,
         std::string const& escapedMetaData,
-        std::string resultToken) const;
+        std::string resultToken,
+        bool bSaveRaw) const;
 
     void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
 	uint256 getParentTxID() const { return tidParent_;  }

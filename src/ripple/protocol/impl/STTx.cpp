@@ -558,11 +558,13 @@ STTx::getMetaSQLInsertReplaceHeader ()
 
 std::string STTx::getMetaSQL (std::uint32_t inLedger,
                               std::string const& escapedMetaData,
-                              std::string resultToken) const
+                              std::string resultToken,
+                              bool bSaveRaw) const
 {
     Serializer s;
-    //add (s);
-    return getMetaSQL (s, inLedger, TXN_SQL_VALIDATED, escapedMetaData,resultToken);
+    if(bSaveRaw)
+        add (s);
+    return getMetaSQL (s, inLedger, TXN_SQL_VALIDATED, escapedMetaData,resultToken,bSaveRaw);
 }
 
 // VFALCO This could be a free function elsewhere
@@ -571,18 +573,29 @@ STTx::getMetaSQL (Serializer rawTxn,
                     std::uint32_t inLedger, 
                     char status, 
                     std::string const& escapedMetaData,
-                    std::string resultToken) const
+	                std::string resultToken,
+	                bool bSaveRaw) const
 {
-    static boost::format bfTrans ("('%s', '%s', '%s', '%d', '%d', '%c','%s', '%s', '%s')");
-    //std::string rTxn = sqlEscape (rawTxn.peekData ());
-
     auto format = TxFormats::getInstance().findByType (tx_type_);
     assert (format != nullptr);
 
-    return str (boost::format (bfTrans)
-                % to_string (getTransactionID ()) % format->getName ()
-                % toBase58(getAccountID(sfAccount))
-                % getSequence () % inLedger % status % resultToken % "" % "");
+    if (bSaveRaw)
+    {
+        static boost::format bfTrans("('%s', '%s', '%s', '%d', '%d', '%c','%s', %s, %s)");
+        std::string rTxn = sqlEscape(rawTxn.peekData());
+		return str(boost::format(bfTrans)
+			% to_string(getTransactionID()) % format->getName()
+			% toBase58(getAccountID(sfAccount))
+			% getSequence() % inLedger % status % resultToken % rTxn % escapedMetaData);
+    }
+    else
+    {
+        static boost::format bfTrans("('%s', '%s', '%s', '%d', '%d', '%c','%s', '%s', '%s')");
+		return str(boost::format(bfTrans)
+			% to_string(getTransactionID()) % format->getName()
+			% toBase58(getAccountID(sfAccount))
+			% getSequence() % inLedger % status % resultToken % "" % "");
+    }
 }
 
 std::pair<bool, std::string> STTx::checkSingleSign () const

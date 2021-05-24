@@ -974,10 +974,11 @@ static bool saveValidatedLedger (
 			std::string token, human;
             transResultInfo(vt.second->getResult(), token, human);
 
-            *db <<
-               (STTx::getMetaSQLInsertReplaceHeader () +
-                vt.second->getTxn ()->getMetaSQL (
-                    seq, vt.second->getEscMeta (),token) + ";");
+			*db <<
+				(STTx::getMetaSQLInsertReplaceHeader() +
+					vt.second->getTxn()->getMetaSQL(
+						seq, vt.second->getEscMeta(), token,
+						app.config().SAVE_TX_RAW) + ";");
                         
             storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
 
@@ -1416,17 +1417,21 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
         while (itN != txsNoRepeat.end())
         {
             auto& tablesN = (*itN).getFieldArray(sfTables);
-            if (tablesN.size() <= 0)  break;
+            if (tablesN.size() <= 0)  
+                break;
             auto uDBNameN = tablesN[0].getFieldH160(sfNameInDB);
 
             auto& tablesA = (*itA).getFieldArray(sfTables);
-            if (tablesA.size() <= 0)  break;
+            if (tablesA.size() <= 0)  
+                break;
             auto uDBNameA = tablesA[0].getFieldH160(sfNameInDB);
 
-            if (uDBNameA == uDBNameN)  break;
+            if (uDBNameA == uDBNameN)  
+                break;
             itN++;
         }
-        if (itN == txsNoRepeat.end())  txsNoRepeat.push_back(std::move(*itA));
+        if (itN == txsNoRepeat.end())  
+            txsNoRepeat.push_back(std::move(*itA));
     }
 
 
@@ -1444,7 +1449,8 @@ bool storePeersafeSql(LockedSociSession &db, std::shared_ptr<const ripple::STTx>
             ownerID = tx.getAccountID(sfAccount);
         }
         auto& tables = tx.getFieldArray(sfTables);
-        if (tables.size() <= 0)  continue;
+        if (tables.size() <= 0)  
+            continue;
         uDBName = tables[0].getFieldH160(sfNameInDB);
 
 		auto format2 = TxFormats::getInstance().findByType(tx.getTxnType());

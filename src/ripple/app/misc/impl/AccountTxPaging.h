@@ -62,6 +62,25 @@ accountTxPage (
     bool bAdmin,
     std::uint32_t pageLength);
 
+void
+accountTxPageSQL(
+	Application& app,
+	DatabaseCon& database,
+	AccountIDCache const& idCache,
+	std::function<void(std::uint32_t)> const& onUnsavedLedger,
+	std::function<void(std::uint32_t,
+		std::string const&,
+		Blob const&,
+		Blob const&)> const&,
+	AccountID const& account,
+	std::int32_t minLedger,
+	std::int32_t maxLedger,
+	bool forward,
+	Json::Value& token,
+	int limit,
+	bool bAdmin,
+	std::uint32_t pageLength);
+
 }
 
 #endif

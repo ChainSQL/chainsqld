@@ -598,6 +598,7 @@ void Config::loadFromString (std::string const& fileContents)
 
 	Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
 	get_if_exists(ledgerTxTablesSection, "use_tx_tables", USE_TX_TABLES);
+    get_if_exists(ledgerTxTablesSection, "save_tx_binary", SAVE_TX_RAW);
 }
 
 int Config::getSize (SizedItemName item) const

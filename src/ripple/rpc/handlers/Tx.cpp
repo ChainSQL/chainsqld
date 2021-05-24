@@ -252,32 +252,44 @@ Json::Value doTx (RPC::Context& context)
 		doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
 	}
 
-	auto rawMeta = lgr->txRead(txn->getID()).second;
-	if (!rawMeta) {
-		return ret;
-	}
-
-	auto txMeta = std::make_shared<TxMeta>(txn->getID(),
-		lgr->seq(), *rawMeta, context.app.journal("TxMeta"));
-
-	ret[jss::transaction_result] = transToken(txMeta->getResultTER());
-
-	if (!metaData) {
-		return ret;
-	}
-
-	if (binary) {
-
-		std::string meta;
-		if (getMetaHex(*lgr, txn->getID(), meta)){
-			ret[jss::meta] = meta;
+	std::shared_ptr<TxMeta> txMeta = nullptr;
+	if (!context.app.config().SAVE_TX_RAW)
+	{
+		auto rawMeta = lgr->txRead(txn->getID()).second;
+		if (!rawMeta) {
+			return ret;
 		}
-		return ret;
-	}
 
-	auto meta = txMeta->getJson(0);
-	addPaymentDeliveredAmount(meta, context, txn, txMeta);
-	ret[jss::meta] = meta;
+		txMeta = std::make_shared<TxMeta>(txn->getID(),
+			lgr->seq(), *rawMeta, context.app.journal("TxMeta"));
+	}
+	else
+	{
+		txMeta = std::make_shared<TxMeta>(txn->getID(),
+			lgr->seq(), txn->getMeta(), context.app.journal("TxMeta"));
+	}
+	if(txMeta != nullptr)
+	{
+		ret[jss::transaction_result] = transToken(txMeta->getResultTER());
+
+		if (!metaData) {
+			return ret;
+		}
+
+		if (binary) {
+
+			std::string meta;
+			if (getMetaHex(*lgr, txn->getID(), meta)) {
+				ret[jss::meta] = meta;
+			}
+			return ret;
+		}
+
+		auto meta = txMeta->getJson(0);
+		addPaymentDeliveredAmount(meta, context, txn, txMeta);
+		ret[jss::meta] = meta;
+	}
+	
         
     return ret;
 }

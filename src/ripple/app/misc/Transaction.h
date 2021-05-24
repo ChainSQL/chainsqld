@@ -57,94 +57,96 @@ class Transaction
     , public CountedObject <Transaction>
 {
 public:
-    static char const* getCountedObjectName () { return "Transaction"; }
+    static char const* getCountedObjectName() { return "Transaction"; }
 
     using pointer = std::shared_ptr<Transaction>;
     using ref = const pointer&;
 
 public:
-    Transaction (
+    Transaction(
         std::shared_ptr<STTx const> const&, std::string&, Application&) noexcept;
 
     static
-    Transaction::pointer
-    transactionFromSQL (
-        boost::optional<std::uint64_t> const& ledgerSeq,
-        boost::optional<std::string> const& status,
-        Blob const& rawTxn,
-        Application& app);
+        Transaction::pointer
+        transactionFromSQL(
+            boost::optional<std::uint64_t> const& ledgerSeq,
+            boost::optional<std::string> const& status,
+            Blob const& rawTxn,
+            Blob const& txnMeta,
+            Application& app);
 
     static
-    Transaction::pointer
-    transactionFromSQLValidated (
-        boost::optional<std::uint64_t> const& ledgerSeq,
-        boost::optional<std::string> const& status,
-        Blob const& rawTxn,
-        Application& app);
+        Transaction::pointer
+        transactionFromSQLValidated(
+            boost::optional<std::uint64_t> const& ledgerSeq,
+            boost::optional<std::string> const& status,
+            Blob const& rawTxn,
+            Blob const& txnMeta,
+            Application& app);
 
     static
-    Transaction::pointer
-    transactionFromSHAMap(
-        boost::optional<std::uint64_t> const& ledgerSeq,
-        boost::optional<std::string> const& status,
-        uint256 const& transID,
-        Application& app);
+        Transaction::pointer
+        transactionFromSHAMap(
+            boost::optional<std::uint64_t> const& ledgerSeq,
+            boost::optional<std::string> const& status,
+            uint256 const& transID,
+            Application& app);
 
     static
-    Transaction::pointer
-    transactionFromSHAMapValidated(
-        boost::optional<std::uint64_t> const& ledgerSeq,
-        boost::optional<std::string> const& status,
-        uint256 const& transID,
-        Application& app);
+        Transaction::pointer
+        transactionFromSHAMapValidated(
+            boost::optional<std::uint64_t> const& ledgerSeq,
+            boost::optional<std::string> const& status,
+            uint256 const& transID,
+            Application& app);
 
     static
-    TransStatus
-    sqlTransactionStatus(boost::optional<std::string> const& status);
+        TransStatus
+        sqlTransactionStatus(boost::optional<std::string> const& status);
 
-    std::shared_ptr<STTx const> const& getSTransaction ()
+    std::shared_ptr<STTx const> const& getSTransaction()
     {
         return mTransaction;
     }
 
-	std::shared_ptr<STTx const> const& getSTransaction() const
-	{
-		return mTransaction;
-	}
+    std::shared_ptr<STTx const> const& getSTransaction() const
+    {
+        return mTransaction;
+    }
 
-    uint256 const& getID () const
+    uint256 const& getID() const
     {
         return mTransactionID;
     }
 
-    LedgerIndex getLedger () const
+    LedgerIndex getLedger() const
     {
         return mInLedger;
     }
 
-    TransStatus getStatus () const
+    TransStatus getStatus() const
     {
         return mStatus;
     }
 
-    STer getResult ()
+    STer getResult()
     {
         return mResult;
     }
 
-    void setResult (STer terResult)
+    void setResult(STer terResult)
     {
         mResult = terResult;
     }
 
-    void setStatus (TransStatus status, std::uint32_t ledgerSeq);
+    void setStatus(TransStatus status, std::uint32_t ledgerSeq);
 
-    void setStatus (TransStatus status)
+    void setStatus(TransStatus status)
     {
         mStatus = status;
     }
 
-    void setLedger (LedgerIndex ledger)
+    void setLedger(LedgerIndex ledger)
     {
         mInLedger = ledger;
     }
@@ -155,6 +157,16 @@ public:
     void setApplying()
     {
         mApplying = true;
+    }
+
+    void setMeta(Blob const& metaTxn)
+    {
+        mMetaTxn = std::move(metaTxn);
+    }
+
+    Blob& getMeta()
+    {
+        return mMetaTxn;
     }
 
     /**
@@ -191,6 +203,7 @@ private:
 	uint64_t		mTimeCreate;
 
     std::shared_ptr<STTx const>   mTransaction;
+    Blob            mMetaTxn;
     Application&    mApp;
     beast::Journal  j_;
 };
