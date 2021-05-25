@@ -31,6 +31,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/misc/Transaction.h>
 #include <ripple/basics/contract.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
@@ -918,8 +919,14 @@ static bool saveValidatedLedger (
         {
             uint256 transactionID = vt.second->getTransactionID ();
 
-            app.getMasterTransaction ().inLedger (
+            bool inLedger = app.getMasterTransaction ().inLedger (
                 transactionID, seq);
+            if (inLedger)
+            {
+                auto transaction = app.getMasterTransaction().fetch(transactionID, false);
+				Blob metaBlob = vt.second->getMetaBlob();
+                transaction->setMeta(metaBlob);
+            }
 
             std::string const txnId (to_string (transactionID));
             std::string const txnSeq (std::to_string (vt.second->getTxnSeq ()));
