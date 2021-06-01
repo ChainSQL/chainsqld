@@ -340,7 +340,7 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
             else
             {
                 result.meta = std::make_shared<TxMeta>(txn->getID(),
-                    ledger->seq(), txn->getMeta(), context.app.journal("TxMeta"));
+                    ledger->seq(), txn->getMeta());
                 ok = true;
             }
         }

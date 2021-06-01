@@ -260,22 +260,21 @@ accountTxPage(
 
 void
 accountTxPageSQL(
-    Application& app,
-	DatabaseCon& connection,
-	AccountIDCache const& idCache,
-	std::function<void(std::uint32_t)> const& onUnsavedLedger,
-	std::function<void(std::uint32_t,
-		std::string const&,
-		Blob const&,
-		Blob const&)> const& onTransaction,
-	AccountID const& account,
-	std::int32_t minLedger,
-	std::int32_t maxLedger,
-	bool forward,
-	std::optional<NetworkOPs::AccountTxMarker>& marker,
-	int limit,
-	bool bAdmin,
-	std::uint32_t page_length)
+    Schema& app,
+    DatabaseCon& connection,
+    AccountIDCache const& idCache,
+    std::function<void(std::uint32_t)> const& onUnsavedLedger,
+    std::function<
+        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        onTransaction,
+    AccountID const& account,
+    std::int32_t minLedger,
+    std::int32_t maxLedger,
+    bool forward,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
+    int limit,
+    bool bAdmin,
+    std::uint32_t page_length)
 {
 	bool lookingForMarker = marker.has_value();
 
@@ -438,7 +437,7 @@ accountTxPageSQL(
 					onUnsavedLedger(ledgerSeq.value_or(0));
 
 				onTransaction(rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-					*status, rawData, rawMeta);
+					*status, std::move(rawData), std::move(rawMeta));
 				--numberOfResults;
 			}
 		}

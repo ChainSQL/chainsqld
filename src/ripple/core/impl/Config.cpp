@@ -932,7 +932,12 @@ Config::loadFromString(std::string const& fileContents)
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
     get_if_exists(ledgerTxTablesSection, "use_tx_tables", USE_TX_TABLES);
     get_if_exists(ledgerTxTablesSection, "save_tx_binary", SAVE_TX_RAW);
-
+    if (!USE_TX_TABLES && SAVE_TX_RAW)
+    {
+        Throw<std::runtime_error>(
+            "Cannot configure 'use_tx_tables=0' with 'save_tx_binary=1' in "
+            "config file.");
+    }
     get_if_exists(section("consensus"), "batch_broadcast", BATCH_BROADCAST);
 }
 
