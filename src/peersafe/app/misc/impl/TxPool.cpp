@@ -203,12 +203,17 @@ TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 
     std::unique_lock lock(mutexAvoid_);
 
+    if (app_.getLedgerMaster().getValidLedgerIndex() >= seq)
+    {
+        return;
+    }
+
     for (auto const& item : map)
     {
-        //if (txExists(item.key()))
+        // if (txExists(item.key()))
         //{
-            mAvoidBySeq[seq].insert(item.key());
-            mAvoidByHash.emplace(item.key(), seq);
+        mAvoidBySeq[seq].insert(item.key());
+        mAvoidByHash.emplace(item.key(), seq);
         //}
     }
 }
