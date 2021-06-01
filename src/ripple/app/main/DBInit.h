@@ -91,6 +91,7 @@ inline constexpr std::array<char const*, 11> TxDBInit{
         FromSeq     BIGINT UNSIGNED,                    \
         LedgerSeq   BIGINT UNSIGNED,                    \
         Status      CHARACTER(1),                       \
+        TxResult    CHARACTER(24),                      \
         RawTxn      BLOB,                               \
         TxnMeta     BLOB                                \
     );",
