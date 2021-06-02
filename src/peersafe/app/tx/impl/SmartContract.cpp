@@ -100,8 +100,11 @@ namespace ripple {
 		if (!e.execute())
 		{
 			e.go();
-			if(e.getException() != tesSUCCESS)
+			if (e.getException() != tesSUCCESS)
+			{
+				JLOG(ctx_.journal.warn()) << "SmartContract exception:"<< e.takeOutput().toString();
 				setExtraMsg(e.takeOutput().toString());
+			}				
 			return e.finalize();
 		}			
 		else
