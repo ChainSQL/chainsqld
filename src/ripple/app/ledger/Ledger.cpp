@@ -1077,11 +1077,30 @@ saveValidatedLedger(
 			std::string token, human;
             transResultInfo(acceptedLedgerTx->getResult(), token, human);
 
-            *db <<
-               (STTx::getMetaSQLInsertReplaceHeader () +
-                acceptedLedgerTx->getTxn ()->getMetaSQL (
-                    seq, acceptedLedgerTx->getEscMeta (),token,
-                    app.config().SAVE_TX_RAW) + ";");
+            if (app.getTxnDB().hasTxResult())
+            {
+                *db
+                    << (STTx::getMetaSQLInsertReplaceHeader(true) +
+                        acceptedLedgerTx->getTxn()->getMetaSQL(
+                            seq,
+                            acceptedLedgerTx->getEscMeta(),
+                            token,
+                            app.config().SAVE_TX_RAW,
+                            true) +
+                        ";");
+            }
+            else
+            {
+                *db
+                    << (STTx::getMetaSQLInsertReplaceHeader(false) +
+                        acceptedLedgerTx->getTxn()->getMetaSQL(
+                            seq,
+                            acceptedLedgerTx->getEscMeta(),
+                            token,
+                            app.config().SAVE_TX_RAW,
+                            false) +
+                        ";");
+            }
 
             storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
 			iTxSeq++;

@@ -184,6 +184,18 @@ public:
         return LockedSociSession(session_, lock_);
     }
 
+    void
+    setHasTxResult(bool bSet)
+    {
+        hasTxResult_ = bSet;
+    }
+
+    bool
+    hasTxResult()
+    {
+        return hasTxResult_;
+    }
+
 private:
     void
     setupCheckpointing(JobQueue*, Logs&);
@@ -228,6 +240,7 @@ private:
     // shared_ptr in this class. session_ will never be null.
     std::shared_ptr<soci::session> const session_;
     std::shared_ptr<Checkpointer> checkpointer_;
+    bool hasTxResult_ = false;
 };
 
 // Return the checkpointer from its id. If the checkpointer no longer exists, an

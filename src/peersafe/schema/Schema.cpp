@@ -825,14 +825,36 @@ public:
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
 
+                std::string cid, name, type;
+                std::size_t notnull, dflt_value, pk;
+                soci::indicator ind;
+                {
+                    // Check if Transactions has field "TxResult"
+                    soci::statement st =
+                        (mTxnDB->getSession().prepare
+                             << ("PRAGMA table_info(Transactions);"),
+                         soci::into(cid),
+                         soci::into(name),
+                         soci::into(type),
+                         soci::into(notnull),
+                         soci::into(dflt_value, ind),
+                         soci::into(pk));
+
+                    st.execute();
+                    while (st.fetch())
+                    {
+                        if (name == "TxResult")
+                        {
+                            mTxnDB->setHasTxResult(true);
+                            break;
+                        }
+                    }
+                }
                 if (!setup.standAlone || setup.startUp == Config::LOAD ||
                     setup.startUp == Config::LOAD_FILE ||
                     setup.startUp == Config::REPLAY)
                 {
                     // Check if AccountTransactions has primary key
-                    std::string cid, name, type;
-                    std::size_t notnull, dflt_value, pk;
-                    soci::indicator ind;
                     soci::statement st =
                         (mTxnDB->getSession().prepare
                              << ("PRAGMA table_info(AccountTransactions);"),
@@ -855,6 +877,7 @@ public:
                         }
                     }
                 }
+
             }
 
             // ledger database
