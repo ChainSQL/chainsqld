@@ -948,58 +948,58 @@ public:
                 app_.signalStop();
             }
 
-            if (config_->useTxTables())
-            {
-                DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
-                boost::filesystem::path dbPath = dbSetup.dataDir / TxDBName;
-                boost::system::error_code ec;
-                boost::optional<std::uint64_t> dbSize =
-                    boost::filesystem::file_size(dbPath, ec);
-                if (ec)
-                {
-                    JLOG(m_journal.error())
-                        << "Error checking transaction db file size: "
-                        << ec.message();
-                    dbSize.reset();
-                }
+            //if (config_->useTxTables())
+            //{
+            //    DatabaseCon::Setup dbSetup = setup_DatabaseCon(*config_);
+            //    boost::filesystem::path dbPath = dbSetup.dataDir / TxDBName;
+            //    boost::system::error_code ec;
+            //    boost::optional<std::uint64_t> dbSize =
+            //        boost::filesystem::file_size(dbPath, ec);
+            //    if (ec)
+            //    {
+            //        JLOG(m_journal.error())
+            //            << "Error checking transaction db file size: "
+            //            << ec.message();
+            //        dbSize.reset();
+            //    }
 
-                auto db = mTxnDB->checkoutDb();
-                static auto const pageSize = [&] {
-                    std::uint32_t ps;
-                    *db << "PRAGMA page_size;", soci::into(ps);
-                    return ps;
-                }();
-                static auto const maxPages = [&] {
-                    std::uint32_t mp;
-                    *db << "PRAGMA max_page_count;", soci::into(mp);
-                    return mp;
-                }();
-                std::uint32_t pageCount;
-                *db << "PRAGMA page_count;", soci::into(pageCount);
-                std::uint32_t freePages = maxPages - pageCount;
-                std::uint64_t freeSpace =
-                    safe_cast<std::uint64_t>(freePages) * pageSize;
-                // JLOG(m_journal.info())
-                //	<< "Transaction DB pathname: " << dbPath.string()
-                //	<< "; file size: " << dbSize.value_or(-1) << " bytes"
-                //	<< "; SQLite page size: " << pageSize << " bytes"
-                //	<< "; Free pages: " << freePages
-                //	<< "; Free space: " << freeSpace << " bytes; "
-                //	<< "Note that this does not take into account available
-                // disk " 	"space.";
+            //    auto db = mTxnDB->checkoutDb();
+            //    static auto const pageSize = [&] {
+            //        std::uint32_t ps;
+            //        *db << "PRAGMA page_size;", soci::into(ps);
+            //        return ps;
+            //    }();
+            //    static auto const maxPages = [&] {
+            //        std::uint32_t mp;
+            //        *db << "PRAGMA max_page_count;", soci::into(mp);
+            //        return mp;
+            //    }();
+            //    std::uint32_t pageCount;
+            //    *db << "PRAGMA page_count;", soci::into(pageCount);
+            //    std::uint32_t freePages = maxPages - pageCount;
+            //    std::uint64_t freeSpace =
+            //        safe_cast<std::uint64_t>(freePages) * pageSize;
+            //    // JLOG(m_journal.info())
+            //    //	<< "Transaction DB pathname: " << dbPath.string()
+            //    //	<< "; file size: " << dbSize.value_or(-1) << " bytes"
+            //    //	<< "; SQLite page size: " << pageSize << " bytes"
+            //    //	<< "; Free pages: " << freePages
+            //    //	<< "; Free space: " << freeSpace << " bytes; "
+            //    //	<< "Note that this does not take into account available
+            //    // disk " 	"space.";
 
-                if (freeSpace < megabytes(512))
-                {
-                    JLOG(m_journal.fatal())
-                        << "Free SQLite space for transaction db is less than "
-                           "512MB. To fix this, rippled must be executed with "
-                           "the "
-                           "\"--vacuum\" parameter before restarting. "
-                           "Note that this activity can take multiple days, "
-                           "depending on database size.";
-                    app_.signalStop();
-                }
-            }
+            //    if (freeSpace < megabytes(512))
+            //    {
+            //        JLOG(m_journal.fatal())
+            //            << "Free SQLite space for transaction db is less than "
+            //               "512MB. To fix this, rippled must be executed with "
+            //               "the "
+            //               "\"--vacuum\" parameter before restarting. "
+            //               "Note that this activity can take multiple days, "
+            //               "depending on database size.";
+            //        app_.signalStop();
+            //    }
+            //}
         }
 
         // VFALCO NOTE Does the order of calls matter?
