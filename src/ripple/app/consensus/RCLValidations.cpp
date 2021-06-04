@@ -87,10 +87,13 @@ auto RCLValidatedLedger::operator[](Seq const& s) const -> ID
         Seq const diff = seq() - s;
         return ancestors_[ancestors_.size() - diff];
     }
+    if (s != 0)
+    {
+        JLOG(j_.warn()) << "Unable to determine hash of ancestor seq=" << s
+                        << " from ledger hash=" << ledgerID_
+                        << " seq=" << ledgerSeq_;
+    }
 
-    JLOG(j_.warn()) << "Unable to determine hash of ancestor seq=" << s
-                    << " from ledger hash=" << ledgerID_
-                    << " seq=" << ledgerSeq_;
     // Default ID that is less than all others
     return ID{0};
 }

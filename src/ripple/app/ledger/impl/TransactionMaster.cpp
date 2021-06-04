@@ -57,10 +57,10 @@ TransactionMaster::inLedger(uint256 const& hash, std::uint32_t ledger)
 
 int TransactionMaster::getTxCount(bool chainsql)
 {
-	std::string sql = "SELECT COUNT(*) FROM Transactions WHERE Status='V'";
+	std::string sql = "SELECT COUNT(*) FROM Transactions ";
 	if (chainsql)
 	{
-		sql += " AND (TransType = 'SQLTransaction' or TransType = 'TableListSet' or TransType = 'SQLStatement')";
+		sql += " WHERE (TransType = 'SQLTransaction' or TransType = 'TableListSet' or TransType = 'SQLStatement')";
 	}
 	sql += ";";
 
