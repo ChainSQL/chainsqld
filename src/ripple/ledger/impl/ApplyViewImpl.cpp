@@ -29,9 +29,9 @@ ApplyViewImpl::ApplyViewImpl(ReadView const* base, ApplyFlags flags)
 }
 
 void
-ApplyViewImpl::apply(OpenView& to, STTx const& tx, TER ter, beast::Journal j)
+ApplyViewImpl::apply(OpenView& to, STTx const& tx, STer ster, beast::Journal j)
 {
-    items_.apply(to, tx, ter, deliver_, j);
+    items_.apply(to, tx, ster, deliver_, j);
 }
 
 std::size_t

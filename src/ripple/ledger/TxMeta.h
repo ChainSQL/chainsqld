@@ -87,6 +87,11 @@ public:
     {
         return TER::fromInt(mResult);
     }
+    std::string
+    getContractDetailMsg() const
+    {
+        return mContractDetailMsg;
+    }
     std::uint32_t
     getIndex() const
     {
@@ -110,7 +115,7 @@ public:
         return getAsObject().getJson(p);
     }
     void
-    addRaw(Serializer&, TER, std::uint32_t index);
+    addRaw(Serializer&, STer, std::uint32_t index);
 
     void setContractFieldData(STTx const& tx);
 
@@ -146,6 +151,7 @@ private:
     std::uint32_t mLedger;
     std::uint32_t mIndex;
     int mResult;
+    std::string mContractDetailMsg;
 
     boost::optional<STAmount> mDelivered;
 

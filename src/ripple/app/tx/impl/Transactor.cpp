@@ -952,7 +952,7 @@ Transactor::operator()()
             ctx_.destroyZXC (fee);
 
         // Once we call apply, we will no longer be able to look at view()
-        ctx_.apply(terResult.ter);
+        ctx_.apply(terResult);
     }
 
     JLOG(j_.trace()) << (applied ? "applied" : "not applied") << transToken(terResult.ter);

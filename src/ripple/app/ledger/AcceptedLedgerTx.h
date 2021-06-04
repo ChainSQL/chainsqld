@@ -64,6 +64,7 @@ public:
         std::shared_ptr<ReadView const> const&,
         std::shared_ptr<STTx const> const&,
         TER,
+        std::string,
         AccountIDCache const&,
         Logs&);
 
@@ -99,6 +100,11 @@ public:
     {
         return mResult;
     }
+    std::string
+    getContractDetailMsg() const
+    {
+        return mContractDetailMsg;
+    }
     std::uint32_t
     getTxnSeq() const
     {
@@ -133,6 +139,7 @@ private:
     std::shared_ptr<STTx const> mTxn;
     std::shared_ptr<TxMeta> mMeta;
     TER mResult;
+    std::string mContractDetailMsg;
     boost::container::flat_set<AccountID> mAffected;
     Blob mRawMeta;
     Json::Value mJson;

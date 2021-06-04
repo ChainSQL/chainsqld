@@ -113,7 +113,7 @@ void
 ApplyStateTable::apply(
     OpenView& to,
     STTx const& tx,
-    TER ter,
+    STer ster,
     boost::optional<STAmount> const& deliver,
     beast::Journal j)
 {
@@ -254,7 +254,7 @@ ApplyStateTable::apply(
 		meta.setContractFieldData(tx);
 
         sMeta = std::make_shared<Serializer>();
-        meta.addRaw(*sMeta, ter, to.txCount());
+        meta.addRaw(*sMeta, ster, to.txCount());
 
 		// VFALCO For diagnostics do we want to show
         //        metadata even when the base view is open?

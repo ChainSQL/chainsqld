@@ -594,7 +594,7 @@ public:
     pubProposedTransaction(
         std::shared_ptr<ReadView const> const& lpCurrent,
         std::shared_ptr<STTx const> const& stTxn,
-        TER terResult) override;
+        STer terResult) override;
     void
     pubValidation(std::shared_ptr<STValidation> const& val) override;
 
@@ -828,7 +828,7 @@ private:
         bool isAccepted);
 
     std::tuple<std::string, std::string, std::string>
-    get_res(TER ter);
+    get_res(TER ter, std::string& contractDetailMsg=std::string(""));
 
     void
     PubValidatedTxForTable(const AcceptedLedgerTx& alTx);
@@ -1509,7 +1509,7 @@ NetworkOPsImp::doTransactionCheck(
 
     if (ter == tesSUCCESS)
     {
-        // after check and transaction's check result is tesSUCCESS��add it to
+        // after check and transaction's check result is tesSUCCESS add it to
         // TxPool:
         ter = app_.getTxPool().insertTx(transaction, view.seq());
         if (ter != tesSUCCESS)
@@ -3567,9 +3567,9 @@ void
 NetworkOPsImp::pubProposedTransaction(
     std::shared_ptr<ReadView const> const& lpCurrent,
     std::shared_ptr<STTx const> const& stTxn,
-    TER terResult)
+    STer terResult)
 {
-    Json::Value jvObj = transJson(*stTxn, terResult, false, lpCurrent);
+    Json::Value jvObj = transJson(*stTxn, terResult.ter, false, lpCurrent);
 
     {
         std::lock_guard sl(mSubLock);
@@ -3591,7 +3591,7 @@ NetworkOPsImp::pubProposedTransaction(
         }
     }
     AcceptedLedgerTx alt(
-        lpCurrent, stTxn, terResult, app_.accountIDCache(), app_.logs());
+        lpCurrent, stTxn, terResult.ter, terResult.msg, app_.accountIDCache(), app_.logs());
     JLOG(m_journal.trace()) << "pubProposed: " << alt.getJson();
     pubAccountTransaction(lpCurrent, alt, false);
 }
@@ -4048,11 +4048,12 @@ NetworkOPsImp::pubValidatedTransaction(
 }
 
 std::tuple<std::string, std::string, std::string>
-NetworkOPsImp::get_res(TER ter)
+NetworkOPsImp::get_res(TER ter, std::string& contracDetailMsg)
 {
     if (ter == tesSUCCESS)
         return std::make_tuple("validate_success", "", "");
-
+    if (!contracDetailMsg.empty())
+        return std::make_tuple("validate_error", contracDetailMsg, contracDetailMsg);
     return std::make_tuple("validate_error", transToken(ter), transHuman(ter));
 }
 
@@ -4060,7 +4061,7 @@ void
 NetworkOPsImp::PubValidatedTxForTable(const AcceptedLedgerTx& alTx)
 {
     auto tx = *alTx.getTxn();
-    auto res = get_res(alTx.getResult());
+    auto res = get_res(alTx.getResult(), alTx.getContractDetailMsg());
 
     auto ledger = app_.getLedgerMaster().getPublishedLedger();
     auto vecTxs = app_.getMasterTransaction().getTxs(tx, "", ledger, 0);

@@ -44,6 +44,7 @@ AcceptedLedgerTx::AcceptedLedgerTx(
     assert(!ledger->open());
 
     mResult = mMeta->getResultTER();
+    mContractDetailMsg = mMeta->getContractDetailMsg();
 
     Serializer s;
     met->add(s);
@@ -56,6 +57,7 @@ AcceptedLedgerTx::AcceptedLedgerTx(
     std::shared_ptr<ReadView const> const& ledger,
     std::shared_ptr<STTx const> const& txn,
     TER result,
+    std::string contractDetailMsg,
     AccountIDCache const& accountCache,
     Logs& logs)
     : mLedger(ledger)
@@ -64,6 +66,7 @@ AcceptedLedgerTx::AcceptedLedgerTx(
     , mAffected(txn->getMentionedAccounts())
     , accountCache_(accountCache)
     , logs_(logs)
+    , mContractDetailMsg(contractDetailMsg)
 {
     assert(ledger->open());
     buildJson();

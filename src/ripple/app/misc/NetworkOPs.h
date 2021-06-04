@@ -318,7 +318,7 @@ public:
     pubProposedTransaction(
         std::shared_ptr<ReadView const> const& lpCurrent,
         std::shared_ptr<STTx const> const& stTxn,
-        TER terResult) = 0;
+        STer terResult) = 0;
     virtual void
     pubValidation(std::shared_ptr<STValidation> const& val) = 0;
 

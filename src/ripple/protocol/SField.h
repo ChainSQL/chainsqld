@@ -535,6 +535,7 @@ extern SF_Blob const sfBlock;
 extern SF_Blob const sfVoteImp;
 extern SF_Blob const sfEpochChangeImp;
 extern SF_Blob const sfSyncInfo;
+extern SF_Blob const sfContractDetailMsg;
 extern SF_Blob const sfTxsHashFillField;
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;

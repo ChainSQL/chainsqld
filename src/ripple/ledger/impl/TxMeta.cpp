@@ -52,6 +52,11 @@ TxMeta::TxMeta(
     }
     mIndex = obj.getFieldU32 (sfTransactionIndex);
     mNodes = * dynamic_cast<STArray*> (&obj.getField (sfAffectedNodes));
+    if (obj.isFieldPresent(sfContractDetailMsg))
+    {
+        Blob msgBlob = obj.getFieldVL(sfContractDetailMsg);
+        mContractDetailMsg = std::string(msgBlob.begin(), msgBlob.end());
+    }
 
     if (obj.isFieldPresent(sfDeliveredAmount))
         setDeliveredAmount(obj.getFieldAmount(sfDeliveredAmount));
@@ -73,6 +78,12 @@ TxMeta::TxMeta(uint256 const& txid, std::uint32_t ledger, STObject const& obj)
 	}
     
     mIndex = obj.getFieldU32 (sfTransactionIndex);
+
+    if (obj.isFieldPresent(sfContractDetailMsg))
+    {
+         Blob msgBlob = obj.getFieldVL(sfContractDetailMsg);
+         mContractDetailMsg = std::string(msgBlob.begin(), msgBlob.end());
+    }
 
     auto affectedNodes =
         dynamic_cast<STArray const*>(obj.peekAtPField(sfAffectedNodes));
@@ -103,6 +114,7 @@ TxMeta::TxMeta(uint256 const& transactionID, std::uint32_t ledger)
     , mIndex(static_cast<std::uint32_t>(-1))
     , mResult(255)
     , mNodes(sfAffectedNodes)
+    , mContractDetailMsg("")
 {
     mNodes.reserve(32);
 }
@@ -228,6 +240,8 @@ TxMeta::getAsObject() const
     STObject metaData(sfTransactionMetaData);
     assert(mResult != 255);
     metaData.setFieldU16(sfTransactionResult, mResult);
+    if(!mContractDetailMsg.empty()) 
+        metaData.setFieldVL(sfContractDetailMsg, Slice(mContractDetailMsg.data(), mContractDetailMsg.size()));
     metaData.setFieldU32(sfTransactionIndex, mIndex);
     metaData.emplace_back(mNodes);
     if (hasDeliveredAmount())
@@ -236,9 +250,10 @@ TxMeta::getAsObject() const
 }
 
 void
-TxMeta::addRaw(Serializer& s, TER result, std::uint32_t index)
+TxMeta::addRaw(Serializer& s, STer result, std::uint32_t index)
 {
-    mResult = TERtoInt (result);
+    mResult = TERtoInt (result.ter);
+    mContractDetailMsg = result.msg;
     mIndex = index;
     //assert ((mResult == tesSUCCESS) || ((mResult >= tecCLAIM) && (mResult < tefFAILURE)));
 

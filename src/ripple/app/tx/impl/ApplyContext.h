@@ -81,7 +81,7 @@ public:
     discard();
 
     /** Apply the transaction result to the base. */
-    void apply(TER);
+    void apply(STer);
 
     /** Get the number of unapplied changes. */
     std::size_t

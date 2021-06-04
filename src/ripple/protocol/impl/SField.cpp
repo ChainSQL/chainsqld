@@ -251,6 +251,7 @@ SF_Blob const sfBlock            (access, STI_VL, 71, "Block");
 SF_Blob const sfVoteImp          (access, STI_VL, 72, "VoteImp");
 SF_Blob const sfEpochChangeImp   (access, STI_VL, 73, "EpochChangeImp");
 SF_Blob const sfSyncInfo         (access, STI_VL, 74, "SyncInfo");
+SF_Blob const sfContractDetailMsg(access, STI_VL, 75, "ContractDetailMsg");
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner       (access, STI_ACCOUNT, 2, "Owner");

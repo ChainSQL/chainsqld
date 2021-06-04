@@ -68,7 +68,7 @@ public:
     apply(
         OpenView& to,
         STTx const& tx,
-        TER ter,
+        STer ster,
         boost::optional<STAmount> const& deliver,
         beast::Journal j);
 

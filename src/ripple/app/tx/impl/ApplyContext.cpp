@@ -55,9 +55,9 @@ ApplyContext::discard()
 }
 
 void
-ApplyContext::apply(TER ter)
+ApplyContext::apply(STer ster)
 {
-    view_->apply(base_, tx, ter, journal);
+    view_->apply(base_, tx, ster, journal);
 }
 
 std::size_t
