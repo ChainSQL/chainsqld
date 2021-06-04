@@ -785,6 +785,11 @@ Config::loadFromString(std::string const& fileContents)
 		try
 		{
 			ONLY_VALIDATE_FOR_SCHEMA = (beast::lexicalCastThrow <int>(resSchemaValidate.first) == 1);
+            if (ONLY_VALIDATE_FOR_SCHEMA)
+            {
+                //non-validator,don't load last full ledger
+                START_UP = FRESH;            
+            }
 		}
 		catch (std::exception const&)
 		{
