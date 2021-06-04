@@ -239,7 +239,6 @@ public:
         char status,
         std::string const& escapedMetaData,
         std::string resultToken,
-        bool bSaveRaw,
         bool bUseTxResult) const;
 
     void

@@ -571,9 +571,28 @@ std::string STTx::getMetaSQL (std::uint32_t inLedger,
                               bool bUseTxResult) const
 {
     Serializer s;
-    if(bSaveRaw)
-        add (s);
-    return getMetaSQL (s, inLedger, txnSqlValidated, escapedMetaData,resultToken,bSaveRaw,bUseTxResult);
+    if (bSaveRaw)
+    {
+        add(s);
+        return getMetaSQL(
+            s,
+            inLedger,
+            txnSqlValidated,
+            escapedMetaData,
+            resultToken,
+            bUseTxResult);
+    }
+    else
+    {
+        return getMetaSQL(
+            s,
+            inLedger,
+            txnSqlValidated,
+            sqlEscape(s.peekData()),
+            resultToken,
+            bUseTxResult);
+    }
+        
 }
 
 // VFALCO This could be a free function elsewhere
@@ -583,7 +602,6 @@ STTx::getMetaSQL (Serializer rawTxn,
                     char status, 
                     std::string const& escapedMetaData,
 	                std::string resultToken,
-	                bool bSaveRaw,
                     bool bUseTxResult) const
 {
     auto format = TxFormats::getInstance().findByType (tx_type_);
