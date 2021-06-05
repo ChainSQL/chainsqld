@@ -937,6 +937,8 @@ Config::loadFromString(std::string const& fileContents)
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
     get_if_exists(ledgerTxTablesSection, "use_tx_tables", USE_TX_TABLES);
     get_if_exists(ledgerTxTablesSection, "save_tx_binary", SAVE_TX_RAW);
+    get_if_exists(ledgerTxTablesSection, "use_trace_table", USE_TRACE_TABLE);
+
     if (!USE_TX_TABLES && SAVE_TX_RAW)
     {
         Throw<std::runtime_error>(

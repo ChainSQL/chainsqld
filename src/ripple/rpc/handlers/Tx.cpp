@@ -499,7 +499,7 @@ populateJsonResponse(
         response[jss::validated] = result.validated;
     }
 
-    if (result.txn)
+    if (result.txn && context.app.config().USE_TRACE_TABLE)
         doTxChain(
             result.txn->getSTransaction()->getTxnType(), context, response);
 

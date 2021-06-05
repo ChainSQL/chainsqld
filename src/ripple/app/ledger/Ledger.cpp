@@ -1101,8 +1101,11 @@ saveValidatedLedger(
                             false) +
                         ";");
             }
-
-            storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
+            if (app.config().USE_TRACE_TABLE)
+            {
+                storePeersafeSql(db, acceptedLedgerTx->getTxn(), iTxSeq, seq, app);
+            }
+            
 			iTxSeq++;
         }
 
