@@ -828,7 +828,7 @@ private:
         bool isAccepted);
 
     std::tuple<std::string, std::string, std::string>
-    get_res(TER ter, std::string& contractDetailMsg=std::string(""));
+    get_res(TER ter, std::string const& contractDetailMsg=std::string(""));
 
     void
     PubValidatedTxForTable(const AcceptedLedgerTx& alTx);
@@ -4048,7 +4048,7 @@ NetworkOPsImp::pubValidatedTransaction(
 }
 
 std::tuple<std::string, std::string, std::string>
-NetworkOPsImp::get_res(TER ter, std::string& contracDetailMsg)
+NetworkOPsImp::get_res(TER ter, std::string const& contracDetailMsg)
 {
     if (ter == tesSUCCESS)
         return std::make_tuple("validate_success", "", "");
