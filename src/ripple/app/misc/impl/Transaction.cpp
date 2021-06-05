@@ -145,12 +145,18 @@ Transaction::pointer Transaction::transactionFromSHAMap(
     if (auto lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
     {
         auto txn = lgr->txRead(transID).first;
+        Serializer s;
+        auto meta = lgr->txRead(transID).second;
+        meta->add(s);
+        Blob metaBlob(s.slice().begin(),s.slice().end());
+
         std::string reason;
         auto tr = std::make_shared<Transaction>(
             txn, reason, app);
 
         tr->setStatus(sqlTransactionStatus(status));
         tr->setLedger(inLedger);
+        tr->setMeta(metaBlob);
         return tr;
     }
 
@@ -208,13 +214,6 @@ Transaction::load(
     Schema& app,
     boost::optional<ClosedInterval<uint32_t>> const& range)
 {
-    std::string sql =
-        "SELECT LedgerSeq,Status "
-        "FROM Transactions WHERE TransID='";
-
-    sql.append(to_string(id));
-    sql.append("';");
-
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
     if (app.config().SAVE_TX_RAW)
@@ -224,8 +223,6 @@ Transaction::load(
 		sql.append(to_string(id));
 		sql.append("';");
 
-		boost::optional<std::uint64_t> ledgerSeq;
-		boost::optional<std::string> status;
 		Blob rawTxn;
         Blob txnMeta;
 		{
@@ -254,8 +251,6 @@ Transaction::load(
 		sql.append(to_string(id));
 		sql.append("';");
 
-		boost::optional<std::uint64_t> ledgerSeq;
-		boost::optional<std::string> status;
 		{
 			auto db = app.getTxnDB().checkoutDb();
 

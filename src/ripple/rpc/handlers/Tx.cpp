@@ -305,50 +305,24 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
         return {result, rpcSUCCESS};
     }
 
+    // get meta data
+    if (args.binary)
+    {
+        result.meta = txn->getMeta();
+    }
+    else
+    {
+        result.meta = std::make_shared<TxMeta>(
+            txn->getID(), txn->getLedger(), txn->getMeta());
+    }
+
     std::shared_ptr<Ledger const> ledger =
         context.ledgerMaster.getLedgerBySeq(txn->getLedger());
-    // get meta data
     if (ledger)
     {
         result.ledger = ledger;
-        bool ok = false;
-        if (args.binary)
-        {
-            SHAMapTreeNode::TNType type;
-            auto const item = ledger->txMap().peekItem(txn->getID(), type);
-
-            if (item && type == SHAMapTreeNode::tnTRANSACTION_MD)
-            {
-                ok = true;
-                SerialIter it(item->slice());
-                it.skip(it.getVLDataLength());  // skip transaction
-                Blob blob = it.getVL();
-                result.meta = std::move(blob);
-            }
-        }
-        else
-        {
-            if (!context.app.config().SAVE_TX_RAW)
-            {
-                auto rawMeta = ledger->txRead(txn->getID()).second;
-                if (rawMeta) {
-                    result.meta = std::make_shared<TxMeta>(
-                        txn->getID(), ledger->seq(), *rawMeta);
-                    ok = true;
-                }
-            }
-            else
-            {
-                result.meta = std::make_shared<TxMeta>(txn->getID(),
-                    ledger->seq(), txn->getMeta());
-                ok = true;
-            }
-        }
-        if (ok)
-        {
-            result.validated = isValidated(
-                context.ledgerMaster, ledger->info().seq, ledger->info().hash);
-        }
+        result.validated = isValidated(
+            context.ledgerMaster, ledger->info().seq, ledger->info().hash);
     }
 
     return {result, rpcSUCCESS};
