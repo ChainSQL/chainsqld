@@ -355,6 +355,10 @@ public:
 
     std::uint32_t
     getLastConsensusTime();
+
+    void
+    onLastFullLedgerLoaded(std::shared_ptr<Ledger const> const& ledger);
+
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);

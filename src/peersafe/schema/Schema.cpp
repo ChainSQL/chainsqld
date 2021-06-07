@@ -1826,12 +1826,7 @@ SchemaImp::loadOldLedger(
             return false;
         }
 
-        m_ledgerMaster->setLedgerRangePresent(
-            loadLedger->info().seq, loadLedger->info().seq);
-
-        m_ledgerMaster->switchLCL(loadLedger);
-        loadLedger->setValidated();
-        m_ledgerMaster->setFullLedger(loadLedger, true, false);
+        m_ledgerMaster->onLastFullLedgerLoaded(loadLedger);
         openLedger_.emplace(
             loadLedger, cachedSLEs_, SchemaImp::journal("OpenLedger"));
 

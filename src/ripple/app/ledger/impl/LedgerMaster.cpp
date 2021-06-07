@@ -927,7 +927,25 @@ LedgerMaster::fixMismatch(ReadView const& ledger)
 }
 
 void
-LedgerMaster::setFullLedger(
+LedgerMaster::onLastFullLedgerLoaded(
+    std::shared_ptr<Ledger const> const& ledger)
+{
+    setLedgerRangePresent(ledger->info().seq, ledger->info().seq);
+    switchLCL(ledger);
+    ledger->setValidated();
+    ledger->setFull();
+    mLedgerHistory.insert(ledger, true);
+
+    if (ledger->info().seq > mValidLedgerSeq)
+        setValidLedger(ledger);
+    if (!mPubLedger)
+    {
+        setPubLedger(ledger);
+        app_.getOrderBookDB().setup(ledger);
+    }
+}
+    
+void LedgerMaster::setFullLedger(
     std::shared_ptr<Ledger const> const& ledger,
     bool isSynchronous,
     bool isCurrent)
