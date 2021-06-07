@@ -63,10 +63,10 @@ AcceptedLedgerTx::AcceptedLedgerTx(
     : mLedger(ledger)
     , mTxn(txn)
     , mResult(result)
+    , mContractDetailMsg(contractDetailMsg)
     , mAffected(txn->getMentionedAccounts())
     , accountCache_(accountCache)
     , logs_(logs)
-    , mContractDetailMsg(contractDetailMsg)
 {
     assert(ledger->open());
     buildJson();

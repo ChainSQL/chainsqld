@@ -113,8 +113,8 @@ TxMeta::TxMeta(uint256 const& transactionID, std::uint32_t ledger)
     , mLedger(ledger)
     , mIndex(static_cast<std::uint32_t>(-1))
     , mResult(255)
-    , mNodes(sfAffectedNodes)
     , mContractDetailMsg("")
+    , mNodes(sfAffectedNodes)
 {
     mNodes.reserve(32);
 }
