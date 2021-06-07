@@ -143,9 +143,9 @@ doTxJson(RPC::JsonContext&);
 Json::Value
 doTxResult(RPC::JsonContext&);
 Json::Value
-doTxMerkelProof(RPC::JsonContext&);
+doTxMerkleProof(RPC::JsonContext&);
 Json::Value
-doTxMerkelVerify(RPC::JsonContext&);
+doTxMerkleVerify(RPC::JsonContext&);
 Json::Value
 doTxHistory(RPC::JsonContext&);
 Json::Value

@@ -1333,7 +1333,7 @@ private:
 
     // tx <transaction_id> [binary]
     Json::Value
-    parseTxMerkelProof(Json::Value const& jvParams)
+    parseTxMerkleProof(Json::Value const& jvParams)
     {
         Json::Value jvRequest{Json::objectValue};
 
@@ -1617,7 +1617,7 @@ public:
             {"stop", &RPCParser::parseAsIs, 0, 0},
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
-            {"tx_merkel_proof", &RPCParser::parseTxMerkelProof, 1, 2},
+            {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_history", &RPCParser::parseTxHistory, 1, 1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},

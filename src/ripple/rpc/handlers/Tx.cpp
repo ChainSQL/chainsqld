@@ -649,7 +649,7 @@ jsonToTxMeta(Json::Value& params, uint256 txHash, std::uint32_t ledgerSeq)
 }
 
 Json::Value
-doTxMerkelProof(RPC::JsonContext& context)
+doTxMerkleProof(RPC::JsonContext& context)
 {
     if (!context.app.config().useTxTables())
         return rpcError(rpcNOT_ENABLED);
@@ -733,7 +733,7 @@ doTxMerkelProof(RPC::JsonContext& context)
 }
 
 Json::Value
-doTxMerkelVerify(RPC::JsonContext& context)
+doTxMerkleVerify(RPC::JsonContext& context)
 {
     if (!context.params.isMember(jss::ledger))
         return RPC::missing_field_error(jss::ledger);
@@ -822,7 +822,7 @@ doTxMerkelVerify(RPC::JsonContext& context)
     std::shared_ptr<SHAMapTreeNode> node = std::make_shared<SHAMapTreeNode>(
         std::move(item), SHAMapTreeNode::tnTRANSACTION_MD, 0);
 
-    // Verify step-3: verify node merkel proof
+    // Verify step-3: verify node merkle proof
     if (!context.params[jss::proof].isString())
         return RPC::make_param_error("Element proof is malformed, must be a string.");
     auto proof = strUnHex(context.params[jss::proof].asString());
@@ -832,7 +832,7 @@ doTxMerkelVerify(RPC::JsonContext& context)
     if (!node->verifyProof(*proof, info.txHash))
     {
         return RPC::make_error(
-            rpcBAD_PROOF, "Tx node merkel proof verify failed.");
+            rpcBAD_PROOF, "Tx node merkle proof verify failed.");
     }
 
     return Json::objectValue;
