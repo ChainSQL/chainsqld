@@ -2148,17 +2148,9 @@ protected:
 
 			// indexs
 			size = indexs.size();
-			std::string idxs;
 			for (size_t i = 0; i < size; i++) {
-				if (i != 0) {
-					idxs += ",";
-				}
-				idxs += indexs[i];
-			}
-
-			if (idxs.empty() == false) {
-				columns.push_back(",");
-				columns.push_back((boost::format("index(%s)") % idxs).str());
+                columns.push_back(
+                    (boost::format(",index(%s)") % indexs[i]).str());
 			}
 
 			// foreign keys
