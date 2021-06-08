@@ -57,6 +57,14 @@ TxMeta::TxMeta(
         Blob msgBlob = obj.getFieldVL(sfContractDetailMsg);
         mContractDetailMsg = std::string(msgBlob.begin(), msgBlob.end());
     }
+    if (obj.isFieldPresent(sfContractLogs))
+    {
+        contractLogData = obj.getFieldVL(sfContractLogs);
+    }
+    if (obj.isFieldPresent(sfContractTxs))
+    {
+        contractTxsData = obj.getFieldVL(sfContractTxs);
+    }
 
     if (obj.isFieldPresent(sfDeliveredAmount))
         setDeliveredAmount(obj.getFieldAmount(sfDeliveredAmount));
@@ -83,6 +91,14 @@ TxMeta::TxMeta(uint256 const& txid, std::uint32_t ledger, STObject const& obj)
     {
          Blob msgBlob = obj.getFieldVL(sfContractDetailMsg);
          mContractDetailMsg = std::string(msgBlob.begin(), msgBlob.end());
+    }
+    if (obj.isFieldPresent(sfContractLogs))
+    {
+        contractLogData = obj.getFieldVL(sfContractLogs);
+    }
+    if (obj.isFieldPresent(sfContractTxs))
+    {
+        contractTxsData = obj.getFieldVL(sfContractTxs);
     }
 
     auto affectedNodes =
@@ -242,6 +258,10 @@ TxMeta::getAsObject() const
     metaData.setFieldU16(sfTransactionResult, mResult);
     if(!mContractDetailMsg.empty()) 
         metaData.setFieldVL(sfContractDetailMsg, Slice(mContractDetailMsg.data(), mContractDetailMsg.size()));
+    if (!contractLogData.empty())
+        metaData.setFieldVL(sfContractLogs, contractLogData);
+    if (!contractTxsData.empty())
+        metaData.setFieldVL(sfContractTxs, contractTxsData);
     metaData.setFieldU32(sfTransactionIndex, mIndex);
     metaData.emplace_back(mNodes);
     if (hasDeliveredAmount())
