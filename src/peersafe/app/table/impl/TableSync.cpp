@@ -35,6 +35,7 @@
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/util/TableSyncUtil.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
@@ -117,119 +118,29 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
 
     protocol::TMLedgerData ledgerData;
     auto ledger = app_.getLedgerMaster().getLedgerBySeq(TxnLgrSeq);
-
+    
     std::vector<protocol::TMLedgerNode> node_vec;
+    int txnCount = 0;
     if (ledger)
     {
         m.set_ledgerhash(to_string(ledger->info().hash));
-
-        std::shared_ptr<AcceptedLedger> alpAccepted =
-            app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
-        if (!alpAccepted)
+        
+        for (auto& item : ledger->txs)
         {
-            alpAccepted = std::make_shared<AcceptedLedger>(
-                ledger, app_.accountIDCache(), app_.logs());
-            app_.getAcceptedLedgerCache().canonicalize_replace_client(
-                ledger->info().hash, alpAccepted);
-        }
+            std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
+                item.first->getTransactionID(), ledger->seq(), *(item.second));
 
-        bool bHasTX = false;
-        for (auto const& vt : alpAccepted->getMap())
-        {
-            if (vt.second->getResult() != tesSUCCESS)
+            TER result = meta->getResultTER();
+            if (result != tesSUCCESS)
             {
                 continue;
             }
-
-            std::shared_ptr<const STTx> stTx = vt.second->getTxn();
-
+            auto stTx = item.first;
             if (!stTx->isChainSqlTableType() && stTx->getTxnType() != ttCONTRACT)  continue;
 
 			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(*stTx, sNameInDB,ledger,0);
 			if(vecTxs.size() == 0)
 				continue;
-
-   //         if (stTx.getTxnType() == ttSQLTRANSACTION) {
-   //             Blob txs_blob = stTx.getFieldVL(sfStatements);
-   //             std::string txs_str;
-
-   //             txs_str.assign(txs_blob.begin(), txs_blob.end());
-   //             Json::Value objs;
-   //             Json::Reader().parse(txs_str, objs);
-
-			//	bool bFound = false;
-   //             for (auto obj : objs)
-   //             {
-   //                 auto const & sTxTable = obj["Tables"][0u]["Table"];
-   //                 if (sNameInDB == sTxTable["NameInDB"].asString())
-   //                 {
-			//			bFound = true;
-			//			break;
-   //                 }
-   //             }
-			//	if (!bFound) continue;;
-   //         }
-			//else if (stTx.getTxnType() == ttCONTRACT)
-			//{
-			//	auto rawMeta = ledger->txRead(stTx.getTransactionID()).second;
-			//	if(!rawMeta)
-			//		continue;
-
-			//	auto txMeta = std::make_shared<TxMeta>(stTx.getTransactionID(),
-			//		ledger->seq(), *rawMeta, app_.journal("TableSync"));
-
-			//	auto meta = txMeta->getNodes().back();
-			//	if (!meta.isFieldPresent(sfContractTxs))
-			//		continue;
-			//	auto txs = meta.getFieldArray(sfContractTxs);
-
-			//	bool bFound = false;
-			//	for (auto txInner : txs)
-			//	{
-			//		if (txInner.getFieldU16(sfTransactionType) == ttTABLELISTSET || 
-			//			txInner.getFieldU16(sfTransactionType) == ttSQLSTATEMENT)
-			//		{
-			//			auto const & sTxTables = txInner.getFieldArray(sfTables);
-			//			if (sNameInDB == to_string(sTxTables[0].getFieldH160(sfNameInDB)))
-			//			{
-			//				bFound = true;
-			//				break;
-			//			}
-			//		}
-			//		else if (txInner.getFieldU16(sfTransactionType) == ttSQLTRANSACTION)
-			//		{
-			//			Blob txs_blob = txInner.getFieldVL(sfStatements);
-			//			std::string txs_str;
-
-			//			txs_str.assign(txs_blob.begin(), txs_blob.end());
-			//			Json::Value objs;
-			//			Json::Reader().parse(txs_str, objs);
-
-			//			for (auto obj : objs)
-			//			{
-			//				auto const & sTxTable = obj["Tables"][0u]["Table"];
-			//				if (sNameInDB == sTxTable["NameInDB"].asString())
-			//				{
-			//					bFound = true;
-			//					break;
-			//				}
-			//			}
-			//			if (bFound)
-			//				break;
-			//		}
-			//	}
-
-			//	if(!bFound)
-			//		continue;
-			//}
-   //         else 
-			//{
-   //             auto const & sTxTables = stTx.getFieldArray(sfTables);
-   //             if (sNameInDB != to_string(sTxTables[0].getFieldH160(sfNameInDB)))
-   //             {
-   //                 continue;
-   //             }
-   //         }
 
             protocol::TMLedgerNode* node = m.add_txnodes();
 
@@ -238,10 +149,10 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
 
             node->set_nodedata(s.data(), s.size());
 
-            bHasTX = true;
+            txnCount++;
         }
 
-        if (!bHasTX)
+        if (txnCount == 0)
         {
             JLOG(journal_.error()) << "in MakeTableDataReply, no tx, ledger : " << TxnLgrSeq
                 << " lashTxChecHash : " << to_string(TxnLgrHash)
@@ -360,7 +271,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 					auto pMapTables = cache.fetch(uStopIndex).get();
 					if (pMapTables == nullptr)
 					{
-						tablesle = ledger->read(key);
+                        tablesle = ledger->read(key);
 						auto pMapSle = std::make_shared<std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
 						pMapSle->emplace(std::make_pair(stItemInfo.accountID,tablesle));
 						cache.canonicalize_replace_client(uStopIndex, pMapSle);

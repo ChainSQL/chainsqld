@@ -110,6 +110,9 @@ walletPropose(Json::Value const& params)
                 auto pubPriPair = generateKeyPair(KeyType::gmalg, generateSeed("masterpassphrase"));
                 pubKeyOut = pubPriPair.first;
                 obj[jss::master_seed] = toBase58(TokenType::AccountSecret, pubPriPair.second);
+                obj[jss::master_seed_hex] = strHex(pubPriPair.second);
+                auto const secret1751 = secretKeyAs1751(pubPriPair.second);
+                obj[jss::master_key] = secret1751;
             }
             else
             {
@@ -123,12 +126,18 @@ walletPropose(Json::Value const& params)
                 auto pubKey = derivePublicKey(keyType, secKey);
                 pubKeyOut = pubKey;
                 obj[jss::master_seed] = gmPriStr;
+                obj[jss::master_seed_hex] = strHex(secKey);
+                auto const secret1751 = secretKeyAs1751(secKey);
+                obj[jss::master_key] = secret1751;
             }
         }
         else
         {
             auto const pubPriPair = randomKeyPair(KeyType::gmalg);
             obj[jss::master_seed] = toBase58(TokenType::AccountSecret, pubPriPair.second);
+            obj[jss::master_seed_hex] = strHex(pubPriPair.second);
+            auto const secret1751 = secretKeyAs1751(pubPriPair.second);
+            obj[jss::master_key] = secret1751;
             pubKeyOut = pubPriPair.first;
         }
     }

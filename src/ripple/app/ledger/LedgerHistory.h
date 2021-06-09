@@ -54,6 +54,12 @@ public:
         return m_ledgers_by_hash.getHitRate();
     }
 
+    int
+    getCacheSize()
+    {
+        return m_ledgers_by_hash.getCacheSize();
+    }
+
     /** Get a ledger given its sequence number */
     std::shared_ptr<Ledger const>
     getLedgerBySeq(LedgerIndex ledgerIndex);

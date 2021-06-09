@@ -84,8 +84,10 @@ Json::Value doFillValidationJson(KeyType keyType, std::string const &str)
 
             obj[jss::validation_public_key] = toBase58(TokenType::NodePublic, pubKey);
             obj[jss::validation_private_key] = toBase58(TokenType::NodePrivate, secKey);
+            obj[jss::validation_seed] = obj[jss::validation_private_key];
             obj[jss::validation_public_key_hex] = strHex(pubKey);
             obj[jss::account_id] = toBase58(calcAccountID(pubKey));
+            obj[jss::validation_key] = secretKeyAs1751(secKey);
             break;
         }
         case KeyType::secp256k1:
