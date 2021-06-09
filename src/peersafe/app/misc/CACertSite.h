@@ -45,7 +45,7 @@ class CACertSite : public ValidatorSite
 private:
     struct PublisherLst
     {
-        bool available;
+        //  bool available;
         //	std::vector<PublicKey> list;
         std::size_t sequence;
         TimeKeeper::time_point expiration;
@@ -59,7 +59,7 @@ private:
         same_sequence,
 
         /// List version is not supported
-        unsupported_version,
+        //  unsupported_version,
 
         /// List signed by untrusted publisher key
         untrusted,
@@ -78,8 +78,6 @@ public:
     CACertSite(Schema& app);
     ~CACertSite();
 
-    /// Parse json response from validator list site.
-    /// lock over sites_mutex_ required
     void
     parseJsonResponse(
         std::string const& res,
@@ -91,8 +89,6 @@ public:
         std::vector<std::string> const& publisherKeys,
         std::vector<std::string> const& siteURIs);
 
-    bool
-    removePublisherList(PublicKey const& publisherKey);
 
 private:
     /** Check response for trusted valid published list
@@ -111,16 +107,15 @@ private:
         std::string const& blob,
         std::string const& signature);
 
-    TimeKeeper& timeKeeper_;
+    TimeKeeper&    timeKeeper_;
     ManifestCache& publisherManifests_;
-    CertList& certList_;
+    CertList&      certList_;
 
     // Currently supported version of publisher list format
     static constexpr std::uint32_t requiredListVersion = 1;
 
-    std::mutex mutable publisher_mutex_;
-
-    std::mutex mutable sites_mutex_;
+    //std::mutex mutable publisher_mutex_;
+    //std::mutex mutable sites_mutex_;
 
     // Published lists stored by publisher master public key
     hash_map<PublicKey, PublisherLst> publisherLists_;
