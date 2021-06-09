@@ -144,11 +144,11 @@ Transaction::pointer Transaction::transactionFromSHAMap(
 
     if (auto lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
     {
-        auto txn = lgr->txRead(transID).first;
+        auto transaction = lgr->txRead(transID);
+        auto txn = transaction.first;
+        auto meta = transaction.second;
         Serializer s;
-        auto meta = lgr->txRead(transID).second;
         meta->add(s);
-        Blob metaBlob(s.slice().begin(),s.slice().end());
 
         std::string reason;
         auto tr = std::make_shared<Transaction>(
@@ -156,7 +156,7 @@ Transaction::pointer Transaction::transactionFromSHAMap(
 
         tr->setStatus(sqlTransactionStatus(status));
         tr->setLedger(inLedger);
-        tr->setMeta(metaBlob);
+        tr->setMeta(s.getData());
         return tr;
     }
 

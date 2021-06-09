@@ -226,7 +226,7 @@ doTxChain(TxType txType, const RPC::JsonContext& context, Json::Value& retJson)
         if (!jsonContractChain.isNull())
             jsonMetaChain[jss::ContractChain] = jsonContractChain;
     }
-    retJson[jss::metaChain] = jsonMetaChain;
+    retJson[jss::meta_chain] = jsonMetaChain;
     return true;
 }
 
@@ -245,6 +245,8 @@ struct TxArgs
 {
     uint256 hash;
     bool binary = false;
+    bool metaData = true;
+    bool metaChain = false;
     std::optional<std::pair<uint32_t, uint32_t>> ledgerRange;
 };
 
@@ -306,15 +308,18 @@ doTxHelp(RPC::Context& context, TxArgs const& args)
     }
 
     // get meta data
-    if (args.binary)
+    if (args.metaData)
     {
-        result.meta = txn->getMeta();
-    }
-    else
-    {
-        result.meta = std::make_shared<TxMeta>(
-            txn->getID(), txn->getLedger(), txn->getMeta());
-    }
+        if (args.binary)
+        {
+            result.meta = txn->getMeta();
+        }
+        else
+        {
+            result.meta = std::make_shared<TxMeta>(
+                txn->getID(), txn->getLedger(), txn->getMeta());
+        }
+    }    
 
     std::shared_ptr<Ledger const> ledger =
         context.ledgerMaster.getLedgerBySeq(txn->getLedger());
@@ -454,26 +459,31 @@ populateJsonResponse(
         response = result.txn->getJson(JsonOptions::include_date, args.binary);
 
         // populate binary metadata
-        if (auto blob = std::get_if<Blob>(&result.meta))
+        if (args.metaData)
         {
-            assert(args.binary);
-            response[jss::meta] = strHex(makeSlice(*blob));
-        }
-        // populate meta data
-        else if (auto m = std::get_if<std::shared_ptr<TxMeta>>(&result.meta))
-        {
-            auto& meta = *m;
-            if (meta)
+            if (auto blob = std::get_if<Blob>(&result.meta))
             {
-                response[jss::meta] = meta->getJson(JsonOptions::none);
-                insertDeliveredAmount(
-                    response[jss::meta], context, result.txn, *meta);
+                assert(args.binary);
+                response[jss::meta] = strHex(makeSlice(*blob));
+            }
+            // populate meta data
+            else if (
+                auto m = std::get_if<std::shared_ptr<TxMeta>>(&result.meta))
+            {
+                auto& meta = *m;
+                if (meta)
+                {
+                    response[jss::meta] = meta->getJson(JsonOptions::none);
+                    insertDeliveredAmount(
+                        response[jss::meta], context, result.txn, *meta);
+                }
             }
         }
+        
         response[jss::validated] = result.validated;
     }
 
-    if (result.txn && context.app.config().USE_TRACE_TABLE)
+    if (result.txn && args.metaChain && context.app.config().USE_TRACE_TABLE)
         doTxChain(
             result.txn->getSTransaction()->getTxnType(), context, response);
 
@@ -500,6 +510,17 @@ doTxJson(RPC::JsonContext& context)
     args.binary = context.params.isMember(jss::binary) &&
         context.params[jss::binary].asBool();
 
+    if (context.params.isMember(jss::meta) &&
+        !context.params[jss::meta].asBool())
+    {
+        args.metaData = false;
+    }
+
+    if (context.params.isMember(jss::meta_chain) &&
+        context.params[jss::meta_chain].asBool())
+    {
+        args.metaChain = true;
+    }
     if (context.params.isMember(jss::min_ledger) &&
         context.params.isMember(jss::max_ledger))
     {

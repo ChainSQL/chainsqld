@@ -673,7 +673,8 @@ JSS ( plain_data_len );             // in: make plain data len
 
 JSS (memos);                        // out: memos
 JSS ( lastLedgerSequence );			//
-JSS ( metaChain );			        // out: table tx chain and contract
+JSS ( meta_chain);                    // out: table tx chain and contract
+//JSS ( metaChain );			        // out: table tx chain and contract
 JSS ( TableChain );                  // out: 
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
