@@ -31,6 +31,7 @@
 #include <cstring>
 #include <ed25519-donna/ed25519.h>
 #include <peersafe/gmencrypt/GmCheck.h>
+#include <ripple/crypto/RFC1751.h>
 
 namespace ripple {
 
@@ -455,6 +456,19 @@ parseBase58(TokenType type, std::string const& s)
     if (result.size() != 32)
         return boost::none;
     return SecretKey(makeSlice(result));
+}
+
+/** Encode a Secret in RFC1751 format */
+std::string
+secretKeyAs1751(SecretKey const& secretKey)
+{
+    std::string key;
+
+    std::reverse_copy(secretKey.data(), secretKey.data() + 32, std::back_inserter(key));
+
+    std::string encodedKey;
+    RFC1751::getEnglishFromKey(encodedKey, key);
+    return encodedKey;
 }
 
 }  // namespace ripple
