@@ -919,13 +919,13 @@ static bool saveValidatedLedger (
         {
             uint256 transactionID = vt.second->getTransactionID ();
 
-            bool inLedger = app.getMasterTransaction ().inLedger (
-                transactionID, seq);
-            if (inLedger)
-            {
-                auto transaction = app.getMasterTransaction().fetch(transactionID, false);
+            app.getMasterTransaction ().inLedger (transactionID, seq);
+			auto txInCache =
+				app.getMasterTransaction().fetch(transactionID,false);
+			if (txInCache != nullptr)
+			{
 				Blob metaBlob = vt.second->getMetaBlob();
-                transaction->setMeta(metaBlob);
+                txInCache->setMeta(metaBlob);
             }
 
             std::string const txnId (to_string (transactionID));
@@ -981,6 +981,30 @@ static bool saveValidatedLedger (
 			std::string token, human;
             transResultInfo(vt.second->getResult(), token, human);
 
+			if (app.getTxnDB().hasTxResult())
+			{
+				*db
+					<< (STTx::getMetaSQLInsertReplaceHeader(true) +
+                        vt.second->getTxn()->getMetaSQL(
+							seq,
+                            vt.second->getEscMeta(),
+							token,
+							app.config().SAVE_TX_RAW,
+							true) +
+						";");
+			}
+			else
+			{
+				*db
+					<< (STTx::getMetaSQLInsertReplaceHeader(false) +
+                        vt.second->getTxn()->getMetaSQL(
+							seq,
+                            vt.second->getEscMeta(),
+							token,
+							app.config().SAVE_TX_RAW,
+							false) +
+						";");
+			}
 			*db <<
 				(STTx::getMetaSQLInsertReplaceHeader() +
 					vt.second->getTxn()->getMetaSQL(

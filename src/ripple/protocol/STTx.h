@@ -188,18 +188,20 @@ public:
     // SQL Functions with metadata.
     static
     std::string const&
-    getMetaSQLInsertReplaceHeader ();
+    getMetaSQLInsertReplaceHeader (bool bHasTxResult = true);
 
-    std::string getMetaSQL (
-        std::uint32_t inLedger, std::string const& escapedMetaData,std::string resultToken, bool bSaveRaw) const;
+	std::string getMetaSQL(
+		std::uint32_t inLedger, std::string const& escapedMetaData,
+		std::string resultToken = "tesSUCCESS", bool bSaveRaw = false, bool bUseTxResult = false) const;
 
-    std::string getMetaSQL (
-        Serializer rawTxn,
-        std::uint32_t inLedger,
-        char status,
-        std::string const& escapedMetaData,
-        std::string resultToken,
-        bool bSaveRaw) const;
+	std::string
+		getMetaSQL(
+			Serializer rawTxn,
+			std::uint32_t inLedger,
+			char status,
+			std::string const& escapedMetaData,
+			std::string resultToken,
+			bool bUseTxResult) const;
 
     void setParentTxID(const uint256 &tidParent) { tidParent_ = tidParent; }
 	uint256 getParentTxID() const { return tidParent_;  }

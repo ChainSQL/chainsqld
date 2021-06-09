@@ -547,55 +547,95 @@ Json::Value STTx::getJson (int options, bool binary) const
 }
 
 std::string const&
-STTx::getMetaSQLInsertReplaceHeader ()
+STTx::getMetaSQLInsertReplaceHeader (bool bHasTxResult)
 {
-    static std::string const sql = "INSERT OR REPLACE INTO Transactions "
-        "(TransID, TransType, FromAcct, FromSeq, LedgerSeq, Status,TxResult, RawTxn, TxnMeta)"
-        " VALUES ";
-    
-    return sql;
+	if (bHasTxResult)
+	{
+		static std::string const sql =
+			"INSERT OR REPLACE INTO Transactions "
+			"(TransID, TransType, FromAcct, FromSeq, LedgerSeq, "
+			"Status,TxResult, RawTxn, TxnMeta)"
+			" VALUES ";
+		return sql;
+	}
+	else
+	{
+		static std::string const sql =
+			"INSERT OR REPLACE INTO Transactions "
+			"(TransID, TransType, FromAcct, FromSeq, LedgerSeq, "
+			"Status, RawTxn, TxnMeta)"
+			" VALUES ";
+		return sql;
+	}
 }
 
-std::string STTx::getMetaSQL (std::uint32_t inLedger,
-                              std::string const& escapedMetaData,
-                              std::string resultToken,
-                              bool bSaveRaw) const
+std::string STTx::getMetaSQL(std::uint32_t inLedger,
+	std::string const& escapedMetaData,
+	std::string resultToken,
+	bool bSaveRaw,
+	bool bUseTxResult) const
 {
-    Serializer s;
-    if(bSaveRaw)
-        add (s);
-    return getMetaSQL (s, inLedger, TXN_SQL_VALIDATED, escapedMetaData,resultToken,bSaveRaw);
+	Serializer s;
+	if (bSaveRaw)
+	{
+		add(s);
+		return getMetaSQL(
+			s,
+			inLedger,
+			TXN_SQL_VALIDATED,
+			escapedMetaData,
+			resultToken,
+			bUseTxResult);
+	}
+	else
+	{
+		return getMetaSQL(
+			s,
+			inLedger,
+			TXN_SQL_VALIDATED,
+			sqlEscape(s.peekData()),
+			resultToken,
+			bUseTxResult);
+	}
+
 }
 
 // VFALCO This could be a free function elsewhere
 std::string
-STTx::getMetaSQL (Serializer rawTxn,
-                    std::uint32_t inLedger, 
-                    char status, 
-                    std::string const& escapedMetaData,
-	                std::string resultToken,
-	                bool bSaveRaw) const
+STTx::getMetaSQL(Serializer rawTxn,
+	std::uint32_t inLedger,
+	char status,
+	std::string const& escapedMetaData,
+	std::string resultToken,
+	bool bUseTxResult) const
 {
-    auto format = TxFormats::getInstance().findByType (tx_type_);
-    assert (format != nullptr);
+	auto format = TxFormats::getInstance().findByType(tx_type_);
+	assert(format != nullptr);
 
-    if (bSaveRaw)
-    {
-        static boost::format bfTrans("('%s', '%s', '%s', '%d', '%d', '%c','%s', %s, %s)");
-        std::string rTxn = sqlEscape(rawTxn.peekData());
-		return str(boost::format(bfTrans)
-			% to_string(getTransactionID()) % format->getName()
-			% toBase58(getAccountID(sfAccount))
-			% getSequence() % inLedger % status % resultToken % rTxn % escapedMetaData);
-    }
-    else
-    {
-        static boost::format bfTrans("('%s', '%s', '%s', '%d', '%d', '%c','%s', '%s', '%s')");
-		return str(boost::format(bfTrans)
-			% to_string(getTransactionID()) % format->getName()
-			% toBase58(getAccountID(sfAccount))
-			% getSequence() % inLedger % status % resultToken % "" % "");
-    }
+
+	if (bUseTxResult)
+	{
+		static boost::format bfTrans(
+			"('%s', '%s', '%s', '%d', '%d', '%c','%s', %s, %s)");
+		std::string rTxn = sqlEscape(rawTxn.peekData());
+		return str(
+			boost::format(bfTrans) % to_string(getTransactionID()) %
+			format->getName() % toBase58(getAccountID(sfAccount)) %
+			getSequence() % inLedger % status % resultToken % rTxn %
+			escapedMetaData);
+	}
+	else
+	{
+		static boost::format bfTrans(
+			"('%s', '%s', '%s', '%d', '%d', '%c', %s, %s)");
+		std::string rTxn = sqlEscape(rawTxn.peekData());
+		return str(
+			boost::format(bfTrans) % to_string(getTransactionID()) %
+			format->getName() % toBase58(getAccountID(sfAccount)) %
+			getSequence() % inLedger % status % rTxn %
+			escapedMetaData);
+	}
+
 }
 
 std::pair<bool, std::string> STTx::checkSingleSign () const

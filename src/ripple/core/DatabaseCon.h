@@ -102,11 +102,21 @@ public:
 
     void setupCheckpointing (JobQueue*, Logs&);
 
+	void setHasTxResult(bool bSet)
+	{
+		hasTxResult_ = bSet;
+	}
+
+	bool hasTxResult()
+	{
+		return hasTxResult_;
+	}
 private:
     LockedSociSession::mutex lock_;
 
     soci::session session_;
     std::unique_ptr<Checkpointer> checkpointer_;
+    bool hasTxResult_ = false;
 };
 
 DatabaseCon::Setup
