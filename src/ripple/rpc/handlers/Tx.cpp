@@ -224,14 +224,15 @@ Json::Value doTx (RPC::Context& context)
             && context.params[jss::binary].asBool ();
 
 	bool metaChain,metaData;
-	metaChain = metaData = true;
+	metaChain = false;
+	metaData = true;
 	
 	if (context.params.isMember(jss::meta) && !context.params[jss::meta].asBool()) {
 		metaData  = false;
 	}
 
-	if (context.params.isMember(jss::meta_chain) && !context.params[jss::meta_chain].asBool()) {
-		metaChain = false;
+	if (context.params.isMember(jss::meta_chain) && context.params[jss::meta_chain].asBool()) {
+		metaChain = true;
 	}
 
 
@@ -252,22 +253,8 @@ Json::Value doTx (RPC::Context& context)
 		doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
 	}
 
-	std::shared_ptr<TxMeta> txMeta = nullptr;
-	if (!context.app.config().SAVE_TX_RAW)
-	{
-		auto rawMeta = lgr->txRead(txn->getID()).second;
-		if (!rawMeta) {
-			return ret;
-		}
-
-		txMeta = std::make_shared<TxMeta>(txn->getID(),
-			lgr->seq(), *rawMeta, context.app.journal("TxMeta"));
-	}
-	else
-	{
-		txMeta = std::make_shared<TxMeta>(txn->getID(),
-			lgr->seq(), txn->getMeta(), context.app.journal("TxMeta"));
-	}
+	std::shared_ptr<TxMeta> txMeta = std::make_shared<TxMeta>(txn->getID(),
+		lgr->seq(), txn->getMeta(), context.app.journal("TxMeta"));
 	if(txMeta != nullptr)
 	{
 		ret[jss::transaction_result] = transToken(txMeta->getResultTER());

@@ -136,13 +136,19 @@ Transaction::pointer Transaction::transactionFromSHAMap(
 
     if (auto lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
     {
-        auto txn = lgr->txRead(transID).first;
+        auto transaction = lgr->txRead(transID);
+        auto txn = transaction.first;
+		auto meta = transaction.second;
+		Serializer s;
+		meta->add(s);
+
         std::string reason;
         auto tr = std::make_shared<Transaction>(
             txn, reason, app);
 
         tr->setStatus(sqlTransactionStatus(status));
         tr->setLedger(inLedger);
+        tr->setMeta(s.getData());
         return tr;
     }
 
