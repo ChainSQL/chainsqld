@@ -105,7 +105,11 @@ getCountsJson(Schema& app, int minObjectCount)
     ret[jss::ledger_hit_rate] = app.getLedgerMaster().getCacheHitRate();
     ret[jss::AL_hit_rate] = app.getAcceptedLedgerCache().getHitRate();
     ret["Connection_Count_For_Get"] = app.getConnectionPool().count();
-
+    ret["AcceptedLedgerCacheSize"] =
+        app.getAcceptedLedgerCache().getCacheSize();
+    ret["LedgerHistorySize"] =
+        app.getLedgerMaster().getLedgerHistory().getCacheSize();
+        
     ret[jss::fullbelow_size] =
         static_cast<int>(app.getNodeFamily().getFullBelowCache(0)->size());
     ret[jss::treenode_cache_size] =
