@@ -42,7 +42,7 @@ class TableSync
 {
 public:
     using clock_type = beast::abstract_clock <std::chrono::steady_clock>;
-
+    using SleCache = TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const ripple::SLE>>>;
     TableSync(Schema& app, Config& cfg, beast::Journal journal);
     virtual ~TableSync();
 
@@ -61,7 +61,8 @@ public:
     bool SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_ptr <TableSyncItem> pItem);
     bool GotLedger(std::shared_ptr <protocol::TMLedgerData> const& m);
 
-    void SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>>& cache);
+    void
+    SeekTableTxLedger(TableSyncItem::BaseInfo& stItemInfo, SleCache& cache);
     void CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger);
     bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time, uint256 const& chainId);
     bool ReStartOneTable(AccountID accountID, std::string sNameInDB, std::string sTableName, bool bDrop, bool bCommit);
@@ -103,6 +104,12 @@ private:
     bool Is256thLedgerExist(LedgerIndex index);
     uint256 GetLocalHash(LedgerIndex ledgerSeq);
 
+    std::shared_ptr<const ripple::SLE>
+    GetTableSleFromCache(
+        SleCache& cache,
+        std::shared_ptr<Ledger const> ledger,
+        AccountID const& accountID,
+        LedgerIndex stopIndex);
 
     bool InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner, LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time, uint256 chainId);
     //bool ReadSyncDB(std::string nameInDB, std::string Owner, LedgerIndex &txnseq, uint256 &txnhash,LedgerIndex &seq, uint256 &hash, uint256 &ReadSyncDB, bool &bDeleted);

@@ -38,6 +38,9 @@
 #include <peersafe/app/util/Common.h>
 
 namespace ripple {
+
+int32_t const SYNC_JUMP_TIME = 120;
+
 TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
     : app_(app)
     , journal_(journal)
@@ -225,8 +228,7 @@ bool TableSync::SendSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLa
     return ret;
 }
 //not exceed 256 ledger every check time
-void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo, 
-	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const ripple::SLE>>>& cache)
+void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,SleCache& cache)
 {    
     std::shared_ptr <TableSyncItem> pItem = GetRightItem(stItemInfo.accountID, stItemInfo.sTableNameInDB, stItemInfo.sNickName, stItemInfo.eTargetType);
     if (pItem == NULL) return;
@@ -246,7 +248,7 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
     uint256 curLedgerHash;
     uint32_t time = 0;
 	auto pubLedgerSeq = app_.getLedgerMaster().getPublishedLedger()->info().seq;
-
+    auto timeBegin = utcTime();
     for (int i = stItemInfo.u32SeqLedger + 1; i <= pubLedgerSeq; i++)
     {
         if (!app_.getLedgerMaster().haveLedger(i))   
@@ -267,36 +269,17 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
 				if (ledger)
 				{
 					std::pair<bool, STEntry*> retPair;
-					std::shared_ptr<const ripple::SLE> tablesle = nullptr;
-					auto pMapTables = cache.fetch(uStopIndex).get();
-					if (pMapTables == nullptr)
-					{
-                        tablesle = ledger->read(key);
-						auto pMapSle = std::make_shared<std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
-						pMapSle->emplace(std::make_pair(stItemInfo.accountID,tablesle));
-						cache.canonicalize_replace_client(uStopIndex, pMapSle);
-					}
-					else
-					{
-						auto& mapTables = *pMapTables;
-						if (mapTables.find(stItemInfo.accountID) != mapTables.end())
-						{
-							tablesle = mapTables[stItemInfo.accountID];
-						}
-						else
-						{
-							tablesle = ledger->read(key);
-							mapTables.emplace(std::make_pair(stItemInfo.accountID, tablesle));
-						}
-					}
-					
+                    std::shared_ptr<const ripple::SLE>
+                        tablesle = GetTableSleFromCache(
+                            cache,
+                            ledger,
+                            stItemInfo.accountID,uStopIndex);
 					if (tablesle)
 					{
 						auto & aTables = tablesle->getFieldArray(sfTableEntries);
 						if (aTables.size() > 0)
 						{
 							retPair = TableSyncUtil::IsTableSLEChanged(aTables, lastTxChangeIndex, stItemInfo.sTableNameInDB, false);
-
 						}
 					}
 
@@ -421,6 +404,11 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo,
         }
 
         bSendEnd = false;
+        if ((utcTime() - timeBegin) / 1000 > SYNC_JUMP_TIME)
+        {
+            cache.sweep();
+            break;
+        }   
     }
 
     if (!bSendEnd && curLedgerIndex != 0)
@@ -1411,7 +1399,8 @@ void TableSync::LocalSyncThread()
             tmList.push_back(*iter);
         }
     }
-	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>> cache("TableLocalSync", 100, std::chrono::seconds{ 10 }, stopwatch(), journal_);
+	TaggedCache<LedgerIndex, std::map<AccountID, std::shared_ptr<const SLE>>> cache(
+        "TableLocalSync", 100, std::chrono::seconds{ 10 }, stopwatch(), journal_);
     for (auto pItem : tmList)
     {
         pItem->GetBaseInfo(stItem);
@@ -1526,6 +1515,40 @@ std::pair<bool, std::string>
 		err = e.what();
     }
     return std::make_pair(ret, err);
+}
+
+std::shared_ptr<const ripple::SLE>
+TableSync::GetTableSleFromCache(
+    SleCache& cache,
+    std::shared_ptr<Ledger const> ledger,
+    AccountID const& accountID,
+    LedgerIndex uStopIndex)
+{
+    std::shared_ptr<const ripple::SLE> tablesle = nullptr;
+    auto key = keylet::table(accountID);
+    auto pMapTables = cache.fetch(uStopIndex).get();
+    if (pMapTables == nullptr)
+    {
+        tablesle = ledger->read(key);
+        auto pMapSle = std::make_shared<
+            std::map<AccountID, std::shared_ptr<const ripple::SLE>>>();
+        pMapSle->emplace(std::make_pair(accountID, tablesle));
+        cache.canonicalize_replace_client(uStopIndex, pMapSle);
+    }
+    else
+    {
+        auto& mapTables = *pMapTables;
+        if (mapTables.find(accountID) != mapTables.end())
+        {
+            tablesle = mapTables[accountID];
+        }
+        else
+        {
+            tablesle = ledger->read(key);
+            mapTables.emplace(std::make_pair(accountID, tablesle));
+        }
+    }
+    return tablesle;
 }
 
 uint256 TableSync::GetLocalHash(LedgerIndex ledgerSeq)
