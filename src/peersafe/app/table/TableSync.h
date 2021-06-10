@@ -100,7 +100,14 @@ private:
     bool MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB, protocol::TMTableData &m);
     void GetTxRecordInfo(LedgerIndex iCurSeq, AccountID accountID, std::string sTableName, LedgerIndex &iLastSeq, uint256 &hash);
     bool MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply);
-    
+    bool
+    MakeDataForTx(
+        std::shared_ptr<const STTx> stTx,
+        protocol::TMTableData& m,
+        std::string& sNameInDB,
+        std::shared_ptr<Ledger const> ledger,
+        int& txnCount);
+
     bool Is256thLedgerExist(LedgerIndex index);
     uint256 GetLocalHash(LedgerIndex ledgerSeq);
 

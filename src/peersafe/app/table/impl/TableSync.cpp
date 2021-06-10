@@ -128,32 +128,37 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     {
         m.set_ledgerhash(to_string(ledger->info().hash));
         
-        for (auto& item : ledger->txs)
+        std::shared_ptr<AcceptedLedger> alpAccepted =
+            app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
+        if (alpAccepted != nullptr)
         {
-            std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
-                item.first->getTransactionID(), ledger->seq(), *(item.second));
-
-            TER result = meta->getResultTER();
-            if (result != tesSUCCESS)
+            for (auto const& vt : alpAccepted->getMap())
             {
-                continue;
+                if (vt.second->getResult() != tesSUCCESS)
+                {
+                    continue;
+                }
+                MakeDataForTx(
+                    vt.second->getTxn(), m, sNameInDB, ledger, txnCount);
             }
-            auto stTx = item.first;
-            if (!stTx->isChainSqlTableType() && stTx->getTxnType() != ttCONTRACT)  continue;
-
-			std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(*stTx, sNameInDB,ledger,0);
-			if(vecTxs.size() == 0)
-				continue;
-
-            protocol::TMLedgerNode* node = m.add_txnodes();
-
-            Serializer s;
-            (*stTx).add(s);
-
-            node->set_nodedata(s.data(), s.size());
-
-            txnCount++;
         }
+        else
+        {
+            for (auto& item : ledger->txs)
+            {
+                std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
+                    item.first->getTransactionID(),
+                    ledger->seq(),
+                    *(item.second));
+
+                TER result = meta->getResultTER();
+                if (result != tesSUCCESS)
+                {
+                    continue;
+                }
+                MakeDataForTx(item.first, m,sNameInDB,ledger,txnCount);
+            }
+        }        
 
         if (txnCount == 0)
         {
@@ -169,6 +174,32 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
             << " nameInDB : " << sNameInDB;
     }
 
+    return true;
+}
+
+bool TableSync::MakeDataForTx(
+    std::shared_ptr<const STTx> stTx,
+    protocol::TMTableData & m, 
+    std::string& sNameInDB,
+    std::shared_ptr<Ledger const> ledger,
+    int& txnCount)
+{
+    if (!stTx->isChainSqlTableType() && stTx->getTxnType() != ttCONTRACT)
+        return false;
+
+    std::vector<STTx> vecTxs =
+        app_.getMasterTransaction().getTxs(*stTx, sNameInDB, ledger, 0);
+    if (vecTxs.size() == 0)
+        return false;
+
+    protocol::TMLedgerNode* node = m.add_txnodes();
+
+    Serializer s;
+    (*stTx).add(s);
+
+    node->set_nodedata(s.data(), s.size());
+
+    txnCount++;
     return true;
 }
 
