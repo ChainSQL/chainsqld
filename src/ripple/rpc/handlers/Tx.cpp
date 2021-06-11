@@ -224,15 +224,15 @@ Json::Value doTx (RPC::Context& context)
             && context.params[jss::binary].asBool ();
 
 	bool metaChain,metaData;
-	metaChain = false;
+	metaChain = true;
 	metaData = true;
 	
 	if (context.params.isMember(jss::meta) && !context.params[jss::meta].asBool()) {
 		metaData  = false;
 	}
 
-	if (context.params.isMember(jss::meta_chain) && context.params[jss::meta_chain].asBool()) {
-		metaChain = true;
+	if (context.params.isMember(jss::meta_chain) && !context.params[jss::meta_chain].asBool()) {
+		metaChain = false;
 	}
 
 
@@ -249,7 +249,7 @@ Json::Value doTx (RPC::Context& context)
 	ret[jss::validated] = isValidated(
 		context, lgr->info().seq, lgr->info().hash);
 
-	if (metaChain) {
+	if (metaChain && context.app.config().USE_TRACE_TABLE) {
 		doTxChain(txn->getSTransaction()->getTxnType(), context, ret);
 	}
 

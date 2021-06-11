@@ -63,6 +63,8 @@ const char* TxnDBInit[] =
 	            TraceTransactions(TransID);",
     "CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
 		    TraceTransactions(LedgerSeq);",
+	"CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
+         TraceTransactions(TxSeq, Owner, Name);",
 
     "CREATE TABLE IF NOT EXISTS AccountTransactions (         \
         TransID     CHARACTER(64),              \

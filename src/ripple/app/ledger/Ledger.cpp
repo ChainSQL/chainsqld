@@ -1005,13 +1005,11 @@ static bool saveValidatedLedger (
 							false) +
 						";");
 			}
-			*db <<
-				(STTx::getMetaSQLInsertReplaceHeader() +
-					vt.second->getTxn()->getMetaSQL(
-						seq, vt.second->getEscMeta(), token,
-						app.config().SAVE_TX_RAW) + ";");
-                        
-            storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq,app);
+
+            if (app.config().USE_TRACE_TABLE)
+            {
+                storePeersafeSql(db, vt.second->getTxn(), iTxSeq, seq, app);
+            }            
 
             iTxSeq++;
         }
