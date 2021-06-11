@@ -81,7 +81,7 @@ inline constexpr std::array TxDBPragma
 #endif
 };
 
-inline constexpr std::array<char const*, 11> TxDBInit{
+inline constexpr std::array<char const*, 12> TxDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Transactions (          \
@@ -110,6 +110,8 @@ inline constexpr std::array<char const*, 11> TxDBInit{
 	            TraceTransactions(TransID);",
 	"CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
 		    TraceTransactions(LedgerSeq);",
+    "CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
+         TraceTransactions(TxSeq, Owner, Name);",
 
      "CREATE TABLE IF NOT EXISTS AccountTransactions (   \
         TransID     CHARACTER(64),                      \
