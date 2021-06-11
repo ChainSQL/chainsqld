@@ -643,31 +643,31 @@ ApplyStateTable::threadOwners(
         break;
     }
     case ltPAYCHAN:
-        {
-            threadTx (base, meta, (*sle)[sfAccount], mods, j);
-            threadTx (base, meta, (*sle)[sfDestination], mods, j);
-            break;
-        }
-        case ltRIPPLE_STATE: {
-            threadTx(base, meta, (*sle)[sfLowLimit].getIssuer(), mods, j);
-            threadTx(base, meta, (*sle)[sfHighLimit].getIssuer(), mods, j);
-            break;
-        }
-        default: {
-            // If sfAccount is present, thread to that account
-            if (auto const optSleAcct{(*sle)[~sfAccount]})
-                threadTx(base, meta, *optSleAcct, mods, j);
+    {
+        threadTx (base, meta, (*sle)[sfAccount], mods, j);
+        threadTx (base, meta, (*sle)[sfDestination], mods, j);
+        break;
+    }
+    case ltRIPPLE_STATE: {
+        threadTx(base, meta, (*sle)[sfLowLimit].getIssuer(), mods, j);
+        threadTx(base, meta, (*sle)[sfHighLimit].getIssuer(), mods, j);
+        break;
+    }
+    default: {
+        // If sfAccount is present, thread to that account
+        if (auto const optSleAcct{(*sle)[~sfAccount]})
+            threadTx(base, meta, *optSleAcct, mods, j);
 
-            // Don't thread a check's sfDestination unless the amendment is
-            // enabled
-            if (ledgerType == ltCHECK &&
-                !base.rules().enabled(fixCheckThreading))
-                break;
+        // Don't thread a check's sfDestination unless the amendment is
+        // enabled
+        if (ledgerType == ltCHECK &&
+            !base.rules().enabled(fixCheckThreading))
+            break;
 
-            // If sfDestination is present, thread to that account
-            if (auto const optSleDest{(*sle)[~sfDestination]})
-                threadTx(base, meta, *optSleDest, mods, j);
-        }
+        // If sfDestination is present, thread to that account
+        if (auto const optSleDest{(*sle)[~sfDestination]})
+            threadTx(base, meta, *optSleDest, mods, j);
+    }
     }
 }
 
