@@ -111,6 +111,7 @@ transResults()
 		MAKE_ERROR(tefCONTRACT_NOT_EXIST ,	  	"Contract does not exist,maybe destructed."				),
 		MAKE_ERROR(tefINVALID_CURRENY ,		   "Invalid currency" ),
         MAKE_ERROR(tefINVARIANT_FAILED,        "Fee claim violated invariants for the transaction."                            ),
+		MAKE_ERROR(tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT ,	"Can't transfer currency under other people's account."				),
 		MAKE_ERROR(telLOCAL_ERROR,             "Local failure."                                                                ),
 		MAKE_ERROR(telBAD_DOMAIN,              "Domain too long."                                                              ),
 		MAKE_ERROR(telBAD_PATH_COUNT,          "Malformed: Too many paths."                                                    ),
