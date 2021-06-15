@@ -2991,17 +2991,17 @@ namespace helper {
     
     void modifyLimitCount(std::string& sSql,int selectLimit)
     {   
-        std::string sLimit = "limit " + to_string(selectLimit);
+        std::string sLimit;
 
-        int iPosLimitLower = sSql.find("limit");
-        int iPosLimitUpper = sSql.find("LIMIT");
+        int iPosLimitLower = sSql.find(" limit ");
+        int iPosLimitUpper = sSql.find(" LIMIT ");
         if (iPosLimitLower >= 0 || iPosLimitUpper >= 0)
         {
 			if (iPosLimitLower >= 0)   sLimit = sSql.substr(iPosLimitLower);
 			else                       sLimit = sSql.substr(iPosLimitUpper);
 
             const char * chLimit = sLimit.c_str();
-            for (int i = 5; i<sLimit.length(); i++)
+            for (int i = 7; i<sLimit.length(); i++)
             {
                 if ((chLimit[i] > 'a' && chLimit[i] < 'z') || 
 					(chLimit[i] > 'A' && chLimit[i] < 'Z') || 
@@ -3029,14 +3029,14 @@ namespace helper {
             }
             else
             {
-                sCount = sLimit.substr(5);
+                sCount = sLimit.substr(7);
                 boost::algorithm::trim(sCount);
                 int iCount = std::stoi(sCount.c_str());
                 if (iCount > selectLimit)
                 {
                     iCount = selectLimit;
                     sCount = to_string(iCount);
-                    sLimitNew = "limit " + sCount;
+                    sLimitNew = " limit " + sCount;
                 }
             }
 
@@ -3047,18 +3047,20 @@ namespace helper {
         }
         else
         {
+            std::string sLimit = " limit " + to_string(selectLimit);
             int iPosSemicolon = sSql.find(';');
             if (iPosSemicolon >= 0)
             {
                 sSql = sSql.substr(0, iPosSemicolon);
-                sSql += " " + sLimit + ";";
+                sSql += sLimit + ";";
             }
             else
             {
-                sSql += " " + sLimit;
+                sSql += sLimit;
             }
         }
     }
+
     Json::Value query_directly(DatabaseCon* conn, std::string sql,int selectLimit) {
         Json::Value obj;
         modifyLimitCount(sql, selectLimit);
