@@ -134,6 +134,22 @@ namespace ripple {
 	{
 		try
 		{
+            if (addressHasCode(_from))
+            {
+                // from is contract
+                if (_from != ctx_.tx.getAccountID(sfContractAddress))
+                {
+                    return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+                }
+            }
+            else
+            {
+                // from is user
+                if (_from != ctx_.tx.getAccountID(sfAccount))
+                {
+                    return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+                }
+            }
 			STTx paymentTx(ttPAYMENT,
 				[&_from, &_to, &_value, &_sendMax, &_sCurrency, &_issuer](auto& obj)
 			{
