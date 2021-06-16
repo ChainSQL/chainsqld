@@ -548,6 +548,12 @@ jsonToSTTx(Json::Value& params)
 
     if (params.isMember(jss::tx_json))
     {
+        if (!params[jss::tx_json].isObject())
+        {
+            return std::make_pair(
+                nullptr, RPC::make_param_error("Object tx_json is malformed."));
+        }
+
         params[jss::tx_json].removeMember(jss::date);
         params[jss::tx_json].removeMember(jss::inLedger);
         params[jss::tx_json].removeMember(jss::ledger_index);
