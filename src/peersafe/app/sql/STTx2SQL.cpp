@@ -3925,14 +3925,14 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			if (bHasAutoField)
 			{
 				BuildField insert_field(sAutoFillField);
-				insert_field.SetFieldValue(to_string(tx.getTransactionID()));
+                insert_field.SetFieldValue(to_string(tx.getRealTxID()));
 				buildsql->AddField(insert_field);
 			}
 
 			if (bHasTxsHashField)
 			{
 				BuildField insert_tx_field(sTxsHashFillField);
-				insert_tx_field.SetFieldValue(to_string(tx.getTransactionID()));
+                insert_tx_field.SetFieldValue(to_string(tx.getRealTxID()));
 				buildsql->AddField(insert_tx_field);
 			}
 
@@ -3995,7 +3995,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 
 				if (bHasAutoField) {
 					BuildField update_field(sAutoFillField);
-					update_field.SetFieldValue(to_string(tx.getTransactionID()));
+                    update_field.SetFieldValue(to_string(tx.getRealTxID()));
 					buildsql->AddField(update_field);
 				}
 
@@ -4023,7 +4023,10 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 
 		if (bHasTxsHashField) {
 			BuildField update_field(sTxsHashFillField);
-			std::string updateStr = (boost::format("concat(%1%,\",%2%\")") % sTxsHashFillField % to_string(tx.getTransactionID())).str();
+            std::string updateStr =
+                        (boost::format("concat(%1%,\",%2%\")") %
+                         sTxsHashFillField % to_string(tx.getRealTxID()))
+                            .str();
 			update_field.SetFieldValue(updateStr, FieldValue::fCOMMAND);
 			buildsql->AddField(update_field);
 		}

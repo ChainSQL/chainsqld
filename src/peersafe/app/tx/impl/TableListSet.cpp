@@ -239,7 +239,7 @@ namespace ripple {
         uint32_t createledgerSequence = view.info().seq - 1;  
         ripple::uint256 txnLedgerHash = view.info().hash;
         ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--;       
-        ripple::uint256 createdtxnHash = tx.isSubTransaction() ? tx.getParentTxID() : tx.getTransactionID(); 
+        ripple::uint256 createdtxnHash = tx.getRealTxID(); 
         ripple::uint256 prevTxnLedgerHash; //default null
 
         uint256 hashNew = sha512Half(makeSlice(strCopy(tx.getFieldVL(sfRaw))));

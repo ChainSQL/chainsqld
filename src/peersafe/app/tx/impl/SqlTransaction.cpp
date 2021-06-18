@@ -200,7 +200,7 @@ namespace ripple {
 				auto tx = *tx_pair.first;
 				if (isTableListSetOpType((TableOpType)tx.getFieldU16(sfOpType)) && tx.getFieldU16(sfOpType) != T_GRANT)
 					return temBAD_OPTYPE_IN_TRANSACTION;
-				tx.setParentTxID(ctx.tx.isSubTransaction() ? ctx.tx.getParentTxID() : ctx.tx.getTransactionID());
+                tx.setParentTxID(ctx.tx.getRealTxID());
                 if (obj["OpType"].asInt() != T_ASSERT) {
                     auto type = tx.getFieldU16(sfTransactionType);
                     if (type == ttTABLELISTSET)

@@ -247,9 +247,9 @@ public:
         tidParent_ = tidParent;
     }
     uint256
-    getParentTxID() const
+    getRealTxID() const
     {
-        return tidParent_;
+        return !tidParent_.isZero() ? tidParent_ : tid_;
     }
     bool
     isSubTransaction() const
