@@ -196,6 +196,8 @@ public:
     SleOps const& state() const { return oSle_; }
 
 	AccountID contractAddress() { return fromEvmC(myAddress); }
+public:
+	ripple::TER check_address_invalidation(const struct evmc_address* address);
 private:
 	SleOps&                                                      oSle_;
 };

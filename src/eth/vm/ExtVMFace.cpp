@@ -543,7 +543,8 @@ namespace eth {
 		, depth(_depth)
 		, isCreate(_isCreate)
 		, staticCall(_staticCall)
-		, envInfo_(envInfo) {
+		, envInfo_(envInfo) 
+		, dropsPerByte(1000){
 
 	}
 } // namespace eth

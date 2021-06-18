@@ -147,6 +147,12 @@ CACertSite::load(
     std::vector<std::string> const& siteURIs)
 {
 
+    if (publisherKeys.empty() || siteURIs.empty()) {
+
+        JLOG(j_.trace()) << "publisherKeys or siteURIs is empty ";
+        return true;
+    }
+
     JLOG(j_.debug())
         << "Loading configured trusted CA list siteURIs and  publisher keys";
 
