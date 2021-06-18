@@ -352,9 +352,10 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			auto tx_pair = parseSTTx(obj, accountID);
 			if (tx_pair.first)
 			{
-				auto tx = *tx_pair.first;
-				tx.setFieldVL(sfSigningPubKey, publicKey);
-				getOneTx(vec, tx, sTableNameInDB);
+				auto txTmp = *tx_pair.first;
+                txTmp.setFieldVL(sfSigningPubKey, publicKey);
+                txTmp.setParentTxID(tx.getTransactionID());
+				getOneTx(vec, txTmp, sTableNameInDB);
 			}
 		}
 	}
@@ -391,6 +392,7 @@ std::vector<STTx> STTx::getTxs(STTx const& tx, std::string sTableNameInDB /* = "
 			auto vecTxs = getTxs(tx_, sTableNameInDB);
 			for (auto subTx : vecTxs)
 			{
+                subTx.setParentTxID(tx.getTransactionID());
 				vec.push_back(subTx);
 			}
 		}
