@@ -351,9 +351,6 @@ namespace ripple {
                 case T_ASSIGN:
                 case T_CANCELASSIGN:
                 {
-                    //if confidential,for assign operation,tx must contains token field
-                    STEntry const *pEntry = getTableEntry(tablentries, vTableNameStr);
-
                     if (pEntry != NULL)
                     {
                         if (pEntry->isFieldPresent(sfUsers))
@@ -411,6 +408,7 @@ namespace ripple {
 											//cannot grant for 'everyone' if table is confidential
 											if (addUserID == noAccount())
 												return temINVALID;
+                                            // if confidential,for assign operation,tx must contains token field
                                             if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
                                                 return temINVALID;
                                         }
@@ -437,7 +435,7 @@ namespace ripple {
 					{
 						return tesSUCCESS;
 					}
-                    STEntry const *pEntry = getTableEntry(tablentries, vTableNameStr);
+
                     if (pEntry == NULL)
                     {
                         return tefTABLE_NOTEXIST;
