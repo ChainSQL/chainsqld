@@ -16,6 +16,7 @@
 #include <ripple/json/json_reader.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/protocol/Feature.h>
 #include <eth/vm/VMFace.h>
 
 namespace ripple {
@@ -182,6 +183,8 @@ namespace ripple {
 			// Create the account.
 			sleDst = std::make_shared<SLE>(k);
 			sleDst->setAccountID(sfAccount, _to);
+            std::uint32_t const seqno{
+				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
 			sleDst->setFieldU32(sfSequence, 1);
 			ctx_.view().insert(sleDst);
 		}
