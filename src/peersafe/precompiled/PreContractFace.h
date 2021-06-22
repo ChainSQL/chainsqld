@@ -31,6 +31,9 @@ namespace ripple {
     class PrecompiledDiyBase
     {
     public:
+        virtual ~PrecompiledDiyBase()
+        {
+        }
         virtual std::string toString()
         {
             return "";

@@ -108,7 +108,7 @@ struct ABIDynamicArray<std::vector<T>> : std::true_type
 {
 };
 
-// Definition: The following types are called ¡°dynamic¡±:
+// Definition: The following types are called ï¿½ï¿½dynamicï¿½ï¿½:
 // bytes
 // string
 // T[] for any T
@@ -184,6 +184,39 @@ struct Offset<T>
 };
 
 
+inline string32
+toString32(std::string const& _s)
+{
+    string32 ret;
+    for (unsigned i = 0; i < 32; ++i)
+        ret[i] = i < _s.size() ? _s[i] : 0;
+    return ret;
+}
+
+inline bytes
+toBytes(const Address& addr)
+{
+    return bytes(addr.begin(), addr.end());
+}
+
+/// Concatenate the contents of a container onto a vector
+template <class T, class U>
+std::vector<T>&
+operator+=(std::vector<T>& _a, U const& _b)
+{
+    for (auto const& i : _b)
+        _a.push_back(i);
+    return _a;
+}
+
+template <class T>
+inline std::vector<T>
+operator+(std::vector<T> const& _a, std::vector<T> const& _b)
+{
+    std::vector<T> ret(_a);
+    return ret += _b;
+}
+
 /**
  * Class for serialise and deserialise c++ object in Solidity ABI format.
  * @ref https://solidity.readthedocs.io/en/develop/abi-spec.html
@@ -247,7 +280,7 @@ public:
     bytes
     serialise(const u256& _in);
 
-    // two¡¯s complement signed integer type int256.
+    // twoï¿½ï¿½s complement signed integer type int256.
     bytes
     serialise(const s256& _in);
 
@@ -386,13 +419,13 @@ public:
         }
     }
 
-    template <class... T>
-    bool
-    abiOutHex(const std::string& _data, T&... _t)
-    {
-        auto data = fromHex(_data);
-        return abiOut(bytesConstRef(&data), _t...);
-    }
+    // template <class... T>
+    // bool
+    // abiOutHex(const std::string& _data, T&... _t)
+    // {
+    //     auto data = fromHex(_data);
+    //     return abiOut(bytesConstRef(&data), _t...);
+    // }
 
     bool
     abiOutByFuncSelector(
@@ -400,27 +433,27 @@ public:
         const std::vector<std::string>& _allTypes,
         std::vector<std::string>& _out);
 
-    template <class... T>
-    bytes
-    abiIn(const std::string& _sig, T const&... _t)
-    {
-        offset = Offset<T...>::value * MAX_BYTE_LENGTH;
-        fixed.clear();
-        dynamic.clear();
+    // template <class... T>
+    // bytes
+    // abiIn(const std::string& _sig, T const&... _t)
+    // {
+    //     offset = Offset<T...>::value * MAX_BYTE_LENGTH;
+    //     fixed.clear();
+    //     dynamic.clear();
 
-        abiInAux(_t...);
+    //     abiInAux(_t...);
 
-        return _sig.empty() ? fixed + dynamic
-                            : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
-                fixed + dynamic;
-    }
+    //     return _sig.empty() ? fixed + dynamic
+    //                         : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
+    //             fixed + dynamic;
+    // }
 
-    template <class... T>
-    std::string
-    abiInHex(const std::string& _sig, T const&... _t)
-    {
-        return toHex(abiIn(_sig, _t...));
-    }
+    // template <class... T>
+    // std::string
+    // abiInHex(const std::string& _sig, T const&... _t)
+    // {
+    //     return toHex(abiIn(_sig, _t...));
+    // }
 };
 
 // a fixed-length array of elements of the given type.
@@ -527,37 +560,5 @@ ContractABI::deserialise(std::vector<T>& _out, std::size_t _offset)
     }
 }
 
-inline string32
-toString32(std::string const& _s)
-{
-    string32 ret;
-    for (unsigned i = 0; i < 32; ++i)
-        ret[i] = i < _s.size() ? _s[i] : 0;
-    return ret;
-}
-
-inline bytes
-toBytes(const Address& addr)
-{
-    return bytes(addr.begin(), addr.end());
-}
-
-/// Concatenate the contents of a container onto a vector
-template <class T, class U>
-std::vector<T>&
-operator+=(std::vector<T>& _a, U const& _b)
-{
-    for (auto const& i : _b)
-        _a.push_back(i);
-    return _a;
-}
-
-template <class T>
-inline std::vector<T>
-operator+(std::vector<T> const& _a, std::vector<T> const& _b)
-{
-    std::vector<T> ret(_a);
-    return ret += _b;
-}
 }  // namespace ripple
 #endif
