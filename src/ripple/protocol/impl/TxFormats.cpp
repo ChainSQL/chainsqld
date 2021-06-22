@@ -280,6 +280,7 @@ TxFormats::TxFormats()
 			{ sfOpType,				 soeREQUIRED },
 			{ sfTxCheckHash,		 soeOPTIONAL },
 			{ sfAutoFillField,		 soeOPTIONAL },
+            { sfTxsHashFillField,    soeOPTIONAL },
 			{ sfOriginalAddress,     soeOPTIONAL },
 			{ sfTxnLgrSeq,			 soeOPTIONAL },
 			{ sfCurTxHash,			 soeOPTIONAL },
