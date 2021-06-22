@@ -103,6 +103,16 @@ namespace ripple {
 		return sha512Half(makeSlice(code));
 	}
 
+	size_t SleOps::codeSize(AccountID const& addr)
+    {
+        if (ctx_.app.getPreContractFace().isPrecompiledDiy(addr))
+        {
+            return 1;
+		}
+		eth::bytes const& code = SleOps::code(addr);
+        return code.size();    
+	}
+
 	TER SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
 		if (_value == uint256(0))
@@ -445,11 +455,17 @@ namespace ripple {
 	}
 
 	//CRUD operation
-	int64_t SleOps::insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+    int64_t
+    SleOps::insertData(
+            AccountID const& _account,
+            AccountID const& _owner,
+            std::string const& _sTableName,
+            std::string const& _raw,
+            std::string const& _autoFillField)
 	{
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_owner, &_sTableName, &_raw,&_autoFillField, &_ctx](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -457,6 +473,10 @@ namespace ripple {
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
 			obj.setFieldVL(sfRaw, strCopy(_raw));
+            if (_autoFillField != "")
+            {
+                obj.setFieldVL(sfAutoFillField, strCopy(_autoFillField));      
+			}
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 		//

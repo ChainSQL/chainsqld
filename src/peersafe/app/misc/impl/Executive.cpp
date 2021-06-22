@@ -135,7 +135,7 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
 
 	//m_savepoint = m_s.savepoint();
 
-    if (m_PreContractFace.isPrecompiled(_p.codeAddress, m_envInfo.block_number()))
+    if (m_PreContractFace.isPrecompiledOrigin(_p.codeAddress, m_envInfo.block_number()))
     {
         if (_p.receiveAddress == c_RipemdPrecompiledAddress)
             m_s.unrevertableTouch(_p.codeAddress);
@@ -163,6 +163,21 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             }
         }
     }
+    else if (m_PreContractFace.isPrecompiledDiy(_p.codeAddress))
+    {
+        auto retPre = m_PreContractFace.executePreDiy(
+            m_s, _p.codeAddress, _p.data, _p.senderAddress, _origin);
+        m_gas = (_p.gas - get<2>(retPre));
+        TER ter = get<0>(retPre);
+        if (ter != tesSUCCESS)
+        {
+            m_excepted = ter;
+            auto output = get<1>(retPre);
+            m_output =
+                eth::owning_bytes_ref{std::move(output), 0, output.size()};
+            return true;
+        }
+    }
     else
     {
         m_gas = _p.gas;
@@ -188,36 +203,36 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             m_excepted = tefCONTRACT_NOT_EXIST;
             return true;
         }
-    }
+        // Transfer zxc.
+        TER ret = tesSUCCESS;
+        if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
+            !m_PreContractFace.isPrecompiledOrigin(
+                _p.receiveAddress, m_envInfo.block_number()) &&
+            !m_PreContractFace.isPrecompiledDiy(_p.receiveAddress))
+        {
+            // account not exist,activate it
+            ret = m_s.doPayment(
+                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+        }
+        else
+        {
+            ret = m_s.transferBalance(
+                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+        }
 
-	// Transfer zxc.
-	TER ret = tesSUCCESS;
-    if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
-        !m_PreContractFace.isPrecompiled(
-            _p.receiveAddress, m_envInfo.block_number()))
-    {
-        // account not exist,activate it
-        ret = m_s.doPayment(
-            _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-    }
-    else
-    {
-        ret = m_s.transferBalance(
-            _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-    }
+        auto j = getJ();
+        JLOG(j.info()) << "Contract invoke , address : "
+                       << to_string(_p.codeAddress)
+                       << ", sender :" << to_string(_p.senderAddress)
+                       << ", receive :" << to_string(_p.receiveAddress)
+                       << ", amount :" << to_string(_p.valueTransfer);
 
-    auto j = getJ();
-    JLOG(j.info()) << "Contract invoke , address : "
-                   << to_string(_p.codeAddress)
-                   << ", sender :" << to_string(_p.senderAddress) 
-                   << ", receive :" << to_string(_p.receiveAddress)
-                   << ", amount :" << to_string(_p.valueTransfer);
-
-	if (ret != tesSUCCESS)
-	{
-		m_excepted = ret;
-		return true;
-	}
+        if (ret != tesSUCCESS)
+        {
+            m_excepted = ret;
+            return true;
+        }
+    }
 
 	return !m_ext;
 }

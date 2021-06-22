@@ -89,7 +89,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/SchemaManager.h>
-#include <peersafe/app/misc/PreContractFace.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <boost/optional.hpp>
 #include <sstream>
 

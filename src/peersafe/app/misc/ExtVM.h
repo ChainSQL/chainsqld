@@ -4,7 +4,7 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <eth/vm/ExtVMFace.h>
-#include <peersafe/app/misc/PreContractFace.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/basics/TypeTransform.h>
 
 #include <functional>

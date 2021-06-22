@@ -42,6 +42,8 @@ public:
 	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
 	uint256 codeHash(AccountID const& _contract);
 
+	size_t codeSize(AccountID const& _contract);
+
 	TER transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
 	TER doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value);
@@ -78,7 +80,7 @@ public:
 	int64_t grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw);
 
 	//CRUD operation
-	int64_t insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
+	int64_t insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw,std::string const& _autoFillField = "");
 	int64_t deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
 	int64_t updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw);
 

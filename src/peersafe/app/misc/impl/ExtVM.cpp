@@ -148,8 +148,7 @@ ExtVM::codeAt(evmc_address const& addr)
 size_t
 ExtVM::codeSizeAt(evmc_address const& addr)
 {
-    eth::bytes const& code = oSle_.code(fromEvmC(addr));
-    return code.size();
+    return oSle_.codeSize(fromEvmC(addr));
 }
 
 evmc_uint256be

@@ -56,7 +56,7 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <peersafe/app/misc/PreContractFace.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/ConnectionPool.h>
 #include <peersafe/schema/Schema.h>

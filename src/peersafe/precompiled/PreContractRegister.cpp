@@ -1,6 +1,6 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <peersafe/crypto/LibSnark.h>
-#include <peersafe/app/misc/PreContractRegister.h>
+#include <peersafe/precompiled/PreContractRegister.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <ripple/protocol/digest.h>
 #include <ripple/protocol/CommonKey.h>

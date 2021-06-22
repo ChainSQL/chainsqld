@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PRECOMPILED_REGISTER_H_INCLUDE
+#define PRECOMPILED_REGISTER_H_INCLUDE
 
 #include <unordered_map>
 #include <functional>
@@ -66,3 +67,5 @@ private:
             #Name, &__eth_registerPricerFunction##Name);                           \
     static int64_t __eth_registerPricerFunction##Name
 }
+
+#endif

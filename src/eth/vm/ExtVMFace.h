@@ -4,7 +4,7 @@
 #include "Common.h"
 #include <ripple/protocol/AccountID.h>
 #include <peersafe/basics/TypeTransform.h>
-#include <peersafe/app/misc/PreContractFace.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <eth/evmc/include/evmc/evmc.h>
 #include <eth/evmc/include/evmc/evmc.hpp>
 
