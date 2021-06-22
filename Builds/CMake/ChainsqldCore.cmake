@@ -669,8 +669,6 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/misc/impl/ContractHelper.cpp
   src/peersafe/app/misc/impl/Executive.cpp
   src/peersafe/app/misc/impl/ExtVM.cpp
-  src/peersafe/app/misc/impl/PreContractFace.cpp
-  src/peersafe/app/misc/impl/PreContractRegister.cpp
   src/peersafe/app/misc/impl/SleOps.cpp
   src/peersafe/app/misc/impl/StateManager.cpp
   src/peersafe/app/misc/impl/TxPool.cpp
@@ -717,6 +715,11 @@ target_sources (chainsqld PRIVATE
   src/peersafe/gmencrypt/randomcheck/impl/matrix.c
   src/peersafe/gmencrypt/randomcheck/impl/randCheck.cpp
   src/peersafe/gmencrypt/randomcheck/impl/sm4.c
+  src/peersafe/precompiled/PreContractFace.cpp
+  src/peersafe/precompiled/PreContractRegister.cpp
+  src/peersafe/precompiled/ABI.cpp
+  src/peersafe/precompiled/TableOpPrecompiled.cpp
+  src/peersafe/precompiled/Utils.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
