@@ -687,7 +687,7 @@ ExtVM::check_address_invalidation(const struct evmc_address* address)
         // from is contract
         if (accountAddress != oSle_.ctx().tx.getAccountID(sfContractAddress))
         {
-            return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+            return tefMISMATCH_CONTRACT_ADDRESS;
         }
     }
     else
@@ -695,7 +695,7 @@ ExtVM::check_address_invalidation(const struct evmc_address* address)
         // from is user
         if (accountAddress != oSle_.ctx().tx.getAccountID(sfAccount))
         {
-            return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+            return tefMISMATCH_TRANSACTION_ADDRESS;
         }
     }
 
