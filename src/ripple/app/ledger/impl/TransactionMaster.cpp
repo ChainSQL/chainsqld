@@ -62,6 +62,10 @@ int TransactionMaster::getTxCount(bool chainsql)
 	{
 		sql += " WHERE (TransType = 'SQLTransaction' or TransType = 'TableListSet' or TransType = 'SQLStatement')";
 	}
+    else
+    {
+        sql += " WHERE TransType != 'EnableAmendment'";
+    }
 	sql += ";";
 
 	boost::optional<int> txCount;
