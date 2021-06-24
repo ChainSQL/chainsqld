@@ -957,12 +957,15 @@ doTxCount(RPC::JsonContext& context)
     if (!context.app.config().useTxTables())
         return rpcError(rpcNOT_ENABLED);
     bool bChainsql = false;
+    int ledger_index = -1;
+    if (context.params.isMember(jss::ledger_index))
+        ledger_index = context.params[jss::ledger_index].asInt();
     if (context.params.isMember(jss::chainsql_tx))
         bChainsql = context.params[jss::chainsql_tx].asBool();
     Json::Value ret(Json::objectValue);
     if (bChainsql)
-        ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true);
-    ret["all"] = context.app.getMasterTransaction().getTxCount(false);
+        ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true,ledger_index);
+    ret["all"] = context.app.getMasterTransaction().getTxCount(false, ledger_index);
 
     return ret;
 }

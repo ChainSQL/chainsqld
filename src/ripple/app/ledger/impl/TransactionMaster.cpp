@@ -55,17 +55,25 @@ TransactionMaster::inLedger(uint256 const& hash, std::uint32_t ledger)
     return true;
 }
 
-int TransactionMaster::getTxCount(bool chainsql)
+int
+TransactionMaster::getTxCount(bool chainsql, int ledgerIndex)
 {
 	std::string sql = "SELECT COUNT(*) FROM Transactions ";
 	if (chainsql)
 	{
-		sql += " WHERE (TransType = 'SQLTransaction' or TransType = 'TableListSet' or TransType = 'SQLStatement')";
+		sql += "WHERE (TransType = 'SQLTransaction' or TransType = 'TableListSet' or TransType = 'SQLStatement')";
+        if (ledgerIndex > 0)
+        {
+            sql += " and LedgerSeq <=";
+            sql += ledgerIndex;
+        }
 	}
-    else
+    else if (ledgerIndex > 0)
     {
-        sql += " WHERE TransType != 'EnableAmendment'";
+        sql += "WHERE LedgerSeq <=";
+        sql += ledgerIndex;
     }
+   
 	sql += ";";
 
 	boost::optional<int> txCount;
