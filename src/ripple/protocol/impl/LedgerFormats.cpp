@@ -58,6 +58,7 @@ LedgerFormats::LedgerFormats()
 			{ sfMemos,				 soeOPTIONAL },
 			{ sfStorageOverlay,		 soeOPTIONAL },
 			{ sfContractCode,		 soeOPTIONAL },
+            { sfWhiteLists,          soeOPTIONAL },
         },
         commonFields);
 

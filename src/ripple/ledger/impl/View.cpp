@@ -377,7 +377,19 @@ transferFeeMax(ReadView const& view,
 
 	return "1000000000000";
 }
+STArray
+getWhiteList(ReadView const& view, AccountID const& issuer)
+{
+    auto const sle = view.read(keylet::account(issuer));
 
+    if (sle && sle->isFieldPresent(sfWhiteLists))
+    {
+        STArray const& whiteList = sle->getFieldArray(sfWhiteLists);
+        return whiteList;
+    }
+
+    return STArray();
+}
 bool
 areCompatible(
     ReadView const& validLedger,

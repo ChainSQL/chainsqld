@@ -46,6 +46,8 @@ protected:
     Step const* const prevStep_ = nullptr;
     bool const isLast_;
     beast::Journal const j_;
+    IOUAmount srcToDstAmount;
+    AccountID srcToDstIssAcc;
 
     struct Cache
     {
@@ -101,6 +103,8 @@ public:
         , prevStep_(ctx.prevStep)
         , isLast_(ctx.isLast)
         , j_(ctx.j)
+        , srcToDstAmount(beast::zero)
+        , srcToDstIssAcc(noAccount())
     {
     }
 
@@ -146,6 +150,12 @@ public:
     directStepAccts() const override
     {
         return std::make_pair(src_, dst_);
+    }
+
+    boost::optional<std::pair<AccountID, IOUAmount>>
+    directStepAccAmount() const override
+    {
+        return std::make_pair(srcToDstIssAcc, srcToDstAmount);
     }
 
     DebtDirection
@@ -561,6 +571,12 @@ DirectStepI<TDerived>::revImp(
             auto feeAct = std::min(*feeMax, std::max(fee, *feeMin));
             if (fee != feeAct)
                 realIn = srcToDst + feeAct;
+            if (realIn != srcToDst)
+            {
+                srcToDstIssAcc = srcToDstIss.account;
+                srcToDstAmount = srcToDst;
+            }
+           
         }
         cache_.emplace(realIn, srcToDst, out, srcDebtDir);
         rippleCredit(

@@ -148,7 +148,11 @@ public:
     {
         return boost::none;
     }
-
+    virtual boost::optional<std::pair<AccountID, IOUAmount>>
+    directStepAccAmount() const
+    {
+        return boost::none;
+    }
     /**
        If this step is a DirectStepI and the src redeems to the dst, return
        true, otherwise return false. If this step is a BookStep, return false if

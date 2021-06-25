@@ -71,6 +71,8 @@ const std::uint32_t asfNoFreeze = 6;
 const std::uint32_t asfGlobalFreeze = 7;
 const std::uint32_t asfDefaultRipple = 8;
 const std::uint32_t asfDepositAuth = 9;
+const std::uint32_t asfAddWhiteList = 10;
+const std::uint32_t asfDelWhiteList = 11;
 
 // OfferCreate flags:
 const std::uint32_t tfPassive = 0x00010000;

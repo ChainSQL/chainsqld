@@ -660,7 +660,46 @@ SetAccount::doApply()
 
     if (uFlagsIn != uFlagsOut)
         sle->setFieldU32(sfFlags, uFlagsOut);
+    //
+    // WhiteList
+    //
 
+    if ((uSetFlag == asfAddWhiteList || (uSetFlag == asfDelWhiteList)) &&
+        ctx_.tx.isFieldPresent(sfWhiteLists))
+    {
+        auto& wLists = sle->peekFieldArray(sfWhiteLists);
+        STArray whiteLists = ctx_.tx.getFieldArray(sfWhiteLists);
+
+        for (auto& whiteList : whiteLists)
+        {
+            auto iter(wLists.end());
+            iter = std::find_if(
+                wLists.begin(),
+                wLists.end(),
+                [whiteList](STObject const& white) {
+                    auto const& sUserID = whiteList.getAccountID(sfUser);
+                    auto const& sUser = white.getAccountID(sfUser);
+                    return sUser == sUserID;
+                });
+            if (uSetFlag == asfAddWhiteList)
+            {
+                if (iter != wLists.end())
+                {
+                    return tefWHITELIST_ACCOUNTIDEXIST;
+                }
+                wLists.push_back(whiteList);
+            }
+            else if (uSetFlag == asfDelWhiteList)
+            {
+                if (iter == wLists.end())
+                {
+                    return tefWHITELIST_NOACCOUNTID;
+                }
+                wLists.erase(iter);
+            }
+        }
+    }
+   
     return tesSUCCESS;
 }
 

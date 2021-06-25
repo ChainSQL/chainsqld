@@ -224,6 +224,8 @@ enum TEFcodes : TERUnderlyingType
 	tefSCHEMA_NODE_COUNT,
 	tefSCHEMA_MAX_SCHEMAS,
     tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT,
+    tefWHITELIST_ACCOUNTIDEXIST,
+    tefWHITELIST_NOACCOUNTID,
 };
 
 //------------------------------------------------------------------------------

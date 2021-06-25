@@ -57,6 +57,7 @@ TxFormats::TxFormats()
             { sfSetFlag,             soeOPTIONAL },
             { sfClearFlag,           soeOPTIONAL },
             { sfTickSize,            soeOPTIONAL },
+            { sfWhiteLists,          soeOPTIONAL },
         },
         commonFields);
 

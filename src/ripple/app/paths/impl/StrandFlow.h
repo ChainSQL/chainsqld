@@ -132,7 +132,20 @@ flow(
                     JLOG(j.trace()) << "Strand found dry in rev";
                     return Result{std::move(ofrsToRm)};
                 }
-
+                if (i > 0)
+                {
+                    auto srcAcct = strand[i - 1]->directStepSrcAcct();
+                    auto rAccAmount = strand[i]->directStepAccAmount();
+                    AccountID issuerId = rAccAmount->first;
+                    if (issuerId.isNonZero())
+                    {
+                        JLOG(j.trace()) << "Issue." << issuerId;
+                        if (jumpWhiteList(*sb, *srcAcct, issuerId, j))
+                        {
+                            r.first = EitherAmount(rAccAmount->second);
+                        }
+                    }
+                }
                 if (i == 0 && maxIn && *maxIn < get<TInAmt>(r.first))
                 {
                     // limiting - exceeded maxIn
@@ -688,7 +701,27 @@ flow(
 
     return {actualIn, actualOut, std::move(sb), std::move(ofrsToRmOnFail)};
 }
-
+bool
+jumpWhiteList(
+    ReadView const& sb,
+    AccountID const& srcID,
+    AccountID const& issuer,
+    beast::Journal j)
+{
+    STArray const& whiteList = getWhiteList(sb, issuer);
+    if (!whiteList.isDefault())
+    {
+        for (auto const& w : whiteList)
+        {
+            auto acctID = w.getAccountID(sfUser);
+            if (acctID == srcID)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
 }  // namespace ripple
 
 #endif
