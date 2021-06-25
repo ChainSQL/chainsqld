@@ -76,8 +76,13 @@ struct StrandResult
     {
     }
 };
-
-/**
+bool
+jumpWhiteList(
+    ReadView const& sb,
+    AccountID const& srcID,
+    AccountID const& issuer,
+    beast::Journal j);
+    /**
    Request `out` amount from a strand
 
    @param baseView Trust lines and balances
