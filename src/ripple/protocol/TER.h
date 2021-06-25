@@ -223,9 +223,10 @@ enum TEFcodes : TERUnderlyingType
 	tefBAD_DUPLACATE_ITEM,
 	tefSCHEMA_NODE_COUNT,
 	tefSCHEMA_MAX_SCHEMAS,
-    tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT,
+    tefMISMATCH_CONTRACT_ADDRESS,
+    tefMISMATCH_TRANSACTION_ADDRESS,
     tefWHITELIST_ACCOUNTIDEXIST,
-    tefWHITELIST_NOACCOUNTID,
+    tefWHITELIST_NOACCOUNTID
 };
 
 //------------------------------------------------------------------------------

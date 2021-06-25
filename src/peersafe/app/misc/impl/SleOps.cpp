@@ -150,7 +150,7 @@ namespace ripple {
                 // from is contract
                 if (_from != ctx_.tx.getAccountID(sfContractAddress))
                 {
-                    return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+                    return tefMISMATCH_CONTRACT_ADDRESS;
                 }
             }
             else
@@ -158,7 +158,7 @@ namespace ripple {
                 // from is user
                 if (_from != ctx_.tx.getAccountID(sfAccount))
                 {
-                    return tefCANNOT_TRSF_UNDER_OTHER_ACCOUNT;
+                    return tefMISMATCH_TRANSACTION_ADDRESS;
                 }
             }
 			STTx paymentTx(ttPAYMENT,

@@ -1619,6 +1619,7 @@ public:
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
+            {"tx_count", &RPCParser::parseLedgerId, 0, 1},
             {"tx_history", &RPCParser::parseTxHistory, 1, 1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
             {"validation_create", &RPCParser::parseValidationCreate, 0, 2},

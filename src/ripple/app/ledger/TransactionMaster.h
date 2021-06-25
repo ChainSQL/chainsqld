@@ -91,7 +91,7 @@ public:
 		return: txCount(validated)
 		param:	return only chainsql tx if true
 	*/
-	int						getTxCount(bool chainsql);
+	int						getTxCount(bool chainsql,int ledgerIndex);
 
 	/*
 		Get chainsql transactions.
