@@ -400,6 +400,9 @@ ValidatorSite::parseJsonResponse(
                     app_.getLedgerMaster().getClosedLedger()->info().hash);
                 waitingBeginConsensus_ = false;
             }
+            else {
+                app_.validators().updateTrusted(app_.getValidations().getCurrentNodeIDs());
+            }
         }
             break;
         case ListDisposition::same_sequence:
