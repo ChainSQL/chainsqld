@@ -554,8 +554,8 @@ ValidatorList::verify(
     if (!r.parse(data, list))
         return ListDisposition::invalid;
 
-    if (list.isMember("sequence") && list["sequence"].isInt() &&
-        list.isMember("expiration") && list["expiration"].isInt() &&
+    if (list.isMember("sequence") && list["sequence"].isIntegral() &&
+        list.isMember("expiration") && list["expiration"].isIntegral() &&
         list.isMember("validators") && list["validators"].isArray())
     {
         auto const sequence = list["sequence"].asUInt();
