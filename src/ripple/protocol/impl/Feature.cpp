@@ -97,10 +97,10 @@ detail::supportedAmendments()
         "DisableV2",
         "DecreaseStorage",
         "MultiSign",      // Unconditionally supported.
-                          //        "Tickets",
+        "Tickets",
         "TrustSetAuth",   // Unconditionally supported.
         "FeeEscalation",  // Unconditionally supported.
-                          //        "OwnerPaysFee",
+        "OwnerPaysFee",
         "PayChan",
         "Flow",
         "CryptoConditions",
