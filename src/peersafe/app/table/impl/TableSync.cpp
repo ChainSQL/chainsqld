@@ -118,6 +118,7 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     m.set_closetime(time);
 	m.set_etargettype(eTargeType);
     m.set_nickname(sNickName);
+    m.set_schemaid(app_.schemaId().begin(), uint256::size());
 
     protocol::TMLedgerData ledgerData;
     auto ledger = app_.getLedgerMaster().getLedgerBySeq(TxnLgrSeq);
@@ -235,6 +236,7 @@ bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLa
     reply.set_closetime(time);
 	reply.set_etargettype(eTargeType);
     reply.set_nickname(sNickName);
+    reply.set_schemaid(app_.schemaId().begin(), uint256::size());
     return true;
 }
 
