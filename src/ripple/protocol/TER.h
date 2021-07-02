@@ -619,6 +619,7 @@ using TER = TERSubset<CanCvtToTER>;
 
 //------------------------------------------------------------------------------
 
+
 inline bool
 isTelLocal(TER x)
 {
@@ -628,13 +629,13 @@ isTelLocal(TER x)
 inline bool
 isTemMalformed(TER x)
 {
-    return ((x) >= temMALFORMED && (x) < telLOCAL_ERROR);
+    return ((x) >= temMALFORMED && (x) < tefFAILURE);
 }
 
 inline bool
 isTefFailure(TER x)
 {
-    return ((x) >= tefFAILURE && (x) < temMALFORMED);
+    return ((x) >= tefFAILURE && (x) < telLOCAL_ERROR);
 }
 
 inline bool
@@ -652,7 +653,7 @@ isTesSuccess(TER x)
 inline bool
 isTecClaim(TER x)
 {
-    return ((x) >= tecCLAIM && (x) < tefFAILURE);
+    return ((x) >= tecCLAIM && (x) < temMALFORMED);
 }
 
 bool
