@@ -946,6 +946,9 @@ Config::loadFromString(std::string const& fileContents)
             "config file.");
     }
     get_if_exists(section("consensus"), "batch_broadcast", BATCH_BROADCAST);
+
+    get_if_exists(
+        section(SECTION_GOVERNANCE), "open_account_delay", OPEN_ACCOUNT_DELAY);
 }
 
 boost::filesystem::path

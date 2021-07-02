@@ -115,6 +115,7 @@ transResults()
 		MAKE_ERROR(tefMISMATCH_TRANSACTION_ADDRESS,"The contract transaction's address is not matched the sender."			   ),
 		MAKE_ERROR(tefWHITELIST_ACCOUNTIDEXIST ,	"The account already exists in the whitelist ."),
 		MAKE_ERROR(tefWHITELIST_NOACCOUNTID ,	"The account is not in the whitelist ."),
+		MAKE_ERROR(tefACCOUNT_FORBIDDEN,		"The account is forbidden to submit tx."),
 		MAKE_ERROR(telLOCAL_ERROR,             "Local failure."                                                                ),
 		MAKE_ERROR(telBAD_DOMAIN,              "Domain too long."                                                              ),
 		MAKE_ERROR(telBAD_PATH_COUNT,          "Malformed: Too many paths."                                                    ),

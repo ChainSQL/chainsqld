@@ -129,6 +129,8 @@ struct ConfigSection
 
 #define LEDGER_TXS_TABLES               "ledger_tx_tables"
 
+#define SECTION_GOVERNANCE              "governance"
+
 }  // namespace ripple
 
 #endif
