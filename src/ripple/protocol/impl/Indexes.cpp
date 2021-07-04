@@ -65,6 +65,8 @@ enum class LedgerNameSpace : std::uint16_t {
 	INSERT_LIMIT	= 'i',
 	CHAIN_ID		= 'b',
 	SCHEMA         = 'h',
+    ADMIN = 'A',
+    FROZEN = 'z',
 
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
@@ -127,6 +129,18 @@ Keylet
 account(AccountID const& id) noexcept
 {
     return {ltACCOUNT_ROOT, indexHash(LedgerNameSpace::ACCOUNT, id)};
+}
+
+Keylet
+admin() noexcept
+{
+    return {ltADMIN, indexHash(LedgerNameSpace::ADMIN)};
+}
+
+Keylet
+frozen() noexcept
+{
+    return {ltFROZEN_ACCOUNTS, indexHash(LedgerNameSpace::FROZEN)};
 }
 
 Keylet

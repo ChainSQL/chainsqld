@@ -37,6 +37,7 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/SociDB.h>
+#include <ripple/core/ConfigSections.h>
 #include <ripple/json/to_string.h>
 #include <ripple/nodestore/Database.h>
 #include <ripple/protocol/Feature.h>
@@ -212,6 +213,29 @@ Ledger::Ledger(
         sle->setAccountID(sfAccount, id);
         sle->setFieldAmount(sfBalance, info_.drops);
         rawInsert(sle);
+    }
+
+    if (config.exists(SECTION_GOVERNANCE))
+    {
+        std::string adminAddr;
+        auto result = config.section(SECTION_GOVERNANCE).find("admin");
+        if (result.second)
+            adminAddr = result.first;
+
+        auto admin = ripple::parseBase58<AccountID>(adminAddr);
+        if (admin)
+        {
+            auto const sle = std::make_shared<SLE>(keylet::admin());
+            sle->setAccountID(sfAccount, *admin);
+            rawInsert(sle);
+
+            auto const sleFrozen = std::make_shared<SLE>(keylet::frozen());
+            STObject obj(sfFrozen);
+            STArray frozenAccounts;
+            obj.setFieldArray(sfFrozenAccounts, frozenAccounts);
+            sleFrozen->setFieldObject(sfFrozen, obj);
+            rawInsert(sleFrozen);
+        }
     }
 
     if (!amendments.empty())

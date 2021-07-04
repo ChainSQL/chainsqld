@@ -1656,6 +1656,7 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     {
         return ter;
     }
+
     // mock the process of doTransactionAsync or doTransactionSync
 
     /**
@@ -1667,6 +1668,10 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
+
+    ter = Transactor::checkFrozen(*pcctx);
+    if (ter != tesSUCCESS)
+        return ter;
 
     ter = Transactor::checkSign(*pcctx);
     if (ter != tesSUCCESS)

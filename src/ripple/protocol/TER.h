@@ -227,7 +227,10 @@ enum TEFcodes : TERUnderlyingType
     tefMISMATCH_TRANSACTION_ADDRESS,
     tefWHITELIST_ACCOUNTIDEXIST,
     tefWHITELIST_NOACCOUNTID,
-    tefACCOUNT_FORBIDDEN
+    tefACCOUNT_FORBIDDEN,
+    tefACCOUNT_FROZEN,
+    tefACCOUNT_UNFROZEN,
+    tefNO_ADMIN_CONFIGURED
 };
 
 //------------------------------------------------------------------------------

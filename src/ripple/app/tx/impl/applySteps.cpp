@@ -43,6 +43,7 @@
 #include <peersafe/app/tx/SmartContract.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/tx/SchemaTx.h>
+#include <peersafe/app/tx/FreezeAccount.h>
 
 namespace ripple {
 
@@ -108,6 +109,8 @@ invoke_preflight (PreflightContext const& ctx)
             return SchemaCreate::preflight(ctx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::preflight(ctx);
+        case ttFREEZE_ACCOUNT:
+            return FreezeAccount ::preflight(ctx);
         default:
             assert(false);
             return temUNKNOWN;
@@ -208,6 +211,8 @@ invoke_preclaim(PreclaimContext const& ctx)
             return invoke_preclaim <SchemaCreate>(ctx);
         case ttSCHEMA_MODIFY:		 
             return invoke_preclaim <SchemaModify>(ctx);
+        case ttFREEZE_ACCOUNT:
+            return invoke_preclaim<FreezeAccount>(ctx);
         default:
             assert(false);
             return temUNKNOWN;
@@ -275,6 +280,8 @@ invoke_calculateBaseFee(ReadView const& view, STTx const& tx)
             return SchemaCreate::calculateBaseFee(view,tx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::calculateBaseFee(view,tx);
+        case ttFREEZE_ACCOUNT:
+            return FreezeAccount::calculateBaseFee(view,tx);
         default:
             assert(false);
             return FeeUnit64{0};
@@ -355,6 +362,8 @@ invoke_calculateConsequences(STTx const& tx)
             return invoke_calculateConsequences <SchemaCreate>(tx);
         case ttSCHEMA_MODIFY:		 
             return invoke_calculateConsequences <SchemaModify>(tx);
+        case ttFREEZE_ACCOUNT:
+            return invoke_calculateConsequences<FreezeAccount>(tx);
         default:
             assert(false);
             return {
@@ -478,6 +487,10 @@ invoke_apply(ApplyContext& ctx)
         case ttSCHEMA_MODIFY: { 
             SchemaModify p(ctx); 
             return p(); 
+        }
+        case ttFREEZE_ACCOUNT: {
+            FreezeAccount p(ctx);
+            return p();
         }
         default:
             assert(false);

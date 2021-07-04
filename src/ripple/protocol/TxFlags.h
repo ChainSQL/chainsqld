@@ -108,6 +108,10 @@ const std::uint32_t tfRenew = 0x00010000;
 const std::uint32_t tfClose = 0x00020000;
 const std::uint32_t tfPayChanClaimMask = ~(tfUniversal | tfRenew | tfClose);
 
+// FreezeAccount flags:
+const std::uint32_t tfFreezeAccount = 0x00100000;
+const std::uint32_t tfUnFreezeAccount = 0x00200000;
+
 }  // namespace ripple
 
 #endif

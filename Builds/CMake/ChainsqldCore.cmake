@@ -695,6 +695,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/tx/impl/SqlStatement.cpp
   src/peersafe/app/tx/impl/SqlTransaction.cpp
   src/peersafe/app/tx/impl/TableListSet.cpp
+  src/peersafe/app/tx/impl/FreezeAccount.cpp
   src/peersafe/app/util/Common.cpp
   src/peersafe/app/util/TableSyncUtil.cpp
   src/peersafe/basics/impl/characterUtilities.cpp

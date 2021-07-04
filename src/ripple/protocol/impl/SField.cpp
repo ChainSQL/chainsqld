@@ -296,6 +296,7 @@ SField const sfRules			   (access, STI_OBJECT, 51, "Rule");
 SField const sfValidator           (access, STI_OBJECT, 52, "Validator");
 SField const sfPeer                (access, STI_OBJECT, 53, "Peer");
 SField const sfWhiteList           (access, STI_OBJECT, 54, "WhiteList");
+SField const sfFrozen              (access, STI_OBJECT, 55, "Frozen");
 
 // inner object (uncommon)
 SField const sfSigner              (access, STI_OBJECT, 16, "Signer");
@@ -320,6 +321,7 @@ SField const sfValidators      (access, STI_ARRAY, 53, "Validators");
 SField const sfPeerList        (access, STI_ARRAY, 54, "PeerList");
 SField const sfTransactions    (access, STI_ARRAY, 55, "Transactions");
 SField const sfWhiteLists      (access, STI_ARRAY, 56, "WhiteLists");
+SField const sfFrozenAccounts  (access, STI_ARRAY, 57, "FrozenAccounts  ");
 
 // array of objects (uncommon)
 SField const sfMajorities(access, STI_ARRAY, 16, "Majorities");
