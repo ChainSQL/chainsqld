@@ -1955,15 +1955,15 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
             auto const enforceFailHard =
                 e.failType == FailHard::yes && !isTesSuccess(e.result);
-            // chainsql type tx will not retry.
-            if (addLocal && !enforceFailHard &&
-                !e.transaction->getSTransaction()->isChainSqlTableType())
-            {
-                m_localTX->push_back(
-                    m_ledgerMaster.getCurrentLedgerIndex(),
-                    e.transaction->getSTransaction());
-                e.transaction->setKept();
-            }
+            //// chainsql type tx will not retry.
+            //if (addLocal && !enforceFailHard &&
+            //    !e.transaction->getSTransaction()->isChainSqlTableType())
+            //{
+            //    m_localTX->push_back(
+            //        m_ledgerMaster.getCurrentLedgerIndex(),
+            //        e.transaction->getSTransaction());
+            //    e.transaction->setKept();
+            //}
 
             if ((e.applied ||
                  ((mMode != OperatingMode::FULL) &&
