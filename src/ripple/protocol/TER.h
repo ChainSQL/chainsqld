@@ -709,6 +709,11 @@ struct STer {
 	{
 		return this->ter == rhs;
 	}
+
+    bool operator!=(TER const& rhs)
+    {
+        return this->ter != rhs;
+    }
 	
 	friend std::ostream &operator<<(std::ostream &os,const STer &ster)
 	{
