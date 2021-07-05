@@ -1598,7 +1598,7 @@ NetworkOPsImp::doTransactionCheck(
         // after check and transaction's check result is tesSUCCESS add it to
         // TxPool:
         ter = app_.getTxPool().insertTx(transaction, view.seq());
-        if (ter != tesSUCCESS)
+        if (ter.ter != tesSUCCESS)
         {
             return {ter, false};
         }
@@ -1646,13 +1646,13 @@ STer
 NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 {
     STer ter = preflight1(pfctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
 
     ter = checkForAccountDelay(pfctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
@@ -1670,17 +1670,17 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
     ter = Transactor::checkFrozen(*pcctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
         return ter;
 
     ter = Transactor::checkSign(*pcctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
 
     ter = Transactor::checkSeq2(*pcctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
@@ -1688,7 +1688,7 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
 
     ter = Transactor::checkFee(*pcctx, baseFee);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
