@@ -116,7 +116,7 @@ transResults()
 		MAKE_ERROR(tefWHITELIST_ACCOUNTIDEXIST ,	"The account already exists in the whitelist ."),
 		MAKE_ERROR(tefWHITELIST_NOACCOUNTID ,	"The account is not in the whitelist ."),
 		MAKE_ERROR(tefACCOUNT_FORBIDDEN,		"The account is forbidden to submit tx."),
-		MAKE_ERROR(tefACCOUNT_UNFROZEN ,		"Account not frozen." ),
+		MAKE_ERROR(tefACCOUNT_NOT_FROZEN ,		"Account not frozen." ),
 		MAKE_ERROR(tefACCOUNT_FROZEN ,			"Account already frozen."),
 		MAKE_ERROR(tefNO_ADMIN_CONFIGURED ,		"No admin configured on chain!"),
 		MAKE_ERROR(telLOCAL_ERROR,             "Local failure."                                                                ),

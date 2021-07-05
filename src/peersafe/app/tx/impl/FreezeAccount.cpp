@@ -87,7 +87,7 @@ FreezeAccount::doApply()
     {
         // unFreeze
         if (iter == frozenAccounts.end())
-            return tefACCOUNT_UNFROZEN;
+            return tefACCOUNT_NOT_FROZEN;
 
         frozenAccounts.erase(iter);
     }
