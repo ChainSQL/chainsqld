@@ -45,7 +45,9 @@ namespace ripple {
         precompiled.insert({AccountID(8), PrecompiledOrigin("alt_bn128_pairing_product")});
         // precompiled.insert({AccountID(9), PrecompiledOrigin("blake2_compression")});
 
-        precompiled.insert(std::make_pair(AccountID(41), PrecompiledOrigin("sm3")));
+        precompiled.insert(std::make_pair(SM3_ADDR, PrecompiledOrigin("sm3")));
+        precompiled.insert(std::make_pair(EN_BASE58_ADDR, PrecompiledOrigin("enbase58")));
+        precompiled.insert(std::make_pair(DE_BASE58_ADDR, PrecompiledOrigin("debase58")));
 
         //-----------------------------------------------------------------------------
         precompiledDiy.insert(std::make_pair(

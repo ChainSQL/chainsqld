@@ -157,6 +157,30 @@ ETH_REGISTER_PRECOMPILED(identity)(eth::bytesConstRef _in)
     return {true, _in.toBytes()};
 }
 
+ETH_REGISTER_PRECOMPILED_PRICER(enbase58)
+(eth::bytesConstRef _in, int64_t const& /*_blockNumber*/)
+{
+    return linearPricer(60, 12, _in);
+}
+
+ETH_REGISTER_PRECOMPILED(enbase58)(eth::bytesConstRef _in/*, std::uint8_t tokenType = (std::uint8_t)TokenType::AccountID*/)
+{
+    auto enRet = base58EncodeToken(TokenType::AccountID, _in.data(), _in.size());
+    return { true, Blob(enRet.begin(), enRet.end()) };
+}
+
+ETH_REGISTER_PRECOMPILED_PRICER(debase58)
+(eth::bytesConstRef _in, int64_t const& /*_blockNumber*/)
+{
+    return linearPricer(60, 12, _in);
+}
+
+ETH_REGISTER_PRECOMPILED(debase58)(eth::bytesConstRef _in/*, std::uint8_t tokenType = (std::uint8_t)TokenType::AccountID*/)
+{
+    auto enRet = decodeBase58Token(std::string((const char*)_in.data(), _in.size()), TokenType::AccountID);
+    return { true, Blob(enRet.begin(), enRet.end()) };
+}
+
 // Parse _count bytes of _in starting with _begin offset as big endian int.
 // If there's not enough bytes in _in, consider it infinitely right-padded with zeroes.
 eth::bigint parseBigEndianRightPadded(eth::bytesConstRef _in, eth::bigint const& _begin, eth::bigint const& _count)
