@@ -909,6 +909,9 @@ doTxGrpc(RPC::GRPCContext<org::zxcl::rpc::v1::GetTransactionRequest>& context)
 
 Json::Value doTxResult(RPC::JsonContext& context)
 {
+    if (!context.app.config().useTxTables())
+        return rpcError(rpcNOT_ENABLED);
+
 	if (!context.params.isMember(jss::transaction))
 		return rpcError(rpcINVALID_PARAMS);
 
