@@ -949,6 +949,15 @@ Config::loadFromString(std::string const& fileContents)
 
     get_if_exists(
         section(SECTION_GOVERNANCE), "open_account_delay", OPEN_ACCOUNT_DELAY);
+    if (exists(SECTION_GOVERNANCE))
+    {
+        auto result = section(SECTION_GOVERNANCE).find("admin");
+        if (result.second)
+        {
+            if (!ripple::parseBase58<AccountID>(result.first))
+                Throw<std::runtime_error>("admin address is invalid");
+        }
+    }
 }
 
 boost::filesystem::path

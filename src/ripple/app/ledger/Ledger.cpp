@@ -217,14 +217,10 @@ Ledger::Ledger(
 
     if (config.exists(SECTION_GOVERNANCE))
     {
-        std::string adminAddr;
         auto result = config.section(SECTION_GOVERNANCE).find("admin");
         if (result.second)
-            adminAddr = result.first;
-
-        auto admin = ripple::parseBase58<AccountID>(adminAddr);
-        if (admin)
         {
+            auto admin = ripple::parseBase58<AccountID>(result.first);
             auto const sle = std::make_shared<SLE>(keylet::admin());
             sle->setAccountID(sfAccount, *admin);
             rawInsert(sle);
