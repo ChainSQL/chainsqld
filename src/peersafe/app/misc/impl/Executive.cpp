@@ -230,7 +230,8 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         if (ret != tesSUCCESS)
         {
             m_excepted = ret;
-			formatOutput(std::to_string(TERtoInt(ret)));
+			//formatOutput(std::to_string(TERtoInt(ret)));
+			formatOutput(transHuman(ret));
             return true;
         }
     }

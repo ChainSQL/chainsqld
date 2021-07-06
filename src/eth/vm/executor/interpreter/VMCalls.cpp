@@ -300,6 +300,11 @@ bool VM::caseCallSetup(evmc_message& o_msg, bytesRef& o_output)
         o_output = bytesRef(m_mem.data() + outOff, outSize);
         return true;
     }
+    else if (!balanceOk)
+    {
+        auto errMsg = std::string("Contract address don't hava enough zxc");
+        m_returnData.assign(errMsg.data(), errMsg.data() + errMsg.size());
+    }
     return false;
 }
 }
