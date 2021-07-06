@@ -835,7 +835,7 @@ Transactor::operator()()
 	if (terResult.ter == tesSUCCESS)
 	{
 		terResult = apply();
-	}	
+	}
 
     // No transaction can return temUNKNOWN from apply,
     // and it can't be passed in from a preclaim.
