@@ -1317,11 +1317,11 @@ NetworkOPsImp::processAccountDelay(std::map<AccountID, int> const& map)
             it->second.timeExpires <= now)
         {
             it->second.failureCount = DELAY_START_COUNT - 
-                std::max(int64_t(1),(now - it->second.timeExpires) / timeDelay);
+                (1 + (now - it->second.timeExpires) / timeDelay);
         }
         else if(it->second.failureCount < DELAY_START_COUNT && it->second.lastTouch + timeDelay < now)
         {
-            it->second.failureCount -= std::max(int64_t(1),(now - it->second.lastTouch) / timeDelay);
+            it->second.failureCount -= (1 + (now - it->second.lastTouch) / timeDelay);
             it->second.lastTouch = now;
         }
 
