@@ -599,6 +599,7 @@ extern SField const sfValidator;
 extern SField const sfPeer;
 extern SField const sfDisabledValidator;
 extern SField const sfWhiteList;
+extern SField const sfFrozen;
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -618,6 +619,8 @@ extern SField const sfValidators;
 extern SField const sfPeerList;
 extern SField const sfTransactions;
 extern SField const sfWhiteLists;
+extern SField const sfFrozenAccounts;
+
 
 // certificate
 extern SF_Blob const sfCertificate;

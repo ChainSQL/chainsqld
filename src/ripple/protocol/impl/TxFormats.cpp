@@ -319,6 +319,12 @@ TxFormats::TxFormats()
 			{ sfSchemaID,			 soeREQUIRED }
 		},
 		commonFields);
+
+    add(jss::FreezeAccount, ttFREEZE_ACCOUNT,
+        {
+            {sfDestination, soeREQUIRED},
+        },
+        commonFields);
 }
 
 TxFormats const&

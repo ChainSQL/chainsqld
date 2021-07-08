@@ -365,6 +365,28 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+TER
+Transactor::checkFrozen(PreclaimContext const& ctx)
+{
+    auto const id = ctx.tx.getAccountID(sfAccount);
+
+    auto const sle = ctx.view.read(keylet::frozen());
+    if (!sle)
+        return tesSUCCESS;
+    auto obj = sle->getFieldObject(sfFrozen);
+    auto frozens = obj.getFieldArray(sfFrozenAccounts);
+    for (auto& account : frozens)
+    {
+        auto userID = account.getAccountID(sfAccount);
+        if (userID == id)
+        {
+            return tefACCOUNT_FROZEN;
+        }
+    }
+
+    return tesSUCCESS;
+}
+
 void Transactor::setExtraMsg(std::string msg)
 {
 	mDetailMsg = msg;

@@ -99,6 +99,11 @@ enum LedgerEntryType {
 	ltCHAINID			= 'b',
 
 	ltSCHEMA            = 'm',
+
+    ltADMIN = 'A',
+
+    ltFROZEN_ACCOUNTS = 'z',
+
 };
 
 /**

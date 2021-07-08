@@ -232,6 +232,11 @@ class NetworkOPsImp final : public NetworkOPs
         boost::optional<TxQ::Metrics> em = boost::none;
     };
 
+    struct AccountDelayEntry {
+        int failureCount = 0;
+        clock_type::time_point timeExpires;
+        clock_type::time_point lastTouch;
+    };
 public:
     NetworkOPsImp(
         Schema& app,
@@ -356,9 +361,11 @@ public:
         ApplyFlags flags,
         OpenView const& view);
 
-    TER
+    STer
     check(PreflightContext const& pfctx, OpenView const& view);
 
+    STer
+    checkForAccountDelay(PreflightContext const& pfctx);
     /**
      * Apply transactions in batches. Continue until none are queued.
      */
@@ -600,6 +607,9 @@ public:
 
     void
     tryCheckSubTx() override;
+
+    void
+    checkSweepAccountDelay();
 
     void
     pubTableTxs(
@@ -857,6 +867,8 @@ private:
     void
     broadCastTxs();
 
+    void
+    processAccountDelay(std::map<AccountID,int> const& map);
 private:
 
     // XXX Split into more locks.
@@ -947,6 +959,9 @@ private:
     std::vector<uint256> mTxToBroadCast;
     std::mutex mutexBroad_;
     bool m_bBroadThread = false;
+
+    mutable std::shared_mutex mutexAccountDelay_;
+    std::map<AccountID, AccountDelayEntry> mMapAccountDelay;
 
 private:
     struct Stats
@@ -1286,6 +1301,77 @@ NetworkOPsImp::processSubTxTimer()
     m_bCheckTxThread = false;
 }
 
+void 
+NetworkOPsImp::processAccountDelay(std::map<AccountID, int> const& map)
+{
+    std::unique_lock<std::shared_mutex> lock(mutexAccountDelay_);
+
+    auto timeStart = utcTime();
+    std::chrono::seconds constexpr timeDelay{30};
+    auto now = m_clock.now();
+    //try sweep map
+    auto it = mMapAccountDelay.begin();
+    while (it != mMapAccountDelay.end())
+    {
+        if (it->second.failureCount >= DELAY_START_COUNT &&
+            it->second.timeExpires <= now)
+        {
+            it->second.failureCount = DELAY_START_COUNT - 
+                (1 + (now - it->second.timeExpires) / timeDelay);
+        }
+        else if(it->second.failureCount < DELAY_START_COUNT && it->second.lastTouch + timeDelay < now)
+        {
+            it->second.failureCount -= (1 + (now - it->second.lastTouch) / timeDelay);
+            it->second.lastTouch = now;
+        }
+
+        if (it->second.failureCount <= 0)
+            it = mMapAccountDelay.erase(it);
+        else
+            it++;
+    }
+
+    auto iter = map.begin();
+    while (iter != map.end())
+    {
+        if (mMapAccountDelay.find(iter->first) != mMapAccountDelay.end())
+        {
+            bool bDelayedBefore =
+                mMapAccountDelay[iter->first].failureCount >= DELAY_START_COUNT;
+            mMapAccountDelay[iter->first].failureCount += iter->second;
+            if (bDelayedBefore)
+            {
+                mMapAccountDelay[iter->first].timeExpires += (timeDelay * iter->second);
+            }
+            else
+            {
+                if (mMapAccountDelay[iter->first].failureCount < DELAY_START_COUNT)
+                    mMapAccountDelay[iter->first].lastTouch = now;
+                else
+                    mMapAccountDelay[iter->first].timeExpires = now +
+                        timeDelay * (mMapAccountDelay[iter->first].failureCount - DELAY_START_COUNT + 1);
+            }
+        }
+        else
+        {
+            mMapAccountDelay[iter->first].failureCount = iter->second;
+            if (mMapAccountDelay[iter->first].failureCount >= DELAY_START_COUNT)
+                mMapAccountDelay[iter->first].timeExpires = now + 
+                    timeDelay * (mMapAccountDelay[iter->first].failureCount - DELAY_START_COUNT + 1);
+            else
+                mMapAccountDelay[iter->first].lastTouch = now;
+        }
+
+        
+        if (mMapAccountDelay[iter->first].timeExpires > now + timeDelay * 10)
+            mMapAccountDelay[iter->first].timeExpires = now + timeDelay * 10;
+
+        iter++;
+    }
+    JLOG(m_journal.info()) << "processAccountDelay, time used: "
+                           << utcTime() - timeStart << "ms";
+}
+
 void
 NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
 {
@@ -1507,12 +1593,12 @@ NetworkOPsImp::doTransactionCheck(
 
     auto ter = check(pfctx, view);
 
-    if (ter == tesSUCCESS)
+    if (ter.ter == tesSUCCESS)
     {
         // after check and transaction's check result is tesSUCCESS add it to
         // TxPool:
         ter = app_.getTxPool().insertTx(transaction, view.seq());
-        if (ter != tesSUCCESS)
+        if (ter.ter != tesSUCCESS)
         {
             return {ter, false};
         }
@@ -1524,11 +1610,49 @@ NetworkOPsImp::doTransactionCheck(
     return {ter, false};
 }
 
-TER
+STer
+NetworkOPsImp::checkForAccountDelay(PreflightContext const& pfctx)
+{
+    STer ter = tesSUCCESS;
+    if (!app_.config().OPEN_ACCOUNT_DELAY)
+        return ter;
+
+    std::shared_lock<std::shared_mutex> lock(mutexAccountDelay_);
+    auto const id = pfctx.tx.getAccountID(sfAccount);
+    if (mMapAccountDelay.find(id) != mMapAccountDelay.end())
+    {
+        if (mMapAccountDelay[id].failureCount >= DELAY_START_COUNT)
+        {
+            auto timeForbidden =
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    mMapAccountDelay[id].timeExpires - m_clock.now())
+                    .count();
+            if (timeForbidden == 0)
+                timeForbidden = 1;
+            if (timeForbidden > 0)
+            {
+                std::string msg = "The account is forbidden to submit tx,";
+                msg += std::to_string(timeForbidden);
+                msg += " seconds remaining.";
+                ter = STer(tefACCOUNT_FORBIDDEN, msg);
+                return ter;
+            }
+        }        
+    }
+    return ter;
+}
+
+STer
 NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 {
-    TER ter = preflight1(pfctx);
-    if (ter != tesSUCCESS)
+    STer ter = preflight1(pfctx);
+    if (ter.ter != tesSUCCESS)
+    {
+        return ter;
+    }
+
+    ter = checkForAccountDelay(pfctx);
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
@@ -1545,14 +1669,18 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
+    ter = Transactor::checkFrozen(*pcctx);
+    if (ter.ter != tesSUCCESS)
+        return ter;
+
     ter = Transactor::checkSign(*pcctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
 
     ter = Transactor::checkSeq2(*pcctx);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
@@ -1560,7 +1688,7 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
 
     ter = Transactor::checkFee(*pcctx, baseFee);
-    if (ter != tesSUCCESS)
+    if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
@@ -1827,15 +1955,15 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
             auto const enforceFailHard =
                 e.failType == FailHard::yes && !isTesSuccess(e.result);
-            // chainsql type tx will not retry.
-            if (addLocal && !enforceFailHard &&
-                !e.transaction->getSTransaction()->isChainSqlTableType())
-            {
-                m_localTX->push_back(
-                    m_ledgerMaster.getCurrentLedgerIndex(),
-                    e.transaction->getSTransaction());
-                e.transaction->setKept();
-            }
+            //// chainsql type tx will not retry.
+            //if (addLocal && !enforceFailHard &&
+            //    !e.transaction->getSTransaction()->isChainSqlTableType())
+            //{
+            //    m_localTX->push_back(
+            //        m_ledgerMaster.getCurrentLedgerIndex(),
+            //        e.transaction->getSTransaction());
+            //    e.transaction->setKept();
+            //}
 
             if ((e.applied ||
                  ((mMode != OperatingMode::FULL) &&
@@ -3636,9 +3764,10 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
 			jvObj[jss::schema_id] = to_string(app_.schemaId());
-
+             
             int iSuccess = 0;
             int iFailure = 0;
+            std::map<AccountID, int> mapFailureCount;
 
             //
             for (auto const& vt : alpAccepted->getMap())
@@ -3646,11 +3775,18 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 if (vt.second->getResult() == tesSUCCESS)
                     iSuccess++;
                 else
+                {
                     iFailure++;
+                    if (app_.config().OPEN_ACCOUNT_DELAY)
+                        mapFailureCount[vt.second->getTxn()->getAccountID(sfAccount)]++;
+                }
             }
 
             jvObj[jss::txn_success] = Json::UInt(iSuccess);
             jvObj[jss::txn_failure] = Json::UInt(iFailure);
+
+            if (app_.config().OPEN_ACCOUNT_DELAY)
+                processAccountDelay(mapFailureCount);
 
             if (mMode >= OperatingMode::SYNCING)
             {
