@@ -97,17 +97,30 @@ Json::Value doSchemaList(RPC::JsonContext&  context)
 	bRunning = bHasRunning && context.params[jss::running].asBool();
 
 	//This is a time-consuming process for a project that has many sles.
-	for (auto sle : ledger->sles)
-	{
-		if (sle->getType() != ltSCHEMA) continue;
-		if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)continue;
+    auto sleIndex = ledger->read(keylet::schema_index());
+    if (!sleIndex)
+        return ret;
+    else
+    {
+        auto& schemaIndexes = sleIndex->getFieldV256(sfSchemaIndexes);
+        for (auto const& index : schemaIndexes)
+        {
+            auto key = Keylet(ltSCHEMA, index);
+            auto sle = ledger->read(key);
+            if (sle)
+            {
+                if (pAccountID != boost::none && sle->getAccountID(sfAccount) != *pAccountID)
+                    continue;
 
-		Json::Value schema = getSchemaFromSle(sle);
-        if (bHasRunning && context.app.app().hasSchema(sle->key()) != bRunning) continue;
+                Json::Value schema = getSchemaFromSle(sle);
+                if (bHasRunning && context.app.app().hasSchema(sle->key()) != bRunning)
+                    continue;
 
-		//schema[jss::running] = context.app.app().hasSchema(sle->key());
-		ret[jss::schemas].append(schema);
+                ret[jss::schemas].append(schema);
+			}
+		}
 	}
+
 	return ret;
 }
 

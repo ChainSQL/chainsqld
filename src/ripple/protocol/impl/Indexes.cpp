@@ -67,6 +67,7 @@ enum class LedgerNameSpace : std::uint16_t {
 	SCHEMA         = 'h',
     ADMIN = 'A',
     FROZEN = 'z',
+    SCHEMA_INDEX = 'k',
 
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
@@ -141,6 +142,12 @@ Keylet
 frozen() noexcept
 {
     return {ltFROZEN_ACCOUNTS, indexHash(LedgerNameSpace::FROZEN)};
+}
+
+Keylet
+schema_index() noexcept
+{
+    return {ltSCHEMA_INDEX, indexHash(LedgerNameSpace::SCHEMA_INDEX)};
 }
 
 Keylet

@@ -613,6 +613,7 @@ JSS ( ChainId );					// ledger type.
 JSS ( Schema );
 JSS ( Admin );
 JSS ( FrozenAccounts );
+JSS ( SchemaIndex );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);

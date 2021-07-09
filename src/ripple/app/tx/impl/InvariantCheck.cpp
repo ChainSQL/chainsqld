@@ -391,7 +391,7 @@ LedgerEntryTypesMatch::visitEntry(
 		case ltCHAINID:
         case ltSCHEMA:
         case ltFROZEN_ACCOUNTS:
-
+        case ltSCHEMA_INDEX:
             break;
         default:
             invalidTypeAdded_ = true;

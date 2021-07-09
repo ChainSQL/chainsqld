@@ -275,7 +275,7 @@ SField const sfPaths (access, STI_PATHSET, 1, "Paths");
 SF_Vec256 const sfIndexes    (access, STI_VECTOR256, 1, "Indexes", SField::sMD_Never);
 SF_Vec256 const sfHashes     (access, STI_VECTOR256, 2, "Hashes");
 SF_Vec256 const sfAmendments (access, STI_VECTOR256, 3, "Amendments");
-
+SF_Vec256 const sfSchemaIndexes(access, STI_VECTOR256, 4, "SchemaIndexes");
 // map of 256-bit
 SF_Map256 const sfStorageOverlay (access, STI_MAP256, 1, "StorageOverlay");
 
@@ -321,7 +321,7 @@ SField const sfValidators      (access, STI_ARRAY, 53, "Validators");
 SField const sfPeerList        (access, STI_ARRAY, 54, "PeerList");
 SField const sfTransactions    (access, STI_ARRAY, 55, "Transactions");
 SField const sfWhiteLists      (access, STI_ARRAY, 56, "WhiteLists");
-SField const sfFrozenAccounts  (access, STI_ARRAY, 57, "FrozenAccounts  ");
+SField const sfFrozenAccounts  (access, STI_ARRAY, 57, "FrozenAccounts");
 
 // array of objects (uncommon)
 SField const sfMajorities(access, STI_ARRAY, 16, "Majorities");

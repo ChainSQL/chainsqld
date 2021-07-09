@@ -575,6 +575,7 @@ extern SField const sfPaths;
 extern SF_Vec256 const sfIndexes;
 extern SF_Vec256 const sfHashes;
 extern SF_Vec256 const sfAmendments;
+extern SF_Vec256 const sfSchemaIndexes;
 
 // map of 256-bit
 extern SF_Map256 const sfStorageOverlay;

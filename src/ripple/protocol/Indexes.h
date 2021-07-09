@@ -166,6 +166,9 @@ Keylet admin() noexcept;
 
 Keylet frozen() noexcept;
 
+Keylet
+schema_index() noexcept;
+
 /** A SignerList */
 Keylet
 signers(AccountID const& account) noexcept;

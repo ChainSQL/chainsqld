@@ -279,6 +279,12 @@ LedgerFormats::LedgerFormats()
             {sfFrozen, soeREQUIRED},
         },
         commonFields);
+
+    add(jss::SchemaIndex,ltSCHEMA_INDEX,
+        {
+            {sfSchemaIndexes, soeREQUIRED},
+        },
+        commonFields);
 }
 
 LedgerFormats const&
