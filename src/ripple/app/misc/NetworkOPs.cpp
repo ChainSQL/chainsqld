@@ -3807,6 +3807,17 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                     it = mStreamMaps[sLedger].erase(it);
             }
         }
+        else if (app_.config().OPEN_ACCOUNT_DELAY)
+        {
+            std::map<AccountID, int> mapFailureCount;
+            for (auto const& vt : alpAccepted->getMap())
+            {
+                if (vt.second->getResult() != tesSUCCESS)
+                        mapFailureCount[vt.second->getTxn()->getAccountID(
+                            sfAccount)]++;
+            }
+            processAccountDelay(mapFailureCount);
+        }
     }
 
     if (!mStreamMaps[sTransactions].empty() ||
