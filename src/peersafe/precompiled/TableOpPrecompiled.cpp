@@ -4,18 +4,65 @@
 #include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
-
+const char* const TABLE_METHOD_CREATE_TABLE_STR =
+    "createTable(string,string)";
+const char* const TABLE_METHOD_CREATE_BY_CONTRACT_STR =
+    "createByContract(string,string)";
+const char* const TABLE_METHOD_DROP_TABLE_STR =
+    "dropTable(string)";
+const char* const TABLE_METHOD_GRANT_STR =
+    "grant(address,string,string)";
+const char* const TABLE_METHOD_RENAME_TABLE_STR =
+    "renameTable(string,string)";
 const char* const TABLE_METHOD_INSERT_STR =
     "insert(address,string,string)";
+const char* const TABLE_METHOD_INSERT_BY_CONTRACT_STR =
+    "insertByContract(address,string,string)";
 const char* const TABLE_METHOD_INSERT_HASH_STR =
     "insertWithHash(address,string,string,string)";
+const char* const TABLE_METHOD_UPDATE_STR =
+    "update(address,string,string,string)";
+const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
+     "updateByContract(address,string,string,string)";
+const char* const TABLE_METHOD_DELETE_DATA_STR =
+    "deleteData(address,string,string)";
+const char* const TABLE_METHOD_DELETE_BY_CONTRACT_STR =
+    "deleteByContract(address,string,string)";
+const char* const TABLE_METHOD_GET_DATA_HANDLE_STR =
+    "getDataHandle(address,string,string)";
+const char* const TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR =
+    "getDataHandleByContract(address,string,string)";
 
 TableOpPrecompiled::TableOpPrecompiled()
 {
+    name2Selector_[TABLE_METHOD_CREATE_TABLE_STR] =
+        getFuncSelector(TABLE_METHOD_CREATE_TABLE_STR);
+    name2Selector_[TABLE_METHOD_CREATE_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_CREATE_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_DROP_TABLE_STR] =
+        getFuncSelector(TABLE_METHOD_DROP_TABLE_STR);
+    name2Selector_[TABLE_METHOD_GRANT_STR] =
+        getFuncSelector(TABLE_METHOD_GRANT_STR);
+    name2Selector_[TABLE_METHOD_RENAME_TABLE_STR] =
+        getFuncSelector(TABLE_METHOD_RENAME_TABLE_STR);
     name2Selector_[TABLE_METHOD_INSERT_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_STR);
     name2Selector_[TABLE_METHOD_INSERT_HASH_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_HASH_STR);
+    name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_INSERT_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_BY_CONTTRACT_STR);
+    name2Selector_[TABLE_METHOD_DELETE_DATA_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_DATA_STR);
+    name2Selector_[TABLE_METHOD_DELETE_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_STR] =
+        getFuncSelector(TABLE_METHOD_GET_DATA_HANDLE_STR);
+    name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR);
 }
 
 std::string
@@ -34,30 +81,90 @@ TableOpPrecompiled::execute(
     uint32_t func = getParamFunc(_in);
     bytesConstRef data = getParamData(_in);
     ContractABI abi;
-    if (func == name2Selector_[TABLE_METHOD_INSERT_STR] ||
-        func == name2Selector_[TABLE_METHOD_INSERT_HASH_STR])
+    if (func)
     {
-        AccountID owner;
-        std::string tableName, raw, autoFillField;
-        int64_t ret, runGas;
+        AccountID owner, destAddr;
+        std::string tableName(""), tableNewName(""), raw(""), rawUpdate(""),
+            rawGet(""), autoFillField("");
+        int64_t ret(0), runGas(0);
+        uint256 getRes(0);
+        if (func == name2Selector_[TABLE_METHOD_CREATE_TABLE_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            ret = _s.createTable(origin, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_CREATE_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            ret = _s.createTable(caller, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DROP_TABLE_STR])
+        {
+            abi.abiOut(data, tableName);
+            ret = _s.dropTable(origin, tableName);
+        }
+        if (func == name2Selector_[TABLE_METHOD_GRANT_STR])
+        {
+            abi.abiOut(data, destAddr, tableName, raw); 
+            ret = _s.grantTable(origin, destAddr, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_RENAME_TABLE_STR])
+        {
+            abi.abiOut(data, tableName, tableNewName);
+            ret = _s.renameTable(origin, tableName, tableNewName);
+        }
         if (func == name2Selector_[TABLE_METHOD_INSERT_STR])
         {
             abi.abiOut(data, owner, tableName, raw);
             ret = _s.insertData(origin, owner, tableName, raw);
         }
-        else
+        if (func == name2Selector_[TABLE_METHOD_INSERT_HASH_STR])
         {
             abi.abiOut(data, owner, tableName, raw, autoFillField);
-            ret =
-                _s.insertData(origin, owner, tableName, raw, autoFillField);
+            ret = _s.insertData(origin, owner, tableName, raw, autoFillField);
+        }
+        if (func == name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.insertData(caller, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_STR])
+        {
+            abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
+            ret = _s.updateData(origin, owner, tableName, rawGet, rawUpdate);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
+            ret = _s.updateData(caller, owner, tableName, rawGet, rawUpdate);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_DATA_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.deleteData(origin, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.deleteData(caller, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            getRes = _s.getDataHandle(origin, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            getRes = _s.getDataHandle(caller, owner, tableName, raw);
         }
         runGas = _s.ctx().view().fees().drops_per_byte * raw.size();
-        return std::make_tuple(
-            TER::fromInt(ret), strCopy(""), runGas);
+        
+        return std::make_tuple(TER::fromInt(ret), Blob(getRes.begin(),getRes.end()), runGas);
     }
     else
     {
-        return std::make_tuple(tesSUCCESS, strCopy(""),0);
+        return std::make_tuple(tesSUCCESS, strCopy(""), 0);
     }
 }
 }  // namespace ripple

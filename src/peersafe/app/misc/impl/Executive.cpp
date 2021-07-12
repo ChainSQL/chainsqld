@@ -173,12 +173,12 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         if (ter != tesSUCCESS)
         {
             m_excepted = ter;
-            auto output = get<1>(retPre);
-            m_output =
-                eth::owning_bytes_ref{std::move(output), 0, output.size()};
             return true;
         }
-    }
+        auto output = get<1>(retPre);
+        if (output.size() > 0)
+			m_output = eth::owning_bytes_ref{std::move(output), 0, output.size()};
+	}
     else
     {
         m_gas = _p.gas;

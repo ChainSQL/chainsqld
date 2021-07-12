@@ -531,14 +531,15 @@ namespace ripple {
 		Json::Value jvCommand, tableJson;
 		jvCommand[jss::tx_json][jss::Owner] = to_string(_owner);
 		jvCommand[jss::tx_json][jss::Account] = to_string(_account);
-		Json::Value _fields(Json::arrayValue);//select fields
-		jvCommand[jss::tx_json][jss::Raw].append(_fields);//append select fields
 		if (!_raw.empty())//append select conditions
 		{
-			Json::Value _condition;
-			Json::Reader().parse(_raw, _condition);
-			jvCommand[jss::tx_json][jss::Raw].append(_condition);
-		}
+            jvCommand[jss::tx_json][jss::Raw] = _raw;
+        }
+        else
+        {
+            Json::Value _fields(Json::arrayValue);  // select fields
+            jvCommand[jss::tx_json][jss::Raw].append(_fields);  // append select fields
+        }
 		jvCommand[jss::tx_json][jss::OpType] = R_GET;
 		tableJson[jss::Table][jss::TableName] = _sTableName;
 
