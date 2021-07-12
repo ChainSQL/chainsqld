@@ -4071,6 +4071,12 @@ NetworkOPsImp::checkSchemaTx(
 		//update validators list
 		if (!bOperatingSelf)
 		{
+            //Since the code is called by doAdvance,in case different node on subchain
+            //execute the 'modify' in different ledger,and result in different validator
+            //for subchain nodes and consensus cannot reach. Here we add a mechanism:
+            //when the first node executing the code,it tells other peer nodes to execute,
+            //since the ledger have reached consensus,most of them have this tx,so can execute
+            //immediately!
             app_.app()
                 .validators(schemaID)
                 .applySchemaModifyAndBroadcast(
