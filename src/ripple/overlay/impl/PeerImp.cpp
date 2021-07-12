@@ -1844,7 +1844,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMGetLedger> const& m)
 {
-    fee_ = Resource::feeMediumBurdenPeer;
+    fee_ = Resource::feeLightPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
     app_.getJobQueue().addJob(jtLEDGER_REQ, "recvGetLedger", [weak, m](Job&) {
         if (auto peer = weak.lock())
@@ -1923,7 +1923,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMGetTable> const& m)
 {
-    fee_ = Resource::feeMediumBurdenPeer;
+    fee_ = Resource::feeLightPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
     auto tup = getSchemaInfo("TMGetTable:", m->schemaid());
@@ -1942,7 +1942,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMGetTable> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMTableData> const& m)
 {
-    fee_ = Resource::feeMediumBurdenPeer;
+    fee_ = Resource::feeLightPeer;
     std::weak_ptr<PeerImp> weak = shared_from_this();
 
     auto tup = getSchemaInfo("TMTableData:", m->schemaid());
@@ -2428,7 +2428,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m)
             return;
         }
 
-        fee_ = Resource::feeMediumBurdenPeer;
+        fee_ = Resource::feeLightPeer;
 
         protocol::TMGetObjectByHash reply;
 
