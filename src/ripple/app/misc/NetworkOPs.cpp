@@ -1318,6 +1318,7 @@ NetworkOPsImp::processAccountDelay(std::map<AccountID, int> const& map)
         {
             it->second.failureCount = DELAY_START_COUNT - 
                 (1 + (now - it->second.timeExpires) / timeDelay);
+            it->second.lastTouch = now;
         }
         else if(it->second.failureCount < DELAY_START_COUNT && it->second.lastTouch + timeDelay < now)
         {
