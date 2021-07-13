@@ -838,7 +838,7 @@ ValidatorList::for_each_available(std::function<void(
 
     for (auto const& [key, pl] : publisherLists_)
     {
-        if (!pl.available)
+        if (!pl.available || key.empty())
             continue;
         func(
             pl.rawManifest,
