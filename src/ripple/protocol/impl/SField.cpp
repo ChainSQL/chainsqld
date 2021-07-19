@@ -58,6 +58,7 @@ SField const sfIndex        (access, STI_HASH256,     258, "index");
 // 8-bit integers
 SF_U8 const sfCloseResolution   (access, STI_UINT8, 1, "CloseResolution");
 SF_U8 const sfMethod            (access, STI_UINT8, 2, "Method");
+SF_U8 const sfTransactionResultOld (access, STI_UINT8, 3, "TransactionResult");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          (access, STI_UINT8, 16, "TickSize");

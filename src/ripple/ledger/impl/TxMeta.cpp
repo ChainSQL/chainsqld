@@ -47,7 +47,7 @@ TxMeta::TxMeta(
     catch (const std::exception&)
     {
         //For compatibility with older-consensus 
-        SF_U8 const sfTransactionResultOld(STI_UINT8, 3, "TransactionResult");
+        // SF_U8 const sfTransactionResultOld(STI_UINT8, 3, "TransactionResult");
         mResult = obj.getFieldU8(sfTransactionResultOld);
     }
     mIndex = obj.getFieldU32 (sfTransactionIndex);
@@ -81,7 +81,7 @@ TxMeta::TxMeta(uint256 const& txid, std::uint32_t ledger, STObject const& obj)
 	catch (std::exception const&)
 	{
 		//For compatibility with older-consensus versions
-		SF_U8 const sfTransactionResultOld(STI_UINT8, 3, "TransactionResult");
+		// SF_U8 const sfTransactionResultOld(STI_UINT8, 3, "TransactionResult");
 		mResult = obj.getFieldU8(sfTransactionResultOld);
 	}
     

@@ -1008,9 +1008,9 @@ saveValidatedLedger(
                 ledger->info().hash, aLedger);
         }
     }
-    catch (std::exception const&)
+    catch (std::exception const& e)
     {
-        JLOG(j.warn()) << "An accepted ledger was missing nodes";
+        JLOG(j.warn()) << "An accepted ledger was missing nodes:"<< seq <<",exception:"<<e.what();
         app.getLedgerMaster().failedSave(seq, ledger->info().hash);
         // Clients can now trust the database for information about this
         // ledger sequence.
