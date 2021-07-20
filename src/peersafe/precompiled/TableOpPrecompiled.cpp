@@ -10,16 +10,24 @@ const char* const TABLE_METHOD_CREATE_BY_CONTRACT_STR =
     "createByContract(string,string)";
 const char* const TABLE_METHOD_DROP_TABLE_STR =
     "dropTable(string)";
+const char* const TABLE_METHOD_DROP_TABLE_BY_CONTRACT_STR = 
+    "dropTableByContract(string)";
 const char* const TABLE_METHOD_GRANT_STR =
     "grant(address,string,string)";
+const char* const TABLE_METHOD_GRANT_BY_CONTRACT_STR = 
+    "grantByContract(address,string,string)";
 const char* const TABLE_METHOD_RENAME_TABLE_STR =
     "renameTable(string,string)";
+const char* const TABLE_METHOD_RENAME_TABLE_BY_CONTRACT_STR =
+    "renameTableByContract(string,string)";
 const char* const TABLE_METHOD_INSERT_STR =
     "insert(address,string,string)";
 const char* const TABLE_METHOD_INSERT_BY_CONTRACT_STR =
     "insertByContract(address,string,string)";
 const char* const TABLE_METHOD_INSERT_HASH_STR =
     "insertWithHash(address,string,string,string)";
+const char* const TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR =
+    "insertWithHashByContract(address,string,string,string)";
 const char* const TABLE_METHOD_UPDATE_STR =
     "update(address,string,string,string)";
 const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
@@ -41,14 +49,22 @@ TableOpPrecompiled::TableOpPrecompiled()
         getFuncSelector(TABLE_METHOD_CREATE_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_DROP_TABLE_STR] =
         getFuncSelector(TABLE_METHOD_DROP_TABLE_STR);
+    name2Selector_[TABLE_METHOD_DROP_TABLE_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_DROP_TABLE_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_GRANT_STR] =
         getFuncSelector(TABLE_METHOD_GRANT_STR);
+    name2Selector_[TABLE_METHOD_GRANT_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_GRANT_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_RENAME_TABLE_STR] =
         getFuncSelector(TABLE_METHOD_RENAME_TABLE_STR);
+    name2Selector_[TABLE_METHOD_RENAME_TABLE_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_RENAME_TABLE_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_INSERT_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_STR);
     name2Selector_[TABLE_METHOD_INSERT_HASH_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_HASH_STR);
+    name2Selector_[TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR);
     name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_UPDATE_STR] =
@@ -103,15 +119,30 @@ TableOpPrecompiled::execute(
             abi.abiOut(data, tableName);
             ret = _s.dropTable(origin, tableName);
         }
+        if (func == name2Selector_[TABLE_METHOD_DROP_TABLE_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName);
+            ret = _s.dropTable(caller, tableName);
+        }
         if (func == name2Selector_[TABLE_METHOD_GRANT_STR])
         {
             abi.abiOut(data, destAddr, tableName, raw); 
             ret = _s.grantTable(origin, destAddr, tableName, raw);
         }
+        if (func == name2Selector_[TABLE_METHOD_GRANT_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, destAddr, tableName, raw);
+            ret = _s.grantTable(caller, destAddr, tableName, raw);
+        }
         if (func == name2Selector_[TABLE_METHOD_RENAME_TABLE_STR])
         {
             abi.abiOut(data, tableName, tableNewName);
             ret = _s.renameTable(origin, tableName, tableNewName);
+        }
+        if (func == name2Selector_[TABLE_METHOD_RENAME_TABLE_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, tableNewName);
+            ret = _s.renameTable(caller, tableName, tableNewName);
         }
         if (func == name2Selector_[TABLE_METHOD_INSERT_STR])
         {
@@ -122,6 +153,11 @@ TableOpPrecompiled::execute(
         {
             abi.abiOut(data, owner, tableName, raw, autoFillField);
             ret = _s.insertData(origin, owner, tableName, raw, autoFillField);
+        }
+        if (func == name2Selector_[TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw, autoFillField);
+            ret = _s.insertData(caller, owner, tableName, raw, autoFillField);
         }
         if (func == name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR])
         {
