@@ -1379,41 +1379,54 @@ LedgerMaster::checkSubChains()
         return;
 
     auto ledger = getValidatedLedger();
-    for (auto sle : ledger->sles)
+    auto sleIndex = ledger->read(keylet::schema_index());
+    if (sleIndex)
     {
-        if (sle->getType() != ltSCHEMA)
-            continue;
-        uint256 schemaId = sle->key();
-        SchemaParams params{};
-        params.readFromSle(sle);
-        bool bShouldCreate = false;
-        for (auto validator : params.validator_list)
+        auto& schemaIndexes = sleIndex->getFieldV256(sfSchemaIndexes);
+        for (auto const& index : schemaIndexes)
         {
-            if (validator.first == app_.getValidationPublicKey())
+            auto key = Keylet(ltSCHEMA, index);
+            auto sle = ledger->read(key);
+            if (sle)
             {
-                bShouldCreate = true;
-                break;
-            }
-        }
-        if (bShouldCreate)
-        {
-            if (!app_.getSchemaManager().contains(schemaId))
-            {
-                JLOG(m_journal.info())
-                    << "Creating schema when checkSubChains:" << schemaId;
-                auto schemaPath = boost::filesystem::path(app_.config().SCHEMA_PATH) / to_string(schemaId);
-                bool bForceCreate = boost::filesystem::exists(schemaPath);
-                app_.getOPs().createSchema(sle, bForceCreate,true);
-            }
-        }
-        else
-        {
-            if (app_.getSchemaManager().contains(schemaId))
-            {
-                JLOG(m_journal.info())
-                    << "Removing schema when checkSubChains:" << schemaId;
-                app_.app().getSchema(schemaId).doStop();
-                app_.getSchemaManager().removeSchema(schemaId);
+                uint256 schemaId = sle->key();
+                SchemaParams params{};
+                params.readFromSle(sle);
+                bool bShouldCreate = false;
+                for (auto const& validator : params.validator_list)
+                {
+                    if (validator.first == app_.getValidationPublicKey())
+                    {
+                        bShouldCreate = true;
+                        break;
+                    }
+                }
+                if (bShouldCreate)
+                {
+                    if (!app_.getSchemaManager().contains(schemaId))
+                    {
+                        JLOG(m_journal.info())
+                            << "Creating schema when checkSubChains:"
+                            << schemaId;
+                        auto schemaPath =
+                            boost::filesystem::path(app_.config().SCHEMA_PATH) /
+                            to_string(schemaId);
+                        bool bForceCreate =
+                            boost::filesystem::exists(schemaPath);
+                        app_.getOPs().createSchema(sle, bForceCreate, true);
+                    }
+                }
+                else
+                {
+                    if (app_.getSchemaManager().contains(schemaId))
+                    {
+                        JLOG(m_journal.info())
+                            << "Removing schema when checkSubChains:"
+                            << schemaId;
+                        app_.app().getSchema(schemaId).doStop();
+                        app_.getSchemaManager().removeSchema(schemaId);
+                    }
+                }
             }
         }
     }

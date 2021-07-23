@@ -268,6 +268,24 @@ LedgerFormats::LedgerFormats()
 			{ sfPeerList,            soeREQUIRED },
 			{ sfOwnerNode,           soeREQUIRED },
 		}, commonFields);
+
+    add(jss::Admin, ltADMIN,
+        {
+            {sfAccount,             soeREQUIRED},
+        },
+        commonFields);
+
+    add(jss::FrozenAccounts, ltFROZEN_ACCOUNTS,
+        {
+            {sfFrozen, soeREQUIRED},
+        },
+        commonFields);
+
+    add(jss::SchemaIndex,ltSCHEMA_INDEX,
+        {
+            {sfSchemaIndexes, soeREQUIRED},
+        },
+        commonFields);
 }
 
 LedgerFormats const&

@@ -226,7 +226,11 @@ enum TEFcodes : TERUnderlyingType
     tefMISMATCH_CONTRACT_ADDRESS,
     tefMISMATCH_TRANSACTION_ADDRESS,
     tefWHITELIST_ACCOUNTIDEXIST,
-    tefWHITELIST_NOACCOUNTID
+    tefWHITELIST_NOACCOUNTID,
+    tefACCOUNT_FORBIDDEN,
+    tefACCOUNT_FROZEN,
+    tefACCOUNT_NOT_FROZEN,
+    tefNO_ADMIN_CONFIGURED
 };
 
 //------------------------------------------------------------------------------
@@ -618,6 +622,7 @@ using TER = TERSubset<CanCvtToTER>;
 
 //------------------------------------------------------------------------------
 
+
 inline bool
 isTelLocal(TER x)
 {
@@ -627,13 +632,13 @@ isTelLocal(TER x)
 inline bool
 isTemMalformed(TER x)
 {
-    return ((x) >= temMALFORMED && (x) < telLOCAL_ERROR);
+    return ((x) >= temMALFORMED && (x) < tefFAILURE);
 }
 
 inline bool
 isTefFailure(TER x)
 {
-    return ((x) >= tefFAILURE && (x) < temMALFORMED);
+    return ((x) >= tefFAILURE && (x) < telLOCAL_ERROR);
 }
 
 inline bool
@@ -651,7 +656,7 @@ isTesSuccess(TER x)
 inline bool
 isTecClaim(TER x)
 {
-    return ((x) >= tecCLAIM && (x) < tefFAILURE);
+    return ((x) >= tecCLAIM && (x) < temMALFORMED);
 }
 
 bool
@@ -704,6 +709,11 @@ struct STer {
 	{
 		return this->ter == rhs;
 	}
+
+    bool operator!=(TER const& rhs)
+    {
+        return this->ter != rhs;
+    }
 	
 	friend std::ostream &operator<<(std::ostream &os,const STer &ster)
 	{

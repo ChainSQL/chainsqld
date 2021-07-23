@@ -61,6 +61,7 @@ enum TxType {
     ttCONTRACT = 24,
     ttSCHEMA_CREATE = 25,
     ttSCHEMA_MODIFY = 26,
+    ttFREEZE_ACCOUNT = 27,
 
     ttACCOUNT_DELETE = 51,
     ttAMENDMENT = 100,

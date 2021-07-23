@@ -92,13 +92,19 @@ enum LedgerEntryType {
     // reassignment of the ledger type.
     ltNICKNAME [[deprecated]] = 'n',
 
-    ltTABLELIST         = 'l',
+    ltTABLELIST = 'l',
 
-	ltINSERTMAP			= 'i',
+    ltINSERTMAP = 'i',
 
-	ltCHAINID			= 'b',
+    ltCHAINID = 'b',
 
-	ltSCHEMA            = 'm',
+    ltSCHEMA = 'm',
+
+    ltADMIN = 'A',
+
+    ltFROZEN_ACCOUNTS = 'z',
+
+    ltSCHEMA_INDEX = 'k',
 };
 
 /**

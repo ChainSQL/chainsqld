@@ -162,6 +162,13 @@ struct ticket_t
 };
 static ticket_t const ticket{};
 
+Keylet admin() noexcept;
+
+Keylet frozen() noexcept;
+
+Keylet
+schema_index() noexcept;
+
 /** A SignerList */
 Keylet
 signers(AccountID const& account) noexcept;

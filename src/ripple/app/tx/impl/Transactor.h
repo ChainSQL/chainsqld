@@ -139,6 +139,9 @@ public:
     static NotTEC
     checkSign(PreclaimContext const& ctx);
 
+    static TER
+    checkFrozen(PreclaimContext const& ctx);
+
     static 
     void
     setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx);

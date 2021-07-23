@@ -601,6 +601,8 @@ JSS ( chainsql_tx );
 JSS ( SchemaCreate );
 JSS ( SchemaModify );
 
+JSS ( FreezeAccount );
+
 JSS ( Contract );					// transaction type.
 JSS ( TableListSet );				// transaction type.
 JSS ( SQLStatement );				// transaction type.
@@ -609,6 +611,9 @@ JSS ( TableList );					// ledger type.
 JSS ( InsertLimt );					// ledger type.
 JSS ( ChainId );					// ledger type.
 JSS ( Schema );
+JSS ( Admin );
+JSS ( FrozenAccounts );
+JSS ( SchemaIndex );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);

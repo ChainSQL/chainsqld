@@ -219,6 +219,29 @@ namespace ripple {
 		
 		ctx_.view().insert(slep);
 
+		// Add schema to schema_index
+        {
+			auto sleIndexes = ctx_.view().peek(keylet::schema_index());
+            STVector256 schemas;
+            bool exists = true;
+            if (!sleIndexes)
+            {
+                sleIndexes = std::make_shared<SLE>(keylet::schema_index());
+                exists = false;
+            }
+            else
+				schemas = sleIndexes->getFieldV256(sfSchemaIndexes);
+
+            schemas.push_back(slep->key());
+			sleIndexes->setFieldV256(sfSchemaIndexes, schemas);
+
+            if (exists)
+				ctx_.view().update(sleIndexes);
+            else
+                ctx_.view().insert(sleIndexes);
+
+		}
+
 		// Add schema to sender's owner directory
 		{
 			auto page = dirAdd(ctx_.view(), keylet::ownerDir(account), slep->key(),

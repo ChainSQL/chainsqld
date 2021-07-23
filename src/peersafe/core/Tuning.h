@@ -48,6 +48,8 @@ namespace ripple {
 
     //connection will close after 60s
     uint64_t const CONNECTION_TIMEOUT   = 60;
-} // ripple
+
+    int const DELAY_START_COUNT = 5;
+    } // ripple
 
 #endif

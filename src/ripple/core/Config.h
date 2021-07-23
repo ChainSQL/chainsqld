@@ -224,6 +224,10 @@ public:
 	bool						 ONLY_VALIDATE_FOR_SCHEMA = false;
     
     bool                         BATCH_BROADCAST = false;
+
+    //governance
+    bool                        OPEN_ACCOUNT_DELAY = false;
+
 public:
     Config() : j_{beast::Journal::getNullSink()}
     {
