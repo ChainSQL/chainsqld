@@ -52,6 +52,7 @@ struct Fees
     ZXCAmount increment{0};  // Reserve increment (drops)
 
 	std::uint64_t drops_per_byte = (1000000 / 1024); // the cost of  a byte in drops
+    std::uint64_t gas_price = {10};
 
     explicit Fees() = default;
     Fees(Fees const&) = default;

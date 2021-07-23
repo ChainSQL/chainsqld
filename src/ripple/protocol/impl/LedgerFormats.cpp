@@ -149,6 +149,7 @@ LedgerFormats::LedgerFormats()
             { sfReserveBase,         soeREQUIRED },
 			{ sfReserveIncrement,    soeREQUIRED },
 			{ sfDropsPerByte,		 soeOPTIONAL },
+            { sfGasPrice,            soeOPTIONAL },
         },
         commonFields);
 

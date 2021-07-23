@@ -241,6 +241,11 @@ Change::applyFee()
             sfDropsPerByte, ctx_.tx.getFieldU64(sfDropsPerByte));
     }
 
+     if (ctx_.tx.isFieldPresent(sfGasPrice))
+    {
+        feeObject->setFieldU64(sfGasPrice, ctx_.tx.getFieldU64(sfGasPrice));
+    }
+
     view().update(feeObject);
 
     JLOG(j_.warn()) << "Fees have been changed";

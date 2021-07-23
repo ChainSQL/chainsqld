@@ -53,6 +53,8 @@ public:
 
 		/** The cost of a byte in drops. */
 		std::uint64_t drops_per_byte = (1000000 / 1024);
+
+        std::uint64_t gas_price = {10};
     };
 
     virtual ~FeeVote() = default;

@@ -2677,6 +2677,9 @@ NetworkOPsImp::pubValidation(std::shared_ptr<STValidation> const& val)
         if (auto const reserveInc = (*val)[~sfReserveIncrement])
             jvObj[jss::reserve_inc] = *reserveInc;
 
+        if (auto const gas_price = (*val)[~sfGasPrice])
+            jvObj[jss::gas_price] = static_cast<double>(*gas_price);
+
         for (auto i = mStreamMaps[sValidations].begin();
              i != mStreamMaps[sValidations].end();)
         {

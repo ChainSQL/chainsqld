@@ -137,6 +137,7 @@ SF_U64 const sfServerVersion    (access, STI_UINT64, 11, "ServerVersion");
 SF_U64 const sfDropsPerByte     (access, STI_UINT64, 10, "DropsPerByte");
 SF_U64 const sfIssuerNode	    (access, STI_UINT64, 21, "IssuerNode");
 SF_U64 const sfView             (access, STI_UINT64, 23, "View");
+SF_U64 const sfGasPrice         (access, STI_UINT64, 24, "GasPrice");
 
 
 // 128-bit

@@ -162,11 +162,7 @@ scaleFeeLoad(
     LoadFeeTrack const& feeTrack,
     Fees const& fees,
     bool bUnlimited);
-std::uint64_t scaleGasLoad(
-    std::uint64_t gasPrice, 
-    LoadFeeTrack const& feeTrack,
-	Fees const& fees);
-
+std::uint64_t scaleGasLoad( LoadFeeTrack const& feeTrack,Fees const& fees);
 }  // namespace ripple
 
 #endif

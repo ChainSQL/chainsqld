@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <numeric>
 #include <type_traits>
+#include <peersafe/core/Tuning.h>
 
 namespace ripple {
 
@@ -163,9 +164,10 @@ scaleFeeLoad(
     return result.second;
 }
 
-std::uint64_t scaleGasLoad(std::uint64_t gasPrice, LoadFeeTrack const& feeTrack,
+std::uint64_t scaleGasLoad(LoadFeeTrack const& feeTrack,
 	Fees const& fees)
 {
+    std::uint64_t gasPrice = fees.gas_price;
 	//calc gas_price
 	auto fee = scaleFeeLoad(FeeUnit64{ (std::uint64_t)fees.base.drops() }, feeTrack,
 		fees, false);

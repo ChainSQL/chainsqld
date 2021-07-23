@@ -593,7 +593,7 @@ Ledger::setup(Config const& config)
     fees_.increment = config.FEE_OWNER_RESERVE;
 
 	fees_.drops_per_byte = config.DROPS_PER_BYTE;
-
+    fees_.gas_price =      config.GAS_PRICE;
     try
     {
         if (auto const sle = read(keylet::fees()))
@@ -615,6 +615,11 @@ Ledger::setup(Config const& config)
             if (sle->isFieldPresent(sfDropsPerByte))
             {
                 fees_.drops_per_byte = sle->getFieldU64(sfDropsPerByte);
+            }
+
+            if (sle->isFieldPresent(sfGasPrice))
+            {
+                fees_.gas_price = sle->getFieldU64(sfGasPrice);
             }
         }
     }

@@ -439,6 +439,7 @@ extern SF_U64 const sfCookie;
 extern SF_U64 const sfDropsPerByte;
 extern SF_U64 const sfServerVersion;
 extern SF_U64 const sfView;
+extern SF_U64 const sfGasPrice;
 
 // 128-bit
 extern SF_U128 const sfEmailHash;

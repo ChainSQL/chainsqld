@@ -188,6 +188,7 @@ public:
 
 	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);
 
+    std::uint64_t                   GAS_PRICE = (10);
 
     // Node storage configuration
     std::uint32_t LEDGER_HISTORY = 256;

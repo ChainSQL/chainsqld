@@ -1482,8 +1482,7 @@ TxQ::doRPC(Schema& app) const
         1);
 
 	//calc gas_price
-	auto gasPrice = scaleGasLoad(GAS_PRICE, app.getFeeTrack(),
-		view->fees());
+    auto gasPrice = scaleGasLoad(app.getFeeTrack(),view->fees());
 
 	drops[jss::gas_price] = std::to_string(gasPrice);
 

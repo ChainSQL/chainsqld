@@ -74,6 +74,7 @@ STValidation::validationFormat()
         { sfValidatedHash,      soeOPTIONAL},
         { sfServerVersion,      soeOPTIONAL},
         { sfDropsPerByte,       soeOPTIONAL},
+        { sfGasPrice,           soeOPTIONAL},
     };
 
     return format;

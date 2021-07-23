@@ -25,7 +25,8 @@ Executive::Executive(
 
 void Executive::initGasPrice()
 {
-	m_gasPrice = scaleGasLoad(GAS_PRICE, m_s.ctx().app.getFeeTrack(),
+    m_gasPrice = scaleGasLoad(
+		m_s.ctx().app.getFeeTrack(),
 		m_s.ctx().view().fees());
 }
 

@@ -153,6 +153,13 @@ FeeVoteImpl::doValidation(Fees const& lastFees, STValidation& v)
 			"Voting for per zxc size " << target_.drops_per_byte;
 		v.setFieldU64(sfDropsPerByte, target_.drops_per_byte);
 	}
+
+     if (lastFees.gas_price != target_.gas_price)
+        {
+            JLOG(journal_.info())
+                << "Voting for base gas_price of " << target_.gas_price;
+            v.setFieldU64(sfGasPrice, target_.gas_price);
+        }
 }
 
 void
@@ -176,6 +183,9 @@ FeeVoteImpl::doVoting(
 
 	detail::VotableValue<std::uint64_t> dropsPerByteVote(
 		lastClosedLedger->fees().drops_per_byte, target_.drops_per_byte);
+
+    detail::VotableValue<std::uint64_t> gasPriceVote(
+            lastClosedLedger->fees().gas_price, target_.gas_price);
 
     for (auto const& val : set)
     {
@@ -230,6 +240,14 @@ FeeVoteImpl::doVoting(
 				dropsPerByteVote.noVote();
 			}
 
+            if (val->isFieldPresent(sfGasPrice))
+            {
+                gasPriceVote.addVote(val->getFieldU64(sfGasPrice));
+            }
+            else
+            {
+                gasPriceVote.noVote();
+            }
 
         }
     }
@@ -244,13 +262,15 @@ FeeVoteImpl::doVoting(
         lastClosedLedger->fees().increment);
     constexpr FeeUnit32 feeUnits = Setup::reference_fee_units;
 	std::uint64_t const dropsPerByte = dropsPerByteVote.getVotes();
+    std::uint64_t const gasPrice = gasPriceVote.getVotes();
     auto const seq = lastClosedLedger->info().seq + 1;
 
     // add transactions to our position
     if ((baseFee != lastClosedLedger->fees().base) ||
             (baseReserve != lastClosedLedger->fees().accountReserve(0)) ||
             (incReserve != lastClosedLedger->fees().increment) ||
-		   (dropsPerByte != lastClosedLedger->fees().drops_per_byte) )
+		   (dropsPerByte != lastClosedLedger->fees().drops_per_byte) ||
+           (gasPrice != lastClosedLedger->fees().gas_price))
     {
         JLOG(journal_.warn()) <<
             "We are voting for a fee change: " << baseFee <<
@@ -259,7 +279,7 @@ FeeVoteImpl::doVoting(
 			"/" << dropsPerByte;
 
         STTx feeTx (ttFEE,
-            [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte](auto& obj)
+            [seq,baseFee,baseReserve,incReserve,feeUnits, dropsPerByte, gasPrice](auto& obj)
             {
                 obj[sfAccount] = AccountID();
                 obj[sfLedgerSequence] = seq;
@@ -268,6 +288,7 @@ FeeVoteImpl::doVoting(
                 obj[sfReserveIncrement] = incReserve;
                 obj[sfReferenceFeeUnits] = feeUnits.fee();
 				obj[sfDropsPerByte] = dropsPerByte;
+                obj[sfGasPrice] = gasPrice;
             });
 
         uint256 txID = feeTx.getTransactionID();
@@ -314,6 +335,11 @@ setup_FeeVote(Section const& section)
         if (setup.drops_per_byte == 0 || setup.drops_per_byte > 1000000) {
             setup.drops_per_byte = (1000000 / 1024);
         }
+    }
+    {
+        std::uint64_t temp;
+        if (set(temp, "gas_price", section))
+            setup.gas_price = temp;
     }
     return setup;
 }
