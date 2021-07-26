@@ -141,6 +141,7 @@ TxPool::removeTxs(
 void
 TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
 {
+    std::lock_guard lock(mutexMapSynced_);
     // update sync_status
     if (mTxsSet.size() == 0)
     {
