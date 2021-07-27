@@ -3392,12 +3392,12 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
             {
                 if (*when == TimeKeeper::time_point::max())
                 {
-                    x[jss::expiration] = "never";
+                    //x[jss::expiration] = "never";
                     x[jss::status] = "active";
                 }
                 else
                 {
-                    x[jss::expiration] = to_string(*when);
+                    //x[jss::expiration] = to_string(*when);
 
                     if (*when > app_.timeKeeper().now())
                         x[jss::status] = "active";
