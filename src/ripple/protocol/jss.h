@@ -698,7 +698,6 @@ JSS (for_node);
 JSS (running);
 
 JSS(drops_per_byte);                       // out: LogLevel
-JSS(gas_price);
 JSS(view);
 #undef JSS
 
