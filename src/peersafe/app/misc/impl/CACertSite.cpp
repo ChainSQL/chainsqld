@@ -101,9 +101,9 @@ CACertSite::parseJsonResponse(
             // Update publisher's list
             auto& publisher = publisherLists_[pubKey];
             publisher.sequence = list["sequence"].asUInt();
-            publisher.expiration = TimeKeeper::time_point{
-                TimeKeeper::duration{list["expiration"].asUInt()}};
-
+            //publisher.expiration = TimeKeeper::time_point{
+            //    TimeKeeper::duration{list["expiration"].asUInt()}};
+            publisher.expiration = TimeKeeper::time_point::max();
             // Update     certList_
             certList_.setCertList(root_cert_list);
         }
@@ -178,7 +178,8 @@ CACertSite::load(
 
         // init sequence and expiration
         publisherLists_[id].sequence   = 0;
-        publisherLists_[id].expiration = timeKeeper_.now();
+        //publisherLists_[id].expiration = timeKeeper_.now();
+        publisherLists_[id].expiration = TimeKeeper::time_point::max();;
 
         ++count;
     }

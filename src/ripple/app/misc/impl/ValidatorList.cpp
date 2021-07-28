@@ -356,8 +356,9 @@ ValidatorList::applyList(
     auto& publisher = publisherLists_[pubKey];
     publisher.available = true;
     publisher.sequence = list["sequence"].asUInt();
-    publisher.expiration = TimeKeeper::time_point{
-        TimeKeeper::duration{list["expiration"].asUInt()}};
+    //publisher.expiration = TimeKeeper::time_point{
+    //    TimeKeeper::duration{list["expiration"].asUInt()}};
+    publisher.expiration = TimeKeeper::time_point::max();;
     publisher.siteUri = std::move(siteUri);
     publisher.rawManifest = manifest;
     publisher.rawBlob = blob;
@@ -727,12 +728,12 @@ ValidatorList::getJson() const
         {
             if (*when == TimeKeeper::time_point::max())
             {
-                x[jss::expiration] = "never";
+                //x[jss::expiration] = "never";
                 x[jss::status] = "active";
             }
             else
             {
-                x[jss::expiration] = to_string(*when);
+                //x[jss::expiration] = to_string(*when);
 
                 if (*when > timeKeeper_.now())
                     x[jss::status] = "active";
@@ -743,7 +744,7 @@ ValidatorList::getJson() const
         else
         {
             x[jss::status] = "unknown";
-            x[jss::expiration] = "unknown";
+           // x[jss::expiration] = "unknown";
         }
     }
 
@@ -771,7 +772,7 @@ ValidatorList::getJson() const
         if (p.second.expiration != TimeKeeper::time_point{})
         {
             curr[jss::seq] = static_cast<Json::UInt>(p.second.sequence);
-            curr[jss::expiration] = to_string(p.second.expiration);
+           // curr[jss::expiration] = to_string(p.second.expiration);
             curr[jss::version] = requiredListVersion;
         }
         Json::Value& keys = (curr[jss::list] = Json::arrayValue);
@@ -1175,12 +1176,12 @@ ValidatorList::updateTrusted(hash_set<NodeID> const& seenValidators)
     std::unique_lock<std::shared_timed_mutex> lock{mutex_};
 
     // Remove any expired published lists
-    for (auto const& list : publisherLists_)
-    {
-        if (list.second.available &&
-            list.second.expiration <= timeKeeper_.now())
-            removePublisherList(list.first);
-    }
+    //for (auto const& list : publisherLists_)
+    //{
+        //if (list.second.available &&
+        //    list.second.expiration <= timeKeeper_.now())
+        //    removePublisherList(list.first);
+    //}
 
     TrustChanges trustChanges;
 
