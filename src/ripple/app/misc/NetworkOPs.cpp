@@ -3560,6 +3560,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
         l[jss::hash] = to_string(lpClosed->info().hash);
 
         std::uint64_t drops_per_byte = lpClosed->fees().drops_per_byte;
+        std::uint64_t gas_price = lpClosed->fees().gas_price;
 
         if (!human)
         {
@@ -3573,6 +3574,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
         else
         {
             l[jss::drops_per_byte] = Json::Value::UInt(drops_per_byte);
+            l[jss::gas_price] = Json::Value::UInt(gas_price);
             l[jss::base_fee_zxc] = baseFee.decimalZXC();
             l[jss::reserve_base_zxc] =
                 lpClosed->fees().accountReserve(0).decimalZXC();
@@ -3761,6 +3763,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             jvObj[jss::fee_base] = lpAccepted->fees().base.jsonClipped();
             jvObj[jss::drops_per_byte] =
                 Json::UInt(lpAccepted->fees().drops_per_byte);
+            jvObj[jss::gas_price] =
+                Json::UInt(lpAccepted->fees().gas_price);
             jvObj[jss::reserve_base] =
                 lpAccepted->fees().accountReserve(0).jsonClipped();
             jvObj[jss::reserve_inc] =
@@ -4717,6 +4721,8 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::fee_base] = lpClosed->fees().base.jsonClipped();
         jvResult[jss::drops_per_byte] =
             Json::UInt(lpClosed->fees().drops_per_byte);
+        jvResult[jss::gas_price] =
+            Json::UInt(lpClosed->fees().gas_price);
         jvResult[jss::reserve_base] =
             lpClosed->fees().accountReserve(0).jsonClipped();
         jvResult[jss::reserve_inc] = lpClosed->fees().increment.jsonClipped();
