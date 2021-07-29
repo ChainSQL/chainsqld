@@ -137,6 +137,10 @@ RCLConsensus::Adaptor::acquireLedger(LedgerHash const& ledger)
                         hash, 0, InboundLedger::fcCONSENSUS);
                 });
         }
+        else
+        {
+            touchAcquringLedger(ledger);
+        }
         return boost::none;
     }
 
