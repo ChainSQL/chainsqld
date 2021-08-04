@@ -89,9 +89,15 @@ public:
 	bool IsPressSwitchOn();
     void sweep();
 private:
-    bool
-    initTableItems();
-	std::pair<std::shared_ptr<TableSyncItem>, std::string> CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
+    bool initTableItems();
+    std::tuple<AccountID, SecretKey, bool>
+    ParseSecret(std::string secret, std::string user);
+    std::tuple<AccountID, AccountID, SecretKey, bool> 
+        ParseSyncAccount(std::string line);
+	std::pair<std::shared_ptr<TableSyncItem>, std::string> 
+        CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line);
+    std::vector<std::shared_ptr<TableSyncItem>> 
+        CreateItemsWithOwner(AccountID owner,std::pair<AccountID,SecretKey> user);
     void CreateTableItems();
     //check ledger according to the skip node
     bool CheckTheReplyIsValid(std::shared_ptr <protocol::TMTableData> const& m);
@@ -143,6 +149,8 @@ private:
     std::recursive_mutex                        mutexlistTable_;
     std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_;
 	std::map<std::string, std::string>			setTableInCfg_;
+    std::map<AccountID, std::pair<AccountID,SecretKey>>
+                                                mapOwnerInCfg_;
 
     std::mutex                                  mutexTempTable_;
     std::list<std::string>                      listTempTable_;

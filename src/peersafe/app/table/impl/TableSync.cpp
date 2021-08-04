@@ -609,7 +609,136 @@ TableSync::initTableItems()
     return false;
 }
 
-std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line)
+std::tuple<AccountID, AccountID, SecretKey, bool>
+TableSync::ParseSyncAccount(std::string line)
+{
+    // trim space lies in the head and tail.
+    line.erase(line.find_last_not_of(' ') + 1);
+    line.erase(0, line.find_first_not_of(' '));
+    
+    std::vector<std::string> vec;
+    boost::split(vec, line, boost::is_any_of(" "), boost::token_compress_on);
+    if (vec.size() > 2)
+        return std::make_tuple(beast::zero, beast::zero, SecretKey(), false);
+
+    auto oAccountID = ripple::parseBase58<AccountID>(vec[0]);
+    if (boost::none == oAccountID)
+    {
+        return std::make_tuple(beast::zero, beast::zero, SecretKey(), false);
+    }
+    
+    AccountID userAccount;
+    SecretKey secret_key;
+    if (vec.size() == 2 && (vec[1][0] == 'p' || vec[1][0] == 'x'))
+    {
+        auto tup = ParseSecret(vec[1], "");
+        if (std::get<2>(tup))
+        {
+            userAccount = std::get<0>(tup);
+            secret_key = std::get<1>(tup);
+        }
+        return std::make_tuple(*oAccountID, userAccount,secret_key, true);
+    }
+    else
+    {
+        return std::make_tuple(*oAccountID, beast::zero, SecretKey(), true);
+    }
+}
+
+std::tuple<AccountID, SecretKey, bool>
+TableSync::ParseSecret(std::string secret, std::string user)
+{
+    AccountID accountID, userAccountId;
+    SecretKey secret_key;
+    PublicKey public_key;
+    // if (hEObj != NULL)
+    if (!secret.empty() && ('p' == secret[0] || secret.size() <= 3))
+    {
+        if (secret.size() <= 3)
+        {
+            auto pUser = ripple::parseBase58<AccountID>(user);
+            if (boost::none == pUser)
+                return std::make_tuple(beast::zero, SecretKey(), false);
+            userAccountId = *pUser;
+
+            GmEncrypt* hEObj = GmEncryptObj::getInstance();
+
+            // add a try catch to judge whether the index is a number.
+            secret = secret.substr(1);
+            int index = atoi(secret.c_str());
+            // SecretKey tempSecKey(Slice(nullptr, 0));
+            char* temp4Secret = new char[32];
+            memset(temp4Secret, index, 32);
+            SecretKey tempSecKey(Slice(temp4Secret, 32));
+            tempSecKey.encrytCardIndex_ = index;
+            tempSecKey.keyTypeInt_ = KeyType::gmInCard;
+            hEObj->getPrivateKeyRight(index);
+            secret_key = tempSecKey;
+            delete[] temp4Secret;
+        }
+        else
+        {
+            std::string privateKeyStrDe58 =
+                decodeBase58Token(secret, TokenType::AccountSecret);
+            SecretKey tempSecKey(
+                Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+            tempSecKey.keyTypeInt_ = KeyType::gmalg;
+            secret_key = tempSecKey;
+            public_key = derivePublicKey(KeyType::gmalg, tempSecKey);
+            userAccountId = calcAccountID(public_key);
+        }
+    }
+    else if (!secret.empty() && 'x' == secret[0])
+    {
+        // create secret key from given secret
+        auto seed = parseBase58<Seed>(secret);
+        if (seed)
+        {
+            KeyType keyType = KeyType::secp256k1;
+            std::pair<PublicKey, SecretKey> key_pair =
+                generateKeyPair(keyType, *seed);
+            public_key = key_pair.first;
+            secret_key = key_pair.second;
+            userAccountId = calcAccountID(public_key);
+        }
+    }
+    return std::make_tuple(userAccountId, secret_key, true);
+}
+
+std::vector<std::shared_ptr<TableSyncItem>>
+TableSync::CreateItemsWithOwner(
+    AccountID owner,
+    std::pair<AccountID, SecretKey> user)
+{
+    std::vector<std::shared_ptr<TableSyncItem>> vec;
+    auto key = keylet::table(owner);
+    auto ledger = app_.getLedgerMaster().getValidatedLedger();
+    auto tablesle = ledger->read(key);
+    if (tablesle)
+    {
+        auto& aTables = tablesle->getFieldArray(sfTableEntries);
+        if (aTables.size() > 0)
+        {
+            for (auto table : aTables)
+            {
+                Json::Value tmp(Json::objectValue);
+                auto nameInDB = table.getFieldH160(sfNameInDB);
+                tmp[jss::nameInDB] = to_string(nameInDB);
+                auto blob = table.getFieldVL(sfTableName);
+                std::string tablename(blob.begin(), blob.end());
+                auto pItem = std::make_shared<TableSyncItem>(
+                    app_, journal_, cfg_, TableSyncItem::SyncTarget_db);
+                pItem->Init(
+                    owner, tablename, user.first, user.second, "", false);
+                vec.push_back(pItem);
+            }
+        }
+    }
+    return vec;
+}
+
+std::pair<std::shared_ptr<TableSyncItem>, std::string> 
+TableSync::CreateOneItem(TableSyncItem::SyncTargetType eTargeType, std::string line)
 {	
     std::shared_ptr<TableSyncItem> pItem = NULL;
 	std::string owner, tablename, userId, secret, condition, user;
@@ -688,75 +817,12 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     }
     else accountID = *oAccountID;
 	
-    // if (hEObj != NULL)
-    if (!secret.empty() && ('p' == secret[0] || secret.size() <= 3))
+    auto tup = ParseSecret(secret, user);
+    if (std::get<2>(tup))
     {
-        try
-        { 
-            if(secret.size() <= 3)
-            {
-				auto pUser = ripple::parseBase58<AccountID>(user);
-				if (boost::none == pUser)
-					return std::make_pair(pItem, tablename + ":user invalid!");
-				userAccountId = *pUser;
-                
-                GmEncrypt* hEObj = GmEncryptObj::getInstance();
-
-                //add a try catch to judge whether the index is a number.
-                secret = secret.substr(1);
-                int index = atoi(secret.c_str());
-                //SecretKey tempSecKey(Slice(nullptr, 0));
-                char* temp4Secret = new char[32];
-                memset(temp4Secret, index, 32);
-                SecretKey tempSecKey(Slice(temp4Secret, 32));
-                tempSecKey.encrytCardIndex_ = index;
-                tempSecKey.keyTypeInt_ = KeyType::gmInCard;
-                hEObj->getPrivateKeyRight(index);
-                secret_key = tempSecKey;
-                delete[] temp4Secret;
-            }
-            else
-            {
-                std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
-                SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-                tempSecKey.keyTypeInt_ = KeyType::gmalg;
-                secret_key = tempSecKey;
-                public_key = derivePublicKey(KeyType::gmalg, tempSecKey);
-                userAccountId = calcAccountID(public_key);
-            }
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(journal_.warn()) <<
-                "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception :" + e.what();
-            return std::make_pair(pItem, sLastErr_);
-        }
-    }
-    else if (!secret.empty() && 'x' == secret[0])
-    {
-        try
-        {
-            //create secret key from given secret
-            auto seed = parseBase58<Seed>(secret);
-            if (seed)
-            {
-                KeyType keyType = KeyType::secp256k1;
-                std::pair<PublicKey, SecretKey> key_pair = generateKeyPair(keyType, *seed);
-                public_key = key_pair.first;
-                secret_key = key_pair.second;
-                userAccountId = calcAccountID(public_key);
-            }
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(journal_.warn()) <<
-                "AccountID|userAccountId|secret exception" << e.what();
-            sLastErr_ = tablename + " exception :" + e.what();
-            return std::make_pair(pItem, sLastErr_);
-        }
-    }
-	
+        userAccountId = std::get<0>(tup);
+        secret_key = std::get<1>(tup);
+    }	
 
     if (eTargeType != TableSyncItem::SyncTarget_audit)
     {
@@ -809,20 +875,36 @@ void TableSync::CreateTableItems()
 	{
         try
         {
-            auto ret = CreateOneItem(TableSyncItem::SyncTarget_db, line);
-            if (ret.first != NULL)
+            auto tup = ParseSyncAccount(line);
+            if (std::get<3>(tup))
             {
-                std::lock_guard lock(mutexlistTable_);
-                listTableInfo_.push_back(ret.first);
-                // this set can only be modified here
-                std::string temKey = to_string(ret.first->GetAccount()) +
-                    ret.first->GetTableName();
-                setTableInCfg_[temKey] = line;
+                auto pair = std::make_pair(std::get<1>(tup), std::get<2>(tup));
+                mapOwnerInCfg_[std::get<0>(tup)] = pair;
+                auto ret = CreateItemsWithOwner(std::get<0>(tup),pair);
+                for (auto pItem : ret)
+                {
+                    std::lock_guard lock(mutexlistTable_);
+                    listTableInfo_.push_back(pItem);
+                }
             }
             else
             {
-                JLOG(journal_.error()) << "CreateOneItem error:" << ret.second;
-            }
+                auto ret = CreateOneItem(TableSyncItem::SyncTarget_db, line);
+                if (ret.first != NULL)
+                {
+                    std::lock_guard lock(mutexlistTable_);
+                    listTableInfo_.push_back(ret.first);
+                    // this set can only be modified here
+                    std::string temKey = to_string(ret.first->GetAccount()) +
+                        ret.first->GetTableName();
+                    setTableInCfg_[temKey] = line;
+                }
+                else
+                {
+                    JLOG(journal_.error())
+                        << "CreateOneItem error:" << ret.second;
+                }
+            }            
         }
         catch (std::exception const& e)
         {
@@ -1514,7 +1596,20 @@ std::pair<bool, std::string>
         else
         {
             pItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-            pItem->Init(accountID, sTableName, true);
+            if (mapOwnerInCfg_.count(accountID) > 0 && mapOwnerInCfg_[accountID].second.size() > 0)
+            {
+                pItem->Init(
+                    accountID,
+                    sTableName,
+                    mapOwnerInCfg_[accountID].first,
+                    mapOwnerInCfg_[accountID].second,
+                    "",
+                    false);
+            }
+            else
+            {
+                pItem->Init(accountID, sTableName, true);
+            }
         }
 
         if (pItem)
@@ -1762,7 +1857,9 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					{
 						std::string temKey = to_string(accountID) + tableName;
 						bool bInSyncTables = true;
-						if (setTableInCfg_.count(temKey) <= 0) {
+                        if (setTableInCfg_.count(temKey) <= 0 && 
+                            mapOwnerInCfg_.count(accountID) <= 0) 
+                        {
 							bInSyncTables = false;
 						}
 
