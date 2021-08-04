@@ -228,7 +228,10 @@ RpcaPopAdaptor::peerValidation(
                 val->getSignTime(),
                 val->getSeenTime()))
         {
-            JLOG(j_.info()) << "Validation: Not current";
+            JLOG(j_.warn()) << "Validation: Not current,now="
+                << to_string(app_.timeKeeper().closeTime())
+                << ",val.signTime=" << to_string(val->getSignTime())<< ",val.seenTime="
+                <<to_string(val->getSeenTime());
             peer->charge(Resource::feeUnwantedData);
             return false;
         }
