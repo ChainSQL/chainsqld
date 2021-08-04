@@ -142,7 +142,7 @@ private:
 
     std::recursive_mutex                        mutexlistTable_;
     std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_;
-	std::map<std::string, std::string>			setTableInCfg;
+	std::map<std::string, std::string>			setTableInCfg_;
 
     std::mutex                                  mutexTempTable_;
     std::list<std::string>                      listTempTable_;

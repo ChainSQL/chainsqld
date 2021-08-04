@@ -793,7 +793,7 @@ std::pair<std::shared_ptr<TableSyncItem>, std::string> TableSync::CreateOneItem(
     {
         //pItem->Init(accountID, tablename, userAccountId, secret_key, condition, false);
         auto retPair = pItem->InitPassphrase();
-        if (!retPair.first)			                return std::make_pair(std::shared_ptr<TableSyncItem>(NULL), retPair.second);
+        if (!retPair.first)			                return std::make_pair(nullptr, retPair.second);
     }
 
 	return std::make_pair(pItem, "");
@@ -817,7 +817,11 @@ void TableSync::CreateTableItems()
                 // this set can only be modified here
                 std::string temKey = to_string(ret.first->GetAccount()) +
                     ret.first->GetTableName();
-                setTableInCfg[temKey] = line;
+                setTableInCfg_[temKey] = line;
+            }
+            else
+            {
+                JLOG(journal_.error()) << "CreateOneItem error:" << ret.second;
             }
         }
         catch (std::exception const& e)
@@ -1239,7 +1243,7 @@ void TableSync::TableSyncThread()
                         TxnLedgerHash = uint256();
 						bool bAutoSync = true;
 						std::string temKey = to_string(stItem.accountID) + stItem.sTableName;
-						if(setTableInCfg.count(temKey) > 0)
+						if(setTableInCfg_.count(temKey) > 0)
 						{
 							bAutoSync = false;
 						}
@@ -1479,7 +1483,7 @@ std::pair<bool, std::string>
                 sTableName,
                 TableSyncItem::SyncTarget_db))
         {
-            if (setTableInCfg.count(temKey) <= 0)
+            if (setTableInCfg_.count(temKey) <= 0)
             {
                 return std::make_pair(false, "Table exist in listTableInfo");
             }
@@ -1500,10 +1504,10 @@ std::pair<bool, std::string>
         }
 
         std::shared_ptr<TableSyncItem> pItem = nullptr;
-        if (setTableInCfg.count(temKey) > 0)
+        if (setTableInCfg_.count(temKey) > 0)
         {
             auto result = CreateOneItem(
-                TableSyncItem::SyncTarget_db, setTableInCfg[temKey]);
+                TableSyncItem::SyncTarget_db, setTableInCfg_[temKey]);
             pItem = result.first;
             err = result.second;
         }
@@ -1758,7 +1762,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					{
 						std::string temKey = to_string(accountID) + tableName;
 						bool bInSyncTables = true;
-						if (setTableInCfg.count(temKey) <= 0) {
+						if (setTableInCfg_.count(temKey) <= 0) {
 							bInSyncTables = false;
 						}
 
