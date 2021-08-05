@@ -767,7 +767,7 @@ doGetRecord(RPC::JsonContext& context)
 Json::Value queryBySql(TxStore& txStore,std::string& sql)
 {
 	Json::Value ret(Json::objectValue);
-
+	sql.erase(0, src.find_first_not_of(' '));
 	size_t posSpace = sql.find_first_of(' ');
 	std::string firstWord = sql.substr(0, posSpace);
 	if (toUpper(firstWord) != "SELECT")
