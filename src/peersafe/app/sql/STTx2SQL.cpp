@@ -3455,7 +3455,7 @@ STTx2SQL::ParseAutoFields(
         if (sfield == sfAutoFillField || sfield == sfTxsHashFillField)
             fieldValue.value = to_string(tx.getRealTxID());
         else if (sfield == sfLedgerSeqField)
-            fieldValue.value = param.ledgerSeq;
+            fieldValue.value = to_string(param.ledgerSeq);
         else if (sfield == sfLedgerTimeField)
             fieldValue.value = param.ledgerTime;
         fieldValue.pairField = ParseFieldVL(tx, sfield, txt_tablename);
