@@ -29,6 +29,7 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/json/json_value.h>
 #include <ripple/basics/Log.h>
+#include <peersafe/app/util/TableSyncUtil.h>
 
 namespace ripple {
 
@@ -77,7 +78,11 @@ public:
 	~TxStore();
 
 	// dispose one transaction
-	std::pair<bool,std::string> Dispose(const STTx& tx,const std::string& operationRule = "", bool verifyAffectedRows = false);
+    std::pair<bool, std::string>
+    Dispose(
+        const STTx& tx,
+		SyncParam const& param = SyncParam{""},
+        bool verifyAffectedRows = false);
 	std::pair<bool, std::string> DropTable(const std::string& tablename);
 
 	Json::Value txHistory(RPC::JsonContext& context);

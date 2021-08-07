@@ -29,6 +29,16 @@ namespace ripple {
 		static uint256 GetChainId(const ReadView * pView);
 		static std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, std::string sTableName, bool bStrictEqual);
 	};
+
+	struct SyncParam
+    {
+		std::uint32_t	ledgerSeq;
+        std::string		rules;
+        std::string		ledgerTime;
+
+		SyncParam(std::string const& rules);
+		SyncParam(std::uint32_t seq, std::string const& rules, std::uint32_t closetime);
+    };
 }
 
 #endif

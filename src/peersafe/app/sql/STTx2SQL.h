@@ -29,6 +29,7 @@
 #include <ripple/json/json_writer.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/core/DatabaseCon.h>
+#include <peersafe/app/util/TableSyncUtil.h>
 
 namespace ripple {
 
@@ -47,8 +48,9 @@ public:
 
 	using MapRule = std::map<std::string, Json::Value>;
 	// convert json into sql
-	std::pair<int /*retcode*/, std::string /*sql*/> ExecuteSQL(const ripple::STTx& tx, 
-		const std::string& operationRule = "",
+	std::pair<int /*retcode*/, std::string /*sql*/> ExecuteSQL(
+		const ripple::STTx& tx, 
+		const SyncParam& operationRule,
 		bool verifyAffectedRows = false);
 
 private:
@@ -64,6 +66,9 @@ private:
 	int GenerateModifyColumnsSql(const Json::Value& raw, BuildSQL *buildsql);
 	int GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql);
 	std::pair<int, std::string> GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql);
+    std::pair<bool, std::string>
+        ParseFieldVL(const ripple::STTx& tx,const SF_Blob& field,std::string const& tableName);
+
 
 	std::pair<bool, std::string> handle_assert_statement(const Json::Value& raw, BuildSQL *buildsql);
 	bool assert_result(const soci::rowset<soci::row>& records, const Json::Value& expect);
@@ -71,6 +76,17 @@ private:
 	bool check_raw(const Json::Value& raw, const uint16_t optype);
 	std::pair<bool, std::string> check_optionalRule(const std::string& optionalRule);
 
+	struct SFieldWithValue
+    {
+        std::string value;
+        std::pair<bool, std::string> pairField;
+    };
+    std::map<std::string, SFieldWithValue>
+    ParseAutoFields(
+        const ripple::STTx& tx,
+        SyncParam const& param,
+        std::string const& txt_tablename);
+    private:
 	std::string db_type_;
 	DatabaseCon* db_conn_;
 }; // STTx2SQL

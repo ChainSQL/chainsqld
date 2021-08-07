@@ -348,7 +348,7 @@ namespace ripple {
 		//dispose
 		std::pair<bool, std::string> ret;
 		if (!sOperationRule.empty())
-			ret = txStore.Dispose(tx, sOperationRule, true);
+			ret = txStore.Dispose(tx, SyncParam{sOperationRule}, true);			
 		else
 			ret = txStore.Dispose(tx);
 		if (ret.first)

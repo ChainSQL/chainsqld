@@ -253,6 +253,9 @@ SF_Blob const sfVoteImp          (access, STI_VL, 72, "VoteImp");
 SF_Blob const sfEpochChangeImp   (access, STI_VL, 73, "EpochChangeImp");
 SF_Blob const sfSyncInfo         (access, STI_VL, 74, "SyncInfo");
 SF_Blob const sfContractDetailMsg(access, STI_VL, 75, "ContractDetailMsg");
+SF_Blob const sfLedgerSeqField   (access, STI_VL, 76, "LedgerSeqField");
+SF_Blob const sfLedgerTimeField  (access, STI_VL, 77, "LedgerTimeField");
+
 // account
 SF_Account const sfAccount     (access, STI_ACCOUNT, 1, "Account");
 SF_Account const sfOwner       (access, STI_ACCOUNT, 2, "Owner");

@@ -538,6 +538,9 @@ extern SF_Blob const sfEpochChangeImp;
 extern SF_Blob const sfSyncInfo;
 extern SF_Blob const sfContractDetailMsg;
 extern SF_Blob const sfTxsHashFillField;
+extern SF_Blob const sfLedgerSeqField;
+extern SF_Blob const sfLedgerTimeField;
+
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;

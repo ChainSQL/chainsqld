@@ -40,6 +40,7 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
 #include <ripple/app/misc/Transaction.h>
+#include <peersafe/app/util/TableSyncUtil.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -932,12 +933,16 @@ std::string TableSyncItem::getOperationRule(const STTx& tx)
 	return rule;
 }
 
-std::pair<bool, std::string> TableSyncItem::DealWithTx(const std::vector<STTx>& vecTxs)
+std::pair<bool, std::string>
+TableSyncItem::DealWithTx(
+    const std::vector<STTx>& vecTxs,
+    std::uint32_t seq,
+    std::uint32_t closeTime)
 {
 	auto ret = std::make_pair(true, std::string(""));
 	for (auto& tx : vecTxs)
 	{
-		auto retTmp = DealTranCommonTx(tx);
+		auto retTmp = DealTranCommonTx(tx,seq,closeTime);
 		if (!retTmp.first && ret.first)
 		{
 			ret = retTmp;
@@ -948,14 +953,19 @@ std::pair<bool, std::string> TableSyncItem::DealWithTx(const std::vector<STTx>& 
 	return ret;
 }
 
-std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
+std::pair<bool, std::string>
+TableSyncItem::DealTranCommonTx(
+    const STTx& tx,
+    std::uint32_t seq,
+    std::uint32_t closeTime)
 {
 	auto ret = std::make_pair(true, std::string(""));
 	auto op_type = tx.getFieldU16(sfOpType);
 	if (!isNotNeedDisposeType((TableOpType)op_type))
 	{
 		auto sOperationRule = getOperationRule(tx);
-		ret = this->getTxStore().Dispose(tx,sOperationRule);
+        auto param = SyncParam{seq, sOperationRule, closeTime};
+        ret = this->getTxStore().Dispose(tx, param);
 
 		if (ret.first)
 		{
@@ -1061,11 +1071,12 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
     {
         std::string LedgerHash = iter->ledgerhash();
         std::string LedgerCheckHash = iter->ledgercheckhash();
-        std::string LedgerSeq = std::to_string(iter->ledgerseq());
         std::string PreviousCommit;
-
+        std::uint32_t closeTime = iter->closetime();
+        std::uint32_t seq = iter->ledgerseq();
+        std::string LedgerSeq = std::to_string(seq);
         //check for jump one seq, check for deadline time and deadline seq
-        CheckConditionState  checkRet = CondFilter(iter->closetime(), iter->ledgerseq(), uint256(0));
+        CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
         if (checkRet == CHECK_JUMP)     continue;
         else if (checkRet == CHECK_REJECT)
         {
@@ -1134,7 +1145,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					}
 					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
-					auto ret = DealWithTx(vecTxs);
+					auto ret = DealWithTx(vecTxs, seq,closeTime);
 					uTxDBUpdateHash_ = tx.getTransactionID();
 
 					//press test

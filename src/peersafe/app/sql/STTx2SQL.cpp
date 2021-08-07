@@ -3435,6 +3435,55 @@ int STTx2SQL::GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql) {
 	return 0;
 }
 
+std::map<std::string, STTx2SQL::SFieldWithValue>
+STTx2SQL::ParseAutoFields(
+    const ripple::STTx& tx,
+    SyncParam const& param,
+    std::string const& txt_tablename)
+{
+    std::array<const SF_Blob*, 4> fields = {
+        &sfAutoFillField, 
+		&sfTxsHashFillField, 
+		&sfLedgerTimeField, 
+		&sfLedgerSeqField
+    };
+    std::map<std::string, SFieldWithValue> mapFields;
+    for (auto& field : fields)
+    {
+        SFieldWithValue fieldValue;
+        const SF_Blob& sfield = *field;
+        if (sfield == sfAutoFillField || sfield == sfTxsHashFillField)
+            fieldValue.value = to_string(tx.getRealTxID());
+        else if (sfield == sfLedgerSeqField)
+            fieldValue.value = param.ledgerSeq;
+        else if (sfield == sfLedgerTimeField)
+            fieldValue.value = param.ledgerTime;
+        fieldValue.pairField = ParseFieldVL(tx, sfield, txt_tablename);
+        mapFields[sfield.getName()] = fieldValue;
+    }
+    return std::move(mapFields);
+}
+
+std::pair<bool, std::string>
+STTx2SQL::ParseFieldVL(const ripple::STTx& tx, const SF_Blob& field,std::string const& tableName)
+{
+    std::string fieldName;
+    bool bHasField = false;
+    if (tx.isFieldPresent(field))
+    {
+        auto blob = tx.getFieldVL(field);
+        fieldName.assign(blob.begin(), blob.end());
+        auto sql_str =
+            (boost::format("select * from information_schema.columns WHERE "
+                           "table_name ='%s'AND column_name ='%s'") %
+             tableName % fieldName).str();
+        LockedSociSession sql = db_conn_->checkoutDb();
+        soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
+        bHasField = records.end() != records.begin();
+    }
+    return std::make_pair(bHasField, fieldName);
+}
+
 std::pair<int, std::string> STTx2SQL::GenerateSelectSql(const Json::Value& raw, BuildSQL *buildsql) {
 	//BuildSQL::AndCondtionsType and_conditions;
 	Json::Value conditions;
@@ -3762,7 +3811,9 @@ std::pair<bool, std::string> STTx2SQL::check_optionalRule(const std::string& opt
 	return { true, "success"};
 }
 
-std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const ripple::STTx& tx, const std::string& sOperationRule /* = "" */,
+std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
+	const ripple::STTx& tx, 
+	const SyncParam& param,
 	bool bVerifyAffectedRows /* = false */) {
 	std::pair<int, std::string> ret = { -1, "inner error" };
 	if (tx.getTxnType() != ttTABLELISTSET && tx.getTxnType() != ttSQLSTATEMENT) {
@@ -3790,7 +3841,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 		}
 	}
 
-	std::string sRaw = tx.buildRaw(sOperationRule);
+	std::string sRaw = tx.buildRaw(param.rules);
 	Json::Value raw_json;
 	if (sRaw.size()) {
 		if (Json::Reader().parse(sRaw, raw_json) == false) {
@@ -3874,36 +3925,7 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 	}
 	buildsql->AddTable(txt_tablename);
 
-	bool bHasAutoField = false;
-	std::string sAutoFillField;
-	if (tx.isFieldPresent(sfAutoFillField))
-	{
-		auto blob = tx.getFieldVL(sfAutoFillField);;
-		sAutoFillField.assign(blob.begin(), blob.end());
-		auto sql_str = (boost::format("select * from information_schema.columns WHERE table_name ='%s'AND column_name ='%s'")
-			% txt_tablename
-			% sAutoFillField).str();
-		LockedSociSession sql = db_conn_->checkoutDb();
-		soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
-		bHasAutoField = records.end() != records.begin();
-	}
-
-
-	bool bHasTxsHashField = false;
-	std::string sTxsHashFillField;
-	if (tx.isFieldPresent(sfTxsHashFillField))
-	{
-		auto blob = tx.getFieldVL(sfTxsHashFillField);;
-		sTxsHashFillField.assign(blob.begin(), blob.end());
-		auto sql_str = (boost::format("select * from information_schema.columns WHERE table_name ='%s'AND column_name ='%s'")
-			% txt_tablename
-			% sTxsHashFillField).str();
-		LockedSociSession sql = db_conn_->checkoutDb();
-		soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
-
-		bHasTxsHashField = records.end() != records.begin();
-	}
-
+	auto mapFieldValue = ParseAutoFields(tx, param, txt_tablename);
 
 	if (build_type == BuildSQL::BUILD_INSERT_SQL) {
 		std::string sql;
@@ -3922,19 +3944,16 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 				return retPair;
 			}
 
-			if (bHasAutoField)
-			{
-				BuildField insert_field(sAutoFillField);
-                insert_field.SetFieldValue(to_string(tx.getRealTxID()));
-				buildsql->AddField(insert_field);
-			}
-
-			if (bHasTxsHashField)
-			{
-				BuildField insert_tx_field(sTxsHashFillField);
-                insert_tx_field.SetFieldValue(to_string(tx.getRealTxID()));
-				buildsql->AddField(insert_tx_field);
-			}
+			//Fill auto-fill fields
+			for (auto &kv : mapFieldValue)
+            {
+                if (kv.second.pairField.first)
+                {
+                    BuildField field(kv.second.pairField.second);
+                    field.SetFieldValue(kv.second.value);
+                    buildsql->AddField(field);
+                }
+            }
 
 			sql += buildsql->asString();
 			if (buildsql->execSQL() != 0) {
@@ -3993,10 +4012,18 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			if (idx == 0) {
 				std::vector<std::string> members = v.getMemberNames();
 
-				if (bHasAutoField) {
-					BuildField update_field(sAutoFillField);
-                    update_field.SetFieldValue(to_string(tx.getRealTxID()));
-					buildsql->AddField(update_field);
+				// Fill auto-fill fields except for tx-history
+				for (auto& kv : mapFieldValue)
+				{
+					if (kv.first == sfTxsHashFillField.getName())
+						continue;
+           
+					if (kv.second.pairField.first)
+					{
+						BuildField field(kv.second.pairField.second);
+						field.SetFieldValue(kv.second.value);
+						buildsql->AddField(field);
+					}
 				}
 
 				for (size_t i = 0; i < members.size(); i++) {
@@ -4021,12 +4048,14 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(const rippl
 			}
 		}
 
-		if (bHasTxsHashField) {
-			BuildField update_field(sTxsHashFillField);
+		if (mapFieldValue[sfTxsHashFillField.getName()].pairField.first)
+        {
+            auto fieldName =
+                mapFieldValue[sfTxsHashFillField.getName()].pairField.second;
+            BuildField update_field(fieldName);
             std::string updateStr =
                         (boost::format("concat(%1%,\",%2%\")") %
-                         sTxsHashFillField % to_string(tx.getRealTxID()))
-                            .str();
+                         fieldName % to_string(tx.getRealTxID())).str();
 			update_field.SetFieldValue(updateStr, FieldValue::fCOMMAND);
 			buildsql->AddField(update_field);
 		}
