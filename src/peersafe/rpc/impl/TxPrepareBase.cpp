@@ -239,19 +239,19 @@ Json::Value TxPrepareBase::prepareBase()
 	if (ret.isMember(jss::error))
 		return ret;   
 
-	if(app_.getTableSync().IsPressSwitchOn())
-		preparePressData();
+	//if(app_.getTableSync().IsPressSwitchOn())
+	//	preparePressData();
 
 	return ret;
 }
 
-void TxPrepareBase::preparePressData()
-{
-	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-	auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-	auto& tx_json = getTxJson();
-	tx_json[jss::Flags] = (uint32_t)tmp.count();
-}
+//void TxPrepareBase::preparePressData()
+//{
+//	std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
+//	auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+//	auto& tx_json = getTxJson();
+//	tx_json[jss::Flags] = (uint32_t)tmp.count();
+//}
 
 uint256 TxPrepareBase::getCheckHashOld(const std::string& sAccount, const std::string& sTableName)
 {
@@ -817,14 +817,9 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	if (ledger == NULL)  return false;
 
-	auto id = keylet::table(owner);
-	auto const tablesle = ledger->read(id);
-	if (tablesle == nullptr)
-		return false;
-	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-	STEntry *pEntry = getTableEntry(aTableEntries, tableName);
-	return pEntry ? pEntry->isConfidential():false;
+	auto tup = getTableEntry(*ledger,owner,tableName);
+	auto pEntry = std::get<1>(tup);
+	return pEntry ? STEntry::isConfidential(*pEntry):false;
 }
 
 Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app, bool bWs)
@@ -915,7 +910,7 @@ Json::Value TxPrepareBase::prepareFutureHash(const Json::Value& tx_json, Schema&
         bool bRet;
         uint256 hashFuture;
         error_code_i errCode;
-        std::tie(bRet, hashFuture, errCode) = app.getLedgerMaster().getUserFutureHash(accountID);
+        std::tie(bRet, hashFuture, errCode) = app.getLedgerMaster().getUserFutureHash(accountID,tx_json);
 
         if (!bRet)
         {

@@ -231,10 +231,14 @@ Keylet
 chainId() noexcept;
 
 Keylet
-table(AccountID const& id) noexcept;
+tablelist(AccountID const& id) noexcept;
+
+Keylet
+table(AccountID const& id, std::string const& tableName) noexcept;
 
 Keylet
 insertlimit(AccountID const& id) noexcept;
+
 /** An Schema entry */
 Keylet
 schema(

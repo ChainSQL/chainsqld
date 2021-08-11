@@ -84,40 +84,30 @@ namespace ripple {
 		STEntry* pEntry = nullptr;
 		if (ledger)
 		{
-			auto id = keylet::table(ownerID);
-			auto const tablesle = ledger->read(id);
-
-			if (tablesle)
-			{
-				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-				pEntry = getTableEntry(aTableEntries, tableName);
-				if (!pEntry)
-				{
-					return rpcError(rpcTAB_NOT_EXIST);
-				}
-
-				Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
-				auto users = pEntry->peekFieldArray(sfUsers);
-				for (auto & user : users)  //check if there same user
-				{
-					auto userID = user.getAccountID(sfUser);
-					auto flags = user.getFieldU32(sfFlags);
-
-					if (!ids.empty() && ids.find(userID) == ids.end())
-						continue;
-
-					Json::Value& jvObj = jvUsers.append(Json::objectValue);
-					jvObj[jss::account] = to_string(userID);
-					Json::Value& jvAuth = jvObj["authority"];
-					jvAuth["insert"] = flags & lsfInsert ? true : false;
-					jvAuth["delete"] = flags & lsfDelete ? true : false;
-					jvAuth["update"] = flags & lsfUpdate ? true : false;
-					jvAuth["select"] = flags & lsfSelect ? true : false;
-				}
-			}
-			else
+            auto tup = getTableEntry(*ledger, ownerID, tableName);
+            auto pEntry = std::get<1>(tup);
+			if (!pEntry)
 			{
 				return rpcError(rpcTAB_NOT_EXIST);
+			}
+
+			Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
+			auto users = pEntry->peekFieldArray(sfUsers);
+			for (auto & user : users)  //check if there same user
+			{
+				auto userID = user.getAccountID(sfUser);
+				auto flags = user.getFieldU32(sfFlags);
+
+				if (!ids.empty() && ids.find(userID) == ids.end())
+					continue;
+
+				Json::Value& jvObj = jvUsers.append(Json::objectValue);
+				jvObj[jss::account] = to_string(userID);
+				Json::Value& jvAuth = jvObj["authority"];
+				jvAuth["insert"] = flags & lsfInsert ? true : false;
+				jvAuth["delete"] = flags & lsfDelete ? true : false;
+				jvAuth["update"] = flags & lsfUpdate ? true : false;
+				jvAuth["select"] = flags & lsfSelect ? true : false;
 			}
 		}
 		return ret;

@@ -96,6 +96,7 @@ detail::supportedAmendments()
         "SHAMapV2",
         "DisableV2",
         "DecreaseStorage",
+        "TableSLEChange",
         "MultiSign",      // Unconditionally supported.
         "Tickets",
         "TrustSetAuth",   // Unconditionally supported.
@@ -194,8 +195,8 @@ featureHardenedValidations = *getRegisteredFeature("HardenedValidations"),
 fixAmendmentMajorityCalc = *getRegisteredFeature("fixAmendmentMajorityCalc"),
 featureNegativeUNL = *getRegisteredFeature("NegativeUNL"),
 featureDisableV2 = *getRegisteredFeature("DisableV2"),
-featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage");
-
+featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage"),
+featureTableSleChange = *getRegisteredFeature("TableSLEChange");
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
 // uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");

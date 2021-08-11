@@ -63,6 +63,7 @@
 #include <peersafe/schema/SchemaManager.h>
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/consensus/ConsensusBase.h>
+#include <peersafe/rpc/TableUtils.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -1022,22 +1023,11 @@ LedgerMaster::getNameInDB(
     auto ledger = getLedgerBySeq(index);
     if (ledger)
     {
-        auto id = keylet::table(accountID);
-        auto const tablesle = ledger->read(id);
-
-        if (tablesle)
+        auto tup = getTableEntry(*ledger, accountID, sTableName);
+        auto pEntry = std::get<1>(tup);
+        if (pEntry)
         {
-            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-            for (auto const& table : aTableEntries)
-            {
-                ripple::Blob blob = table.getFieldVL(sfTableName);
-                std::string tableName = std::string(blob.begin(), blob.end());
-                if (sTableName.compare(tableName) == 0)
-                {
-                    name = table.getFieldH160(sfNameInDB);
-                }
-            }
+            name = pEntry->getFieldH160(sfNameInDB);
         }
     }
     return name;
@@ -1054,38 +1044,29 @@ LedgerMaster::getTableBaseInfo(
     auto ledger = getLedgerBySeq(index);
     if (ledger)
     {
-        auto id = keylet::table(accountID);
-        auto const tablesle = ledger->read(id);
-
-        if (tablesle)
+        auto tup = getTableEntry(*ledger, accountID, sTableName);
+        auto pEntry = std::get<1>(tup);
+        if (pEntry != nullptr)
         {
-            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+            auto& table = *pEntry;
+            if (table.isFieldPresent(sfNameInDB))
+                ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
+            if (table.isFieldPresent(sfCreateLgrSeq))
+                ret_baseInfo.createLgrSeq =
+                    table.getFieldU32(sfCreateLgrSeq);
+            if (table.isFieldPresent(sfCreatedLedgerHash))
+                ret_baseInfo.createdLedgerHash =
+                    table.getFieldH256(sfCreatedLedgerHash);
+            if (table.isFieldPresent(sfCreatedTxnHash))
+                ret_baseInfo.createdTxnHash =
+                    table.getFieldH256(sfCreatedTxnHash);
+            if (table.isFieldPresent(sfPreviousTxnLgrSeq))
+                ret_baseInfo.previousTxnLgrSeq =
+                    table.getFieldU32(sfPreviousTxnLgrSeq);
+            if (table.isFieldPresent(sfPrevTxnLedgerHash))
+                ret_baseInfo.prevTxnLedgerHash =
+                    table.getFieldH256(sfPrevTxnLedgerHash);
 
-            for (auto const& table : aTableEntries)
-            {
-                ripple::Blob blob = table.getFieldVL(sfTableName);
-                std::string tableName = std::string(blob.begin(), blob.end());
-                if (sTableName.compare(tableName) == 0)
-                {
-                    if (table.isFieldPresent(sfNameInDB))
-                        ret_baseInfo.nameInDB = table.getFieldH160(sfNameInDB);
-                    if (table.isFieldPresent(sfCreateLgrSeq))
-                        ret_baseInfo.createLgrSeq =
-                            table.getFieldU32(sfCreateLgrSeq);
-                    if (table.isFieldPresent(sfCreatedLedgerHash))
-                        ret_baseInfo.createdLedgerHash =
-                            table.getFieldH256(sfCreatedLedgerHash);
-                    if (table.isFieldPresent(sfCreatedTxnHash))
-                        ret_baseInfo.createdTxnHash =
-                            table.getFieldH256(sfCreatedTxnHash);
-                    if (table.isFieldPresent(sfPreviousTxnLgrSeq))
-                        ret_baseInfo.previousTxnLgrSeq =
-                            table.getFieldU32(sfPreviousTxnLgrSeq);
-                    if (table.isFieldPresent(sfPrevTxnLedgerHash))
-                        ret_baseInfo.prevTxnLedgerHash =
-                            table.getFieldH256(sfPrevTxnLedgerHash);
-                }
-            }
         }
     }
     return ret_baseInfo;
@@ -1100,22 +1081,11 @@ LedgerMaster::getLatestTxCheckHash(AccountID accountID, std::string sTableName)
     auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto id = keylet::table(accountID);
-        auto const tablesle = ledger->read(id);
-
-        if (tablesle)
+        auto tup = getTableEntry(*ledger, accountID, sTableName);
+        auto pEntry = std::get<1>(tup);
+        if (pEntry != nullptr)
         {
-            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-            for (auto const& table : aTableEntries)
-            {
-                ripple::Blob blob = table.getFieldVL(sfTableName);
-                std::string tableName = std::string(blob.begin(), blob.end());
-                if (sTableName.compare(tableName) == 0)
-                {
-                    uTxCheckHash = table.getFieldH256(sfTxCheckHash);
-                }
-            }
+            uTxCheckHash = pEntry->getFieldH256(sfTxCheckHash);
         }
         if (uTxCheckHash.isZero())
         {
@@ -1147,43 +1117,17 @@ LedgerMaster::isAuthorityValid(
     auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto id = keylet::table(ownerID);
-        auto const tablesle = ledger->read(id);
-
-        if (tablesle)
+        for (auto const& sCheckName : aTableName)
         {
-            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-            for (auto const& sCheckName : aTableName)
+            auto tup = getTableEntry(*ledger, accountID, sCheckName);
+            auto pEntry = std::get<1>(tup);
+            if (pEntry != nullptr)
             {
-                bool bValid = false;
-                bool bTableFound = false;
-                for (auto const& table : aTableEntries)
-                {
-                    ripple::Blob blob = table.getFieldVL(sfTableName);
-                    std::string sTableName =
-                        std::string(blob.begin(), blob.end());
-                    if (sCheckName.compare(sTableName) == 0)
-                    {
-                        bTableFound = true;
-                        STEntry* pTableEntry = (STEntry*)(&table);
-                        if (pTableEntry->hasAuthority(accountID, roles))
-                        {
-                            bValid = true;
-                        }
-                        break;
-                    }
-                }
-                if (!bValid)
-                {
-                    if (!bTableFound)
-                        return std::make_pair(false, rpcTAB_NOT_EXIST);
-                    // return std::make_pair(false, sCheckName + " does not
-                    // exist");
-                    else
-                        return std::make_pair(false, rpcTAB_UNAUTHORIZED);
-                }
-                return std::make_pair(true, rpcSUCCESS);
+                if (!STEntry::hasAuthority(*pEntry, accountID, roles))
+                    return std::make_pair(false, rpcTAB_UNAUTHORIZED);
             }
+            else
+                return std::make_pair(false, rpcTAB_NOT_EXIST);
         }
     }
     return std::make_pair(true, rpcSUCCESS);
@@ -1200,59 +1144,39 @@ LedgerMaster::getUserToken(
     auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto id = keylet::table(ownerID);
-        auto const tablesle = ledger->read(id);
-        bool tableFound = false;
-
-        if (tablesle)
+        auto tup = getTableEntry(*ledger, accountID, sTableName);
+        auto pEntry = std::get<1>(tup);
+        if (pEntry)
         {
-            auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-            for (auto const& table : aTableEntries)
+            auto& users = pEntry->getFieldArray(sfUsers);
+            assert(users.size() > 0);
+            bool bNeedToken = users[0].isFieldPresent(sfToken);
+            if (!bNeedToken)
             {
-                ripple::Blob blob = table.getFieldVL(sfTableName);
-                std::string tableName = std::string(blob.begin(), blob.end());
-                if (sTableName.compare(tableName) == 0)
+                return std::make_tuple(true, Blob(), rpcSUCCESS);
+            }
+            else
+            {
+                for (auto& user : users)  // check if there same user
                 {
-                    tableFound = true;
-                    assert(table.isFieldPresent(sfUsers));
-                    auto& users = table.getFieldArray(sfUsers);
-                    assert(users.size() > 0);
-                    bool bNeedToken = users[0].isFieldPresent(sfToken);
-                    if (!bNeedToken)
+                    if (user.getAccountID(sfUser) == accountID)
                     {
-                        return std::make_tuple(true, Blob(), rpcSUCCESS);
-                    }
-                    else
-                    {
-                        for (auto& user : users)  // check if there same user
+                        if (user.isFieldPresent(sfToken))
                         {
-                            if (user.getAccountID(sfUser) == accountID)
-                            {
-                                if (user.isFieldPresent(sfToken))
-                                {
-                                    ripple::Blob passBlob =
-                                        user.getFieldVL(sfToken);
-                                    // std::string sPass =
-                                    // std::string(passBlob.begin(),
-                                    // passBlob.end());
-                                    return std::make_tuple(
-                                        true, passBlob, rpcSUCCESS);
-                                }
-                                else
-                                {
-                                    return std::make_tuple(
-                                        false, Blob(), rpcSLE_TOKEN_MISSING);
-                                }
-                            }
+                            ripple::Blob passBlob = user.getFieldVL(sfToken);
+                            return std::make_tuple(true, passBlob, rpcSUCCESS);
                         }
-                        return std::make_tuple(
-                            false, Blob(), rpcTAB_UNAUTHORIZED);
+                        else
+                        {
+                            return std::make_tuple(
+                                false, Blob(), rpcSLE_TOKEN_MISSING);
+                        }
                     }
-                    break;
                 }
+                return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
             }
         }
-        if (!tableFound)
+        else
             return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
     }
     else
@@ -1264,16 +1188,28 @@ LedgerMaster::getUserToken(
 }
 
 std::tuple<bool, ripple::uint256, error_code_i>
-LedgerMaster::getUserFutureHash(AccountID accountID)
+LedgerMaster::getUserFutureHash(AccountID accountID, const Json::Value& tx_json)
 {
     auto ledger = getValidatedLedger();
     if (ledger)
     {
         ripple::uint256 futureHash;
-        auto id = keylet::table(accountID);
-        auto const tablesle = ledger->read(id);
-        if (tablesle && tablesle->isFieldPresent(sfFutureTxHash))
-            futureHash = tablesle->getFieldH256(sfFutureTxHash);
+        std::shared_ptr<SLE const> tableSleExist = nullptr;
+        auto sTableName = tx_json[jss::Tables][0u][jss::Table][jss::TableName].asString();
+        Keylet key = keylet::table(accountID, sTableName);
+        if (auto sle = ledger->read(key))
+        {
+            tableSleExist = sle;
+        }
+        else
+        {
+            key = keylet::tablelist(accountID);
+            tableSleExist = ledger->read(key);
+        }
+        if (tableSleExist && tableSleExist->isFieldPresent(sfFutureTxHash))
+        {
+            futureHash = tableSleExist->getFieldH256(sfFutureTxHash);
+        }
         return std::make_tuple(true, futureHash, rpcSUCCESS);
     }
     else
@@ -1350,20 +1286,10 @@ LedgerMaster::isConfidentialUnit(const STTx& tx)
         if (ledger == NULL)
             return false;
 
-        auto id = keylet::table(owner);
-        auto const tablesle = ledger->read(id);
-        if (tablesle == nullptr)
-            return false;
-        auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-        for (auto& table : aTableEntries)
-        {
-            if (strCopy(table.getFieldVL(sfTableName)) == sTxTableName)
-            {
-                STEntry* pEntry = (STEntry*)&table;
-                return pEntry->isConfidential();
-            }
-        }
+        auto tup = getTableEntry(*ledger,owner,sTxTableName);
+        auto pEntry = std::get<1>(tup);
+        if (pEntry)
+            return STEntry::isConfidential(*pEntry);
     }
 
     return false;

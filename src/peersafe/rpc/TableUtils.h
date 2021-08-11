@@ -29,14 +29,20 @@ namespace ripple {
 	class Schema;
 
 	Json::Value generateError(const std::string& errMsg, bool ws = false);
-	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName); 
-	STEntry *getTableEntry(ApplyView& view, const STTx& tx);
-	STEntry *getTableEntry(const STArray & aTables, Blob& vCheckName);
 	bool isChainSqlTableType(const std::string& transactionType);
     bool isChainsqlContractType(const std::string& transactionType);
 	std::string hash(std::string &pk);
 	uint160 generateNameInDB(uint32_t ledgerSeq,AccountID account,std::string sTableName);
 	bool isDBConfigured(Schema& app);
+	STEntry* getTableEntry(const STArray& aTables, Blob& vCheckName);
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+		getTableEntry(ReadView const& view, const STTx& tx);
+	std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
+        getTableEntryVar(ApplyView& view, const STTx& tx);
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntry(ReadView const& view, AccountID const& account, std::string sNameInDB);
+
+	bool isTableSLEChanged(STObject* pEntry, LedgerIndex iLastSeq, bool bStrictEqual);
 }
 
 #endif

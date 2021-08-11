@@ -68,6 +68,7 @@ enum class LedgerNameSpace : std::uint16_t {
     ADMIN = 'A',
     FROZEN = 'z',
     SCHEMA_INDEX = 'k',
+    TABLE = 't',
 
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
@@ -350,7 +351,7 @@ Keylet chainId()noexcept
 		sha512Half(std::uint16_t(LedgerNameSpace::CHAIN_ID)) };
 }
 
-Keylet table(AccountID const& id)noexcept
+Keylet tablelist(AccountID const& id)noexcept
 {
     return{ ltTABLELIST,
         indexHash(LedgerNameSpace::TABLE_LIST,id) };
@@ -360,6 +361,12 @@ Keylet insertlimit(AccountID const& id)noexcept
 {
     return{ ltINSERTMAP,
             indexHash(LedgerNameSpace::INSERT_LIMIT,id)  };
+}
+
+Keylet
+table(AccountID const& id, std::string const& tableName) noexcept
+{
+    return {ltTABLE, indexHash(LedgerNameSpace::TABLE, id,tableName)};
 }
 
 }  // namespace keylet

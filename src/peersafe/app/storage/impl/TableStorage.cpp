@@ -30,6 +30,7 @@
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/ledger/impl/Tuning.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
     TableStorage::TableStorage(Schema& app, Config& cfg, beast::Journal journal)
@@ -206,35 +207,29 @@ namespace ripple {
 				{
 					return tefTABLE_STORAGENORMALERROR;
 				}
+
                 auto const kOwner = keylet::account(accountID);
                 auto const sleOwner = validLedger->read(kOwner);
-                if (!sleOwner)  return  tefTABLE_STORAGENORMALERROR;
+                if (!sleOwner)
+                    return tefTABLE_STORAGENORMALERROR;
 
-                auto const kTable = keylet::table(accountID);
-                auto const sleTable = validLedger->read(kTable);
+                STObject* pEntry = nullptr;
+                std::shared_ptr<SLE const> tableSleExist = nullptr;
+                std::tie(tableSleExist, pEntry, std::ignore) =
+                    getTableEntry(*validLedger, tx);
 
-				if (!sleTable)
-				{
-					//In the case of first storage and no table sle, only T_CREATE OpType's tx can go on...bug:RR-559
-					if ((tx.getTxnType() != ttTABLELISTSET) || (tx.getFieldU16(sfOpType) != T_CREATE) )
-					{
-						return tefTABLE_STORAGENORMALERROR;
-					}
-				}
-				else
-				{
-					STArray tablentries = sleTable->getFieldArray(sfTableEntries);
-
-					auto iter(tablentries.end());
-					iter = std::find_if(tablentries.begin(), tablentries.end(),
-						[uTxDBName](STObject const &item) {
-						return item.getFieldH160(sfNameInDB) == uTxDBName;
-					});
-					if (iter != tablentries.end())
-					{
-						return tefTABLE_STORAGENORMALERROR;
-					}
-				}
+                // In the case of first storage and no table-sle, only T_CREATE
+                // OpType's tx can go on...bug:RR-559
+                if (tableSleExist == nullptr &&
+                    (tx.getTxnType() != ttTABLELISTSET) ||
+                    (tx.getFieldU16(sfOpType) != T_CREATE))
+                {
+                    return tefTABLE_STORAGENORMALERROR;
+                }
+                if (pEntry == nullptr)
+                {
+                    return tefTABLE_STORAGENORMALERROR;
+                }
 
 				//
 				{

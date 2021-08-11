@@ -632,6 +632,7 @@ ApplyStateTable::threadOwners(
         break;
     }
     case ltTABLELIST:
+    case ltTABLE:
     {
        // Nothing to do
        break;

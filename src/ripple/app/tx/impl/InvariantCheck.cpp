@@ -387,6 +387,7 @@ LedgerEntryTypesMatch::visitEntry(
         case ltDEPOSIT_PREAUTH:
         case ltNEGATIVE_UNL:
 		case ltTABLELIST:
+        case ltTABLE:
 		case ltINSERTMAP:
 		case ltCHAINID:
         case ltSCHEMA:

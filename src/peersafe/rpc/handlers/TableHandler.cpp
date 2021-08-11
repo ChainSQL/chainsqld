@@ -179,7 +179,8 @@ Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::ve
 		<< "get record from tables: " << tx_json.toStyledString();
 
 	std::list<std::string> listTableName;
-	for (Json::UInt idx = 0; idx < tables_json.size(); idx++) {
+	for (Json::UInt idx = 0; idx < tables_json.size(); idx++) 
+	{
 		Json::Value& e = tables_json[idx];
 		Json::Value& v = e["Table"];
 		if (!v.isObject())
@@ -241,16 +242,10 @@ Json::Value checkForSelect(RPC::JsonContext&  context, uint160 nameInDB, std::ve
     auto ledger = context.ledgerMaster.getValidatedLedger();
 	if (ledger)
 	{
-		auto id = keylet::table(ownerID);
-		auto const tablesle = ledger->read(id);
-
-		if (tablesle)
-		{
-			auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-			STEntry* pEntry = getTableEntry(aTableEntries, listTableName.front());
-			if (pEntry)
-				rule = pEntry->getOperationRule(R_GET);
-		}
+        auto tup = getTableEntry(*ledger, ownerID, listTableName.front());
+        auto pEntry = std::get<1>(tup);
+		if (pEntry)
+            rule = STEntry::getOperationRule(*pEntry,R_GET);
 	}
 	if (rule != "")
 	{
@@ -627,32 +622,24 @@ checkOperationRuleForSql(RPC::JsonContext& context, const std::string& sql,const
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		if (ledger)
 		{
-			auto id = keylet::table(ownerID2TableName.first);
-			auto const tablesle = ledger->read(id);
-
-			if (tablesle)
-			{
-				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-				STEntry* pEntry = getTableEntry(aTableEntries, ownerID2TableName.second);
-				if (pEntry ) {
-
-					rule = pEntry->getOperationRule(R_GET);
+            auto tup = getTableEntry(*ledger,
+						ownerID2TableName.first,
+						ownerID2TableName.second); 
+			auto pEntry = std::get<1>(tup);
+			if (pEntry ) {
+				rule = STEntry::getOperationRule(*pEntry,R_GET);
 	
-					// union queries && rule not supported
-					if (!rule.empty() && setOwnerID2TableName.size() > 1)
-					{
-						return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
-					}
-
-					Json::Value ret = catenateSqlAndOperateRule(rule, sql, catenatedSql);
-					if (ret.isMember(jss::error))
-						return ret;
-
+				// union queries && rule not supported
+				if (!rule.empty() && setOwnerID2TableName.size() > 1)
+				{
+					return rpcError(rpcSQL_MULQUERY_NOT_SUPPORT);
 				}
 
-			}
+				Json::Value ret = catenateSqlAndOperateRule(rule, sql, catenatedSql);
+				if (ret.isMember(jss::error))
+					return ret;
 
+			}
 		}
 	}
 	return Json::Value();
@@ -676,23 +663,19 @@ checkOperationRuleForSqlUser(RPC::JsonContext& context,const AccountID& accountI
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		if (ledger)
 		{
-			auto id = keylet::table(ownerID2TableName.first);
-			auto const tablesle = ledger->read(id);
-
 			//judge if account is activated
 			auto key = keylet::account(accountID);
 			if (!ledger->exists(key))
 			{
 				return rpcError(rpcACT_NOT_FOUND);
 			}
-
-			if (tablesle)
-			{
-				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-				STEntry* pEntry = getTableEntry(aTableEntries, ownerID2TableName.second);
-				if (pEntry)
-					rule = pEntry->getOperationRule(R_GET);
-			}
+			auto tup = getTableEntry(
+						*ledger,
+                        ownerID2TableName.first,
+                        ownerID2TableName.second);
+            auto pEntry = std::get<1>(tup);
+			if (pEntry)
+				rule = STEntry::getOperationRule(*pEntry,R_GET);
 		}
 
 		// union queries && rule not supported
@@ -789,25 +772,15 @@ Json::Value checkTableExistOnChain(RPC::JsonContext&  context, std::set < std::p
 		auto ledger = context.ledgerMaster.getValidatedLedger();
 		if (ledger)
 		{
-
-			auto id = keylet::table(ownerID2TableName.first);
-			auto const tablesle = ledger->read(id);
-			if (!tablesle)
-			{
-				return rpcError(rpcTAB_NOT_EXIST);
-			}
-
-			if (tablesle)
-			{
-				auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-
-				STEntry* pEntry = getTableEntry(aTableEntries, ownerID2TableName.second);
-				if (pEntry == nullptr) {
-					return rpcError(rpcTAB_NOT_EXIST);
-				}
-
-			}
-	
+			auto tup = getTableEntry(
+				*ledger,
+				ownerID2TableName.first,
+				ownerID2TableName.second);
+            auto pEntry = std::get<1>(tup);
+            if (pEntry == nullptr)
+            {
+                return rpcError(rpcTAB_NOT_EXIST);
+            }
 		}
 	}
 	return ret;

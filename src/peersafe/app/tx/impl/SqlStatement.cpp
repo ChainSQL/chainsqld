@@ -136,27 +136,22 @@ namespace ripple {
 			return tecNO_DST;
 		}
 
-
-		//whether the table node is existed
-		auto const kTable = keylet::table(uOwnerID);
-		auto const sleTable = view.read(kTable);
-		if (!sleTable)
-		{
-			JLOG(j.trace()) <<
-				"Delay transaction: Destination table node not exist.";
-			return tecNO_TARGET;
-		}
-
 		auto optype = tx.getFieldU16(sfOpType);
 		if ((optype < T_CREATE) || (optype > R_DELETE)) //check op range
 			return temBAD_OPTYPE;
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
         uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
 
-		STArray const & aTableEntries(sleTable->getFieldArray(sfTableEntries));
-		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);        
+        auto tup = getTableEntry(view, tx);
+        auto pEntry = std::get<1>(tup);
+		if (!pEntry)
+        {
+            JLOG(j.trace())
+                << "Delay transaction: Destination table node not exist.";
+            return tecNO_TARGET;
+        }
+
 		if (pEntry)
 		{
             //checkDBName
@@ -176,10 +171,10 @@ namespace ripple {
 			//check authority
 			AccountID sourceID(tx.getAccountID(sfAccount));
 			auto tableFalgs = getFlagFromOptype((TableOpType)tx.getFieldU16(sfOpType));
-			if (!pEntry->hasAuthority(sourceID, tableFalgs))
+			if (!STEntry::hasAuthority(*pEntry,sourceID, tableFalgs))
 			{
 				JLOG(j.trace()) <<
-					"Invalid table flags: Destination table does not authorith this account.";
+					"Invalid table flags: Destination table does not authorize this account.";
 				return tefBAD_AUTH_NO;
 			}
 		}
@@ -206,19 +201,10 @@ namespace ripple {
 	TER
 		SqlStatement::applyHandler(ApplyView& view, const STTx & tx, Schema& app)
 	{
-		ripple::uint160  nameInDB;
+		STObject* pEntry = nullptr;
+        std::shared_ptr<SLE> tableSleExist = nullptr;
+        std::tie(tableSleExist, pEntry, std::ignore) = getTableEntryVar(view, tx);
 
-		//set the tx link relationship to the node
-		auto const curTxOwnID = tx.getAccountID(sfOwner);
-		auto const k = keylet::table(curTxOwnID);
-		SLE::pointer pTableSle = view.peek(k);
-
-		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
-
-		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);		
-
-		STEntry *pEntry = getTableEntry(aTableEntries, vTxTableName);
 		if (pEntry)
 		{
 			uint256 hashNew = sha512Half(makeSlice(strCopy(tx.getFieldVL(sfRaw))), pEntry->getFieldH256(sfTxCheckHash));
@@ -239,7 +225,7 @@ namespace ripple {
 			}
 		}
 
-		view.update(pTableSle);
+		view.update(tableSleExist);
 		return tesSUCCESS;
 	}
 

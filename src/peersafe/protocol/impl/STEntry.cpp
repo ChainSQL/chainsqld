@@ -34,23 +34,9 @@ namespace ripple {
     {
 
     }
-    void STEntry::init(ripple::Blob tableName, uint160 nameInDB,uint8_t deleted, uint32_t createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32_t txnLedgerSequence, uint256 txnLedgerhash,uint32_t prevTxnLedgerSequence,uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users)
-    {
-        setFieldVL(sfTableName, tableName); //if (tableName == NUll ) then set to null ,no exception
-        setFieldH160(sfNameInDB, nameInDB);
-        setFieldU32(sfCreateLgrSeq, createLgrSeq);
-        setFieldH256(sfCreatedLedgerHash, createdLedgerHash);
-        setFieldH256(sfCreatedTxnHash, createdTxnHash);
-        setFieldU32(sfTxnLgrSeq, txnLedgerSequence);
-        setFieldH256(sfTxnLedgerHash, txnLedgerhash);
-        setFieldU32(sfPreviousTxnLgrSeq, prevTxnLedgerSequence);
-        setFieldH256(sfPrevTxnLedgerHash, prevTxnLedgerhash);
-		setFieldH256(sfTxCheckHash, txCheckhash);
-        setFieldArray(sfUsers, users);
 
-    }
-
-	void STEntry::initOperationRule(ripple::Blob operationRule)
+	void
+    STEntry::initOperationRule(STObject& entry, Blob operationRule)
 	{
 		Json::Value jsonRule;
 		STObject obj_rules(sfRules);
@@ -79,20 +65,21 @@ namespace ripple {
 				obj_rules.setFieldVL(sfGetRule, strCopy(rule));
 			}
 		}
-		setFieldObject(sfRules, obj_rules);
+        entry.setFieldObject(sfRules, obj_rules);
 	}
 
-	std::string STEntry::getOperationRule(TableOpType opType) const
+	std::string
+        STEntry::getOperationRule(STObject const& entry, TableOpType opType)
 	{
 		std::string ret;
 		if (!isSqlStatementOpType(opType) && opType != R_GET)
 			return ret;
 
-		if (!isFieldPresent(sfRules))
+		if (!entry.isFieldPresent(sfRules))
 		{
 			return ret;
 		}
-		auto obj = getFieldObject(sfRules);
+        auto obj = entry.getFieldObject(sfRules);
 		switch (opType)
 		{
 		case R_INSERT:
@@ -118,10 +105,13 @@ namespace ripple {
 		return ret;
 	}
 
-	bool STEntry::hasAuthority(const AccountID& account, TableRoleFlags flag)
+	bool STEntry::hasAuthority(
+            STObject const& entry,
+            AccountID const& account,
+            TableRoleFlags flag)
 	{
 		//check the authority
-		auto const & aUsers(getFieldArray(sfUsers));
+		auto const & aUsers(entry.getFieldArray(sfUsers));
 		//if all user has authority
 		bool bAllGrant = false;
 		for (auto const& user : aUsers)
@@ -142,9 +132,9 @@ namespace ripple {
 		return bAllGrant;
 	}
 
-	bool STEntry::isConfidential()
+	bool STEntry::isConfidential(STObject const& entry)
 	{
-		auto const & aUsers(getFieldArray(sfUsers));
+        auto const& aUsers(entry.getFieldArray(sfUsers));
 		if (aUsers.size() > 0 && aUsers[0].isFieldPresent(sfToken))
 			return true;
 		return false;

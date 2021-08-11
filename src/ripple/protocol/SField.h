@@ -605,8 +605,9 @@ extern SField const sfPeer;
 extern SField const sfDisabledValidator;
 extern SField const sfWhiteList;
 extern SField const sfFrozen;
+extern SField const sfTableEntry;
 
-// array of objects
+    // array of objects
 // ARRAY/1 is reserved for end of array
 // extern SField const sfSigningAccounts;  // Never been used.
 extern SField const sfSigners;

@@ -301,6 +301,7 @@ SField const sfValidator           (access, STI_OBJECT, 52, "Validator");
 SField const sfPeer                (access, STI_OBJECT, 53, "Peer");
 SField const sfWhiteList           (access, STI_OBJECT, 54, "WhiteList");
 SField const sfFrozen              (access, STI_OBJECT, 55, "Frozen");
+SField const sfTableEntry          (access, STI_OBJECT, 56, "TableEntry");
 
 // inner object (uncommon)
 SField const sfSigner              (access, STI_OBJECT, 16, "Signer");
