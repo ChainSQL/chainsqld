@@ -81,11 +81,10 @@ namespace ripple {
 		ret[jss::tablename] = tableName;
 
 		auto ledger = context.ledgerMaster.getValidatedLedger();
-		STEntry* pEntry = nullptr;
 		if (ledger)
 		{
-            auto tup = getTableEntry(*ledger, ownerID, tableName);
-            auto pEntry = std::get<1>(tup);
+           		auto tup = getTableEntry(*ledger, ownerID, tableName);
+		        auto pEntry = std::get<1>(tup);
 			if (!pEntry)
 			{
 				return rpcError(rpcTAB_NOT_EXIST);

@@ -828,9 +828,11 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
         }
     }
     else
+    {
         return std::make_pair(true, "");
+    }
 
-	return std::make_pair(false, "error");
+    return std::make_pair(false, "error");
 }
 
 void TableSyncItem::TryDecryptRaw(std::vector<STTx>& vecTxs)

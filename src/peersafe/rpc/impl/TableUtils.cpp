@@ -65,7 +65,7 @@ namespace ripple {
 	}
 
 	std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
-    getTableEntryInner(ReadView const& view,AccountID const& accountId,std::string sTableName)
+    getTableEntryInner(ReadView const& view,AccountID const& accountId,std::string const& sTableName)
     {
         STObject* pEntry = nullptr;
         STArray* tableEntries = nullptr;
@@ -81,8 +81,9 @@ namespace ripple {
             sle = view.read(key);
             if (sle)  // table exist
             {
+		auto tableNameBlob = strCopy(sTableName);
                 tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
-                pEntry = getTableEntry(*tableEntries, strCopy(sTableName));
+                pEntry = getTableEntry(*tableEntries, tableNameBlob);
             }
             return std::make_tuple(sle, pEntry, tableEntries);
         }
@@ -95,7 +96,7 @@ namespace ripple {
         auto accountId = tx.getAccountID(sfAccount);
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
-        auto sTableName = strCopy(vTableNameStr);
+	const std::string sTableName = strCopy(vTableNameStr);
         STObject* pEntry = nullptr;
         STArray* tableEntries = nullptr;
         Keylet key = keylet::table(accountId, sTableName);
@@ -110,8 +111,9 @@ namespace ripple {
             sle = view.peek(key);
             if (sle)  // table exist
             {
+		auto tableNameBlob = strCopy(sTableName);
                 tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
-                pEntry = getTableEntry(*tableEntries, strCopy(sTableName));
+                pEntry = getTableEntry(*tableEntries, tableNameBlob);
             }
             return std::make_tuple(sle, pEntry, tableEntries);
         }
@@ -147,7 +149,7 @@ namespace ripple {
     }
 
 	std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
-    getTableEntry(ReadView const& view, AccountID const& accountId, std::string sTableName)
+    getTableEntry(ReadView const& view, AccountID const& accountId, std::string const& sTableName)
     {
         return getTableEntryInner(view, accountId, sTableName);
     }

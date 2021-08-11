@@ -40,7 +40,7 @@ namespace ripple {
 	std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
         getTableEntryVar(ApplyView& view, const STTx& tx);
     std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
-    getTableEntry(ReadView const& view, AccountID const& account, std::string sNameInDB);
+    getTableEntry(ReadView const& view, AccountID const& account, std::string const& sNameInDB);
 
 	bool isTableSLEChanged(STObject* pEntry, LedgerIndex iLastSeq, bool bStrictEqual);
 }

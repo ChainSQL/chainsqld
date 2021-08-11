@@ -221,8 +221,8 @@ namespace ripple {
                 // In the case of first storage and no table-sle, only T_CREATE
                 // OpType's tx can go on...bug:RR-559
                 if (tableSleExist == nullptr &&
-                    (tx.getTxnType() != ttTABLELISTSET) ||
-                    (tx.getFieldU16(sfOpType) != T_CREATE))
+                    (tx.getTxnType() != ttTABLELISTSET ||
+                    tx.getFieldU16(sfOpType) != T_CREATE))
                 {
                     return tefTABLE_STORAGENORMALERROR;
                 }

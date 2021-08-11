@@ -254,7 +254,6 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
     uint256 curLedgerHash;
     uint32_t time = 0;
 	auto pubLedgerSeq = app_.getLedgerMaster().getPublishedLedger()->info().seq;
-    auto timeBegin = utcTime();
     for (int i = stItemInfo.u32SeqLedger + 1; i <= pubLedgerSeq; i++)
     {
         if (!app_.getLedgerMaster().haveLedger(i))   
@@ -651,7 +650,6 @@ TableSync::CreateItemsWithOwner(
     auto ledger = app_.getLedgerMaster().getValidatedLedger();
     if (!ledger)
         return vec;
-    STObject* pEntry = nullptr;
 
     auto const root = keylet::ownerDir(owner);
     auto dirIndex = root.key;
