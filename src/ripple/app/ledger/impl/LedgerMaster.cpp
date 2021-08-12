@@ -1119,7 +1119,7 @@ LedgerMaster::isAuthorityValid(
     {
         for (auto const& sCheckName : aTableName)
         {
-            auto tup = getTableEntry(*ledger, accountID, sCheckName);
+            auto tup = getTableEntry(*ledger, ownerID, sCheckName);
             auto pEntry = std::get<1>(tup);
             if (pEntry != nullptr)
             {
