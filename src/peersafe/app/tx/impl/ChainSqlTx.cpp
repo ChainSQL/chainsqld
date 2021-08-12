@@ -58,18 +58,17 @@ namespace ripple {
 	TER ChainSqlTx::preclaim(PreclaimContext const& ctx)
 	{
 		const STTx & tx = ctx.tx;
-		Schema& app = ctx.app;
-		auto j = app.journal("preflightChainSql");
+		auto j = ctx.app.journal("preflightChainSql");
 
-		auto const sleAccount = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
-		// Check reserve and funds availability
-		{
-			auto const reserve = ctx.view.fees().accountReserve(
-				(*sleAccount)[sfOwnerCount]);
-			STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
-			if (priorBalance < reserve + calculateFeePaid(tx))
-				return tefINSUFFICIENT_RESERVE;
-		}
+        if (ctx.tx.getFieldU16(sfOpType) != T_DROP)
+        {
+            auto const sle = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
+            auto const balance = (*sle)[sfBalance].zxc();
+            auto const reserve = ctx.view.fees().accountReserve(
+                (*sle)[sfOwnerCount]);
+            if (balance < reserve + calculateFeePaid(tx))
+                return tecINSUFFICIENT_RESERVE;
+        }
 
 		if (tx.isCrossChainUpload())
 		{

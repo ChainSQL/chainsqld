@@ -220,7 +220,7 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
     auto const balance = (*sle)[sfBalance].zxc();
 	if (ctx.tx.getTxnType() == ttTABLELISTSET && ctx.tx.getFieldU16(sfOpType) == T_CREATE)
 	{
-		//If no judgement here ,tx will go into ledger and deduct expensive fee
+		//If no judgment here ,tx will go into ledger and deduct expensive fee
 		auto const reserve =
 			ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
 
