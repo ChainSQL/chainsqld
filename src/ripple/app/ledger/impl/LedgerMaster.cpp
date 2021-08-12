@@ -1144,7 +1144,7 @@ LedgerMaster::getUserToken(
     auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto tup = getTableEntry(*ledger, accountID, sTableName);
+        auto tup = getTableEntry(*ledger, ownerID, sTableName);
         auto pEntry = std::get<1>(tup);
         if (pEntry)
         {

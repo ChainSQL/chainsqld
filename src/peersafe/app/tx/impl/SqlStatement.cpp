@@ -223,9 +223,10 @@ namespace ripple {
 				pEntry->setFieldU32(sfTxnLgrSeq, view.info().seq);
 				pEntry->setFieldH256(sfTxnLedgerHash, view.info().hash);
 			}
+
+			view.update(tableSleExist);
 		}
 
-		view.update(tableSleExist);
 		return tesSUCCESS;
 	}
 

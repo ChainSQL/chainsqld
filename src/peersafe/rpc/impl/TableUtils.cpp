@@ -81,7 +81,7 @@ namespace ripple {
             sle = view.read(key);
             if (sle)  // table exist
             {
-		auto tableNameBlob = strCopy(sTableName);
+		        auto tableNameBlob = strCopy(sTableName);
                 tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
                 pEntry = getTableEntry(*tableEntries, tableNameBlob);
             }
@@ -93,10 +93,14 @@ namespace ripple {
     std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
     getTableEntryVar(ApplyView& view, const STTx& tx)
     {
-        auto accountId = tx.getAccountID(sfAccount);
+        AccountID accountId = beast::zero;
+        if (tx.isFieldPresent(sfOwner))
+            accountId = tx.getAccountID(sfOwner);
+        else
+            accountId = tx.getAccountID(sfAccount);
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
-	const std::string sTableName = strCopy(vTableNameStr);
+	    const std::string sTableName = strCopy(vTableNameStr);
         STObject* pEntry = nullptr;
         STArray* tableEntries = nullptr;
         Keylet key = keylet::table(accountId, sTableName);
@@ -111,7 +115,7 @@ namespace ripple {
             sle = view.peek(key);
             if (sle)  // table exist
             {
-		auto tableNameBlob = strCopy(sTableName);
+		        auto tableNameBlob = strCopy(sTableName);
                 tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
                 pEntry = getTableEntry(*tableEntries, tableNameBlob);
             }
@@ -140,7 +144,12 @@ namespace ripple {
     std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
     getTableEntry(ReadView const& view, const STTx& tx)
     {
-        auto accountId = tx.getAccountID(sfAccount);
+        AccountID accountId = beast::zero;
+        if (tx.isFieldPresent(sfOwner))
+            accountId = tx.getAccountID(sfOwner);
+        else
+            accountId = tx.getAccountID(sfAccount);
+
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
         auto sTableName = strCopy(vTableNameStr);
