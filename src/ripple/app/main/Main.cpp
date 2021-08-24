@@ -717,15 +717,7 @@ run(int argc, char** argv)
         }
     }
 
- #ifndef DEBUGMOD
-    if (HaveSustain() && !vm.count("fg") && !config->standalone())
-    {
-        auto const ret = DoSustain();
 
-        if (!ret.empty())
-            std::cerr << "Watchdog: " << ret << std::endl;
-    }
-#endif
 
     // Construct the logs object at the configured severity
     using namespace beast::severities;
@@ -799,6 +791,17 @@ run(int argc, char** argv)
         // tweak this further.
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
+
+#ifndef DEBUGMOD
+        if (HaveSustain() && !vm.count("fg") && !config->standalone())
+        {
+            auto const ret = DoSustain();
+
+            if (!ret.empty())
+                std::cerr << "Watchdog: " << ret << std::endl;
+        }
+#endif
+
 
         if (vm.count ("debug"))
             setDebugLogSink (logs->makeSink ("Debug", beast::severities::kTrace));
