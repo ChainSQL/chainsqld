@@ -6,10 +6,8 @@ set(MPIR_INCLUDE_DIR "${nih_cache_path}/include")
 
 ExternalProject_Add(mpir
     PREFIX ${nih_cache_path}
-    DOWNLOAD_NAME mpir-cmake.tar.gz
-    DOWNLOAD_NO_PROGRESS TRUE
-    URL https://gitlab.peersafe.cn/chainsql_dependencies/mpir/-/archive/cmake/mpir-cmake.tar.gz
-    URL_HASH SHA256=d32ea73cb2d8115a8e59b244f96f29bad7ff03367162b660bae6495826811e06
+    GIT_REPOSITORY https://github.com/chfast/mpir.git
+    GIT_TAG cmake
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
         -DCMAKE_INSTALL_LIBDIR=lib

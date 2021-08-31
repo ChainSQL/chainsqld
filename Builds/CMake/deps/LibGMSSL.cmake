@@ -20,8 +20,8 @@ endif()
 
 ExternalProject_Add(libgmssl
     PREFIX ${nih_cache_path}
-    URL https://gitlab.peersafe.cn/chainsql_dependencies/gmssl/-/archive/feature/updateMerge4master/gmssl-feature-updateMerge4master.tar.gz
-    URL_HASH SHA256=90b78724419b7fb1c5d3fee9f29a17f4c5d555a4fc25b26e287558bd99b36e13
+    GIT_REPOSITORY https://github.com/ChainSQL/GmSSL.git
+    GIT_TAG feature/updateMerge4master
     CONFIGURE_COMMAND ${GMSSL_CFG_CMD}
     BUILD_COMMAND ${GMSSL_BUILD_CMD}
     INSTALL_COMMAND ${GMSSL_INSTALL_CMD}

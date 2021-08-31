@@ -9,10 +9,8 @@ set(libff_inlcude_dir "${nih_cache_path}/include/libff")
 
 ExternalProject_Add(libff
     PREFIX ${nih_cache_path}
-    DOWNLOAD_NAME libff-03b719a7.tar.gz
-    DOWNLOAD_NO_PROGRESS TRUE
-    URL https://gitlab.peersafe.cn/chainsql_dependencies/libff/-/archive/03b719a7c81757071f99fc60be1f7f7694e51390.tar.gz
-    URL_HASH SHA256=81b476089af43025c8f253cb1a9b5038a1c375baccffea402fa82042e608ab02
+    GIT_REPOSITORY https://github.com/scipr-lab/libff.git
+    GIT_TAG 03b719a7c81757071f99fc60be1f7f7694e51390
     CMAKE_ARGS
         $<$<NOT:$<BOOL:${is_multiconfig}>>:-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}>
         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
