@@ -12,14 +12,14 @@ if (NOT TARGET date::date)
   if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
     FetchContent_Declare(
       hh_date_src
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/date.git
+      GIT_REPOSITORY https://github.com/HowardHinnant/date.git
       GIT_TAG        fc4cf092f9674f2670fb9177edcdee870399b829
     )
     FetchContent_MakeAvailable(hh_date_src)
   else ()
     ExternalProject_Add (hh_date_src
       PREFIX ${nih_cache_path}
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/date.git
+      GIT_REPOSITORY https://github.com/HowardHinnant/date.git
       GIT_TAG        fc4cf092f9674f2670fb9177edcdee870399b829
       CONFIGURE_COMMAND ""
       BUILD_COMMAND ""

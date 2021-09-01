@@ -69,7 +69,7 @@ if (local_libarchive)
   endif ()
   ExternalProject_Add (libarchive
     PREFIX ${nih_cache_path}
-    GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/libarchive.git
+    GIT_REPOSITORY https://github.com/libarchive/libarchive.git
     GIT_TAG v3.4.3
     CMAKE_ARGS
       # passing the compiler seems to be needed for windows CI, sadly

@@ -90,7 +90,7 @@ else ()
     #]===========================]
     ExternalProject_Add (c-ares_src
       PREFIX ${nih_cache_path}
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/c-ares.git
+      GIT_REPOSITORY https://github.com/c-ares/c-ares.git
       GIT_TAG cares-1_15_0
       CMAKE_ARGS
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -149,7 +149,7 @@ else ()
       endif ()
       ExternalProject_Add (zlib_src
         PREFIX ${nih_cache_path}
-        GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/zlib.git
+        GIT_REPOSITORY https://github.com/madler/zlib.git
         GIT_TAG v1.2.11
         CMAKE_ARGS
           -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -199,7 +199,7 @@ else ()
     #]===========================]
     ExternalProject_Add (grpc_src
       PREFIX ${nih_cache_path}
-      GIT_REPOSITORY https://gitlab.peersafe.cn/chainsql_dependencies/grpc.git
+      GIT_REPOSITORY https://github.com/grpc/grpc.git
       GIT_TAG origin/master
       CMAKE_ARGS
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
