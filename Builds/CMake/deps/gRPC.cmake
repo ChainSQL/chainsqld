@@ -200,7 +200,7 @@ else ()
     ExternalProject_Add (grpc_src
       PREFIX ${nih_cache_path}
       GIT_REPOSITORY https://github.com/grpc/grpc.git
-      GIT_TAG origin/master
+      GIT_TAG v1.25.0
       CMAKE_ARGS
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
