@@ -1,4 +1,4 @@
-﻿#include <peersafe/gmencrypt/GmCheck.h>
+#include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/gmencrypt/randomcheck/randCheck.h>
 #include <iomanip>
 #include <string.h>
@@ -449,8 +449,7 @@ bool GMCheck::randomCheck(unsigned long dataLen,unsigned long cycleTimes)
 
 void GMCheck::tryRandomCycleCheck(unsigned long ledgerSeq)
 {
-//#ifdef _WIN32
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 	if (0 == ledgerSeq % randomCycheckLedgerNum)
 	//if (0 == ledgerSeq % 20)
 	{
@@ -471,8 +470,7 @@ void GMCheck::tryRandomCycleCheck(unsigned long ledgerSeq)
 #endif
 }
 void* GMCheck::randomCycheckThreadFun(void *arg) {
-//#ifdef _WIN32
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 	GMCheck *ptrGMC = (GMCheck *)arg;
 	ptrGMC->isRandomCycleCheckThread = true;
 	bool randomCycleCheckRes = ptrGMC->randomCycleCheck();  //call randomCycleCheck func

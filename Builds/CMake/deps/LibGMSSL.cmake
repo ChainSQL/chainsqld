@@ -14,8 +14,10 @@ elseif(WIN32)
     set(GMSSL_BUILD_CMD nmake)
     set(GMSSL_INSTALL_CMD nmake install_sw)
 elseif(APPLE)
-    set(GMSSL_CFG_CMD)
-    set(GMSSL_INSTALL_CMD)
+    set(GMSSL_CFG_CMD ./config -fPIC no-shared --prefix=${nih_cache_path} --openssldir=${nih_cache_path}/lib/ssl)
+    set(GMSSL_INSTALL_CMD make install_sw)
+    file(MAKE_DIRECTORY ${nih_cache_path}/lib)
+    execute_process(COMMAND touch libcrypto.a WORKING_DIRECTORY ${nih_cache_path}/lib)
 endif()
 
 ExternalProject_Add(libgmssl
