@@ -41,7 +41,7 @@ std::pair<bool, STEntry*> TableSyncUtil::IsTableSLEChanged(const STArray& aTable
 
 //----------------------------------------------------------------------------------
 SyncParam::SyncParam(std::string const& operationRule) 
-	: ledgerSeq(0), rules(operationRule), ledgerTime(0)
+	: ledgerSeq(0), rules(operationRule), ledgerTime("")
 {
 }
 

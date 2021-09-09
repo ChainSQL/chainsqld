@@ -60,7 +60,7 @@ namespace ripple {
 		const STTx & tx = ctx.tx;
 		auto j = ctx.app.journal("preflightChainSql");
 
-        if (ctx.tx.getFieldU16(sfOpType) != T_DROP)
+        if (ctx.tx.getTxnType() != ttSQLTRANSACTION && ctx.tx.getFieldU16(sfOpType) != T_DROP)
         {
             auto const sle = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
             auto const balance = (*sle)[sfBalance].zxc();

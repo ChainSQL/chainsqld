@@ -667,14 +667,53 @@ namespace ripple {
         {
             if (pEntry)
             {
-                ripple::Blob tableNewName;
+                 ripple::Blob tableNewName;
                 if (tables[0].isFieldPresent(sfTableNewName))
                 {
                     tableNewName = tables[0].getFieldVL(sfTableNewName);
                 }
                 pEntry->setFieldVL(sfTableName, tableNewName);
-                view.update(tableSleExist);
+                if (tableEntries)
+                {
+                    view.update(tableSleExist);
+                }
+                else if (tableSleExist && !tableEntries)
+                {
+                    //add new tablesle
+                    std::shared_ptr<SLE> tableSle = nullptr; 
+                    Keylet key = keylet::table(accountId, strCopy(tableNewName));
+                    tableSle = std::make_shared<SLE>(ltTABLE, key.key);
+                    tableSle->setFieldObject(sfTableEntry, *pEntry);
+            
+                    if (tableSle != nullptr)
+                    {
+                        auto result = dirAdd(
+                            view,
+                            keylet::ownerDir(accountId),
+                            tableSle->key(),
+                            false,
+                            describeOwnerDir(accountId),
+                            viewJ);
+
+                        if (!result)
+                            return tecDIR_FULL;
+                        (*tableSle)[sfOwnerNode] = *result;
+                        view.insert(tableSle);
+                    }
+                    //delete old tablesle
+                    // Keylet oldKey = keylet::table(accountId, sTableName);
+                    if (!view.dirRemove(
+                            keylet::ownerDir(accountId),
+                            (*tableSleExist)[sfOwnerNode],
+                            tableSleExist->key(),
+                            true))
+                    {
+                        return tefBAD_LEDGER;
+                    }
+                    view.erase(tableSleExist);
+                }
             }
+            
             break;
         }
         case T_ASSIGN:

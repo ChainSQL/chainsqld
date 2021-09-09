@@ -780,11 +780,12 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                 false);
             return std::make_pair(false, "user account is null.");
         }
-
+        bool isRight_userSecret = false;
         for (auto& user : users)  // check if there same user
         {
             if (user.getAccountID(sfUser) == user_accountID_)
             {
+                isRight_userSecret = true;
                 auto selectFlags = getFlagFromOptype(R_GET);
                 auto userFlags = user.getFieldU32(sfFlags);
                 if ((userFlags & selectFlags) == 0)
@@ -802,7 +803,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                     if (user.isFieldPresent(sfToken))
                     {
                         auto token = user.getFieldVL(sfToken);
-                        bool result = tokenProcObj_.setSymmertryKey(
+                        bool result = tokenProcObj_.setSymmertryKey( 
                             token, *user_secret_);
                         if (result)
                             return std::make_pair(true, "");
@@ -825,6 +826,16 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                     }
                 }
             }
+        }
+        if (!isRight_userSecret)
+        {
+            app_.getOPs().pubTableTxs(
+                accountID_,
+                sTableName_,
+                *pTx,
+                std::make_tuple("db_acctSecretError", "", ""),
+                false);
+            return std::make_pair(false, "user account secret is incorrect ");
         }
     }
     else

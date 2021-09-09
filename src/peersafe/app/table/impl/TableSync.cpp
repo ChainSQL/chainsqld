@@ -320,6 +320,12 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
 
         auto tup = getTableEntry(*ledger, stItemInfo.accountID, stItemInfo.sTableName);
         auto pEntry = std::get<1>(tup);
+        if (pEntry == nullptr)
+        {
+            //Traverse all tables in the account to match sTableNameInDB 
+             tup = getTableEntryByNameInDB(*ledger, stItemInfo.accountID, stItemInfo.sTableNameInDB);
+             pEntry = std::get<1>(tup);
+        }
         bool changed = isTableSLEChanged(pEntry, lastTxChangeIndex, true);
 
         if (changed || pEntry == nullptr)
@@ -943,6 +949,27 @@ bool TableSync::isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInf
         return bExist;
     });
     if (iter == listTableInfo_.end())     return false;
+    return true;
+}
+
+
+bool
+TableSync::isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType)
+{
+    std::lock_guard lock(mutexlistTable_);
+    std::list<std::shared_ptr<TableSyncItem>>::iterator iter = std::find_if(listTableInfo_.begin(),listTableInfo_.end(),
+        [accountID, sTableName, eTargeType](std::shared_ptr<TableSyncItem> pItem) {
+            bool bExist = (pItem->GetTableName() == sTableName) &&
+                            (pItem->GetAccount() == accountID) &&
+                            (pItem->TargetType() == eTargeType) &&
+                            (pItem->GetSyncState() != TableSyncItem::SYNC_DELETING &&
+                                pItem->GetSyncState() != TableSyncItem::SYNC_REMOVE &&
+                                pItem->GetSyncState() != TableSyncItem::SYNC_STOP);
+
+            return bExist;
+        });
+    if (iter == listTableInfo_.end())
+        return false;
     return true;
 }
 
@@ -1736,6 +1763,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
     }
 
 	std::map<uint160, bool> mapTxDBNam2Exist;
+    std::map<uint160, bool> mapTxDBNam2Sync;
 
 	for (auto const &item : alpAccepted->getMap())
 	{
@@ -1770,7 +1798,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 					}
 
 					auto opType = tx.getFieldU16(sfOpType);
-					if (opType == T_CREATE)
+                    if (opType == T_CREATE)
 					{
 						std::string temKey = to_string(accountID) + tableName;
 						bool bInSyncTables = true;
@@ -1787,13 +1815,13 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 							break;
 						}
 
-                        if (OnCreateTableTx(tx, ledger, time, chainId))
+                        if (OnCreateTableTx(tx, ledger, time, chainId, true))
                         {
                             mapTxDBNam2Exist[uTxDBName] = true;
                         }
 					}
 					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
-						|| opType == R_DELETE)
+						|| opType == R_DELETE ||opType == T_GRANT)
 					{
 
 						bool bDBTableExist = false;
@@ -1806,13 +1834,43 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 						{
 							bDBTableExist = mapTxDBNam2Exist[uTxDBName];
 						}
-				
-						if (!bDBTableExist)
-						{
-							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
-							break;
-						}
+                        if (opType != T_GRANT)
+                        {
+                            if (!bDBTableExist)
+						    {
+							    app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
+							    break;
+						    }
 
+                            bool bDBTableSync = false;
+                            if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())
+                            {
+                                bDBTableSync = isSync(listTableInfo_, accountID, tableName, TableSyncItem::SyncTarget_db);
+                                mapTxDBNam2Sync[uTxDBName] = bDBTableSync;
+                            }
+                            else
+                            {
+                                bDBTableSync = mapTxDBNam2Sync[uTxDBName];
+                            }
+                            if (!bDBTableSync)
+                            {
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_acctSecretError", "", ""), false);
+							    break;
+                            }
+                        }
+                        else
+                        {   //T_GRANT, if the entity table does not exist, 
+                            //if the private key of the authorized account is in the configuration file, set the status of the table to init 
+                             if (!bDBTableExist)
+                            {
+                                app_.getTableStatusDB().DeleteRecord(accountID, tableName);
+                            }
+                            if (!bDBTableExist && OnCreateTableTx(tx, ledger, time, chainId, false))
+                            {
+                               ;
+                            }              
+                        }
+						
 					}
 				}
 			}
@@ -1824,17 +1882,17 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 	}
 }
 
-bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time,uint256 const& chainId)
+bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time,uint256 const& chainId,bool isPubErrInfo)
 {
 	AccountID accountID = tx.getAccountID(sfAccount);
 	auto tables = tx.getFieldArray(sfTables);
 	uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
-
-	auto tableBlob = tables[0].getFieldVL(sfTableName);
+	
+    auto tableBlob = tables[0].getFieldVL(sfTableName);
 	std::string tableName;
 	tableName.assign(tableBlob.begin(), tableBlob.end());
 	auto insertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
-	if (!insertRes.first)
+	if (isPubErrInfo && !insertRes.first)
 	{
 		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 

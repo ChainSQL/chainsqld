@@ -90,6 +90,47 @@ namespace ripple {
         return std::make_tuple(nullptr, pEntry, tableEntries);
     }
 
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntryInnerByNameInDB(ReadView const& view,AccountID const& accountId,std::string const& sTableNameInDB)
+    {
+        STObject* pEntry = nullptr;
+        STArray* tableEntries = nullptr;
+
+        auto const root = keylet::ownerDir(accountId);
+        auto dirIndex = root.key;
+        auto dir = view.read({ltDIR_NODE, dirIndex});
+        if (!dir)
+             return std::make_tuple(nullptr, pEntry, tableEntries);
+        for (;;)
+        {
+            auto const& entries = dir->getFieldV256(sfIndexes);
+            auto iter = entries.begin();
+            for (; iter != entries.end(); ++iter)
+            {
+                auto const sleNode = view.read(keylet::child(*iter));
+                if (sleNode->getType() == ltTABLE)
+                {
+                    STObject const& table = sleNode->getFieldObject(sfTableEntry);
+                    auto nameInDB = table.getFieldH160(sfNameInDB);
+                    if (sTableNameInDB == to_string(nameInDB))
+                    {
+                       pEntry = (STObject*)&(table);
+                        return std::make_tuple(sleNode, pEntry, tableEntries);
+                    }
+                }
+            }
+            auto const nodeIndex = dir->getFieldU64(sfIndexNext);
+            if (nodeIndex == 0)
+                break;
+
+            dirIndex = keylet::page(root, nodeIndex).key;
+            dir = view.read({ltDIR_NODE, dirIndex});
+            if (!dir)
+                break;
+        }
+        return std::make_tuple(nullptr, pEntry, tableEntries);
+    }
+
     std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
     getTableEntryVar(ApplyView& view, const STTx& tx)
     {
@@ -161,6 +202,12 @@ namespace ripple {
     getTableEntry(ReadView const& view, AccountID const& accountId, std::string const& sTableName)
     {
         return getTableEntryInner(view, accountId, sTableName);
+    }
+
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntryByNameInDB(ReadView const& view, AccountID const& accountId, std::string const& sTableNameInDB)
+    {
+        return getTableEntryInnerByNameInDB(view, accountId, sTableNameInDB);
     }
 
 	bool

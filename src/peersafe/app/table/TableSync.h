@@ -53,6 +53,10 @@ public:
     bool SendSyncRequest(AccountID accountID, std::string sTableName, LedgerIndex iStartSeq, uint256 iStartHash, LedgerIndex iCheckSeq, uint256 iCheckHash, LedgerIndex iStopSeq, bool bGetLost, std::shared_ptr <TableSyncItem> pItem);
     
     bool isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
+
+     bool
+    isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
+
     //get reply
     bool GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, std::weak_ptr<Peer> const& wPeer);
     bool SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t time, std::weak_ptr<Peer> const& wPeer, std::string sNickName , TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB);
@@ -64,7 +68,7 @@ public:
     void
     SeekTableTxLedger(TableSyncItem::BaseInfo& stItemInfo);
     void CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger);
-    bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time, uint256 const& chainId);
+    bool OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time, uint256 const& chainId, bool isPubErrInfo);
     bool ReStartOneTable(AccountID accountID, std::string sNameInDB, std::string sTableName, bool bDrop, bool bCommit);
     bool StopOneTable(AccountID accountID, std::string sNameInDB, bool bNewTable);
 
