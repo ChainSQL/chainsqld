@@ -1,4 +1,4 @@
-#include <peersafe/gmencrypt/GmCheck.h>
+﻿#include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/gmencrypt/randomcheck/randCheck.h>
 #include <iomanip>
 #include <string.h>
