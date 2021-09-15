@@ -49,4 +49,4 @@ Wechat: scan the QR below to follow PeerSafe, and then send **chainsql**, you wi
 
 PeerSafe Wechat QR code：
 
-![PeerSafe](/images/peersafe.jpg)
+![PeerSafe](docs/images/peersafe.jpg)

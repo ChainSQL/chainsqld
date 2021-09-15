@@ -1,6 +1,6 @@
 [English](../README.md) / 中文
 
-![Chainsql](../images/logo.png)
+![Chainsql](./images/logo.png)
 
 ## 概述
 ChainSQL是全球首个基于区块链的数据库应用平台，我们实现了数据库功能，集成并扩展了以太坊智能合约。你可以像使用传统数据库一样使用ChainSQL。
@@ -25,5 +25,5 @@ ChainSQL是全球首个基于区块链的数据库应用平台，我们实现了
 
 众享比特公众号二维码：
 
-![PeerSafe](../images/peersafe.jpg)
+![PeerSafe](./images/peersafe.jpg)
 
