@@ -40,6 +40,8 @@
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
 #include <ripple/app/misc/Transaction.h>
+#include <peersafe/app/util/TableSyncUtil.h>
+#include <peersafe/rpc/TableUtils.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -741,98 +743,107 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
 	{
 		return std::make_pair(false, "ledger error");
 	}
-	auto id = keylet::table(accountID_);
-	auto const tablesle = ledger->read(id);
-	if (tablesle == nullptr)
-	{
-		return std::make_pair(false, "can't find account table sle.");
-	}
-	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
+    auto tup = getTableEntry(*ledger, accountID_, sTableName_);
+    auto pEntry = std::get<1>(tup);
+    if (pEntry == nullptr)
+        return std::make_pair(false, "Can't find table sle.");
 
-	bool bGetTable = false;
-	for (auto const &table : aTableEntries)
-	{
-		bool bRightName = false;
-		if (eSyncTargetType_ == SyncTarget_db) bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
-		else                                   bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
-		
-		if (bRightName)
-		{
-			uCreateLedgerSequence_ = table.getFieldU32(sfCreateLgrSeq);
+    auto& table = *pEntry;
+	auto& users = table.getFieldArray(sfUsers);
+	assert(users.size() > 0);
+	bool bConfidential = users[0].isFieldPresent(sfToken);
+    if (bConfidential)
+    {
+        confidential_ = true;
+        std::shared_ptr<STTx const> pTx = nullptr;
+        auto pTransaction = app_.getMasterTransaction().fetch(
+            table.getFieldH256(sfCreatedTxnHash));
 
-			auto& users = table.getFieldArray(sfUsers);
-			assert(users.size() > 0);
-			bool bConfidential = users[0].isFieldPresent(sfToken);
-			
-			if (bConfidential)
-			{
-				confidential_ = true;
-				std::shared_ptr<STTx const> pTx = nullptr;
-				auto pTransaction = app_.getMasterTransaction().fetch(table.getFieldH256(sfCreatedTxnHash));
+        if (!pTransaction)
+        {
+            std::string errMsg = "fetch transaction " +
+                to_string(table.getFieldH256(sfCreatedTxnHash)) + " failed";
+            return std::make_pair(false, errMsg);
+        }
+        else
+        {
+            pTx = pTransaction->getSTransaction();
+        }
 
-                if (!pTransaction) {
-                    std::string errMsg = "fetch transaction " + to_string(table.getFieldH256(sfCreatedTxnHash)) + " failed";
-                    return std::make_pair(false, errMsg);
+        if (!user_accountID_ || user_accountID_->isZero())
+        {
+            app_.getOPs().pubTableTxs(
+                accountID_,
+                sTableName_,
+                *pTx,
+                std::make_tuple("db_noSyncConfig", "", ""),
+                false);
+            return std::make_pair(false, "user account is null.");
+        }
+        bool isRight_userSecret = false;
+        for (auto& user : users)  // check if there same user
+        {
+            if (user.getAccountID(sfUser) == user_accountID_)
+            {
+                isRight_userSecret = true;
+                auto selectFlags = getFlagFromOptype(R_GET);
+                auto userFlags = user.getFieldU32(sfFlags);
+                if ((userFlags & selectFlags) == 0)
+                {
+                    app_.getOPs().pubTableTxs(
+                        accountID_,
+                        sTableName_,
+                        *pTx,
+                        std::make_tuple("db_noSyncConfig", "", ""),
+                        false);
+                    return std::make_pair(false, "no authority.");
                 }
-                else {
-                    pTx = pTransaction->getSTransaction();
+                else
+                {
+                    if (user.isFieldPresent(sfToken))
+                    {
+                        auto token = user.getFieldVL(sfToken);
+                        bool result = tokenProcObj_.setSymmertryKey( 
+                            token, *user_secret_);
+                        if (result)
+                            return std::make_pair(true, "");
+                        else
+                        {
+                            app_.getOPs().pubTableTxs(
+                                accountID_,
+                                sTableName_,
+                                *pTx,
+                                std::make_tuple("db_noSyncConfig", "", ""),
+                                false);
+                            return std::make_pair(
+                                false,
+                                "Cann't get password for this table.");
+                        }
+                    }
+                    else
+                    {
+                        return std::make_pair(false, "table error");
+                    }
                 }
-					
-				if (!user_accountID_ || user_accountID_->isZero() )
-				{
-					app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
-					return std::make_pair(false, "user account is null.");
-				}
-					
-				for (auto & user : users)  //check if there same user
-				{
-					if (user.getAccountID(sfUser) == user_accountID_)
-					{
-						auto selectFlags = getFlagFromOptype(R_GET);
-						auto userFlags = user.getFieldU32(sfFlags);
-						if ((userFlags & selectFlags) == 0)
-						{
-							app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
-							return std::make_pair(false, "no authority.");
-						}
-						else
-						{
-							if (user.isFieldPresent(sfToken))
-							{
-								auto token = user.getFieldVL(sfToken);
-								bool result = tokenProcObj_.setSymmertryKey(token, *user_secret_);
-                                //passBlob_ = ripple::decrypt(token, *user_secret_);
-								//if(passBlob_.size() > 0)  return std::make_pair(true, "");
-								if (result)  return std::make_pair(true, "");
-								else
-                                {
-									app_.getOPs().pubTableTxs(accountID_, sTableName_, *pTx, std::make_tuple("db_noSyncConfig", "", ""), false);
-									return std::make_pair(false, "cann't get password for this table.");
-								}
-							}
-							else
-							{
-								return std::make_pair(false, "table error");
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				return std::make_pair(true, "");
-			}
-			
-			bGetTable = true;
-			break;
-		}			
-	}
-	if (!bGetTable)
-	{
-		return std::make_pair(false, "Can't find the table in the chain.");
-	}
+            }
+        }
+        if (!isRight_userSecret)
+        {
+            app_.getOPs().pubTableTxs(
+                accountID_,
+                sTableName_,
+                *pTx,
+                std::make_tuple("db_acctSecretError", "", ""),
+                false);
+            return std::make_pair(false, "user account secret is incorrect ");
+        }
+    }
+    else
+    {
+        return std::make_pair(true, "");
+    }
 
-	return std::make_pair(false, "error");
+    return std::make_pair(false, "error");
 }
 
 void TableSyncItem::TryDecryptRaw(std::vector<STTx>& vecTxs)
@@ -909,35 +920,23 @@ std::string TableSyncItem::getOperationRule(const STTx& tx)
 	if (ledger == NULL)
 		return rule;
 
-	auto id = keylet::table(accountID_);
-	auto const tablesle = ledger->read(id);
-	if (tablesle == nullptr)
-		return rule;
-
-	auto aTableEntries = tablesle->getFieldArray(sfTableEntries);
-	STEntry* pEntry = NULL;
-	for (auto const &table : aTableEntries)
-	{
-		bool bRightName = false;
-		if (eSyncTargetType_ == SyncTarget_db) 
-			bRightName = to_string(table.getFieldH160(sfNameInDB)) == sTableNameInDB_;
-		else                                   
-			bRightName = strCopy(table.getFieldVL(sfTableName)) == sTableName_;;
-
-		if (bRightName)
-			pEntry = (STEntry*)&table;
-	}
+    auto tup = getTableEntry(*ledger, accountID_, sTableName_);
+    auto pEntry = std::get<1>(tup);
 	if (pEntry != NULL)
-		rule = pEntry->getOperationRule((TableOpType)opType);
+        rule = STEntry::getOperationRule(*pEntry,(TableOpType) opType);
 	return rule;
 }
 
-std::pair<bool, std::string> TableSyncItem::DealWithTx(const std::vector<STTx>& vecTxs)
+std::pair<bool, std::string>
+TableSyncItem::DealWithTx(
+    const std::vector<STTx>& vecTxs,
+    std::uint32_t seq,
+    std::uint32_t closeTime)
 {
 	auto ret = std::make_pair(true, std::string(""));
 	for (auto& tx : vecTxs)
 	{
-		auto retTmp = DealTranCommonTx(tx);
+		auto retTmp = DealTranCommonTx(tx,seq,closeTime);
 		if (!retTmp.first && ret.first)
 		{
 			ret = retTmp;
@@ -948,14 +947,19 @@ std::pair<bool, std::string> TableSyncItem::DealWithTx(const std::vector<STTx>& 
 	return ret;
 }
 
-std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
+std::pair<bool, std::string>
+TableSyncItem::DealTranCommonTx(
+    const STTx& tx,
+    std::uint32_t seq,
+    std::uint32_t closeTime)
 {
 	auto ret = std::make_pair(true, std::string(""));
 	auto op_type = tx.getFieldU16(sfOpType);
 	if (!isNotNeedDisposeType((TableOpType)op_type))
 	{
 		auto sOperationRule = getOperationRule(tx);
-		ret = this->getTxStore().Dispose(tx,sOperationRule);
+        auto param = SyncParam{seq, sOperationRule, closeTime};
+        ret = this->getTxStore().Dispose(tx, param);
 
 		if (ret.first)
 		{
@@ -1001,71 +1005,18 @@ std::pair<bool, std::string> TableSyncItem::DealTranCommonTx(const STTx &tx)
 	return ret;
 }
 
-void TableSyncItem::InsertPressData(const STTx& tx, uint32_t ledger_seq, uint32_t ledger_time)
-{
-	std::string pressRealName;
-	if (tx.isFieldPresent(sfFlags) && tx.isFieldPresent(sfTables))
-	{
-		auto tables = tx.getFieldArray(sfTables);
-		std::string table_name = strCopy(tables[0].getFieldVL(sfTableName));
-
-		if (table_name == "press_time")
-		{
-			return;
-		}
-		else
-		{
-			pressRealName = app_.getTableSync().GetPressTableName();
-			if (pressRealName.empty())
-				return;
-		}
-		
-		std::chrono::time_point<std::chrono::system_clock, std::chrono::seconds> tp = std::chrono::time_point_cast<std::chrono::seconds>(std::chrono::system_clock::now());
-		auto tmp = std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
-		uint32_t submit_time = tx.getFieldU32(sfFlags);
-		uint32_t db_time = tmp.count();
-		submit_time -= std::chrono::seconds(days(10957)).count();
-		db_time -= std::chrono::seconds(days(10957)).count();
-
-		ledger_time = ledger_time > submit_time ? ledger_time - submit_time : ledger_time;
-		db_time -= submit_time;
-
-		try
-		{
-			LockedSociSession sql_session = getTxStoreDBConn().GetDBConn()->checkoutDb();
-			std::string sql = "INSERT INTO " + pressRealName + " (ledger_seq, submit_time, ledger_time,db_time) VALUES('";
-			sql += std::to_string(ledger_seq);
-			sql += "','";
-			sql += std::to_string(submit_time);
-			sql += "','";
-			sql += std::to_string(ledger_time);
-			sql += "','";
-			sql += std::to_string(db_time);
-			sql += "');";
-
-			soci::statement st = (sql_session->prepare << sql);
-
-			st.execute();
-		}
-		catch (std::exception const& e)
-		{
-			JLOG(journal_.error()) <<
-				"InsertPressData exception" << e.what();
-		}
-	}
-}
-
 bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData)
 {
     for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
     {
         std::string LedgerHash = iter->ledgerhash();
         std::string LedgerCheckHash = iter->ledgercheckhash();
-        std::string LedgerSeq = std::to_string(iter->ledgerseq());
         std::string PreviousCommit;
-
+        std::uint32_t closeTime = iter->closetime();
+        std::uint32_t seq = iter->ledgerseq();
+        std::string LedgerSeq = std::to_string(seq);
         //check for jump one seq, check for deadline time and deadline seq
-        CheckConditionState  checkRet = CondFilter(iter->closetime(), iter->ledgerseq(), uint256(0));
+        CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
         if (checkRet == CHECK_JUMP)     continue;
         else if (checkRet == CHECK_REJECT)
         {
@@ -1134,15 +1085,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					}
 					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
-					auto ret = DealWithTx(vecTxs);
+					auto ret = DealWithTx(vecTxs, seq,closeTime);
 					uTxDBUpdateHash_ = tx.getTransactionID();
-
-					//press test
-					if (app_.getTableSync().IsPressSwitchOn())
-					{
-						if (ret.first)
-							InsertPressData(tx, iter->ledgerseq(), iter->closetime());
-					}
 
 					if (app_.getOPs().hasChainSQLTxListener())
 						tmpPubVec.emplace_back(tx, vecTxs.size(), ret);

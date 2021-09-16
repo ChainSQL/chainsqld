@@ -184,7 +184,7 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		auto result = txstore_->Dispose(tx, "");
+		auto result = txstore_->Dispose(tx);
 		if (result.first == true) {
 			tr.commit();
 		}
@@ -212,7 +212,7 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		auto result = txstore_->Dispose(tx, "");
+		auto result = txstore_->Dispose(tx);
 		if (result.first == true) {
 			tr.commit();
 		}
@@ -240,7 +240,7 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		auto result = txstore_->Dispose(tx, "");
+		auto result = txstore_->Dispose(tx);
 		if (result.first == true) {
 			tr.commit();
 		}
@@ -268,7 +268,7 @@ public:
 		tx.sign(keypair.first, keypair.second);
 		std::string text = tx.getFullText();
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		auto result = txstore_->Dispose(tx, optionalRule);
+        auto result = txstore_->Dispose(tx, SyncParam{optionalRule});
 		if(result.first == true) {
 			tr.commit();
 		}
@@ -2763,7 +2763,7 @@ private:
 			});
 
 			tx.sign(keypair.first, keypair.second);
-			auto result = txstore_->Dispose(tx, "");
+			auto result = txstore_->Dispose(tx);
 			BEAST_EXPECT(result.first == true);
 			if (result.first == true) {
 				tr.commit();
@@ -2797,7 +2797,7 @@ private:
 
 		tx.sign(keypair.first, keypair.second);
 		TxStoreTransaction tr(txstore_dbconn_.get());
-		auto result = txstore_->Dispose(tx, "");
+		auto result = txstore_->Dispose(tx);
 		BEAST_EXPECT(result.first == true);
 		if (result.first == true) {
 			tr.commit();

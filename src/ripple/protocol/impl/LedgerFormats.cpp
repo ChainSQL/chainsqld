@@ -245,6 +245,16 @@ LedgerFormats::LedgerFormats()
 		},
 		commonFields);
 
+    add(jss::Table,ltTABLE,
+        {
+            { sfOwnerNode,          soeREQUIRED },
+            { sfPreviousTxnID,      soeREQUIRED },
+            { sfPreviousTxnLgrSeq,  soeREQUIRED },
+            { sfTableEntry,         soeREQUIRED},
+            { sfFutureTxHash,       soeOPTIONAL }
+        },
+        commonFields);
+
 	add(jss::InsertLimt, ltINSERTMAP,
 		{
 			{ sfInsertCountMap,    soeREQUIRED },

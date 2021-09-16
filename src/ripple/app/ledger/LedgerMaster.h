@@ -335,7 +335,7 @@ public:
         AccountID ownerID,
         std::string sTableName);
     std::tuple<bool, ripple::uint256, error_code_i>
-    getUserFutureHash(AccountID accountID);
+    getUserFutureHash(AccountID accountID, const Json::Value& tx_json);
 
     std::pair<ripple::uint256, error_code_i>
     getLatestTxCheckHash(AccountID accountID, std::string sTableName);

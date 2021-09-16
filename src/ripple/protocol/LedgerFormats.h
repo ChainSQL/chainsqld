@@ -105,6 +105,8 @@ enum LedgerEntryType {
     ltFROZEN_ACCOUNTS = 'z',
 
     ltSCHEMA_INDEX = 'k',
+
+    ltTABLE = 't'
 };
 
 /**

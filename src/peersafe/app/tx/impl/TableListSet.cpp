@@ -29,8 +29,9 @@
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <ripple/basics/Slice.h>
-#include <peersafe/schema/Schema.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/protocol/Feature.h>
+#include <peersafe/schema/Schema.h>
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/tx/TableListSet.h>
@@ -223,8 +224,8 @@ namespace ripple {
         return preflight2(ctx);
     }
 
-    STObject
-        TableListSet::generateTableEntry(const STTx &tx, ApplyView& view)  //preflight assure sfTables must exist
+    void
+        TableListSet::prepareTableEntry(const STTx &tx, ApplyView& view,STObject * pEntry)  //preflight assure sfTables must exist
     {
         STEntry obj_tableEntry;
 
@@ -233,15 +234,7 @@ namespace ripple {
         tableName = tables[0].getFieldVL(sfTableName);
 
         uint160 nameInDB = tables[0].getFieldH160(sfNameInDB);
-        uint8_t isTableDeleted = 0;  //is not deleted
-
-        uint32_t ledgerSequence = view.info().seq;
-        uint32_t createledgerSequence = view.info().seq - 1;  
-        ripple::uint256 txnLedgerHash = view.info().hash;
-        ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--;       
-        ripple::uint256 createdtxnHash = tx.getRealTxID(); 
-        ripple::uint256 prevTxnLedgerHash; //default null
-
+        ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--; 
         uint256 hashNew = sha512Half(makeSlice(strCopy(tx.getFieldVL(sfRaw))));
 
         STArray users;//store Users
@@ -265,11 +258,21 @@ namespace ripple {
 
         users.push_back(obj_user);
 
-        obj_tableEntry.init(tableName, nameInDB,isTableDeleted, createledgerSequence, createdLedgerHash, createdtxnHash,ledgerSequence ,txnLedgerHash,0,prevTxnLedgerHash,hashNew, users);
+        // if (tableName == NUll ) then set to null ,no exception
+        pEntry->setFieldVL(sfTableName, tableName);  
+        pEntry->setFieldH160(sfNameInDB, nameInDB);
+        pEntry->setFieldU32(sfCreateLgrSeq, view.info().seq - 1);
+        pEntry->setFieldH256(sfCreatedLedgerHash, createdLedgerHash);
+        pEntry->setFieldH256(sfCreatedTxnHash, tx.getRealTxID());
+        pEntry->setFieldU32(sfTxnLgrSeq, view.info().seq);
+        pEntry->setFieldH256(sfTxnLedgerHash, view.info().hash);
+        pEntry->setFieldU32(sfPreviousTxnLgrSeq, 0);
+        pEntry->setFieldH256(sfPrevTxnLedgerHash, beast::zero);
+        pEntry->setFieldH256(sfTxCheckHash, hashNew);
+        pEntry->setFieldArray(sfUsers, users);
 		if (tx.isFieldPresent(sfOperationRule))
-			obj_tableEntry.initOperationRule(tx.getFieldVL(sfOperationRule));
+			STEntry::initOperationRule(*pEntry,tx.getFieldVL(sfOperationRule));
 	
-        return std::move(obj_tableEntry);
     }
 
     TER
@@ -285,258 +288,236 @@ namespace ripple {
         if (!isTableListSetOpType((TableOpType)optype))     
             return temBAD_OPTYPE;
 
-        auto key = keylet::table(sourceID);
-        auto const tablesle = view.read(key);
+        auto tables = tx.getFieldArray(sfTables);
+        Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
+        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
 
-        if (optype != T_REPORT)
+
+        auto tup = getTableEntry(view, tx);
+        auto pEntry = std::get<1>(tup);
+        auto tableEntries = std::get<2>(tup);
+        if (!pEntry && optype >= T_DROP)
+            ret = tefTABLE_NOTEXIST;
+
+        if (optype == T_REPORT)
+            return tesSUCCESS;
+
+        switch (optype)
         {
-            auto tables = tx.getFieldArray(sfTables);
-            Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
+        case T_CREATE:
+        {
 
-            if (tablesle)  //table exist
+			if (!bSleChangeEnabled &&
+                tableEntries != nullptr &&
+                (*tableEntries).size() >= ACCOUNT_OWN_TABLE_COUNT)
+				return tefTABLE_COUNTFULL;
+
+            if (pEntry != NULL)                
+                ret = tefTABLE_EXISTANDNOTDEL;
+
+			auto const sleAccount = view.read(keylet::account(sourceID));
+			// Check reserve and funds availability
+			{
+				auto const reserve = view.fees().accountReserve(
+					(*sleAccount)[sfOwnerCount] + 1);
+				STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
+				if (priorBalance < reserve)
+					return tefINSU_RESERVE_TABLE;
+			}
+            break;
+        }
+        case T_DROP:
+        {
+            if (pEntry == NULL)
+                ret = tefTABLE_NOTEXIST;
+            break;
+        }
+        case T_RENAME:
+        {
+            if (vTableNameStr == tables[0].getFieldVL(sfTableNewName))
             {
-                STArray tablentries = tablesle->getFieldArray(sfTableEntries);
-                STEntry const *pEntry = getTableEntry(tablentries, vTableNameStr);
-
-                switch (optype)
+                ret = tefTABLE_SAMENAME;
+                break;
+            }
+            Blob vTableNameNewStr = tables[0].getFieldVL(sfTableNewName);
+            auto tup = getTableEntry(view,sourceID, strCopy(vTableNameNewStr));
+            auto pEntryNew = std::get<1>(tup);
+            if (pEntry != NULL)
+            {
+                if (pEntryNew != NULL)                   
+                    ret = tefTABLE_EXISTANDNOTDEL;
+            }
+            else
+            {
+                ret = tefTABLE_NOTEXIST;
+            }
+            break;
+        }
+        case T_ASSIGN:
+        case T_CANCELASSIGN:
+        {
+            if (pEntry != NULL)
+            {
+                if (pEntry->isFieldPresent(sfUsers))
                 {
-                case T_CREATE:
-                {
-
-					if (tablentries.size() >= ACCOUNT_OWN_TABLE_COUNT)
-						return tefTABLE_COUNTFULL;
-
-                    if (pEntry != NULL)                ret = tefTABLE_EXISTANDNOTDEL;
-                    else                               ret = tesSUCCESS;
-
-					auto const sleAccount = view.read(keylet::account(sourceID));
-					// Check reserve and funds availability
-					{
-						auto const reserve = view.fees().accountReserve(
-							(*sleAccount)[sfOwnerCount] + 1);
-						STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
-						if (priorBalance < reserve)
-							return tefINSU_RESERVE_TABLE;
-					}
-                    break;
-                }
-                case T_DROP:
-                {
-                    if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = tefTABLE_NOTEXIST;
-
-                    break;
-                }
-                case T_RENAME:
-                {
-                    if (vTableNameStr == tables[0].getFieldVL(sfTableNewName))
-                    {
-                        ret = tefTABLE_SAMENAME;
-                        break;
-                    }
-                    Blob vTableNameNewStr = tables[0].getFieldVL(sfTableNewName);
-                    STEntry const *pEntryNew = getTableEntry(tablentries, vTableNameNewStr);
-
-                    if (pEntry != NULL)
-                    {
-                        if (pEntryNew != NULL)                    ret = tefTABLE_EXISTANDNOTDEL;
-                        else   					                  ret = tesSUCCESS;
-                    }
-                    else
-                    {
-                        ret = tefTABLE_NOTEXIST;
-                    }
-                    break;
-                }
-                case T_ASSIGN:
-                case T_CANCELASSIGN:
-                {
-                    if (pEntry != NULL)
-                    {
-                        if (pEntry->isFieldPresent(sfUsers))
-                        {
-                            auto& users = pEntry->getFieldArray(sfUsers);
-
-                            if (tx.isFieldPresent(sfUser))
-                            {
-                                auto  addUserID = tx.getAccountID(sfUser);
-
-                                //check user is effective?
-                                auto key = keylet::account(addUserID);
-                                if (!view.exists(key))
-                                {
-                                    return tefBAD_AUTH;
-                                };
-
-                                bool isSameUser = false;
-                                for (auto & user : users)  //check if there same user
-                                {
-                                    auto userID = user.getAccountID(sfUser);
-                                    if (userID == addUserID)
-                                    {
-                                        isSameUser = true;
-                                        auto userFlags = user.getFieldU32(sfFlags);
-                                        if (optype == T_CANCELASSIGN)
-                                        {
-                                            if (!(userFlags & tx.getFieldU32(sfFlags))) //optype == T_CANCELASSIGN but cancel auth not exist
-                                            {
-                                                ret = tefBAD_AUTH_NO;
-                                            }
-                                            else
-                                                ret = tesSUCCESS;
-                                        }
-                                        else
-                                        {
-                                            if (~userFlags & tx.getFieldU32(sfFlags))  //optype == T_ASSIGN and same TableFlags
-                                            {
-                                                ret = tesSUCCESS;
-                                            }
-                                            else
-                                                ret = tefBAD_AUTH_EXIST;
-                                        }
-                                    }
-                                }
-                                if (!isSameUser)  //mean that there no same user
-                                {
-                                    if (optype == T_CANCELASSIGN)
-                                        ret = tefBAD_AUTH_NO;
-                                    else
-                                    {
-                                        //for the first time to assign to one user
-                                        if (users.size() > 0 && users[0].isFieldPresent(sfToken))
-                                        {
-											//cannot grant for 'everyone' if table is confidential
-											if (addUserID == noAccount())
-												return temINVALID;
-                                            // if confidential,for assign operation,tx must contains token field
-                                            if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
-                                                return temINVALID;
-                                        }
-                                        ret = tesSUCCESS;
-                                    }
-                                }
-                            }
-                            else
-                                ret = tefBAD_USER;
-                        }
-                        else
-                        {
-                            if (optype == T_ASSIGN)               ret = tesSUCCESS;
-                            else                                  ret = tefBAD_USER;
-                        }
-                    }
-                    else
-                        ret = tefTABLE_NOTEXIST;
-                    break;
-                }
-                case T_GRANT:
-                {
-					if (tx.isCrossChainUpload())
-					{
-						return tesSUCCESS;
-					}
-
-                    if (pEntry == NULL)
-                    {
-                        return tefTABLE_NOTEXIST;
-                    }
-
-                    if (!pEntry->isFieldPresent(sfUsers))
-                    {
-                        return tefTABLE_STATEERROR;
-                    }
-
                     auto& users = pEntry->getFieldArray(sfUsers);
 
-                    if (!tx.isFieldPresent(sfUser))
+                    if (tx.isFieldPresent(sfUser))
                     {
-                        return tefBAD_USER;
-                    }
+                        auto  addUserID = tx.getAccountID(sfUser);
 
-                    auto  addUserID = tx.getAccountID(sfUser);
-                    //check user is effective?
-                    auto key = keylet::account(addUserID);
-                    if (addUserID != noAccount() && !view.exists(key))
-                    {
-                        return tefBAD_USER;
-                    };
-
-                    uint32_t uAdd = 0, uCancel = 0;
-                    bool bRet = getGrantFlag(tx, uAdd, uCancel);
-                    if (!bRet)
-                    {
-                        return temMALFORMED;
-                    }
-
-                    
-                    bool isSameUser = false;
-                    for (auto & user : users)  //check if there same user
-                    {
-                        auto userID = user.getAccountID(sfUser);
-                        if (userID == addUserID)
+                        //check user is effective?
+                        auto key = keylet::account(addUserID);
+                        if (!view.exists(key))
                         {
-                            isSameUser = true;
-							break;
-                            //auto userFlags = user.getFieldU32(sfFlags);
+                            return tefBAD_AUTH;
+                        };
 
-
-                            //if ((!(userFlags & uCancel)) && !(~userFlags & uAdd))
-                            //{
-                            //    if (uCancel)		return tefBAD_AUTH_NO;
-                            //    if (uAdd)		    return tefBAD_AUTH_EXIST;
-                            //}
-                        }
-                    }
-                    
-					if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
-						return tefTABLE_GRANTFULL;
-                    //if (!isSameUser)  //mean that there no same user
-                    //{
-                    //    if (uCancel != lsfNone && uAdd == lsfNone)
-                    //        return tefBAD_AUTH_NO;
-                    //    else
+                        bool isSameUser = false;
+                        for (auto & user : users)  //check if there same user
                         {
-                            //for the first time to assign to one user
-                            if (users.size() > 0 && users[0].isFieldPresent(sfToken))
+                            auto userID = user.getAccountID(sfUser);
+                            if (userID == addUserID)
                             {
-								//cannot grant for 'everyone' if table is confidential
-								if (addUserID == noAccount())
-									return temINVALID;
-                                if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
-                                    return temINVALID;
+                                isSameUser = true;
+                                auto userFlags = user.getFieldU32(sfFlags);
+                                if (optype == T_CANCELASSIGN)
+                                {
+                                    if (!(userFlags & tx.getFieldU32(sfFlags))) //optype == T_CANCELASSIGN but cancel auth not exist
+                                        ret = tefBAD_AUTH_NO;
+                                }
+                                else
+                                {
+                                    if (~userFlags & tx.getFieldU32(sfFlags))  //optype == T_ASSIGN and same TableFlags
+                                    {
+                                        ret = tesSUCCESS;
+                                    }
+                                    else
+                                        ret = tefBAD_AUTH_EXIST;
+                                }
                             }
-                            ret = tesSUCCESS;
                         }
-                    //}
-
-                    break;
+                        if (!isSameUser)  //mean that there no same user
+                        {
+                            if (optype == T_CANCELASSIGN)
+                                ret = tefBAD_AUTH_NO;
+                            else
+                            {
+                                //for the first time to assign to one user
+                                if (users.size() > 0 && users[0].isFieldPresent(sfToken))
+                                {
+									//cannot grant for 'everyone' if table is confidential
+									if (addUserID == noAccount())
+										return temINVALID;
+                                    // if confidential,for assign operation,tx must contains token field
+                                    if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
+                                        return temINVALID;
+                                }
+                                ret = tesSUCCESS;
+                            }
+                        }
+                    }
+                    else
+                        ret = tefBAD_USER;
                 }
-                case T_RECREATE:
-				case T_ADD_FIELDS:
-				case T_DELETE_FIELDS:
-				case T_MODIFY_FIELDS:
-				case T_CREATE_INDEX:
-				case T_DELETE_INDEX:
+                else
                 {
-                    if (pEntry != NULL)                ret = tesSUCCESS;
-                    else                               ret = tefTABLE_NOTEXIST;
-
-                    break;
-                }
-                default:
-                {
-                    ret = temBAD_OPTYPE;
-                    break;
-                }
+                    if (optype == T_ASSIGN)               ret = tesSUCCESS;
+                    else                                  ret = tefBAD_USER;
                 }
             }
-            else         //table not exist
-            {
-                if (optype >= T_DROP)
-                    ret = tefTABLE_NOTEXIST;
-            }
+            else
+                ret = tefTABLE_NOTEXIST;
+            break;
         }
+        case T_GRANT:
+        {
+			if (tx.isCrossChainUpload())
+			{
+				return tesSUCCESS;
+			}
 
+            if (pEntry == NULL)
+            {
+                return tefTABLE_NOTEXIST;
+            }
+
+            if (!pEntry->isFieldPresent(sfUsers))
+            {
+                return tefTABLE_STATEERROR;
+            }
+
+            auto& users = pEntry->getFieldArray(sfUsers);
+
+            if (!tx.isFieldPresent(sfUser))
+            {
+                return tefBAD_USER;
+            }
+
+            auto  addUserID = tx.getAccountID(sfUser);
+            //check user is effective?
+            auto key = keylet::account(addUserID);
+            if (addUserID != noAccount() && !view.exists(key))
+            {
+                return tefBAD_USER;
+            };
+
+            uint32_t uAdd = 0, uCancel = 0;
+            bool bRet = getGrantFlag(tx, uAdd, uCancel);
+            if (!bRet)
+            {
+                return temMALFORMED;
+            }
+
+                    
+            bool isSameUser = false;
+            for (auto & user : users)  //check if there same user
+            {
+                auto userID = user.getAccountID(sfUser);
+                if (userID == addUserID)
+                {
+                    isSameUser = true;
+					break;
+                }
+            }
+                    
+			if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
+				return tefTABLE_GRANTFULL;
+
+            {
+                //for the first time to assign to one user
+                if (users.size() > 0 && users[0].isFieldPresent(sfToken))
+                {
+					//cannot grant for 'everyone' if table is confidential
+					if (addUserID == noAccount())
+						return temINVALID;
+                    if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
+                        return temINVALID;
+                }
+                ret = tesSUCCESS;
+            }
+
+
+            break;
+        }
+        case T_RECREATE:
+		case T_ADD_FIELDS:
+		case T_DELETE_FIELDS:
+		case T_MODIFY_FIELDS:
+		case T_CREATE_INDEX:
+		case T_DELETE_INDEX:
+        {
+            if (pEntry != NULL)                ret = tesSUCCESS;
+            else                               ret = tefTABLE_NOTEXIST;
+
+            break;
+        }
+        default:
+        {
+            ret = temBAD_OPTYPE;
+            break;
+        }
+        }
         return ret;
     }
 
@@ -560,202 +541,280 @@ namespace ripple {
         TER terResult = tesSUCCESS;
 
         // Open a ledger for editing.
-        auto id = keylet::table(accountId);
-        auto const tablesle = view.peek(id);
-		auto viewJ = app.journal("View");
-        if (!tablesle)
+        auto viewJ = app.journal("View");
+        auto tables = tx.getFieldArray(sfTables);
+        Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
+        auto sTableName = strCopy(vTableNameStr);
+        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
+
+        STObject* pEntry = nullptr;
+        STArray* tableEntries = nullptr;
+        std::shared_ptr<SLE> tableSleExist = nullptr;
+        std::tie(tableSleExist, pEntry, tableEntries) = getTableEntryVar(view, tx);
+        
+		if (pEntry)
 		{
-			//create first table
-            auto const tablesle = std::make_shared<SLE>(
-                ltTABLELIST, id.key);
-            
-            auto result = dirAdd(view, keylet::ownerDir(accountId),
-				tablesle->key(),false, describeOwnerDir(accountId), viewJ);
+			auto& table = *pEntry;
+			if (table.getFieldU32(sfTxnLgrSeq) != view.info().seq || table.getFieldH256(sfTxnLedgerHash) != view.info().hash)
+			{
+				table.setFieldU32(sfPreviousTxnLgrSeq, table.getFieldU32(sfTxnLgrSeq));
+				table.setFieldH256(sfPrevTxnLedgerHash, table.getFieldH256(sfTxnLedgerHash));
+				table.setFieldU32(sfTxnLgrSeq, view.info().seq);
+				table.setFieldH256(sfTxnLedgerHash, view.info().hash);
+			}
+		}
 
-			if (!result)
-				return tecDIR_FULL;
-			(*tablesle)[sfOwnerNode] = *result;
+        //add the new tx to the node
+        switch (optype)
+        {
+        case T_CREATE:
+		{
+            std::shared_ptr<SLE> tableSle = nullptr;
+            if (!bSleChangeEnabled)
+            {
+                STEntry tableEntry;
+                prepareTableEntry(tx, view, &tableEntry);
 
-			STArray tablentries;
-            STObject obj = generateTableEntry(tx, view);
-            tablentries.push_back(obj);
+                if (!tableEntries)
+                {
+                    Keylet key = keylet::tablelist(accountId);
+                    tableSle = std::make_shared<SLE>(ltTABLELIST, key.key);
 
-            tablesle->setFieldArray(sfTableEntries, tablentries);
+                    STArray tableEntries;
+                    tableEntries.push_back(tableEntry);
 
+                    tableSle->setFieldArray(sfTableEntries, tableEntries);
+                }
+                else
+                {
+                    tableEntries->push_back(tableEntry);
+                    view.update(tableSleExist);
+                }
+            }
+            else
+            {
+                Keylet key = keylet::table(accountId, sTableName);
+                tableSle = std::make_shared<SLE>(ltTABLE, key.key);
+                STObject tableEntry(STEntry::getFormat(), sfTableEntry);
+                prepareTableEntry(tx, view, &tableEntry);
+                tableSle->setFieldObject(sfTableEntry, tableEntry);
+            }
+            if (tableSle != nullptr)
+            {
+                auto result = dirAdd(
+                    view,
+                    keylet::ownerDir(accountId),
+                    tableSle->key(),
+                    false,
+                    describeOwnerDir(accountId),
+                    viewJ);
+
+                if (!result)
+                    return tecDIR_FULL;
+                (*tableSle)[sfOwnerNode] = *result;
+                view.insert(tableSle);
+            }
 			//add owner count
 			auto const sleAccount = view.peek(keylet::account(accountId));
 			adjustOwnerCount(view, sleAccount, 1, viewJ);
-
-			view.insert(tablesle);
-        }
-        else
+			break;
+		}
+        case T_DROP:
         {
-            auto &aTableEntries = tablesle->peekFieldArray(sfTableEntries);
-
-            auto const & sTxTables = tx.getFieldArray(sfTables);
-			auto vTableNameStr = sTxTables[0].getFieldVL(sfTableName);
-
-			STEntry* pEntry = getTableEntry(aTableEntries, vTableNameStr);
-			if (pEntry)
-			{
-				auto& table = *pEntry;
-				if (table.getFieldU32(sfTxnLgrSeq) != view.info().seq || table.getFieldH256(sfTxnLedgerHash) != view.info().hash)
-				{
-					table.setFieldU32(sfPreviousTxnLgrSeq, table.getFieldU32(sfTxnLgrSeq));
-					table.setFieldH256(sfPrevTxnLedgerHash, table.getFieldH256(sfTxnLedgerHash));
-					table.setFieldU32(sfTxnLgrSeq, view.info().seq);
-					table.setFieldH256(sfTxnLedgerHash, view.info().hash);
-				}
-			}
-
-            //add the new tx to the node
-            switch (optype)
+            bool bDropped = false;
+            if (tableEntries && pEntry)
             {
-            case T_CREATE:
-			{
-				//create table (not first one)
-				aTableEntries.push_back(generateTableEntry(tx, view));
+                auto iter = std::find_if(
+                    tableEntries->begin(),
+                    tableEntries->end(),
+                    [vTableNameStr](STObject const& item) {
+                        if (!item.isFieldPresent(sfTableName))
+                            return false;
 
-				//add owner count
-				auto const sleAccount = view.peek(keylet::account(accountId));
-				adjustOwnerCount(view, sleAccount, 1, viewJ);
-				break;
-			}
-            case T_DROP:
-            {
-				auto iter(aTableEntries.end());
-				iter = std::find_if(aTableEntries.begin(), aTableEntries.end(),
-					[vTableNameStr](STObject const &item) {
-					if (!item.isFieldPresent(sfTableName))  return false;
-
-					return item.getFieldVL(sfTableName) == vTableNameStr;
-				});
-
-				if (iter != aTableEntries.end())
-				{
-					aTableEntries.erase(iter);
-
-					auto const sleAccount = view.peek(keylet::account(accountId));
-					adjustOwnerCount(view, sleAccount, -1, viewJ);
-				}
-
-                break;
-            }
-            case  T_RENAME:
-            {
-				STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
-                if (pEntry)
+                        return item.getFieldVL(sfTableName) == vTableNameStr;
+                    });
+                if (iter != tableEntries->end())
                 {
-                    ripple::Blob tableNewName;
-                    if (sTxTables[0].isFieldPresent(sfTableNewName))
-                    {
-                        tableNewName = sTxTables[0].getFieldVL(sfTableNewName);
-                    }
-                    pEntry->setFieldVL(sfTableName, tableNewName);
+                    bDropped = true;
+                    tableEntries->erase(iter);
+                    view.update(tableSleExist);
                 }
-                break;
             }
-            case T_ASSIGN:
-            case T_CANCELASSIGN:
-			case T_GRANT:			
+            else if (tableSleExist && pEntry)
             {
-				if (tx.isCrossChainUpload())
-				{
-					return tesSUCCESS;
-				}
-				uint32_t uAdd = 0, uCancel = 0;
-				getGrantFlag(tx, uAdd, uCancel);
-				STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
+                Keylet key = keylet::table(accountId, sTableName);
+                if (!view.dirRemove(
+                        keylet::ownerDir(accountId),
+                        (*tableSleExist)[sfOwnerNode],
+                        tableSleExist->key(),
+                        true))
                 {
-                    if (pEntry->isFieldPresent(sfUsers))
+                    return tefBAD_LEDGER;
+                }
+                view.erase(tableSleExist);
+                bDropped = true;
+            }
+
+			if (bDropped)
+            {
+				auto const sleAccount = view.peek(keylet::account(accountId));
+				adjustOwnerCount(view, sleAccount, -1, viewJ);
+			}
+
+            break;
+        }
+        case  T_RENAME:
+        {
+            if (pEntry)
+            {
+                 ripple::Blob tableNewName;
+                if (tables[0].isFieldPresent(sfTableNewName))
+                {
+                    tableNewName = tables[0].getFieldVL(sfTableNewName);
+                }
+                pEntry->setFieldVL(sfTableName, tableNewName);
+                if (tableEntries)
+                {
+                    view.update(tableSleExist);
+                }
+                else if (tableSleExist && !tableEntries)
+                {
+                    //add new tablesle
+                    std::shared_ptr<SLE> tableSle = nullptr; 
+                    Keylet key = keylet::table(accountId, strCopy(tableNewName));
+                    tableSle = std::make_shared<SLE>(ltTABLE, key.key);
+                    tableSle->setFieldObject(sfTableEntry, *pEntry);
+            
+                    if (tableSle != nullptr)
                     {
-                        auto& users = pEntry->peekFieldArray(sfUsers);
+                        auto result = dirAdd(
+                            view,
+                            keylet::ownerDir(accountId),
+                            tableSle->key(),
+                            false,
+                            describeOwnerDir(accountId),
+                            viewJ);
 
-                        if (tx.isFieldPresent(sfUser))
+                        if (!result)
+                            return tecDIR_FULL;
+                        (*tableSle)[sfOwnerNode] = *result;
+                        view.insert(tableSle);
+                    }
+                    //delete old tablesle
+                    // Keylet oldKey = keylet::table(accountId, sTableName);
+                    if (!view.dirRemove(
+                            keylet::ownerDir(accountId),
+                            (*tableSleExist)[sfOwnerNode],
+                            tableSleExist->key(),
+                            true))
+                    {
+                        return tefBAD_LEDGER;
+                    }
+                    view.erase(tableSleExist);
+                }
+            }
+            
+            break;
+        }
+        case T_ASSIGN:
+        case T_CANCELASSIGN:
+		case T_GRANT:			
+        {
+			if (tx.isCrossChainUpload())
+			{
+				return tesSUCCESS;
+			}
+			uint32_t uAdd = 0, uCancel = 0;
+			getGrantFlag(tx, uAdd, uCancel);
+            {
+                if (pEntry->isFieldPresent(sfUsers))
+                {
+                    auto& users = pEntry->peekFieldArray(sfUsers);
+
+                    if (tx.isFieldPresent(sfUser))
+                    {
+                        auto  addUserID = tx.getAccountID(sfUser);
+
+                        bool isSameUser = false;
+						uint32_t finalFlag = lsfNone;
+                        for (auto & user : users)  //check if there same user
                         {
-                            auto  addUserID = tx.getAccountID(sfUser);
-
-                            bool isSameUser = false;
-							uint32_t finalFlag = lsfNone;
-                            for (auto & user : users)  //check if there same user
+                            auto userID = user.getAccountID(sfUser);
+                            if (userID == addUserID)
                             {
-                                auto userID = user.getAccountID(sfUser);
-                                if (userID == addUserID)
-                                {
-                                    isSameUser = true;
+                                isSameUser = true;
 
-									auto newFlags = user.getFieldU32(sfFlags);
-                                    if (optype == T_ASSIGN)
-                                    {                                        
-                                        if (tx.isFieldPresent(sfFlags))
-                                        {
-                                            newFlags = newFlags | tx.getFieldU32(sfFlags); //add auth of this user                                            
-                                        }
+								auto newFlags = user.getFieldU32(sfFlags);
+                                if (optype == T_ASSIGN)
+                                {                                        
+                                    if (tx.isFieldPresent(sfFlags))
+                                    {
+                                        newFlags = newFlags | tx.getFieldU32(sfFlags); //add auth of this user                                            
                                     }
-									else if (optype == T_CANCELASSIGN)
-									{										
-										if (tx.isFieldPresent(sfFlags))
-										{
-											newFlags = newFlags & (~tx.getFieldU32(sfFlags));   //cancel auth of this user											
-										}
-									}
-									else   //grant optype
-									{
-										newFlags |= uAdd;
-										newFlags &= ~uCancel;
-									}
-									finalFlag = newFlags;
-									user.setFieldU32(sfFlags, newFlags);
-									break;
                                 }
-                            }
-                            if (!isSameUser)  //mean that there no same user
-                            {
-                                // optype must be Auth(preclaim assure that),just add a new user
-                                STObject obj_user(sfUser);
-                                if (tx.isFieldPresent(sfUser))
-                                    obj_user.setAccountID(sfUser, tx.getAccountID(sfUser));
-								if(optype == T_ASSIGN)
-								{
+								else if (optype == T_CANCELASSIGN)
+								{										
 									if (tx.isFieldPresent(sfFlags))
 									{
-										finalFlag = tx.getFieldU32(sfFlags);										
+										newFlags = newFlags & (~tx.getFieldU32(sfFlags));   //cancel auth of this user											
 									}
 								}
-                                else if (optype == T_CANCELASSIGN)
-                                {
-                                    finalFlag = lsfNone;
-                                }
-								else
+								else   //grant optype
 								{
-									finalFlag = (uAdd & ~uCancel);									
+									newFlags |= uAdd;
+									newFlags &= ~uCancel;
 								}
-                                obj_user.setFieldU32(sfFlags, finalFlag);
-
-								if (tx.isFieldPresent(sfToken))
-									obj_user.setFieldVL(sfToken,tx.getFieldVL(sfToken));
-                                users.push_back(obj_user);
-							}
+								finalFlag = newFlags;
+								user.setFieldU32(sfFlags, newFlags);
+								break;
+                            }
                         }
+                        if (!isSameUser)  //mean that there no same user
+                        {
+                            // Optype must be t_grant(preclaim assure that),just add a new user
+                            STObject obj_user(sfUser);
+                            if (tx.isFieldPresent(sfUser))
+                                obj_user.setAccountID(sfUser, tx.getAccountID(sfUser));
+							if(optype == T_ASSIGN)
+							{
+								if (tx.isFieldPresent(sfFlags))
+								{
+									finalFlag = tx.getFieldU32(sfFlags);										
+								}
+							}
+                            else if (optype == T_CANCELASSIGN)
+                            {
+                                finalFlag = lsfNone;
+                            }
+							else
+							{
+								finalFlag = (uAdd & ~uCancel);									
+							}
+                            obj_user.setFieldU32(sfFlags, finalFlag);
+
+							if (tx.isFieldPresent(sfToken))
+								obj_user.setFieldVL(sfToken,tx.getFieldVL(sfToken));
+                            users.push_back(obj_user);
+						}
+                        view.update(tableSleExist);
                     }
                 }
-                break;
             }
-            case T_RECREATE:
-            {
-                STEntry  *pEntry = getTableEntry(aTableEntries, vTableNameStr);
-                LedgerIndex createLgrSeq = view.info().seq; createLgrSeq--;
-                ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--;
-                ripple::uint256 createdTxnHash = tx.getTransactionID();
-                UpdateTableSle(pEntry, createLgrSeq, createdLedgerHash, createdTxnHash);
-                break;
-            }
-            default:
-                break;
-            }
-           
-			view.update(tablesle);
+            break;
         }
+        case T_RECREATE:
+        {
+            LedgerIndex createLgrSeq = view.info().seq; createLgrSeq--;
+            ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--;
+            ripple::uint256 createdTxnHash = tx.getTransactionID();
+            UpdateTableSle(pEntry, createLgrSeq, createdLedgerHash, createdTxnHash);
+            view.update(tableSleExist);
+            break;
+        }
+        default:
+            break;
+        }
+
         return terResult;
     }
 
@@ -767,7 +826,14 @@ namespace ripple {
 		return ChainSqlTx::dispose(txStore, tx);
 	}
 
-    void TableListSet::UpdateTableSle(STEntry *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, LedgerIndex previousTxnLgrSeq, uint256 previousTxnLgrHash)
+    void
+        TableListSet::UpdateTableSle(
+            STObject* pEntry,
+            LedgerIndex createLgrSeq,
+            uint256 createdLedgerHash,
+            uint256 createdTxnHash,
+            LedgerIndex previousTxnLgrSeq,
+            uint256 previousTxnLgrHash)
     {
         pEntry->setFieldU32(sfCreateLgrSeq, createLgrSeq);
         pEntry->setFieldH256(sfCreatedLedgerHash, createdLedgerHash);

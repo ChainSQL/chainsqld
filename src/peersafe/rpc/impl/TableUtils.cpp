@@ -24,6 +24,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <ripple/protocol/ErrorCodes.h>
+#include <ripple/protocol/Feature.h>
 
 namespace ripple {
 
@@ -63,61 +64,160 @@ namespace ripple {
 			return generateRpcError(errMsg);
 	}
 
-	STEntry * getTableEntry(const STArray & aTables, std::string sCheckName)
-	{
-		auto iter(aTables.end());
-		iter = std::find_if(aTables.begin(), aTables.end(),
-			[sCheckName](STObject const &item) {
-			if (!item.isFieldPresent(sfTableName))  return false;
-			auto sTableName = strCopy(item.getFieldVL(sfTableName));
-			return sTableName == sCheckName;
-		});
+	std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntryInner(ReadView const& view,AccountID const& accountId,std::string const& sTableName)
+    {
+        STObject* pEntry = nullptr;
+        STArray* tableEntries = nullptr;
+        Keylet key = keylet::table(accountId, sTableName);
+        if (auto sle = view.read(key))
+        {
+            pEntry = (STObject*)&(sle->getFieldObject(sfTableEntry));
+            return std::make_tuple(sle, pEntry, tableEntries);
+        }
+        else
+        {
+            key = keylet::tablelist(accountId);
+            sle = view.read(key);
+            if (sle)  // table exist
+            {
+		        auto tableNameBlob = strCopy(sTableName);
+                tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
+                pEntry = getTableEntry(*tableEntries, tableNameBlob);
+            }
+            return std::make_tuple(sle, pEntry, tableEntries);
+        }
+        return std::make_tuple(nullptr, pEntry, tableEntries);
+    }
 
-		if (iter == aTables.end())  return NULL;
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntryInnerByNameInDB(ReadView const& view,AccountID const& accountId,std::string const& sTableNameInDB)
+    {
+        STObject* pEntry = nullptr;
+        STArray* tableEntries = nullptr;
 
-		return (STEntry*)(&(*iter));
-	}
+        auto const root = keylet::ownerDir(accountId);
+        auto dirIndex = root.key;
+        auto dir = view.read({ltDIR_NODE, dirIndex});
+        if (!dir)
+             return std::make_tuple(nullptr, pEntry, tableEntries);
+        for (;;)
+        {
+            auto const& entries = dir->getFieldV256(sfIndexes);
+            auto iter = entries.begin();
+            for (; iter != entries.end(); ++iter)
+            {
+                auto const sleNode = view.read(keylet::child(*iter));
+                if (sleNode->getType() == ltTABLE)
+                {
+                    STObject const& table = sleNode->getFieldObject(sfTableEntry);
+                    auto nameInDB = table.getFieldH160(sfNameInDB);
+                    if (sTableNameInDB == to_string(nameInDB))
+                    {
+                       pEntry = (STObject*)&(table);
+                        return std::make_tuple(sleNode, pEntry, tableEntries);
+                    }
+                }
+            }
+            auto const nodeIndex = dir->getFieldU64(sfIndexNext);
+            if (nodeIndex == 0)
+                break;
 
-	STEntry * getTableEntry(const STArray & aTables, Blob& vCheckName)
-	{
-		auto iter(aTables.end());
-		iter = std::find_if(aTables.begin(), aTables.end(),
-			[vCheckName](STObject const &item) {
-			if (!item.isFieldPresent(sfTableName))  return false;
+            dirIndex = keylet::page(root, nodeIndex).key;
+            dir = view.read({ltDIR_NODE, dirIndex});
+            if (!dir)
+                break;
+        }
+        return std::make_tuple(nullptr, pEntry, tableEntries);
+    }
 
-			return item.getFieldVL(sfTableName) == vCheckName;
-		});
+    std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
+    getTableEntryVar(ApplyView& view, const STTx& tx)
+    {
+        AccountID accountId = beast::zero;
+        if (tx.isFieldPresent(sfOwner))
+            accountId = tx.getAccountID(sfOwner);
+        else
+            accountId = tx.getAccountID(sfAccount);
+        auto tables = tx.getFieldArray(sfTables);
+        Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
+	    const std::string sTableName = strCopy(vTableNameStr);
+        STObject* pEntry = nullptr;
+        STArray* tableEntries = nullptr;
+        Keylet key = keylet::table(accountId, sTableName);
+        if (auto sle = view.peek(key))
+        {
+            pEntry = &(sle->peekFieldObject(sfTableEntry));
+            return std::make_tuple(sle, pEntry, tableEntries);
+        }
+        else
+        {
+            key = keylet::tablelist(accountId);
+            sle = view.peek(key);
+            if (sle)  // table exist
+            {
+		        auto tableNameBlob = strCopy(sTableName);
+                tableEntries = (STArray*)&(sle->getFieldArray(sfTableEntries));
+                pEntry = getTableEntry(*tableEntries, tableNameBlob);
+            }
+            return std::make_tuple(sle, pEntry, tableEntries);
+        }
+        return std::make_tuple(nullptr, pEntry, tableEntries);
+    }
+    STEntry*
+    getTableEntry(const STArray& aTables, Blob& vCheckName)
+    {
+        auto iter(aTables.end());
+        iter = std::find_if(
+            aTables.begin(), aTables.end(), [vCheckName](STObject const& item) {
+                if (!item.isFieldPresent(sfTableName))
+                    return false;
 
-		if (iter == aTables.end())  return NULL;
+                return item.getFieldVL(sfTableName) == vCheckName;
+            });
 
-		return (STEntry*)(&(*iter));
-	}
+        if (iter == aTables.end())
+            return NULL;
 
-	STEntry * getTableEntry(ApplyView& view, const STTx& tx)
-	{
-		ripple::uint160  nameInDB;
+        return (STEntry*)(&(*iter));
+    }
 
-		AccountID account;
-		if (tx.isFieldPresent(sfOwner))
-			account = tx.getAccountID(sfOwner);
-		else if (tx.isFieldPresent(sfAccount))
-			account = tx.getAccountID(sfAccount);
-		else
-			return NULL;
-		auto const k = keylet::table(account);
-		SLE::pointer pTableSle = view.peek(k);
-		if (pTableSle == NULL)
-			return NULL;
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntry(ReadView const& view, const STTx& tx)
+    {
+        AccountID accountId = beast::zero;
+        if (tx.isFieldPresent(sfOwner))
+            accountId = tx.getAccountID(sfOwner);
+        else
+            accountId = tx.getAccountID(sfAccount);
 
-		auto &aTableEntries = pTableSle->peekFieldArray(sfTableEntries);
+        auto tables = tx.getFieldArray(sfTables);
+        Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
+        auto sTableName = strCopy(vTableNameStr);
 
-		if (!tx.isFieldPresent(sfTables))
-			return NULL;
-		auto const & sTxTables = tx.getFieldArray(sfTables);
-		Blob vTxTableName = sTxTables[0].getFieldVL(sfTableName);
-		uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
-		return getTableEntry(aTableEntries, vTxTableName);
-	}
+        return getTableEntryInner(view, accountId, sTableName);
+    }
+
+	std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntry(ReadView const& view, AccountID const& accountId, std::string const& sTableName)
+    {
+        return getTableEntryInner(view, accountId, sTableName);
+    }
+
+    std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
+    getTableEntryByNameInDB(ReadView const& view, AccountID const& accountId, std::string const& sTableNameInDB)
+    {
+        return getTableEntryInnerByNameInDB(view, accountId, sTableNameInDB);
+    }
+
+	bool
+    isTableSLEChanged(STObject* pEntry, LedgerIndex iLastSeq, bool bStrictEqual)
+    {
+		if (pEntry == nullptr)
+			return false;
+		return (bStrictEqual ? pEntry->getFieldU32(sfPreviousTxnLgrSeq) == iLastSeq
+                : pEntry->getFieldU32(sfPreviousTxnLgrSeq) >= iLastSeq);
+    }
 
 	bool isChainSqlTableType(const std::string& transactionType) {
 		return transactionType == "TableListSet" ||

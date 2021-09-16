@@ -39,10 +39,11 @@ namespace ripple {
 std::string OperationRule::getOperationRule(ApplyView& view, const STTx& tx)
 {
 	std::string rule;
+    auto tup = getTableEntry(view, tx);
+    auto pEntry = std::get<1>(tup);
 	auto opType = tx.getFieldU16(sfOpType);
-	STEntry *pEntry = getTableEntry(view, tx);
-	if (pEntry != NULL)
-		rule = pEntry->getOperationRule((TableOpType)opType);
+    if (pEntry)
+        rule = STEntry::getOperationRule(*pEntry, (TableOpType)opType);
 	return rule;
 }
 
@@ -312,9 +313,11 @@ TER OperationRule::dealWithTableListSetRule(ApplyContext& ctx, const STTx& tx)
 
 TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 {
-	STEntry* pEntry = getTableEntry(ctx.view(), tx);
-	auto optype = tx.getFieldU16(sfOpType);
-	auto sOperationRule = pEntry->getOperationRule((TableOpType)optype);
+    auto tup = getTableEntry(ctx.view(), tx);
+    auto pEntry = std::get<1>(tup);
+    auto opType = tx.getFieldU16(sfOpType);
+    auto sOperationRule =
+        STEntry::getOperationRule(*pEntry, (TableOpType)opType);
 	if (!sOperationRule.empty())
 	{
 		Json::Value jsonRule;
@@ -325,7 +328,7 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 		Json::Value jsonRaw;
 		if (!Json::Reader().parse(sRaw, jsonRaw))
 			return temBAD_RAW;
-		if (optype == (int)R_INSERT)
+        if (opType == (int)R_INSERT)
 		{
 			//deal with insert condition 
 			std::map<std::string, std::string> mapRule;
@@ -428,7 +431,7 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 				}
 			}
 		}
-		else if (optype == (int)R_UPDATE)
+		else if (opType == (int)R_UPDATE)
 		{
 			std::vector<std::string> vecFields;
 			Json::Value& fields = jsonRule[jss::Fields];
@@ -459,9 +462,10 @@ TER OperationRule::dealWithSqlStatementRule(ApplyContext& ctx, const STTx& tx)
 
 TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, DatabaseCon* pConn)
 {
-	STEntry* pEntry = getTableEntry(ctx.view(), tx);
-	auto optype = tx.getFieldU16(sfOpType);
-	auto sOperationRule = pEntry->getOperationRule((TableOpType)optype);
+    auto tup = getTableEntry(ctx.view(), tx);
+    auto pEntry = std::get<1>(tup);
+    auto opType = tx.getFieldU16(sfOpType);
+    auto sOperationRule = STEntry::getOperationRule(*pEntry, (TableOpType)opType);
 	if (!sOperationRule.empty())
 	{
 		Json::Value jsonRule;
@@ -472,7 +476,7 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, Database
 		Json::Value jsonRaw;
 		if (!Json::Reader().parse(sRaw, jsonRaw))
 			return temBAD_RAW;
-		if (optype == (int)R_INSERT)
+		if (opType == (int)R_INSERT)
 		{
 			//deal with insert condition 
 			std::map<std::string, std::string> mapRule;
@@ -526,9 +530,9 @@ TER OperationRule::adjustInsertCount(ApplyContext& ctx, const STTx& tx, Database
 				ctx.view().update(insertsle);
 			}
 		}
-		else if (optype == (int)R_DELETE)
+		else if (opType == (int)R_DELETE)
 		{
-			sOperationRule = pEntry->getOperationRule(R_INSERT);
+			sOperationRule = STEntry::getOperationRule(*pEntry,R_INSERT);
 			if (sOperationRule.empty())
 				return tesSUCCESS;
 			Json::Value jsonRule;

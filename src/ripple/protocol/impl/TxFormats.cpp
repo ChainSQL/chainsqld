@@ -283,6 +283,8 @@ TxFormats::TxFormats()
 			{ sfTxCheckHash,		 soeOPTIONAL },
 			{ sfAutoFillField,		 soeOPTIONAL },
             { sfTxsHashFillField,    soeOPTIONAL },
+            { sfLedgerSeqField,      soeOPTIONAL },
+            { sfLedgerTimeField,     soeOPTIONAL },
 			{ sfOriginalAddress,     soeOPTIONAL },
 			{ sfTxnLgrSeq,			 soeOPTIONAL },
 			{ sfCurTxHash,			 soeOPTIONAL },

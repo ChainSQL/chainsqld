@@ -147,7 +147,12 @@ TxStore::~TxStore() {
 	
 }
 
-std::pair<bool, std::string> TxStore::Dispose(const STTx& tx, const std::string& sOperationRule /* = "" */, bool bVerifyAffectedRows /* = false */) {
+std::pair<bool, std::string>
+TxStore::Dispose(
+    const STTx& tx,
+    SyncParam const& param,
+    bool bVerifyAffectedRows)
+{
 	std::pair<bool, std::string> ret = {false, "inner error"};
 	do {
 		if (databasecon_ == nullptr) {
@@ -162,9 +167,9 @@ std::pair<bool, std::string> TxStore::Dispose(const STTx& tx, const std::string&
 			ret = { false, "tx's type is unexcepted" };
 			break;
 		}
-
+        
 		STTx2SQL tx2sql(db_type_, databasecon_);
-		std::pair<int, std::string> result = tx2sql.ExecuteSQL(tx, sOperationRule, bVerifyAffectedRows);
+		std::pair<int, std::string> result = tx2sql.ExecuteSQL(tx, param, bVerifyAffectedRows);
 		if (result.first != 0) {
 			std::string errmsg = std::string("Execute failure." + result.second);
 			ret = { false,  errmsg};

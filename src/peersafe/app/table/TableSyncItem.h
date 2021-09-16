@@ -278,8 +278,11 @@ private:
 
 	std::string getOperationRule(const STTx& tx);
 
-	std::pair<bool, std::string> DealTranCommonTx(const STTx &tx);
-	std::pair<bool, std::string> DealWithTx(const std::vector<STTx>& vecTxs);
+	std::pair<bool, std::string> DealTranCommonTx(const STTx &tx,std::uint32_t seq,std::uint32_t closeTime);
+    std::pair<bool, std::string> DealWithTx(
+            const std::vector<STTx>& vecTxs,
+            std::uint32_t seq,
+            std::uint32_t closeTime);
 
 	void InsertPressData(const STTx& tx, uint32_t ledgerSeq,uint32_t ledgerTime);
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);

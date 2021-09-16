@@ -46,15 +46,17 @@ namespace ripple {
 
 
         STEntry();  
-		void init(ripple::Blob tableName, uint160 nameInDB, uint8_t deleted, uint32_t createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash, uint32_t txnLedgerSequence, uint256 txnLedgerhash, uint32_t prevTxnLedgerSequence, uint256 prevTxnLedgerhash, uint256 txCheckhash, STArray users);
 
-		void initOperationRule(ripple::Blob operationRule);
+		static void initOperationRule(STObject& entry,ripple::Blob operationRule);
 
-		std::string getOperationRule(TableOpType opType) const;
+		static std::string getOperationRule(STObject const& entry, TableOpType opType);
 
-		bool hasAuthority(const AccountID& account, TableRoleFlags flag);
+		static bool hasAuthority(
+                    STObject const& entry,
+                    AccountID const& account,
+                    TableRoleFlags flag);
 
-		bool isConfidential();
+		static bool isConfidential(STObject const& entry);
 
         STBase*
             copy(std::size_t n, void* buf) const override
@@ -67,7 +69,7 @@ namespace ripple {
         {
             return emplace(n, buf, std::move(*this));
         }
-    private:
+
         static SOTemplate const& getFormat();
     };
 

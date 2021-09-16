@@ -30,7 +30,98 @@
 #include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
-Json::Value doGetAccountTables(RPC::JsonContext&  context)
+
+void
+getTableInfo(
+    RPC::JsonContext& context,
+    STObject const& table,
+    bool bGetDetailInfo,
+    Json::Value& ret)
+{
+    Json::Value tmp(Json::objectValue);
+    auto nameInDB = table.getFieldH160(sfNameInDB);
+    tmp[jss::nameInDB] = to_string(nameInDB);
+    auto blob = table.getFieldVL(sfTableName);
+    std::string str(blob.begin(), blob.end());
+    tmp[jss::tablename] = str;
+    LedgerIndex iInLedger = table.getFieldU32(sfCreateLgrSeq) + 1;
+    tmp[jss::ledger_index] = iInLedger;
+    uint256 txHash = table.getFieldH256(sfCreatedTxnHash);
+    tmp[jss::tx_hash] = to_string(txHash);
+    if (bGetDetailInfo)
+    {
+        auto tx = context.app.getMasterTransaction().fetch(txHash);
+        if (tx)
+        {
+            auto pTx = tx->getSTransaction();
+            std::vector<STTx> vecTxs =
+                context.app.getMasterTransaction().getTxs(
+                    *pTx, to_string(nameInDB), nullptr, iInLedger);
+            for (auto it = vecTxs.begin(); it != vecTxs.end(); it++)
+            {
+                if ((*it).getFieldU16(sfOpType) == T_CREATE)
+                {
+                    if ((*it).isFieldPresent(sfRaw))
+                    {
+                        auto blob = (*it).getFieldVL(sfRaw);
+                        std::string strRaw(blob.begin(), blob.end());
+                        tmp[jss::raw] = strHex(strRaw);
+                    }
+                    uint256 ledgerHash =
+                        context.app.getLedgerMaster().getHashBySeq(iInLedger);
+                    tmp[jss::ledger_hash] = to_string(ledgerHash);
+
+                    break;
+                }
+            }
+        }
+        tmp[jss::confidential] = STEntry::isConfidential(table);
+
+        auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
+        if (ledger != nullptr)
+        {
+            // tmp["create_time_human"] = to_string(ledger->info().closeTime);
+            tmp["create_time"] =
+                ledger->info().closeTime.time_since_epoch().count();
+        }
+
+        if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
+            context.app.getTxStoreDBConn()
+                    .GetDBConn()
+                    ->getSession()
+                    .get_backend() != nullptr)
+        {
+            auto pConn = context.app.getTxStoreDBConn().GetDBConn();
+            uint160 nameInDB = table.getFieldH160(sfNameInDB);
+
+            std::string sql_str = boost::str(
+                boost::format(R"(SELECT count(*) from t_%s ;)") %
+                to_string(nameInDB));
+            boost::optional<int> count;
+            LockedSociSession sql_session = pConn->checkoutDb();
+            soci::statement st =
+                (sql_session->prepare << sql_str, soci::into(count));
+            try
+            {
+                bool dbret = st.execute(true);
+
+                if (dbret && count)
+                {
+                    tmp[jss::count] = *count;
+                    tmp["table_exist_inDB"] = true;
+                }
+            }
+            catch (std::exception& /*e*/)
+            {
+                tmp["table_exist_inDB"] = false;
+            }
+        }
+    }
+    ret["tables"].append(tmp);
+}
+
+Json::Value
+doGetAccountTables(RPC::JsonContext& context)
 {
 	Json::Value ret(Json::objectValue);
 	auto& params = context.params;
@@ -50,12 +141,13 @@ Json::Value doGetAccountTables(RPC::JsonContext&  context)
 	{
 		return jvAccepted;
 	}
-	std::shared_ptr<ReadView const> ledgerConst;
-	auto result = RPC::lookupLedger(ledgerConst, context);
-	if (!ledgerConst)
+    
+    std::shared_ptr<ReadView const> ledger;
+    auto result = RPC::lookupLedger(ledger, context);
+    if (!ledger)
 		return result;
-	if (!ledgerConst->exists(keylet::account(ownerID)))
-		return rpcError(rpcACT_NOT_FOUND);
+    if (!ledger->exists(keylet::account(ownerID)))
+	    return rpcError(rpcACT_NOT_FOUND);
 
 	ret["tables"] = Json::Value(Json::arrayValue);
 
@@ -64,95 +156,41 @@ Json::Value doGetAccountTables(RPC::JsonContext&  context)
     {
         bGetDetailInfo = true;
     }
-    auto key = keylet::table(ownerID);
 
-    auto ledger = context.app.getLedgerMaster().getValidatedLedger();
-    auto tablesle = ledger->read(key);
-    if (tablesle)
+    auto const root = keylet::ownerDir(ownerID);
+    auto dirIndex = root.key;
+    auto dir = ledger->read({ltDIR_NODE, dirIndex});
+    if (!dir)
+        return ret;
+    for (;;)
     {
-        auto & aTables = tablesle->getFieldArray(sfTableEntries);
-        if (aTables.size() > 0)
+        auto const& entries = dir->getFieldV256(sfIndexes);
+        auto iter = entries.begin();
+
+        for (; iter != entries.end(); ++iter)
         {
-            for (auto table : aTables)
+            auto const sleNode = ledger->read(keylet::child(*iter));
+            if (sleNode->getType() == ltTABLE)
             {
-				Json::Value tmp(Json::objectValue);
-                auto nameInDB = table.getFieldH160(sfNameInDB);
-				tmp[jss::nameInDB] = to_string(nameInDB);
-				auto blob = table.getFieldVL(sfTableName);
-				std::string str(blob.begin(), blob.end());
-				tmp[jss::tablename] = str;
-                LedgerIndex iInLedger = table.getFieldU32(sfCreateLgrSeq) + 1;
-                tmp[jss::ledger_index] = iInLedger;
-                uint256 txHash = table.getFieldH256(sfCreatedTxnHash);
-                tmp[jss::tx_hash] = to_string(txHash);
-                if (bGetDetailInfo)
+                getTableInfo(context, sleNode->getFieldObject(sfTableEntry), bGetDetailInfo, ret);
+            }
+            else if (sleNode->getType() == ltTABLELIST)
+            {
+                auto& aTables = sleNode->getFieldArray(sfTableEntries);
+                for (auto& table : aTables)
                 {
-                    auto  tx = context.app.getMasterTransaction().fetch(txHash);
-					if (tx)
-					{
-						auto  pTx = tx->getSTransaction();
-                        std::vector<STTx> vecTxs = context.app.getMasterTransaction().getTxs(*pTx, to_string(nameInDB), nullptr, iInLedger);
-                        for (auto it = vecTxs.begin(); it != vecTxs.end(); it++)
-                        {
-                            if ((*it).getFieldU16(sfOpType) == T_CREATE)
-                            {
-                                if ((*it).isFieldPresent(sfRaw))
-                                {
-                                    auto blob = (*it).getFieldVL(sfRaw);
-                                    std::string strRaw(blob.begin(), blob.end());
-                                    tmp[jss::raw] = strHex(strRaw);                                    
-                                }
-                                uint256 ledgerHash = context.app.getLedgerMaster().getHashBySeq(iInLedger);
-                                tmp[jss::ledger_hash] = to_string(ledgerHash);
-
-                                break;
-                            }
-                        }						
-					}
-					STEntry* pEntry = (STEntry*)(&table);
-					tmp[jss::confidential] = pEntry->isConfidential();
-
-					auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
-					if (ledger != nullptr)
-					{
-						//tmp["create_time_human"] = to_string(ledger->info().closeTime);
-						tmp["create_time"] = ledger->info().closeTime.time_since_epoch().count();
-					}
-					
-					if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
-						context.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() != nullptr)
-					{
-						auto pConn = context.app.getTxStoreDBConn().GetDBConn();
-						uint160 nameInDB = table.getFieldH160(sfNameInDB);
-
-						std::string sql_str = boost::str(boost::format(
-							R"(SELECT count(*) from t_%s ;)")
-							% to_string(nameInDB));
-						boost::optional<int> count;
-						LockedSociSession sql_session = pConn->checkoutDb();
-						soci::statement st = (sql_session->prepare << sql_str
-							, soci::into(count));
-						try {
-							bool dbret = st.execute(true);
-
-							if (dbret && count)
-							{
-								tmp[jss::count] = *count;
-								tmp["table_exist_inDB"] = true;
-							}
-						}
-						catch (std::exception& /*e*/) {
-							tmp["table_exist_inDB"] = false;
-						}
-					}
+                    getTableInfo(context, table, bGetDetailInfo, ret);
                 }
-				ret["tables"].append(tmp);
             }
         }
-        else
-        {
-			return RPC::make_error(rpcTAB_NOT_EXIST, "There is no table in this account!");
-        }
+        auto const nodeIndex = dir->getFieldU64(sfIndexNext);
+        if (nodeIndex == 0)
+            break;
+
+        dirIndex = keylet::page(root, nodeIndex).key;
+        dir = ledger->read({ltDIR_NODE, dirIndex});
+        if (!dir)
+            break;
     }
 
     return ret;

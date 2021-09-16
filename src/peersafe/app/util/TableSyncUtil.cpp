@@ -1,5 +1,9 @@
 
 #include <peersafe/app/util/TableSyncUtil.h>
+#include <ripple/beast/clock/abstract_clock.h>
+#include <ripple/beast/clock/basic_seconds_clock.h>
+#include <ripple/beast/clock/manual_clock.h>
+#include <chrono>
 namespace ripple{
 
 uint256 TableSyncUtil::GetChainId(const ReadView * pView)
@@ -33,5 +37,25 @@ std::pair<bool, STEntry*> TableSyncUtil::IsTableSLEChanged(const STArray& aTable
 		return std::make_pair(bTableFound, nullptr);
 	else
 		return std::make_pair(bTableFound, (STEntry*)(&(*iter)));
+}
+
+//----------------------------------------------------------------------------------
+SyncParam::SyncParam(std::string const& operationRule) 
+	: ledgerSeq(0), rules(operationRule), ledgerTime("")
+{
+}
+
+SyncParam::SyncParam(
+    std::uint32_t seq,
+    std::string const& operationRule,
+    std::uint32_t closetime)
+    : ledgerSeq(seq), rules(operationRule)
+{
+    using time_point = NetClock::time_point;
+    using duration = NetClock::duration;
+	using namespace std::chrono;
+    auto time = time_point{duration{closetime}};
+    auto sysTime = system_clock::time_point{time.time_since_epoch() + 946684800s};
+    ledgerTime = date::format("%Y-%m-%d %H:%M:%S", sysTime);
 }
 }

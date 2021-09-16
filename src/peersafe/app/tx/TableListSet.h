@@ -57,11 +57,11 @@ public:
     applyHandler(ApplyView& view, const STTx & tx, Schema& app);
     TER doApply () override;
 
-    static
-    STObject generateTableEntry(const STTx &tx, ApplyView& view);
+    static void
+    prepareTableEntry(const STTx& tx, ApplyView& view, STObject* pEntry);
 
     static
-    void UpdateTableSle(STEntry *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash,LedgerIndex previousTxnLgrSeq = 0,uint256 previousTxnLgrHash = uint256());
+    void UpdateTableSle(STObject *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash,LedgerIndex previousTxnLgrSeq = 0,uint256 previousTxnLgrHash = uint256());
 
 	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx) override;
 };

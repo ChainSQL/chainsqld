@@ -23,6 +23,7 @@
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {
 
@@ -57,34 +58,32 @@ namespace ripple {
 	TER ChainSqlTx::preclaim(PreclaimContext const& ctx)
 	{
 		const STTx & tx = ctx.tx;
-		Schema& app = ctx.app;
-		auto j = app.journal("preflightChainSql");
+		auto j = ctx.app.journal("preflightChainSql");
 
-		auto const sleAccount = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
-		// Check reserve and funds availability
-		{
-			auto const reserve = ctx.view.fees().accountReserve(
-				(*sleAccount)[sfOwnerCount]);
-			STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
-			if (priorBalance < reserve + calculateFeePaid(tx))
-				return tefINSUFFICIENT_RESERVE;
-		}
+        if (ctx.tx.getTxnType() != ttSQLTRANSACTION && ctx.tx.getFieldU16(sfOpType) != T_DROP)
+        {
+            auto const sle = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
+            auto const balance = (*sle)[sfBalance].zxc();
+            auto const reserve = ctx.view.fees().accountReserve(
+                (*sle)[sfOwnerCount]);
+            if (balance < reserve + calculateFeePaid(tx))
+                return tecINSUFFICIENT_RESERVE;
+        }
 
 		if (tx.isCrossChainUpload())
 		{
-			AccountID sourceID(tx.getAccountID(sfAccount));
-			auto key = keylet::table(sourceID);
-			auto const tablesle = ctx.view.read(key);
-
 			ripple::uint256 futureHash;
-			if (tablesle && tablesle->isFieldPresent(sfFutureTxHash))
+            std::shared_ptr<SLE const> tableSleExist = nullptr;
+            std::tie(tableSleExist, std::ignore, std::ignore) =
+                getTableEntry(ctx.view, tx);
+            if (tableSleExist && tableSleExist->isFieldPresent(sfFutureTxHash))
 			{
-				futureHash = tablesle->getFieldH256(sfFutureTxHash);
+                futureHash = tableSleExist->getFieldH256(sfFutureTxHash);
 			}
 
 			if (futureHash.isNonZero() && tx.getFieldH256(sfCurTxHash) != futureHash)
 			{
-				JLOG(j.trace()) << "currecnt hash is not equal to the expected hash.";
+				JLOG(j.trace()) << "Current hash is not equal to the expected hash.";
 				return temBAD_TRANSFERORDER;
 			}
 			if (futureHash.isZero() && tx.isFieldPresent(sfOpType) && tx.getFieldU16(sfOpType) == T_REPORT)
@@ -103,11 +102,12 @@ namespace ripple {
 
 		if (tx.isCrossChainUpload())
 		{
-			auto accountId = tx.getAccountID(sfAccount);
-			auto id = keylet::table(accountId);
-			auto const tablesle1 = view.peek(id);
-			tablesle1->setFieldH256(sfFutureTxHash, tx.getFieldH256(sfFutureTxHash));
-			view.update(tablesle1);
+            std::shared_ptr<SLE> tableSleExist = nullptr;
+			std::tie(tableSleExist, std::ignore, std::ignore) =  getTableEntryVar(view, tx);
+            if (tableSleExist)
+                tableSleExist->setFieldH256(
+                    sfFutureTxHash, tx.getFieldH256(sfFutureTxHash));
+            view.update(tableSleExist);
 		}
 		return tesSUCCESS;
 	}

@@ -33,6 +33,7 @@
 #include <peersafe/app/tx/ChainSqlTx.h>
 #include <peersafe/app/util/TableSyncUtil.h>
 #include <ripple/ledger/impl/Tuning.h>
+#include <peersafe/rpc/TableUtils.h>
 
 namespace ripple {    
     
@@ -217,21 +218,18 @@ namespace ripple {
             LedgerSeq_ = index;
             ledgerHash_ = app_.getLedgerMaster().getHashBySeq(index);
 
-            auto const sleAccepted = ledger->read(keylet::table(accountID_));
-            if (sleAccepted == NULL) continue;            
-			
-            const STEntry * pEntry = NULL;
-            auto aTableEntries = sleAccepted->getFieldArray(sfTableEntries);
-            auto retPair = TableSyncUtil::IsTableSLEChanged(aTableEntries, txnLedgerSeq_, sTableNameInDB_,true); 
-			if (retPair.second == NULL)
-			{
-				if (retPair.first)
-					continue;
-				else if(bDropped_) //deleted;bug:RR-559
-					return STORAGE_COMMIT;
-			}				
+            auto tup = getTableEntry(*ledger, accountID_, sTableName_);
+            auto pEntry = std::get<1>(tup);
+            if (!pEntry)
+            {
+                if (bDropped_)  // deleted;bug:RR-559
+                    return STORAGE_COMMIT;
+                continue;
+            }
+            bool changed = isTableSLEChanged(pEntry, txnLedgerSeq_, true);
+            if (!changed && pEntry)
+                continue;			
 			            
-			pEntry = retPair.second;
 			std::vector <uint256> aTx;
 			for (auto const& item : ledger->txMap())
 			{
