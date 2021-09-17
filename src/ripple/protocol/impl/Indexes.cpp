@@ -64,7 +64,7 @@ enum class LedgerNameSpace : std::uint16_t {
 	TABLE_LIST		= 'l',
 	INSERT_LIMIT	= 'i',
 	CHAIN_ID		= 'b',
-	SCHEMA         = 'h',
+	SCHEMA         = 'm',
     ADMIN = 'A',
     FROZEN = 'z',
     SCHEMA_INDEX = 'k',
