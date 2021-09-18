@@ -92,6 +92,7 @@ private:
 
     std::recursive_mutex lock_;
 
+    Ledger_t::ID initAcquireLedgerID_ = beast::zero;
 public:
     /** Constructor.
 

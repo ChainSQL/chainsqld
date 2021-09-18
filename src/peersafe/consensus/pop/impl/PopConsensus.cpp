@@ -79,11 +79,9 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
     // Nothing to do if we are currently working on a ledger
     if (phase_ == ConsensusPhase::accepted)
         return;
-    // Check we are on the proper ledger (this may change phase_)
-    checkLedger();
 
     now_ = now;
-
+        
     if (waitingForInit())
     {
         consensusTime_ = utcTime();
@@ -95,13 +93,22 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
 
         return;
     }
+    else
+    {
+        // Check we are on the proper ledger (this may change phase_)
+        checkLedger();
+    }
+        
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
         if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
         {
-            JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
                             << ":" << prevLedgerID_;
+
+            if (initAcquireLedgerID_ == beast::zero)
+                initAcquireLedgerID_ = prevLedgerID_;
 
             adaptor_.removePoolTxs(
                 newLedger->ledger_->txMap(),
@@ -124,13 +131,17 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
     {
         auto valLedger = adaptor_.getValidLedgerIndex();
         if (view_ > 0 || previousLedger_.seq() > valLedger)
-        {
+        {      
+            auto oldLedger = adaptor_.getValidatedLedger();
+            if (initAcquireLedgerID_ == prevLedgerID_)
+                oldLedger = previousLedger_.ledger_;
+
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
-                << " times of timeout, will rollback to validated ledger "
-                << valLedger;
+                << " times of timeout, will rollback to ledger "
+                << oldLedger->seq() << " with view = 0";
 
-            if (auto oldLedger = adaptor_.getValidatedLedger())
+            if (oldLedger)
             {
                 startRoundInternal(
                     now_,
@@ -452,6 +463,7 @@ PopConsensus::startRoundInternal(
     openTimeMilli_ = utcTime();
     consensusTime_ = openTimeMilli_;
     prevLedgerID_ = prevLedgerID;
+    prevLedgerSeq_ = prevLedger.seq();
     previousLedger_ = prevLedger;
     result_.reset();
     acquired_.clear();
@@ -528,8 +540,10 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     // we need to switch the ledger we're working from
     if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
     {
-        JLOG(j_.info()) << "Have the consensus ledger " << newLedger->seq()
+        JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
                         << ":" << prevLedgerID_;
+        if (initAcquireLedgerID_ == beast::zero)
+            initAcquireLedgerID_ = prevLedgerID_;
 
         adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
@@ -1159,14 +1173,15 @@ PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
 
         if (waitingForInit() && mode_.get() != ConsensusMode::wrongLedger)
         {
-            if (viewChange->prevSeq() > previousLedger_.seq())
+            if (viewChange->prevSeq() > prevLedgerSeq_)
             {
                 JLOG(j_.warn())
                     << "Init time switch to netLedger " << viewChange->prevSeq()
                     << ":" << viewChange->prevHash();
                 prevLedgerID_ = viewChange->prevHash();
-                view_ = viewChange->toView() - 1;
-                checkLedger();
+                prevLedgerSeq_ = viewChange->prevSeq();
+                //view_ = viewChange->toView() - 1;
+                //checkLedger();
             }
             else if (
                 viewChange->prevSeq() == previousLedger_.seq() &&
@@ -1363,7 +1378,7 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
                     << initAnnounce->prevSeq()
                     << ", prevHash=" << initAnnounce->prevHash();
 
-    if (initAnnounce->prevSeq() > previousLedger_.seq())
+    if (initAnnounce->prevSeq() > prevLedgerSeq_)
     {
         // if mode_.get() == ConsensusMode::wrongLedger
         // acquiring a netLedger now, so don't checkLedger.
@@ -1373,7 +1388,8 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
                 << "Init time switch to netLedger " << initAnnounce->prevSeq()
                 << ":" << initAnnounce->prevHash();
             prevLedgerID_ = initAnnounce->prevHash();
-            checkLedger();
+            prevLedgerSeq_ = initAnnounce->prevSeq();
+            //checkLedger();
         }
         else if (initAnnounce->prevHash() == prevLedgerID_)
         {
