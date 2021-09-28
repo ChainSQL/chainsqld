@@ -553,15 +553,20 @@ TableSync::ParseSyncAccount(std::string line)
     
     AccountID userAccount;
     SecretKey secret_key;
-    if (vec.size() == 2 && (vec[1][0] == 'p' || vec[1][0] == 'x'))
+    if (vec.size() == 2)
     {
-        auto tup = ParseSecret(vec[1], "");
-        if (std::get<2>(tup))
+        if ((vec[1][0] == 'p' || vec[1][0] == 'x'))
         {
-            userAccount = std::get<0>(tup);
-            secret_key = std::get<1>(tup);
+            auto tup = ParseSecret(vec[1], "");
+            if (std::get<2>(tup))
+            {
+                userAccount = std::get<0>(tup);
+                secret_key = std::get<1>(tup);
+            }
+            return std::make_tuple(*oAccountID, userAccount,secret_key, true);
         }
-        return std::make_tuple(*oAccountID, userAccount,secret_key, true);
+        return std::make_tuple(*oAccountID, beast::zero, SecretKey(), false);
+       
     }
     else
     {
