@@ -139,7 +139,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
                 << " times of timeout, will rollback to ledger "
-                << oldLedger->seq() << " with view = 0";
+                << oldLedger->seq()
+                << " with view = 0,current ledger:" << previousLedger_.seq();
 
             if (oldLedger)
             {
@@ -1161,16 +1162,19 @@ PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
 {
     JLOG(j_.info()) << "Processing peer ViewChange toView="
                     << viewChange->toView() << ", PublicKey index="
-                    << adaptor_.getPubIndex(viewChange->nodePublic());
+                    << adaptor_.getPubIndex(viewChange->nodePublic())
+                    << ",PrevSeq=" << viewChange->prevSeq()
+                    << ",PrevHash=" << viewChange->prevHash();
 
-    bool saved = viewChangeManager_.recvViewChange(viewChange);
-    if (saved)
+    viewChangeManager_.recvViewChange(viewChange);
+    //bool saved = viewChangeManager_.recvViewChange(viewChange);
+    //if (saved)
     {
         JLOG(j_.info()) << "ViewChange saved, current count of this view is "
                         << viewChangeManager_.viewCount(viewChange->toView());
 
         checkChangeView(viewChange->toView());
-
+        
         if (waitingForInit() && mode_.get() != ConsensusMode::wrongLedger)
         {
             if (viewChange->prevSeq() > prevLedgerSeq_)
@@ -1193,10 +1197,8 @@ PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
             }
         }
     }
-    else if (viewChange->prevSeq() > previousLedger_.seq())
-    {
-        adaptor_.touchAcquringLedger(viewChange->prevHash());
-    }
+
+    adaptor_.touchAcquringLedger(viewChange->prevHash());
 
     return true;
 }
