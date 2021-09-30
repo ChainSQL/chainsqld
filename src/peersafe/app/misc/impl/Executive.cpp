@@ -7,6 +7,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
+#include <eth/vm/utils/keccak.h>
 
 namespace ripple {
 
@@ -111,6 +112,24 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 		} while (accountAlreadyExist);
 	}
 	
+
+	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
+}
+
+bool Executive::create2Opcode(AccountID const& _sender, uint256 const& _endowment,
+	uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress, uint256 const& _salt)
+{
+	eth::bytes serialData;
+	serialData.push_back(0xff);
+	serialData.insert(serialData.end(), _sender.begin(), _sender.end());
+	serialData.insert(serialData.end(), _salt.begin(), _salt.end());
+	
+	uint8_t hashRet[32];
+	eth::keccak(_code.data(), _code.size(), hashRet);
+	serialData.insert(serialData.end(), hashRet, hashRet + 32);
+
+	eth::keccak(serialData.data(), serialData.size(), hashRet);
+	std::memcpy(m_newAddress.data(), hashRet + 12, 20);
 
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }

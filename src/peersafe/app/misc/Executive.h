@@ -66,6 +66,9 @@ public:
 	bool createOpcode(AccountID const& _sender, uint256 const& _endowment,
 		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress);
 
+	bool create2Opcode(AccountID const& _sender, uint256 const& _endowment,
+		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress, uint256 const& _salt);
+
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
