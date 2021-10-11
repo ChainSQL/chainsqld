@@ -456,7 +456,7 @@ void Executive::formatOutput(eth::owning_bytes_ref output)
  	Blob blob;
 
 	//self-define exception in go()
-	if ((str.length() >=4) && (str.substr(0, 4) == "\0\0\0\0"))
+	if (funSig == SELFDEFFUNSIG)
 	{
 		blob = strCopy(str.substr(4,str.size() - 4));
 	}

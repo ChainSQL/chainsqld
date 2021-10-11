@@ -7,6 +7,7 @@
 namespace ripple {
 	const std::string ERRFUNSIG = "08C379A0";
 	const std::string REVERTFUNSIG = "4E487B71";
+	const std::string SELFDEFFUNSIG = "00000000";
 	/**
 	* @brief Message-call/contract-creation executor; useful for executing transactions.
 	*
