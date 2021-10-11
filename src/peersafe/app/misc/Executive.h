@@ -5,6 +5,8 @@
 #include <peersafe/app/misc/ExtVM.h>
 
 namespace ripple {
+	const std::string ERRFUNSIG = "08C379A0";
+	const std::string REVERTFUNSIG = "4E487B71";
 	/**
 	* @brief Message-call/contract-creation executor; useful for executing transactions.
 	*
@@ -106,6 +108,7 @@ private:
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
 	void formatOutput(eth::owning_bytes_ref output);
+	std::string getRevertErr(int64_t errCode);
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
