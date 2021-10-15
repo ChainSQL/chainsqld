@@ -181,6 +181,8 @@ private:
 
     void
     initAnnounce();
+    void
+    initAnnounceToPeer(PublicKey const& pubKey);
 
     void
     startRoundInternal(

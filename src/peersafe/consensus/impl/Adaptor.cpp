@@ -162,7 +162,7 @@ Adaptor::notify(
 }
 
 void
-Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
+Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce, boost::optional<PublicKey> pubKey /* = boost::none */)
 {
     Blob v = initAnnounce.getSerialized();
 
@@ -172,7 +172,10 @@ Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
     consensus.set_msgtype(ConsensusMessageType::mtINITANNOUNCE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    signAndSendMessage(consensus);
+    if (pubKey)
+        signAndSendMessage(*pubKey, consensus); 
+    else
+        signAndSendMessage(consensus);
 }
 
 void
