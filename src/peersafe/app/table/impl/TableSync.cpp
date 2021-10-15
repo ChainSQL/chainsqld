@@ -1858,7 +1858,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                             }
                             if (!bDBTableSync)
                             {
-                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_acctSecretError", "", ""), false);
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_notInSync", "", ""), false);
 							    break;
                             }
                         }
