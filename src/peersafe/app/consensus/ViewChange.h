@@ -12,6 +12,19 @@
 namespace ripple {
 class ViewChange {
 public:
+	ViewChange()
+	{
+	}
+
+	ViewChange(ViewChange const& v):
+		prevSeq_(v.prevSeq()),
+		prevHash_(v.prevHash()),
+		nodePublic_(v.nodePublic()),
+		toView_(v.toView()),
+		signature_(v.signature())
+	{
+	}
+
 	ViewChange(
 		std::uint32_t const prevSeq,
 		uint256 const& prevHash,
@@ -62,6 +75,10 @@ public:
 		return toView_;
 	}
 
+	Buffer const& signature() const
+	{
+		return signature_;
+	}
 	uint256 signingHash() const
 	{
 		return sha512Half(

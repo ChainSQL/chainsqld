@@ -36,7 +36,7 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
 		// 		change.toView() << ",size=" << viewChangeReq_[toView].size();
 		// }
 		// return ret.second;
-		viewChangeReq_[toView][change->nodePublic()] = change;
+		viewChangeReq_[toView][change.nodePublic()] = change;
         return true;
 	}
 	else
