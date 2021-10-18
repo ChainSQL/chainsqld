@@ -13,29 +13,31 @@ bool ViewChangeManager::recvViewChange(ViewChange const& change)
 	uint64_t toView = change.toView();
 	if (viewChangeReq_.find(toView) != viewChangeReq_.end())
 	{
-        /**
-         * Maybe pre round viewchange doesn't be deleted(new consensus round hasn't begin), 
-         * so delete old viewchange here first. otherwise, emplace will failed.
-         */
-        if (viewChangeReq_[toView].find(change.nodePublic()) != viewChangeReq_[toView].end())
-        {
-            auto oldViewChange = viewChangeReq_[toView].find(change.nodePublic())->second;
-            JLOG(j_.info()) << "peerViewChange toView=" << toView
-                << ", pubKey=" << toBase58(TOKEN_NODE_PUBLIC, change.nodePublic()) << " exist, prevSeq=" << oldViewChange.prevSeq()
-                << ", and this viewChange preSeq=" << change.prevSeq();
-            if (oldViewChange.prevSeq() < change.prevSeq())
-            {
-                viewChangeReq_[toView].erase(change.nodePublic());
-            }
-        }
+        // /**
+        //  * Maybe pre round viewchange doesn't be deleted(new consensus round hasn't begin), 
+        //  * so delete old viewchange here first. otherwise, emplace will failed.
+        //  */
+        // if (viewChangeReq_[toView].find(change.nodePublic()) != viewChangeReq_[toView].end())
+        // {
+        //     auto oldViewChange = viewChangeReq_[toView].find(change.nodePublic())->second;
+        //     JLOG(j_.info()) << "peerViewChange toView=" << toView
+        //         << ", pubKey=" << toBase58(TOKEN_NODE_PUBLIC, change.nodePublic()) << " exist, prevSeq=" << oldViewChange.prevSeq()
+        //         << ", and this viewChange preSeq=" << change.prevSeq();
+        //     if (oldViewChange.prevSeq() < change.prevSeq())
+        //     {
+        //         viewChangeReq_[toView].erase(change.nodePublic());
+        //     }
+        // }
 
-		auto ret = viewChangeReq_[toView].emplace(change.nodePublic(), change);
-		if (ret.second)
-		{
-			JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
-				change.toView() << ",size=" << viewChangeReq_[toView].size();
-		}
-		return ret.second;
+		// auto ret = viewChangeReq_[toView].emplace(change.nodePublic(), change);
+		// if (ret.second)
+		// {
+		// 	JLOG(j_.info()) << "peerViewChange viewChangeReq saved,toView=" <<
+		// 		change.toView() << ",size=" << viewChangeReq_[toView].size();
+		// }
+		// return ret.second;
+		viewChangeReq_[toView][v->nodePublic()] = v;
+        return true;
 	}
 	else
 	{
