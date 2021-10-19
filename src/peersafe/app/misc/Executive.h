@@ -5,6 +5,9 @@
 #include <peersafe/app/misc/ExtVM.h>
 
 namespace ripple {
+	const std::string ERRFUNSIG = "08C379A0";
+	const std::string REVERTFUNSIG = "4E487B71";
+	const std::string SELFDEFFUNSIG = "00000000";
 	/**
 	* @brief Message-call/contract-creation executor; useful for executing transactions.
 	*
@@ -66,6 +69,9 @@ public:
 	bool createOpcode(AccountID const& _sender, uint256 const& _endowment,
 		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress);
 
+	bool create2Opcode(AccountID const& _sender, uint256 const& _endowment,
+		uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress, uint256 const& _salt);
+
 	/// Set up the executive for evaluating a bare CALL (message call) operation.
 	/// @returns false if go() must be called (and thus a VM execution in required).
 	bool call(AccountID const& _receiveAddress, AccountID const& _txSender, 
@@ -103,6 +109,7 @@ private:
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
 	void formatOutput(eth::owning_bytes_ref output);
+	std::string getRevertErr(int64_t errCode);
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										

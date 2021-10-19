@@ -162,7 +162,7 @@ Adaptor::notify(
 }
 
 void
-Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
+Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce, boost::optional<PublicKey> pubKey /* = boost::none */)
 {
     Blob v = initAnnounce.getSerialized();
 
@@ -172,7 +172,10 @@ Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce)
     consensus.set_msgtype(ConsensusMessageType::mtINITANNOUNCE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    signAndSendMessage(consensus);
+    if (pubKey)
+        signAndSendMessage(*pubKey, consensus); 
+    else
+        signAndSendMessage(consensus);
 }
 
 void
@@ -275,7 +278,7 @@ void
 Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
 {
     auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
-    if (inboundLedger)
+    if (inboundLedger && !inboundLedger->isComplete() && !inboundLedger->isFailed())
     {
         JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
         inboundLedger->touch();

@@ -7,6 +7,7 @@
 #include <ripple/basics/StringUtilities.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
+#include <eth/vm/utils/keccak.h>
 
 namespace ripple {
 
@@ -115,6 +116,24 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
 }
 
+bool Executive::create2Opcode(AccountID const& _sender, uint256 const& _endowment,
+	uint256 const& _gasPrice, int64_t const& _gas, eth::bytesConstRef const& _code, AccountID const& _originAddress, uint256 const& _salt)
+{
+	eth::bytes serialData;
+	serialData.push_back(0xff);
+	serialData.insert(serialData.end(), _sender.begin(), _sender.end());
+	serialData.insert(serialData.end(), _salt.begin(), _salt.end());
+	
+	uint8_t hashRet[32];
+	eth::keccak(_code.data(), _code.size(), hashRet);
+	serialData.insert(serialData.end(), hashRet, hashRet + 32);
+
+	eth::keccak(serialData.data(), serialData.size(), hashRet);
+	std::memcpy(m_newAddress.data(), hashRet + 12, 20);
+
+	return executeCreate(_sender, _endowment, _gasPrice, _gas, _code, _originAddress);
+}
+
 bool Executive::call(AccountID const& _receiveAddress, AccountID const& _senderAddress,
 	uint256 const& _value, uint256 const& _gasPrice, eth::bytesConstRef const& _data, int64_t const& _gas)
 {
@@ -173,12 +192,12 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         if (ter != tesSUCCESS)
         {
             m_excepted = ter;
-            auto output = get<1>(retPre);
-            m_output =
-                eth::owning_bytes_ref{std::move(output), 0, output.size()};
             return true;
         }
-    }
+        auto output = get<1>(retPre);
+        if (output.size() > 0)
+			m_output = eth::owning_bytes_ref{std::move(output), 0, output.size()};
+	}
     else
     {
         m_gas = _p.gas;
@@ -433,24 +452,59 @@ void Executive::formatOutput(eth::owning_bytes_ref output)
 	}
 
 	auto str = output.toString();
-	Blob blob;
+	std::string funSig = output.size() >= 4 ? strHex(output.data(), output.data()+4) : std::string("");
+ 	Blob blob;
 
 	//self-define exception in go()
-	if ((str.length() >=4) && (str.substr(0, 4) == "\0\0\0\0"))
+	if (funSig == SELFDEFFUNSIG)
 	{
 		blob = strCopy(str.substr(4,str.size() - 4));
-	}// Todo:need some flag instead of the length of str;
-	else if (str.length() >= 100)
+	}
+	else if (funSig == ERRFUNSIG)
 	{
 		uint256 offset = uint256(strCopy(str.substr(4, 32)));
 		uint256 length = uint256(strCopy(str.substr(4 + 32, 32)));
 		blob = strCopy(str.substr(4 + 32 + fromUint256(offset), fromUint256(length)));
+	}
+	else if (funSig == REVERTFUNSIG)
+	{
+		int64_t errCode = fromUint256(uint256(Blob(output.data() + 4, output.data() + output.size())));
+		blob = strCopy(getRevertErr(errCode));
 	}
 	else
 	{
 		blob = strCopy(str);
 	}
 	m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
+}
+
+std::string Executive::getRevertErr(int64_t errCode)
+{
+	switch(errCode)
+	{
+	case 0x00:
+		return std::string("Generic compiler inserted panics.");
+	case 0x01:
+		return std::string("The assert with an argument that evaluates to false.");
+	case 0x11:
+		return std::string("An arithmetic operation results in underflow or overflow.");
+	case 0x12:
+		return std::string("Divide or modulo by zero.");
+	case 0x21:
+		return std::string("Convert a value that is too big or negative into an enum type.");
+	case 0x22:
+		return std::string("Access a storage byte array that is incorrectly encoded.");
+	case 0x31:
+		return std::string("Call .pop() on an empty array.");
+	case 0x32:
+		return std::string("An out-of-bounds or negative index for array.");
+	case 0x41:
+		return std::string("Allocate too much memory or create an array that is too large.");
+	case 0x51:
+		return std::string("Call a zero-initialized variable of internal function type.");
+	default:
+		return std::string("Unkown errCode for assert");
+	}
 }
 
 } // namespace ripple

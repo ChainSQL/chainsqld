@@ -78,6 +78,8 @@ public:
 
     // Last validated ledger ID provided to consensus
     typename Ledger_t::ID prevLedgerID_;
+    Ledger_t::Seq prevLedgerSeq_;
+
     // Last validated ledger seen by consensus
     Ledger_t previousLedger_;
 

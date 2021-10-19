@@ -55,7 +55,7 @@ public:
     bool isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
 
      bool
-    isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
+    isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, std::string uTxDBName, TableSyncItem::SyncTargetType eTargeType);
 
     //get reply
     bool GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, std::weak_ptr<Peer> const& wPeer);

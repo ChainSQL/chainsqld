@@ -17,14 +17,19 @@
 */
 //==============================================================================
 
-#ifndef RIPPLE_APP_MAIN_TUNING_H_INCLUDED
-#define RIPPLE_APP_MAIN_TUNING_H_INCLUDED
+#ifndef RIPPLE_BASICS_SUSTAIN_H_INCLUDED
+#define RIPPLE_BASICS_SUSTAIN_H_INCLUDED
+
+#include <string>
 
 namespace ripple {
 
-constexpr std::size_t fullBelowTargetSize = 5242880;
-constexpr std::chrono::seconds fullBelowExpiration = std::chrono::minutes{30};
+// "Sustain" is a system for a buddy process that monitors the main process
+// and relaunches it on a fault.
+bool HaveSustain ();
+std::string StopSustain ();
+std::string DoSustain ();
 
-}  // namespace ripple
+} // ripple
 
 #endif

@@ -165,7 +165,12 @@ namespace ripple {
 		applyDirect(Schema& app, ApplyView& view, STTx const& tx, beast::Journal j)
 	{
 		auto pfresult = preflight(app, view.openView().rules(), tx, view.flags()| tapNO_CHECK_SIGN, j);
-		auto pcresult = preclaimDirect(pfresult, app, view.openView());
+		// construct a openview copy,and apply change to it
+        std::shared_ptr<OpenView> openView =
+                std::make_shared<OpenView>(view.openView());
+        ((ApplyViewImpl&)view).items().apply(*openView);
+
+		auto pcresult = preclaimDirect(pfresult, app, *openView);
 		auto ret = doApplyDirect(pcresult, app, view);
 		return ret;
 		//return doApplyDirect(pcresult, app, view);

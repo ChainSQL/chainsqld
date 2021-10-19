@@ -168,7 +168,7 @@ namespace eth {
 
 		Instruction opcode = _msg.kind == EVMC_CREATE ? Instruction::CREATE : Instruction::CREATE2;
 
-		CreateResult result = m_extVM.create(value, gas, init, opcode, { { 0 } });
+		CreateResult result = m_extVM.create(value, gas, init, opcode, _msg.create2_salt);
 		evmc_result evmcResult = {};
 		evmcResult.status_code = result.status;
 		evmcResult.gas_left = static_cast<int64_t>(gas);

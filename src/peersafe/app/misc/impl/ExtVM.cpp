@@ -184,19 +184,25 @@ ExtVM::create(
     int64_t& ioGas,
     eth::bytesConstRef const& code,
     eth::Instruction op,
-    evmc_uint256be const& /*salt*/)
+    evmc_uint256be const& salt)
 {
     // CreateResult ret(EVMC_SUCCESS, owning_bytes_ref(),evmc_address());
 
     Executive e(oSle_, envInfo(), depth + 1);
-    assert(op == eth::Instruction::CREATE);
-    bool result = e.createOpcode(
-        fromEvmC(myAddress),
-        fromEvmC(endowment),
-        fromEvmC(gasPrice),
-        ioGas,
-        code,
-        fromEvmC(origin));
+    bool result = false;
+    if (op == eth::Instruction::CREATE)
+    {
+        result = e.createOpcode(fromEvmC(myAddress), fromEvmC(endowment),
+                                fromEvmC(gasPrice), ioGas, code,
+                                fromEvmC(origin));
+    }
+    else
+    {
+        assert(op == eth::Instruction::CREATE2);
+        result = e.create2Opcode(fromEvmC(myAddress), fromEvmC(endowment),
+                                 fromEvmC(gasPrice), ioGas, code,
+                                 fromEvmC(origin), fromEvmC(salt));
+    }
 
     if (!result)
     {

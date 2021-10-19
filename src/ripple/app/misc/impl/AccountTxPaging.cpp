@@ -134,24 +134,18 @@ accountTxPage(
     {
         auto b58acct = idCache.toBase58(account);
         sql = boost::str(
-            boost::format((
-                R"(SELECT AccountTransactions.LedgerSeq,AccountTransactions.TxnSeq,
-            Status,RawTxn,TxnMeta
-            FROM AccountTransactions, Transactions WHERE
-            (AccountTransactions.TransID = Transactions.TransID AND
-            AccountTransactions.Account = '%s' AND
-            AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
+            boost::format(
+                (prefix +
+                 R"((AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
             OR
-            (AccountTransactions.TransID = Transactions.TransID AND
-            AccountTransactions.Account = '%s' AND
-            AccountTransactions.LedgerSeq = '%u' AND
+            (AccountTransactions.LedgerSeq = '%u' AND
             AccountTransactions.TxnSeq >= '%u')
             ORDER BY AccountTransactions.LedgerSeq ASC,
             AccountTransactions.TxnSeq ASC
             LIMIT %u;
             )")) %
-            b58acct % (findLedger + 1) % maxLedger % b58acct % findLedger %
-            findSeq % queryLimit);
+            b58acct % (findLedger + 1) % maxLedger % findLedger % findSeq %
+            queryLimit);
     }
     else if (!forward && (findLedger == 0))
     {
@@ -167,24 +161,18 @@ accountTxPage(
     {
         auto b58acct = idCache.toBase58(account);
         sql = boost::str(
-            boost::format((
-                R"(SELECT AccountTransactions.LedgerSeq,AccountTransactions.TxnSeq,
-            Status,RawTxn,TxnMeta
-            FROM AccountTransactions, Transactions WHERE
-            (AccountTransactions.TransID = Transactions.TransID AND
-            AccountTransactions.Account = '%s' AND
-            AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
+            boost::format(
+                (prefix +
+                 R"((AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
             OR
-            (AccountTransactions.TransID = Transactions.TransID AND
-            AccountTransactions.Account = '%s' AND
-            AccountTransactions.LedgerSeq = '%u' AND
+            (AccountTransactions.LedgerSeq = '%u' AND
             AccountTransactions.TxnSeq <= '%u')
             ORDER BY AccountTransactions.LedgerSeq DESC,
             AccountTransactions.TxnSeq DESC
             LIMIT %u;
             )")) %
-            b58acct % minLedger % (findLedger - 1) % b58acct % findLedger %
-            findSeq % queryLimit);
+            b58acct % minLedger % (findLedger - 1) % findLedger % findSeq %
+            queryLimit);
     }
     else
     {
