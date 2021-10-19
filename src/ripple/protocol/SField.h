@@ -361,6 +361,7 @@ extern SField const sfEpochChange;
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
 extern SF_U8 const sfMethod;
+extern SF_U8 const sfTransactionResultOld;
 extern SF_U8 const sfTickSize;
 extern SF_U8 const sfSchemaStrategy;
 extern SF_U8 const sfSigned;

@@ -1208,7 +1208,11 @@ InboundLedger::processData(
         }
 
         if (san.isUseful())
+        {
             mProgress = true;
+            if(mTimeouts > 0)
+		        mTimeouts = 0;
+        }
 
         mStats += san;
         return san.getGood();

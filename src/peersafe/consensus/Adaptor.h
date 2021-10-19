@@ -321,7 +321,9 @@ public:
         bool haveCorrectLCL);
 
     virtual void
-    InitAnnounce(STInitAnnounce const& initAnnounce);
+    InitAnnounce(
+        STInitAnnounce const& initAnnounce,
+        boost::optional<PublicKey> pubKey = boost::none);
 
     void
     signMessage(protocol::TMConsensus& consensus);

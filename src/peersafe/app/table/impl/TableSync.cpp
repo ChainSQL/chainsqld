@@ -553,15 +553,20 @@ TableSync::ParseSyncAccount(std::string line)
     
     AccountID userAccount;
     SecretKey secret_key;
-    if (vec.size() == 2 && (vec[1][0] == 'p' || vec[1][0] == 'x'))
+    if (vec.size() == 2)
     {
-        auto tup = ParseSecret(vec[1], "");
-        if (std::get<2>(tup))
+        if ((vec[1][0] == 'p' || vec[1][0] == 'x'))
         {
-            userAccount = std::get<0>(tup);
-            secret_key = std::get<1>(tup);
+            auto tup = ParseSecret(vec[1], "");
+            if (std::get<2>(tup))
+            {
+                userAccount = std::get<0>(tup);
+                secret_key = std::get<1>(tup);
+            }
+            return std::make_tuple(*oAccountID, userAccount,secret_key, true);
         }
-        return std::make_tuple(*oAccountID, userAccount,secret_key, true);
+        return std::make_tuple(*oAccountID, beast::zero, SecretKey(), false);
+       
     }
     else
     {
@@ -954,13 +959,12 @@ bool TableSync::isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInf
 
 
 bool
-TableSync::isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType)
+TableSync::isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, std::string uTxDBName, TableSyncItem::SyncTargetType eTargeType)
 {
     std::lock_guard lock(mutexlistTable_);
     std::list<std::shared_ptr<TableSyncItem>>::iterator iter = std::find_if(listTableInfo_.begin(),listTableInfo_.end(),
-        [accountID, sTableName, eTargeType](std::shared_ptr<TableSyncItem> pItem) {
-            bool bExist = (pItem->GetTableName() == sTableName) &&
-                            (pItem->GetAccount() == accountID) &&
+        [uTxDBName, eTargeType](std::shared_ptr<TableSyncItem> pItem) {
+            bool bExist = (pItem->TableNameInDB() == uTxDBName) &&
                             (pItem->TargetType() == eTargeType) &&
                             (pItem->GetSyncState() != TableSyncItem::SYNC_DELETING &&
                                 pItem->GetSyncState() != TableSyncItem::SYNC_REMOVE &&
@@ -1845,7 +1849,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                             bool bDBTableSync = false;
                             if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())
                             {
-                                bDBTableSync = isSync(listTableInfo_, accountID, tableName, TableSyncItem::SyncTarget_db);
+                                bDBTableSync = isSync(listTableInfo_, to_string(uTxDBName), TableSyncItem::SyncTarget_db);
                                 mapTxDBNam2Sync[uTxDBName] = bDBTableSync;
                             }
                             else
@@ -1854,7 +1858,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                             }
                             if (!bDBTableSync)
                             {
-                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_acctSecretError", "", ""), false);
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_notInSync", "", ""), false);
 							    break;
                             }
                         }

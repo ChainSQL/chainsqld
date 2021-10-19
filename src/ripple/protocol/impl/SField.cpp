@@ -58,6 +58,7 @@ SField const sfIndex        (access, STI_HASH256,     258, "index");
 // 8-bit integers
 SF_U8 const sfCloseResolution   (access, STI_UINT8, 1, "CloseResolution");
 SF_U8 const sfMethod            (access, STI_UINT8, 2, "Method");
+SF_U8 const sfTransactionResultOld (access, STI_UINT8, 3, "TransactionResult");
 
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          (access, STI_UINT8, 16, "TickSize");
@@ -241,7 +242,7 @@ SF_Blob const sfGetRule			 (access, STI_VL, 60, "GetRule");
 SF_Blob const sfInsertCountMap   (access, STI_VL, 61, "InsertCountMap");
 SF_Blob const sfTransferFeeMin   (access, STI_VL, 62, "TransferFeeMin");
 SF_Blob const sfTransferFeeMax   (access, STI_VL, 63, "TransferFeeMax");
-SF_Blob const sfContractCode	 (access, STI_VL, 64, "ContractCode");
+SF_Blob const sfContractCode     (access, STI_VL, 64, "ContractCode", SField::sMD_ChangeOrig | SField::sMD_DeleteFinal | SField::sMD_Create);
 SF_Blob const sfContractData	 (access, STI_VL, 65, "ContractData");
 SF_Blob const sfContractTxs      (access, STI_VL, 66, "ContractTxs");
 SF_Blob const sfContractLogs     (access, STI_VL, 67, "ContractLogs");

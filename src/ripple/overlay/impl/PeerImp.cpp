@@ -2408,7 +2408,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
 
-    auto tup = getSchemaInfo("TMValidation:", m->schemaid());
+    auto tup = getSchemaInfo("TMGetObjectByHash:", m->schemaid());
     if (!get<0>(tup))
         return;
     uint256 schemaId = get<1>(tup);
