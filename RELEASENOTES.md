@@ -12,21 +12,154 @@
 如果你是开发者，请访问[www.docs.chainsql.net](http://docs.chainsql.net)
 
 # 进行中
-1. 分片共识，提高tps
-2. 异步共识
+1. 支持Oracle数据库
+2. 智能合约状态存储重新实现
 
 
 # 待发布
-## 版本 1.3.1-rip
-在0.30.6基础上合并ripple1.3.1版本的最新代码
+## 版本 3.2.0
+支持Oracle数据库
 
 # 发布
 
+## 版本3.1.0
+### 新增接口
+1. 新增加获取交易证明的接口 ``tx_merkle_proof`` 与验证接口``tx_merkle_verify``，用来验证交易在链上存在
+2. 增加tx_result接口，只获取交易在链上的共识结果
+
+### 配置项
+1. 增加ledger_tx_tables配置项，可配置节点是否写Transactions表
+```
+[ledger_tx_tables] 
+use_tx_tables = 1   #是否向transaction.db中存储交易内容，默认为1
+save_tx_binary = 0  #Transactions表中是否存储交易详情，默认为0
+use_trace_table = 1 #是否使用TraceTransactions表，默认为1
+```
+2. 支持同步某账户下所有表
+```
+[sync_tables]
+#表的发行帐户地址(只同步非加密表)
+z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs 
+#表的发行帐户地址 解密的私钥（加密表与非加密表都同步）
+z9VF7yQPLcKgUoHwMbzmQBjvPsyMy19ubs xxWFBu6veVgMnAqNf6YFRV2UENRd3
+```
+3. 一张表一个SLE的特性，新特性下一个账户下不再有只能建100张表的限制
+```
+[features]
+TableSLEChange
+```
+
+### 共识优化
+修改pop共识
+- 在``init_time``阶段只收集最高区块，``init_time``过后去要最高区块
+- ``init_time``阶段要的区块，后面5次超时后不回滚到``validated_ledger``
+- 调整``viewChange``机制，修改达不成共识后一直``abnormal``的问题
+
+### 性能优化
+- 解决数据量大时查询交易详情性能差的问题
+- 解决上链完后再进行表同步，内存增涨过快的问题
+- 解决上链完后再进行表同步，一张表同步不完其它表完全不同步的问题
+
+### 功能优化
+1. 智能合约交易，合约执行过程中的异常可以在交易结果中返回
+- 原来只能返回tefCONTRACT_REVERT_INSTRUCTION错误码，错误信息是这个错误码对应的信息
+- 现返回tefCONTRACT_REVERT_INSTRUCTION错误码，错误信息是合约中require语句中自定义的错误
+2. 建表时对多个字段创建索引，之前是创建联合索引，现改为为每个加'index'关键字的字段单独创建一个索引
+4. 新增预编译合约功能，以及表的预编译合约接口
+5. 增加对交易时间、交易所在区块号自填充字段的支持
+
+## 版本3.0.0
+## 1. 主子链支持
+- [主子链设计文档](http://docs.chainsql.net/theory/schema.html)
+- [主子链使用说明](http://docs.chainsql.net/functions/schema.html)
+
+## 2. 共识可插拔
+- [共识可插拔设计文档](http://docs.chainsql.net/theory/consensus.html)
+- [共识可插拔使用说明](http://docs.chainsql.net/functions/consensus.html)
+
+## 3. 密码算法用法修改
+- 国密与非国密算法不能混用，只能选择一种
+- 其它修改
+
+## 版本2.0.0
+ChainSQL2.0 [分片设计](http://docs.chainsql.net/theory/shard.html)
+ChainSQL2.0 [分片使用手册](http://docs.chainsql.net/functions/shard.html)
+
+## 版本1.1.4-pop
+### 1. 主要修改
+1.  [国密算法支持](http://docs.chainsql.net/theory/cryptoAlgorithm.html)
+2.  预编译合约
+3.  单条交易最大支持500KB
+4.  表交易中新增 LONGTEXT 类型字段
+6.  内存泄露等Bug修复
+
+### 2. 使用方式
+1. 新增配置项: [[crypto_alg]](http://docs.chainsql.net/theory/cfg.html#crypto-alg) 
+2. 命令行接口修改: [[validation_create]](http://docs.chainsql.net/interface/cmdLine.html#validation-create) , [[wallet_propose]](http://docs.chainsql.net/interface/cmdLine.html#wallet-propose) 
+3. SDK相关
+    - Node.js SDK 更新到版本 0.70.1
+    - JAVA SDK 更新到版本 1.5.7
+
+## 版本1.0.2-pop
+### 主要修改
+1.  替换智能合约虚拟机执行器，由原先的evmjit替换为Interpreter，兼容新智能合约字节码
+2.  防止SQL注入
+3.  raw字段查询条件支持null
+4.  增加字段sfTxsHashFillField，实现表交易的历史哈希信息记录
+5.  Bug修复
+6.  提高内存的释放速度
+
 ## 版本1.0.1-pop
-新共识版本
+### 1. 主要修改
+1.  共识算法由RPCA改为自研共识算法POP（Proof of Peers），详见[POP 原理介绍](http://docs.chainsql.net/theory/newConsensus.html)
+2.  优化同步入库性能
+
+### 2. 新共识版本特点
+1. Tps提升
+- 发送tps 700-1000 提升到 4000-6000
+- 共识tps 700-1000 提升到 4000-6000
+- 入库tps 500 提升到 2000以上
+2. 出块时间可配， 最小出块时间为1秒，交易能更快达成共识
+3. 可配置是否生成空区块，默认不生成空区块，解决空区块带来的储存空间浪费问题
+4. ChainSQL原有功能及调用方法基本保持不变
+
+
+### 3. 使用方式
+1. 配置文件中增加配置项[[pconsensus]](http://docs.chainsql.net/functions/newConsensus.html#id1)
+2. 区块中包含共识出错的交易，增加查询区块中交易的接口 [[ledger_txs]](http://docs.chainsql.net/functions/newConsensus.html#id3)
+
+### 4. 注意点
+1. 兼容旧共识版本数据
+2. 每个共识节点都维护自己的交易池，从不同节点获取到的账户Sequence可能不同，所以同一账户只能连接同一节点发送交易
 
 ## 版本 0.30.6
-1. 在0.30.5版本基础上修改了一些Bug，添加了一些接口
+### 1.文档修改
+- 首页添加中文说明文档
+
+### 2.功能修改
+- 调整区块缓存时间以及数量的默认值
+- 新增加命令行接口
+    - [ledger_objects] ,统计账本中各类别账户的个数
+    - [node_size]      ,查询和设置节点的缓存级别
+    - [malloc_trim]    ,释放由glibc维护的，未还给系统的内存
+
+- 配置文件中新增配置选项
+    - [ledger_acquire] ,同步区块相关的配置。
+        - skip_blocks  ,表示同步区块时要跳过的区块。
+    - [missing_hashes] ,手动配置节点获取不到区块哈希的区块，每一行配置一个对应的区块号和区块哈希，用冒号分隔区块号和区块哈希。
+- API支持
+    - nodejs-api        更新到版本 0.6.65 
+    - chainsql-java-api 更新到版本 1.5.4
+
+### 3.Bug修改
+- 修复windows release版本，部署合约，节点crash的问题。
+- 修复配置sqlite3数据库，表同步相关的问题。
+- 修复节点运行中，切换节点网络，造成节点crash的问题。
+- 修复节点启动时，数据库表同步的问题。
+- 修复多次循环创建以及删除同一表后，数据库表无法正常同步数据的问题。
+- 修复windows unity 版本编译的问题
+- 修复锁仓发行币能超过信任额度的问题
+
 
 ## 版本 0.30.5
 ### 1. 新特性
