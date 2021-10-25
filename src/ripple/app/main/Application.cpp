@@ -92,6 +92,7 @@
 #include <peersafe/precompiled/PreContractFace.h>
 #include <boost/optional.hpp>
 #include <sstream>
+#include <ripple/basics/Sustain.h>
 
 namespace ripple {
 
@@ -1151,6 +1152,7 @@ ApplicationImp::run()
     JLOG(m_journal.info()) << "Received shutdown request";
     stop(m_journal);
     JLOG(m_journal.info()) << "Done.";
+    StopSustain();
 }
 
 void

@@ -168,7 +168,7 @@ private:
 
     std::shared_mutex mutable mutexSet_;
     std::shared_mutex mutable mutexAvoid_;
-
+    std::shared_mutex mutable mutexMapSynced_;
     std::size_t mMaxTxsInPool;
 
     using TransactionSet =
@@ -185,6 +185,7 @@ private:
 
     sync_status mSyncStatus;
 
+    
     beast::Journal j_;
 };
 

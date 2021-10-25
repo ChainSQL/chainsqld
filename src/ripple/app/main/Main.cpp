@@ -23,6 +23,7 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/app/main/DBInit.h>
 #include <ripple/basics/contract.h>
+#include <ripple/basics/Sustain.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
 #include <ripple/beast/clock/basic_seconds_clock.h>
@@ -716,6 +717,8 @@ run(int argc, char** argv)
         }
     }
 
+
+
     // Construct the logs object at the configured severity
     using namespace beast::severities;
     Severity thresh = kInfo;
@@ -789,6 +792,17 @@ run(int argc, char** argv)
         if (!adjustDescriptorLimit(1024, logs->journal("Application")))
             return -1;
 
+#ifndef DEBUGMOD
+        if (HaveSustain() && !vm.count("fg") && !config->standalone())
+        {
+            auto const ret = DoSustain();
+
+            if (!ret.empty())
+                std::cerr << "Watchdog: " << ret << std::endl;
+        }
+#endif
+
+
         if (vm.count ("debug"))
             setDebugLogSink (logs->makeSink ("Debug", beast::severities::kTrace));
 
@@ -798,13 +812,21 @@ run(int argc, char** argv)
             std::move(config), std::move(logs), std::move(timeKeeper));
 
         if (!app->setup())
+        {
+            StopSustain();
             return -1;
+        }
+            
 
         // With our configuration parsed, ensure we have
         // enough file descriptors available:
         if (!adjustDescriptorLimit(
                 app->fdRequired(), app->logs().journal("Application")))
+        {
+            StopSustain();
             return -1;
+        }
+           
 
         // Start the server
         app->doStart(true /*start timers*/);

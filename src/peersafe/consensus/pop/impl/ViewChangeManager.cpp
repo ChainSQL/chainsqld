@@ -66,11 +66,12 @@ ViewChangeManager::recvViewChange(ViewChange const& v)
     uint64_t toView = v->toView();
     if (viewChangeReq_.find(toView) != viewChangeReq_.end())
     {
-        /**
-         * Maybe pre round viewchange doesn't be deleted(new consensus round
-         * hasn't begin), so delete old viewchange here first. otherwise,
-         * emplace will failed.
-         */
+        ///**
+        // * Maybe pre round viewchange doesn't be deleted(new consensus round
+        // * hasn't begin), so delete old viewchange here first. otherwise,
+        // * emplace will failed.
+        // */
+        /*
         if (viewChangeReq_[toView].find(v->nodePublic()) !=
             viewChangeReq_[toView].end())
         {
@@ -90,6 +91,9 @@ ViewChangeManager::recvViewChange(ViewChange const& v)
 
         auto result = viewChangeReq_[toView].emplace(v->nodePublic(), v);
         return result.second;
+        */
+        viewChangeReq_[toView][v->nodePublic()] = v;
+        return true;
     }
     else
     {
@@ -119,6 +123,13 @@ ViewChangeManager::haveConsensus(
             {
                 count++;
             }
+            else
+            {
+                JLOG(j_.info())
+                    << "Hash not match,prevHash=" << preHash << ","
+                    << "item.prevHash=" << item.second->prevHash()
+                    << ",item.public_key=" << toBase58(TokenType::NodePublic,item.first);
+            }
         }
         if (count >= quorum && toView > curView)
         {
@@ -135,7 +146,7 @@ ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
     auto iter = viewChangeReq_.begin();
     while (iter != viewChangeReq_.end())
     {
-        if (iter->first < newView)
+        if (iter->first <= newView)
         {
             iter = viewChangeReq_.erase(iter);
         }
