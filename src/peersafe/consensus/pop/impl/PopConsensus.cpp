@@ -155,6 +155,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
                 // advanced ledger".
 
                 adaptor_.flushValidations();
+                //In case: ledger closed,but not validated,reopen consensus for the same ledger.
+                adaptor_.clearPoolAvoid(oldLedger->seq() + 1);
             }
         }
     }
