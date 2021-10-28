@@ -4,6 +4,7 @@
 #include <map>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/beast/utility/Journal.h>
+#include <ripple/protocol/STLedgerEntry.h>
 
 namespace ripple {
 class Schema;
@@ -22,6 +23,8 @@ public:
 	}
 
 	uint32_t getAccountSeq(AccountID const& id);
+    uint32_t getAccountSeq(AccountID const& id,std::shared_ptr<const SLE> const sle);
+
 	void resetAccountSeq(AccountID const& id);
 
 	void incrementSeq(AccountID const& id);

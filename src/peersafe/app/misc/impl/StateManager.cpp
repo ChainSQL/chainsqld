@@ -27,6 +27,22 @@ uint32_t StateManager::getAccountSeq(AccountID const& id)
 	}
 }
 
+uint32_t
+StateManager::getAccountSeq(AccountID const& id,std::shared_ptr<const SLE> const sle)
+{
+    std::lock_guard lock(mutex_);
+    if (accountState_.find(id) != accountState_.end() && 
+		accountState_[id].sequence >= sle->getFieldU32(sfSequence))
+    {
+		return accountState_[id].sequence;
+    }
+    else
+    {
+        accountState_[id].sequence = sle->getFieldU32(sfSequence);
+        return sle->getFieldU32(sfSequence);
+    }
+}
+
 void StateManager::resetAccountSeq(AccountID const& id)
 {
 	std::lock_guard lock(mutex_);

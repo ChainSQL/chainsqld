@@ -99,10 +99,10 @@ doAccountInfo(RPC::JsonContext& context)
 			jvAccepted[jss::TransferFeeMin] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMin].asString()));
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
-		if (jvAccepted.isMember(jss::Sequence) && jvAccepted[jss::Sequence].asUInt() 
-			!= context.app.getStateManager().getAccountSeq(accountID))
+
+		if (!params.isMember(jss::ledger_index) && !params.isMember(jss::ledger_hash))
 		{
-			jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq(accountID);
+            jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq( accountID, sleAccepted);
 		}
 
         result[jss::account_data] = jvAccepted;
