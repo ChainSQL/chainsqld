@@ -30,6 +30,7 @@
 #include <ripple/rpc/GRPCHandlers.h>
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <grpc/status.h>
 
@@ -100,9 +101,9 @@ doAccountInfo(RPC::JsonContext& context)
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
 
-		if (!params.isMember(jss::ledger_index) && !params.isMember(jss::ledger_hash))
+		if (ledger->open())
 		{
-            jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq( accountID, sleAccepted);
+            jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq(accountID, sleAccepted);
 		}
 
         result[jss::account_data] = jvAccepted;
