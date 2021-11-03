@@ -242,6 +242,7 @@ void VM::int64ToIntxUint256(int64_t num)
 void VM::fetchInstruction()
 {
     m_OP = Instruction(m_code[m_PC]);
+    //std::cout << "*** " << (m_PC) << " : 0x" << std::hex << static_cast<int>(m_OP) << std::endl;
     auto const metric = (*m_metrics)[static_cast<size_t>(m_OP)];
     adjustStack(metric.stack_height_required, metric.stack_height_change);
 
