@@ -192,7 +192,6 @@ void GMCheck::gmStand2Cipher(ripple::Blob &cipher)
     {
         const std::string cipherStart = "20000000";
         const int zeroPaddingNum = 104;
-        // auto cipherStartBlob = ripple::strUnHex(cipherStart).first;
         auto cipherStartBlob = *(ripple::strUnHex(cipherStart));
         ripple::Blob cParam(cipher.end() - 32, cipher.end());
         cipher.erase(cipher.end() - 32, cipher.end());
