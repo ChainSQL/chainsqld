@@ -811,6 +811,13 @@ namespace ripple {
             view.update(tableSleExist);
             break;
         }
+        case T_ADD_FIELDS:
+        case T_DELETE_FIELDS:
+        case T_MODIFY_FIELDS:
+        case T_CREATE_INDEX:
+        case T_DELETE_INDEX:
+            view.update(tableSleExist);
+            break;
         default:
             break;
         }

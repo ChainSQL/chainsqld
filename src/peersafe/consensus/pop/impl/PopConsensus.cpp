@@ -130,9 +130,11 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
     if (timeOutCount_ > adaptor_.parms().timeoutCOUNT_ROLLBACK)
     {
         auto valLedger = adaptor_.getValidLedgerIndex();
-        if (view_ > 0 || previousLedger_.seq() > valLedger)
+        //May be view_ = 0 and previousLedger_.seq() < valLedger
+        //if (view_ > 0 || previousLedger_.seq() > valLedger)
         {      
             auto oldLedger = adaptor_.getValidatedLedger();
+            //If we are acquiring ledger just after init phrase,don't switch ledger to validated.
             if (initAcquireLedgerID_ == prevLedgerID_)
                 oldLedger = previousLedger_.ledger_;
 
@@ -308,6 +310,12 @@ PopConsensus::getJson(bool full) const
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
     ret["initialized"] = !waitingForInit();
+
+    ret["timeout_count"] = timeOutCount_;
+
+    ret["mode"] = to_string(mode_.get());
+
+    ret["validated_seq"] = adaptor_.getValidLedgerIndex();
 
     ret["parms"] = adaptor_.parms().getJson();
 
