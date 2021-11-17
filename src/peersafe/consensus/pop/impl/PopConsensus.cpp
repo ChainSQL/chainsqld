@@ -107,8 +107,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
                             << ":" << prevLedgerID_;
 
-            if (initAcquireLedgerID_ == beast::zero)
-                initAcquireLedgerID_ = prevLedgerID_;
+            // if (initAcquireLedgerID_ == beast::zero)
+            //     initAcquireLedgerID_ = prevLedgerID_;
 
             adaptor_.removePoolTxs(
                 newLedger->ledger_->txMap(),
@@ -135,8 +135,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
         {      
             auto oldLedger = adaptor_.getValidatedLedger();
             //If we are acquiring ledger just after init phrase,don't switch ledger to validated.
-            if (initAcquireLedgerID_ == prevLedgerID_)
-                oldLedger = previousLedger_.ledger_;
+            // if (initAcquireLedgerID_ == prevLedgerID_)
+            //     oldLedger = previousLedger_.ledger_;
 
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
@@ -567,8 +567,8 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     {
         JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
                         << ":" << prevLedgerID_;
-        if (initAcquireLedgerID_ == beast::zero)
-            initAcquireLedgerID_ = prevLedgerID_;
+        // if (initAcquireLedgerID_ == beast::zero)
+        //     initAcquireLedgerID_ = prevLedgerID_;
 
         adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
