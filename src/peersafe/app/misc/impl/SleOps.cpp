@@ -331,9 +331,9 @@ namespace ripple {
 			//
 			if(!nameInDB)
 			{
-				auto ledgerSeq = _ctx.app.getLedgerMaster().getValidLedgerIndex();
-				nameInDB = _ctx.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
-				if (!nameInDB)
+				auto tup = getTableEntry(_ctx.view(), _account, _sTableName);
+				auto pEntry = std::get<1>(tup);
+				if (!pEntry)
 				{
 					auto j = _ctx.app.journal("Executive");
 					JLOG(j.info())
@@ -343,6 +343,7 @@ namespace ripple {
 						<< _sTableName;
 					return std::make_pair(false, tables);
 				}
+				nameInDB = pEntry->getFieldH160(sfNameInDB);
 			}
 			//
 			table.setFieldH160(sfNameInDB, nameInDB);
@@ -434,7 +435,7 @@ namespace ripple {
 
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
-
+	
 	int64_t SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
 		const ApplyContext &_ctx = ctx_;
@@ -458,6 +459,22 @@ namespace ripple {
 
 		return disposeTableTx(tx, _account, _sTableName);
 	}
+
+	int64_t SleOps::updateFieldsTable(AccountID const& _account, TableOpType& _opType, std::string const& _sTableName, std::string const& _raw)
+    {
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_opType, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, _opType);
+			obj.setAccountID(sfAccount, _account);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
+		return disposeTableTx(tx, _account, _sTableName);
+    }
 
 	//CRUD operation
     int64_t
