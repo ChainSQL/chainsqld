@@ -166,26 +166,26 @@ ViewChangeManager::shouldTriggerViewChange(
     if (viewChangeReq_[toView].size() >= quorum)
     {
         auto& mapChange = viewChangeReq_[toView];
-        std::map<int, int> mapSeqCount;
+        std::map<RCLCxLedger::ID, int> mapSeqCount;
         uint32_t prevSeq = 0;
         uint256 prevHash = beast::zero;
         // Check if the prevSeq is consistent between view_change messages.
         for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
         {
-            int prevSeqTmp = iter->second->prevSeq();
-            if (mapSeqCount.find(prevSeqTmp) != mapSeqCount.end())
+            auto prevHashTmp = iter->second->prevHash();
+            if (mapSeqCount.find(prevHashTmp) != mapSeqCount.end())
             {
-                mapSeqCount[prevSeqTmp]++;
+                mapSeqCount[prevHashTmp]++;
             }
             else
             {
-                mapSeqCount[prevSeqTmp] = 1;
+                mapSeqCount[prevHashTmp] = 1;
             }
 
-            if (mapSeqCount[prevSeqTmp] >= quorum)
+            if (mapSeqCount[prevHashTmp] >= quorum)
             {
-                prevSeq = prevSeqTmp;
-                prevHash = iter->second->prevHash();
+                prevSeq = iter->second->prevSeq();
+                prevHash = prevHashTmp;
                 break;
             }
         }
