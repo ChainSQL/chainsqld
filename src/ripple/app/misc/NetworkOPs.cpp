@@ -1835,7 +1835,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 // if (mConsensus.adaptor_.getUseNewConsensus())
                 //{
                 auto const result = doTransactionCheck(
-                    e.transaction, flags, *app_.openLedger().current());
+                    e.transaction, flags, *app_.checkedOpenLedger().current());
                 //}
                 // else
                 //{

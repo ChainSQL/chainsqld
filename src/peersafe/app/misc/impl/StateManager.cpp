@@ -5,17 +5,16 @@
 
 namespace ripple {
 
-uint32_t StateManager::getAccountSeq(AccountID const& id)
+uint32_t
+StateManager::getAccountSeq(AccountID const& id, ReadView const& view)
 {
 	std::lock_guard lock(mutex_);
 	if (accountState_.find(id) != accountState_.end())
 	{
 		return accountState_[id].sequence;
 	}
-
-	assert(app_.openLedger().current());
 	
-	auto sle = app_.openLedger().current()->read(keylet::account(id));
+	auto sle = view.read(keylet::account(id));
 	if (sle)
 	{
 		accountState_[id].sequence = sle->getFieldU32(sfSequence);

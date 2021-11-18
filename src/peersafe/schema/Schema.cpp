@@ -123,6 +123,7 @@ private:
     PendingSaves pendingSaves_;
     AccountIDCache accountIDCache_;
     boost::optional<OpenLedger> openLedger_;
+    boost::optional<OpenLedger> checkedOpenLedger_;
 
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
@@ -763,6 +764,23 @@ public:
     OpenLedger const&
     openLedger() const override
     {
+        return *openLedger_;
+    }
+
+    virtual OpenLedger&
+    checkedOpenLedger() override
+    {
+        // check if the new openLedger not created.
+        if ((*openLedger_).current()->seq() <=
+            getLedgerMaster().getValidLedgerIndex())
+        {
+            checkedOpenLedger_.reset();
+            checkedOpenLedger_.emplace(
+                app_.getLedgerMaster().getValidatedLedger(),
+                app_.cachedSLEs(),
+                m_journal);
+            return *checkedOpenLedger_;
+        }
         return *openLedger_;
     }
 

@@ -80,6 +80,11 @@ doAccountInfo(RPC::JsonContext& context)
 
     if (jvAccepted)
         return jvAccepted;
+    
+    //check if the new openLedger not created.
+    auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+    if (ledger->open() && ledger->info().seq == ledgerVal->info().seq)
+        ledger = ledgerVal;
 
     auto const sleAccepted = ledger->read(keylet::account(accountID));
     if (sleAccepted)

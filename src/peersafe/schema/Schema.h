@@ -228,6 +228,8 @@ public:
     openLedger() = 0;
     virtual OpenLedger const&
     openLedger() const = 0;
+    virtual OpenLedger&
+    checkedOpenLedger() = 0;
     virtual NodeCache&
     getTempNodeCache() = 0;
     virtual CachedSLEs&

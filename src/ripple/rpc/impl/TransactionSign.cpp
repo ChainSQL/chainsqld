@@ -462,7 +462,8 @@ transactionPreProcessImpl(
                 return rpcError(rpcSRC_ACT_NOT_FOUND);
             }
 			//use new consensus
-			tx_json[jss::Sequence] = app.getStateManager().getAccountSeq(srcAddressID);
+            tx_json[jss::Sequence] =
+                app.getStateManager().getAccountSeq(srcAddressID, *ledger);
 			//use old consensus
 			/*
             auto seq = (*sle)[sfSequence];
@@ -822,7 +823,7 @@ transactionSign(
 {
     using namespace detail;
 
-    auto const& ledger = app.openLedger().current();
+    auto const& ledger = app.checkedOpenLedger().current();
     auto j = app.journal("RPCHandler");
     JLOG(j.debug()) << "transactionSign: " << jvRequest;
 

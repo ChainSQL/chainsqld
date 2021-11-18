@@ -8,7 +8,7 @@
 
 namespace ripple {
 class Schema;
-
+class ReadView;
 class StateManager
 {
 	struct State
@@ -22,7 +22,7 @@ public:
 	{
 	}
 
-	uint32_t getAccountSeq(AccountID const& id);
+	uint32_t getAccountSeq(AccountID const& id,ReadView const& view);
     uint32_t getAccountSeq(AccountID const& id,std::shared_ptr<const SLE> const sle);
 
 	void resetAccountSeq(AccountID const& id);
