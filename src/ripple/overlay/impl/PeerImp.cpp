@@ -2341,6 +2341,15 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
                     }
 #endif
                     publisherListSequences_[pubKey] = *applyResult.sequence;
+
+                    if (app_.getSchema().getWaitinBeginConsensus())
+                    {
+                        app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+                    }
+                    else
+                    {
+                        app_.validators().updateTrusted(app_.getValidations().getCurrentNodeIDs());
+                    }
                 }
                 break;
             case ListDisposition::same_sequence:

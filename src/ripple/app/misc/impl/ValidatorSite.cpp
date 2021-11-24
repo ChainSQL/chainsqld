@@ -98,7 +98,6 @@ ValidatorSite::ValidatorSite(
     , pending_{false}
     , stopping_{false}
     , requestTimeout_{timeout}
-    , waitingBeginConsensus_{false}
     , j_{ j ? *j : app_.logs().journal("ValidatorSite") }
 {
 }
@@ -394,11 +393,10 @@ ValidatorSite::parseJsonResponse(
         case ListDisposition::accepted:{
             JLOG(j_.debug()) << "Applied new validator list from " << uri;
             // begin consensus after apply success
-            if (waitingBeginConsensus_)
+            if (app_.getWaitinBeginConsensus())
             {
                 app_.getOPs().beginConsensus(
                     app_.getLedgerMaster().getClosedLedger()->info().hash);
-                waitingBeginConsensus_ = false;
             }
             else {
                 app_.validators().updateTrusted(app_.getValidations().getCurrentNodeIDs());
@@ -637,10 +635,6 @@ ValidatorSite::getJson() const
 }
 
 
- void
-ValidatorSite::setWaitinBeginConsensus()
-{
-    waitingBeginConsensus_ = true;
-}
+
 
 }  // namespace ripple
