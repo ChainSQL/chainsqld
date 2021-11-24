@@ -255,6 +255,8 @@ public:
     schemaId() = 0;
     virtual SchemaManager&
     getSchemaManager() = 0;
+    virtual bool
+    getWaitinBeginConsensus() = 0;
 };
 
 std::shared_ptr<Schema>

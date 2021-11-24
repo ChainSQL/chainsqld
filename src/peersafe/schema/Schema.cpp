@@ -115,6 +115,7 @@ private:
     std::shared_ptr<Config> config_;
 
     bool m_schemaAvailable;
+    std::atomic<bool> waitingBeginConsensus_;
 
     Application::MutexType m_masterMutex;
     TransactionMaster m_txMaster;
@@ -188,6 +189,8 @@ public:
         , config_(config)
         , m_schemaAvailable(
               schema_params_.schemaId() == beast::zero ? true : false)
+
+        , waitingBeginConsensus_{false}
 
         , m_txMaster(*this)
 
@@ -1137,6 +1140,12 @@ public:
         return app_.getSchemaManager();
     }
 
+    bool
+    getWaitinBeginConsensus() override
+    {
+        return waitingBeginConsensus_;
+    }
+
 private:
     // For a newly-started validator, this is the greatest persisted ledger
     // and new validations must be greater than this.
@@ -1365,7 +1374,7 @@ SchemaImp::setup()
         {
             m_networkOPs->setGenesisLedgerIndex(
                 m_ledgerMaster->getClosedLedger()->info().seq);
-            validatorSites_->setWaitinBeginConsensus();
+            waitingBeginConsensus_ = true;
         }
     }
 
