@@ -231,6 +231,14 @@ TxPool::clearAvoid(LedgerIndex seq)
     mAvoidBySeq.erase(seq);
 }
 
+void
+TxPool::clearAvoid()
+{
+    std::unique_lock lock(mutexAvoid_);
+    mAvoidByHash.clear();
+    mAvoidBySeq.clear();
+}
+
 bool
 TxPool::isAvailable()
 {

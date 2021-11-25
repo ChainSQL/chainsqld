@@ -151,8 +151,12 @@ public:
     // Update avoid set when receiving a Tx set from peers.
     void
     updateAvoid(SHAMap const& map, LedgerIndex seq);
+
     void
     clearAvoid(LedgerIndex seq);
+    
+    void
+    clearAvoid();
 
     bool
     isAvailable();
