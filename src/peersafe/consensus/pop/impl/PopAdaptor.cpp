@@ -130,6 +130,7 @@ PopAdaptor::onCollectFinish(
         {
             JLOG(j_.error())
                 << "fetch transaction " + to_string(txID) + "failed";
+            app_.getTxPool().removeTx(txID);
             continue;
         }
 
@@ -153,6 +154,8 @@ PopAdaptor::onCollectFinish(
         for (auto it = mapAccount2Seq.begin(); it != mapAccount2Seq.end(); it++)
         {
             auto sle = prevLedger->read(keylet::account(it->first));
+            if (!sle)
+                continue;
             std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
             if (a_seq == it->second)
             {
