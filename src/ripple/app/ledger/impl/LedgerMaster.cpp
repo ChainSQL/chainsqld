@@ -292,6 +292,7 @@ LedgerMaster::onConsensusReached(
         }
     }
     checkSubChains();
+    checkLoadLedger();
     app_.getTableSync().TryTableSync();
     tryAdvance();
 }
@@ -1355,6 +1356,30 @@ LedgerMaster::checkSubChains()
                 }
             }
         }
+    }
+}
+
+
+void
+LedgerMaster::checkLoadLedger()
+{
+    if (ledgerLoadInited.exchange(true))
+        return;
+    if (app_.getInboundLedgers().getInfo().size() == 0)
+    {
+        app_.getJobQueue().addJob(
+            jtCheckLoadLedger, "LedgerMaster.checkLoadLedger", [this](Job&) {
+                if (getValidLedgerIndex() > 1)
+                {
+                    JLOG(m_journal.warn()) << "checkLoadLedger load for :"
+                                           << getValidLedgerIndex();
+                    app_.getInboundLedgers().acquire(
+                        mValidLedger.get()->info().hash,
+                        mValidLedger.get()->seq(),
+                        InboundLedger::Reason::GENERIC);
+                }
+                JLOG(m_journal.warn()) << "checkLoadLedger complete!";
+            });
     }
 }
 

@@ -405,6 +405,9 @@ private:
     void
     checkSubChains();
 
+    void
+    checkLoadLedger();
+
 private:
     Schema& app_;
     beast::Journal m_journal;
@@ -487,6 +490,7 @@ private:
     TimeKeeper::time_point upgradeWarningPrevTime_{};
 
     std::atomic_bool subChainInited_{false};
+    std::atomic_bool ledgerLoadInited{false};
 
 private:
     struct Stats

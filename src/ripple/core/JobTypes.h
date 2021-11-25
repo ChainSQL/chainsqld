@@ -71,6 +71,7 @@ add(    jtTABLESYNC,     "tableSync",               1,        false, 0ms,     0m
 add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0ms,     0ms);
 add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0ms,		0ms);
 add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0ms,		0ms);
+add(    jtCheckLoadLedger, "checkLoadLedger",       1,        false, 0ms,       0ms);
 add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0ms,     0ms);
 add(    jtOPERATESQL,    "operateSQL",              10,        false, 0ms,     0ms);
 add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0ms,     0ms);

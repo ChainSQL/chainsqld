@@ -47,6 +47,7 @@ enum JobType {
     jtTABLE_DATA,    // Peer request table data
     
     jtCheckSubTx,	 // check subscribe tx
+    jtCheckLoadLedger,
 
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
