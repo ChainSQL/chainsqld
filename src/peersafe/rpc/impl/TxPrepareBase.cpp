@@ -488,8 +488,9 @@ Json::Value TxPrepareBase::prepareRawEncode()
 	else if (opType == R_INSERT ||
 		opType == R_DELETE ||
 		opType == R_UPDATE ||
-		opType == T_ASSERT)
-	{		
+        opType == T_ASSERT || 
+		(opType >= T_ADD_FIELDS && opType <= T_DELETE_INDEX))
+        {		
 		if (checkConfidential(ownerID_, sTableName_))
 		{
 			auto ret = prepareForOperating();
