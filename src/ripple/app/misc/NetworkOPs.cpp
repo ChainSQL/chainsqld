@@ -2236,6 +2236,8 @@ NetworkOPsImp::switchLastClosedLedger(
     // Update fee computations.
     app_.getTxQ().processClosedLedger(app_, *newLCL, true);
 
+    // Clear avoid when restart consensus for a ledger.
+    app_.getTxPool().clearAvoid(newLCL->seq() + 1);
     // Caller must own master lock
     {
         // Apply tx in old open ledger to new
