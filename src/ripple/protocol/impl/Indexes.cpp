@@ -69,7 +69,7 @@ enum class LedgerNameSpace : std::uint16_t {
     FROZEN = 'z',
     SCHEMA_INDEX = 'k',
     TABLE = 't',
-
+    STATIS = 'I',
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
     CONTRACT [[deprecated]] = 'c',
@@ -367,6 +367,12 @@ Keylet
 table(AccountID const& id, std::string const& tableName) noexcept
 {
     return {ltTABLE, indexHash(LedgerNameSpace::TABLE, id,tableName)};
+}
+
+Keylet
+statis() noexcept
+{
+    return {ltSTATIS, indexHash(LedgerNameSpace::STATIS)};
 }
 
 }  // namespace keylet

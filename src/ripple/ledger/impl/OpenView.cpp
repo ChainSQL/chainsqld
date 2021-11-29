@@ -103,6 +103,12 @@ OpenView::txCount() const
     return txs_.size();
 }
 
+std::size_t
+OpenView::newAccountCount(TxsRawView& to) const
+{
+    return items_.accountCount();
+}
+
 void
 OpenView::apply(TxsRawView& to) const
 {

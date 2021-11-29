@@ -227,6 +227,8 @@ public:
     getConsensusInfo(bool full = true) = 0;
     virtual Json::Value
     getServerInfo(bool human, bool admin, bool counters) = 0;
+    virtual std::string
+    getServerStatus() = 0;
     virtual void
     clearLedgerFetch() = 0;
     virtual Json::Value

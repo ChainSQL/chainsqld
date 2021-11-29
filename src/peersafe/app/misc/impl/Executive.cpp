@@ -8,6 +8,7 @@
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
+#include <peersafe/app/ledger/LedgerAdjust.h>
 
 namespace ripple {
 
@@ -424,8 +425,13 @@ TER Executive::finalize() {
 	m_s.addBalance(sender, m_gas * m_gasPrice);
 
 	// Suicides...
-	if (m_ext) for (auto a : m_ext->sub.selfdestruct) m_s.kill(a);
-
+    if (m_ext)
+        for (auto a : m_ext->sub.selfdestruct)
+        {
+				m_s.kill(a);
+				LedgerAdjust::updateContractCount(m_s.ctx().app, m_s.ctx().view(),CONTRACT_DESTORY);
+        }
+       
 	return m_excepted;
 }
 

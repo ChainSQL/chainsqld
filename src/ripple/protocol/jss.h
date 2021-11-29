@@ -614,6 +614,7 @@ JSS ( Schema );
 JSS ( Admin );
 JSS ( FrozenAccounts );
 JSS ( SchemaIndex );
+JSS ( Statis );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);

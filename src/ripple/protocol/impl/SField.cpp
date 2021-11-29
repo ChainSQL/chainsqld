@@ -120,7 +120,11 @@ SF_U32 const sfTxnLgrSeq           (access, STI_UINT32, 50, "TxnLgrSeq");
 SF_U32 const sfCreateLgrSeq		   (access,	STI_UINT32, 51, "CreateLgrSeq");
 SF_U32 const sfNeedVerify	       (access,	STI_UINT32, 52, "NeedVerify");
 SF_U32 const sfGas				   (access,	STI_UINT32, 55, "Gas");
-
+SF_U32 const sfContractCreateCountField  (access, STI_UINT32, 56, "ContractCreateCountField");
+SF_U32 const sfContractCallCountField    (access, STI_UINT32, 57, "ContractCallCountField");
+SF_U32 const sfTxSuccessCountField       (access, STI_UINT32, 58, "TxSuccessCountField ");
+SF_U32 const sfTxFailureCountField       (access, STI_UINT32, 59, "TxFailureCountField");
+SF_U32 const sfAccountCountField         (access, STI_UINT32, 60, "AccountCountField");
 
 // 64-bit integers
 SF_U64 const sfIndexNext        (access, STI_UINT64, 1, "IndexNext");

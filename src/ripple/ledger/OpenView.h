@@ -164,6 +164,9 @@ public:
     std::size_t
     txCount() const;
 
+    std::size_t
+    newAccountCount(TxsRawView& to) const;
+
     /** Apply changes. */
     void
     apply(TxsRawView& to) const;

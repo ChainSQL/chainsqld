@@ -76,7 +76,7 @@ class TxnDBCon;
 class SHAMapStore;
 class SchemaManager;
 class ConnectionPool;
-
+class PrometheusClient;
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
 template <class Adaptor>
@@ -216,6 +216,8 @@ public:
     getStateManager() = 0;
     virtual ConnectionPool&
     getConnectionPool() = 0;
+    virtual PrometheusClient&
+    getPrometheusClient() = 0;
 
     virtual PathRequests&
     getPathRequests() = 0;

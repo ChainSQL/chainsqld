@@ -78,6 +78,7 @@
 // #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -507,7 +508,7 @@ public:
     Json::Value
     getServerInfo(bool human, bool admin, bool counters) override;
     std::string
-    getServerStatus();
+    getServerStatus() override;
     void
     clearLedgerFetch() override;
     Json::Value
@@ -1232,7 +1233,7 @@ NetworkOPsImp::processHeartbeatTimer()
         reportConsensusStateChange(currPhase);
         mLastConsensusPhase = currPhase;
     }
-
+    app_.getPrometheusClient().timerEntry(now);
     setHeartbeatTimer();
 }
 
