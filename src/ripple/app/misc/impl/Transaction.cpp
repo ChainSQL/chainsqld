@@ -31,6 +31,7 @@
 #include <boost/optional.hpp>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -226,7 +227,7 @@ Transaction::load(
 		Blob rawTxn;
         Blob txnMeta;
 		{
-			auto db = app.getTxnDB().checkoutDb();
+			auto db = app.getTxnDB().checkoutDbRead();
 			soci::blob sociRawTxnBlob(*db);
             soci::blob sociTxnMetaBlob(*db);
 			soci::indicator rti;
@@ -252,7 +253,7 @@ Transaction::load(
 		sql.append("';");
 
 		{
-			auto db = app.getTxnDB().checkoutDb();
+			auto db = app.getTxnDB().checkoutDbRead();
 
 			*db << sql, soci::into(ledgerSeq), soci::into(status);
 			if (!db->got_data())

@@ -25,6 +25,7 @@
 #include <ripple/nodestore/impl/DatabaseRotatingImp.h>
 #include <ripple/nodestore/impl/DatabaseShardImp.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -324,7 +325,7 @@ SHAMapStoreImp::run()
     fullBelowCache_ = &(*app_.getNodeFamily().getFullBelowCache(0));
     treeNodeCache_ = &(*app_.getNodeFamily().getTreeNodeCache(0));
     if (app_.config().useTxTables())
-        transactionDb_ = &app_.getTxnDB();
+        transactionDb_ = &app_.getTxnDB().connWrite();
     ledgerDb_ = &app_.getLedgerDB();
 
     if (advisoryDelete_)

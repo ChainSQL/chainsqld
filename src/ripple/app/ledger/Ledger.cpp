@@ -53,6 +53,7 @@
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>

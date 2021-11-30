@@ -20,6 +20,7 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/protocol/jss.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <test/jtx.h>
 #include <test/jtx/Env.h>
 #include <test/jtx/envconfig.h>

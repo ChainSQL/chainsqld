@@ -77,6 +77,7 @@
 #include <peersafe/schema/PeerManager.h>
 // #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/tx/impl/Tuning.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -3051,7 +3052,7 @@ NetworkOPsImp::getAccountTxs(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDB().checkoutDb();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> status;
@@ -3124,7 +3125,7 @@ NetworkOPsImp::getAccountTxsB(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDB().checkoutDb();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> transID;
@@ -3197,7 +3198,7 @@ NetworkOPsImp::getTxsAccount(
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3214,7 +3215,7 @@ NetworkOPsImp::getTxsAccount(
     {
         accountTxPage(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3258,7 +3259,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3275,7 +3276,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPage(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,

@@ -99,6 +99,7 @@ class TxPool;
 class StateManager;
 class NodeStoreScheduler;
 class DatabaseCon;
+class TxnDBCon;
 class SHAMapStore;
 class ResolverAsio;
 class ValidatorKeys;
@@ -289,7 +290,7 @@ public:
     openLedger(SchemaID const& id = beast::zero) = 0;
     virtual OpenLedger const&
     openLedger(SchemaID const& id = beast::zero) const = 0;
-    virtual DatabaseCon&
+    virtual TxnDBCon&
     getTxnDB(SchemaID const& id = beast::zero) = 0;
     virtual DatabaseCon&
     getLedgerDB(SchemaID const& id = beast::zero) = 0;

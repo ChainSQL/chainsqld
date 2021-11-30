@@ -62,6 +62,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -171,7 +172,7 @@ private:
     std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
-    std::unique_ptr<DatabaseCon> mTxnDB;
+    std::unique_ptr<TxnDBCon> mTxnDB;
     std::unique_ptr<DatabaseCon> mLedgerDB;
     std::unique_ptr<DatabaseCon> mWalletDB;
     std::unique_ptr<PeerManager> m_peerManager;
@@ -800,7 +801,7 @@ public:
         return *txQ_;
     }
 
-    DatabaseCon&
+    TxnDBCon&
     getTxnDB() override
     {
         assert(mTxnDB.get() != nullptr);
@@ -835,7 +836,7 @@ public:
             if (config_->useTxTables())
             {
                 // transaction database
-                mTxnDB = std::make_unique<DatabaseCon>(
+                mTxnDB = std::make_unique<TxnDBCon>(
                     setup,
                     TxDBName,
                     TxDBPragma,
