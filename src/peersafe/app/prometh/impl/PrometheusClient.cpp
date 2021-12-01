@@ -34,6 +34,22 @@
 #include <ripple/core/ConfigSections.h>
 namespace ripple {
 
+std::string
+getPort(Schema& app)
+{
+    std::string port;
+    auto prometh_section = app.config().section(ConfigSection::prometheus());
+    if (prometh_section.empty())
+    {
+        return "";
+    }
+    std::pair<std::string, bool> portCfg = prometh_section.find("port");
+    if (portCfg.second && !portCfg.first.empty())
+        port = portCfg.first;
+    else
+        return "";
+    return port;
+}
 
 PrometheusClient::PrometheusClient(
     Schema& app,
@@ -44,7 +60,6 @@ PrometheusClient::PrometheusClient(
     , journal_(journal)
     , cfg_(cfg)
     , pubkey_node_(pubKey)
-    , prometh(cfg_.section(ConfigSection::prometheus()))
     , mPromethTime(app.timeKeeper().closeTime())
     , exposer()
     , registry(std::make_shared<prometheus::Registry>())
@@ -94,17 +109,13 @@ PrometheusClient::PrometheusClient(
     //contractCallCount_gauge.
     // ask the exposer to scrape the registry on incoming HTTP requests
 
-     std::vector<Port> ports;
     try
     {
-        std::string port,ip;
-        std::pair<std::string, bool> portCfg = prometh.find("port");
-        if (portCfg.second && !portCfg.first.empty())
-            port = portCfg.first;
-        std::pair<std::string, bool> ipCfg = prometh.find("ip");
-        if (ipCfg.second && !ipCfg.first.empty())
-            ip = ipCfg.first;
-        auto address = ip + ":"+ port;
+        std::string port;
+        port = getPort(app);
+        if (port.empty())
+            return;
+        auto address = "0.0.0.0:"+ port;
         exposer = std::make_unique<prometheus::Exposer>(address);
         exposer->RegisterCollectable(registry);
     }
@@ -125,10 +136,9 @@ PrometheusClient::~PrometheusClient()
 void
 PrometheusClient::timerEntry(NetClock::time_point const& now)
 {
-    auto prometh_section = app_.config().section(ConfigSection::prometheus());
-	int isStart = get<int>(prometh_section, "isStart");
-
-    if (isStart != 1 || now - mPromethTime < promethDataCollectionInterval)
+    std::string port = getPort(app_);
+     
+    if (port.empty() || now - mPromethTime < promethDataCollectionInterval)
     {
         return;
     }

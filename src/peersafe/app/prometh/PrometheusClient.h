@@ -37,7 +37,6 @@ namespace ripple {
 		Config&                                     cfg_;
 		
         std::string pubkey_node_;
-		ripple::Section prometh;
 		NetClock::time_point mPromethTime;
 		std::shared_ptr<prometheus::Exposer>  exposer;
         std::shared_ptr<prometheus::Registry> registry;
