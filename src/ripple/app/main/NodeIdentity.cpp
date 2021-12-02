@@ -59,7 +59,10 @@ loadNodeIdentity(Application& app)
         }
         else if ('p' == seedStr[0])
         {
-            return randomKeyPair(KeyType::gmalg);
+            SecretKey secKey =
+                *(parseBase58<SecretKey>(TokenType::NodePrivate, seedStr));
+            PublicKey pubKey = derivePublicKey(KeyType::gmalg, secKey);
+            return {pubKey, secKey};
         }
     }
 
@@ -83,7 +86,8 @@ loadNodeIdentity(Application& app)
                 TokenType::NodePublic, pubKO.value_or(""));
 
             // Only use if the public and secret keys are a pair
-            if (sk && pk && (*pk == derivePublicKey(KeyType::secp256k1, *sk)))
+            if (sk && pk &&
+                (*pk == derivePublicKey(CommonKey::chainAlgTypeG, *sk)))
             {
                 secretKey = sk;
                 publicKey = pk;
