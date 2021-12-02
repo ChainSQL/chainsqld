@@ -61,6 +61,8 @@ loadNodeIdentity(Application& app)
         {
             SecretKey secKey =
                 *(parseBase58<SecretKey>(TokenType::NodePrivate, seedStr));
+
+            secKey.keyTypeInt_ = KeyType::gmalg;
             PublicKey pubKey = derivePublicKey(KeyType::gmalg, secKey);
             return {pubKey, secKey};
         }
@@ -80,10 +82,30 @@ loadNodeIdentity(Application& app)
         st.execute();
         while (st.fetch())
         {
-            auto const sk = parseBase58<SecretKey>(
-                TokenType::NodePrivate, priKO.value_or(""));
-            auto const pk = parseBase58<PublicKey>(
-                TokenType::NodePublic, pubKO.value_or(""));
+            boost::optional<SecretKey> sk;
+            boost::optional<PublicKey> pk;
+            switch (CommonKey::chainAlgTypeG)
+            {
+                case KeyType::ed25519:
+                case KeyType::secp256k1: 
+                {
+                    sk = parseBase58<SecretKey>(
+                        TokenType::NodePrivate, priKO.value_or(""));
+                    pk = parseBase58<PublicKey>(
+                        TokenType::NodePublic, pubKO.value_or(""));
+                    break;
+                }
+                case KeyType::gmalg:
+                case KeyType::gmInCard: 
+                {
+                    sk = parseBase58<SecretKey>(
+                        TokenType::NodePrivate, priKO.value_or(""));
+                    (*sk).keyTypeInt_ = KeyType::gmalg;
+                    pk = derivePublicKey(KeyType::gmalg, *sk);
+                    break;
+                }
+            }
+            
 
             // Only use if the public and secret keys are a pair
             if (sk && pk &&
@@ -91,6 +113,7 @@ loadNodeIdentity(Application& app)
             {
                 secretKey = sk;
                 publicKey = pk;
+                break;
             }
         }
     }
