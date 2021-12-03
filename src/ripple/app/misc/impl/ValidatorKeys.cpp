@@ -117,26 +117,16 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 }
                 else
                 {
-                    //GmEncrypt *hEObj = GmEncryptObj::getInstance();
                     std::string privateKeyStrDe58 = decodeBase58Token(seedStr, TokenType::NodePrivate);
-                    // std::string publicKeyStr = config.section(SECTION_VALIDATION_PUBLIC_KEY).lines().front();
-                    std::string publicKeyDe58 = decodeBase58Token(publicKeyStr, TokenType::NodePublic);
-                    if (privateKeyStrDe58.empty() || publicKeyDe58.empty() || publicKeyDe58.size() != 65)
+                    if (privateKeyStrDe58.empty())
                     {
                         configInvalid_ = true;
                         JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
                     secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
                     secretKey.keyTypeInt_ = KeyType::gmalg;
-                    publicKey = PublicKey(Slice(publicKeyDe58.c_str(), publicKeyDe58.size()));
-                    // auto const type = publicKeyType(publicKey.slice());
-                    // if (!type)
-                    // {
-                    //     configInvalid_ = true;
-                    //     JLOG(j.fatal()) << "Invalid publick type in [" SECTION_VALIDATION_PUBLIC_KEY "]";
-                    // }
+                    publicKey = derivePublicKey(KeyType::gmalg, secretKey);
                 }
-                // CommonKey::setAlgType(*type);
             }
             else if (seedStr.size() <= 2)
             {
