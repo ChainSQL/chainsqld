@@ -21,7 +21,9 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/json/json_value.h>
 #include <ripple/rpc/impl/Handler.h>
-
+#include <ripple/net/RPCErr.h>
+#include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/table/TableSync.h>
 #include <mutex>
 
 namespace ripple {
@@ -33,10 +35,36 @@ struct JsonContext;
 Json::Value
 doStop(RPC::JsonContext& context)
 {
-    std::unique_lock lock{context.app.getMasterMutex()};
-    context.app.app().signalStop();
-
-    return RPC::makeObjectValue(systemName() + " server stopping");
+	if (!context.params.isMember(jss::schema))
+    {
+        std::unique_lock lock{context.app.getMasterMutex()};
+        context.app.app().signalStop();
+        if (context.app.app().isShutdown())
+        {
+            return RPC::makeObjectValue(systemName() + " server stopping");
+        }
+    }
+    else
+    {
+         auto const schema = context.params[jss::schema].asString();
+         auto schemaID = from_hex_text<uint256>(schema);
+         if (context.app.getSchemaManager().contains(schemaID))
+         {
+             if(!context.app.app().getSchema(schemaID).doIsStopped())
+             {
+                 context.app.app().getSchema(schemaID).doStop();
+                 if (context.app.app().getSchema(schemaID).doIsStopped())
+                 {
+                     context.app.getSchemaManager().removeSchema(schemaID);
+                     return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
+                 }
+             }
+         }
+         return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
+    }
+    return rpcError(rpcINVALID_PARAMS);
+    
+    
 }
 
 }  // namespace ripple

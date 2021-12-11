@@ -172,6 +172,7 @@ Json::Value doMallocTrim            (RPC::JsonContext&);
 Json::Value doSchemaList			(RPC::JsonContext&);
 Json::Value doSchemaInfo            (RPC::JsonContext&);
 Json::Value doSchemaAccept          (RPC::JsonContext&);
+Json::Value doSchemaStart          (RPC::JsonContext&);
 //for sql operation
 Json::Value doTableDump(RPC::JsonContext&);
 Json::Value doTableDumpStop(RPC::JsonContext&);
