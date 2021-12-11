@@ -1237,7 +1237,7 @@ bool pendSaveValidated (
         app.getJobQueue().addJob(
             jobType, jobName, [&app, ledger, isCurrent](Job&) {
                 saveValidatedLedger(app, ledger, isCurrent);
-            }))
+            },app.doJobCounter()))
     {
         return true;
     }

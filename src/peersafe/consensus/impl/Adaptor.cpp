@@ -260,7 +260,7 @@ Adaptor::acquireLedger(LedgerHash const& hash)
                 [id = hash, &app = app_](Job&) {
                     app.getInboundLedgers().acquire(
                         id, 0, InboundLedger::Reason::CONSENSUS);
-                });
+                }, app_.doJobCounter());
         }
         return boost::none;
     }

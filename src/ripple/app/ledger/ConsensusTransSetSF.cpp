@@ -65,7 +65,7 @@ ConsensusTransSetSF::gotNode(
             app_.getJobQueue().addJob(
                 jtTRANSACTION, "TXS->TXN", [pap, stx](Job&) {
                     pap->getOPs().submitTransaction(stx);
-                });
+                }, app_.doJobCounter());
         }
         catch (std::exception const&)
         {

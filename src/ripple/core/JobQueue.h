@@ -29,7 +29,7 @@
 #include <boost/coroutine/all.hpp>
 #include <boost/range/begin.hpp>  // workaround for boost 1.72 bug
 #include <boost/range/end.hpp>    // workaround for boost 1.72 bug
-
+#include <peersafe/schema/Schema.h>
 namespace ripple {
 
 namespace perf {
@@ -162,7 +162,7 @@ public:
         typename = std::enable_if_t<std::is_same<
             decltype(std::declval<JobHandler&&>()(std::declval<Job&>())),
             void>::value>>
-    bool
+   bool
     addJob(JobType type, std::string const& name, JobHandler&& jobHandler)
     {
         if (auto optionalCountedJob = Stoppable::jobCounter().wrap(
@@ -172,7 +172,22 @@ public:
         }
         return false;
     }
-
+    template <
+        typename JobHandler,
+        typename = std::enable_if_t<std::is_same<
+            decltype(std::declval<JobHandler&&>()(std::declval<Job&>())),
+            void>::value>>
+    bool
+    addJob(JobType type, std::string const& name, JobHandler&& jobHandler,JobCounter& jobCounter)
+    {
+        if (auto optionalCountedJob = jobCounter.wrap(
+                std::forward<JobHandler>(jobHandler)))
+        {
+            return addRefCountedJob(type, name, std::move(*optionalCountedJob));
+        }
+        return false;
+    }
+     
     /** Creates a coroutine and adds a job to the queue which will run it.
 
         @param t The type of job.

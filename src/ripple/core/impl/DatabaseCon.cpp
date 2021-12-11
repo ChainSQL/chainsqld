@@ -161,11 +161,12 @@ public:
     create(
         std::shared_ptr<soci::session> const& session,
         JobQueue& jobQueue,
+        JobCounter& counter,
         Logs& logs)
     {
         std::lock_guard lock{mutex_};
         auto const id = nextId_++;
-        auto const r = makeCheckpointer(id, session, jobQueue, logs);
+        auto const r = makeCheckpointer(id, session, jobQueue, counter, logs);
         checkpointers_[id] = r;
         return r;
     }
@@ -350,11 +351,11 @@ std::unique_ptr<std::vector<std::string> const>
     DatabaseCon::Setup::globalPragma;
 
 void
-DatabaseCon::setupCheckpointing(JobQueue* q, Logs& l)
+DatabaseCon::setupCheckpointing(JobQueue* q, JobCounter* c, Logs& l)
 {
     if (!q)
         Throw<std::logic_error>("No JobQueue");
-    checkpointer_ = checkpointers.create(session_, *q, l);
+    checkpointer_ = checkpointers.create(session_, *q, *c, l);
 }
 
 }  // namespace ripple

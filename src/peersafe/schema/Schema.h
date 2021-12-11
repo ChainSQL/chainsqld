@@ -6,7 +6,7 @@
 #include <peersafe/schema/SchemaParams.h>
 #include <ripple/protocol/Protocol.h>
 #include <boost/asio.hpp>
-
+#include <ripple/core/Stoppable.h>
 namespace ripple {
 
 namespace perf {
@@ -99,6 +99,10 @@ public:
     setup() = 0;
     virtual void
     doSweep() = 0;
+    virtual bool
+    doIsStopped() = 0;
+    virtual JobCounter&
+    doJobCounter() = 0;
     virtual void
     doStop() = 0;
     virtual void

@@ -225,7 +225,7 @@ void TableAssistant::TryTableCheckHash()
 	if (!bTableCheckHashThread_)
 	{
 		bTableCheckHashThread_ = true;
-		app_.getJobQueue().addJob(jtTableCheckHash, "tableCheckHash", [this](Job&) { TableCheckHashThread(); });
+		app_.getJobQueue().addJob(jtTableCheckHash, "tableCheckHash", [this](Job&) { TableCheckHashThread(); }, app_.doJobCounter());
 	}
 }
 

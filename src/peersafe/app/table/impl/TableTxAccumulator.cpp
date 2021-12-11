@@ -92,7 +92,7 @@ namespace ripple {
 		{
 			sweepingThread_ = true;
 			app_.getJobQueue().addJob(jtCheckSubTx, "TableTxAccumulator.sweepCache",
-				[this](Job&) { sweepCache(); });
+				[this](Job&) { sweepCache(); },app_.doJobCounter());
 		}
 	}
 

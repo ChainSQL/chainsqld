@@ -681,7 +681,7 @@ void TableSyncItem::TryOperateSQL()
 
     bOperateSQL_ = true;
 
-    app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); });
+    app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); },app_.doJobCounter());
 }
 
 bool TableSyncItem::IsExist(AccountID accountID,  std::string TableNameInDB)

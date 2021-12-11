@@ -187,7 +187,7 @@ InboundLedger::queueJob()
     app_.getJobQueue().addJob(
         jtLEDGER_DATA, "InboundLedger", [ptr = shared_from_this()](Job&) {
             ptr->invokeOnTimer();
-        });
+        }, app_.doJobCounter());
 }
 
 void
@@ -576,7 +576,7 @@ InboundLedger::done()
             else
                 self->app_.getInboundLedgers().logFailure(
                     self->mHash, self->mSeq);
-        });
+        }, app_.doJobCounter());
 }
 
 /** Request more nodes, perhaps from a specific peer

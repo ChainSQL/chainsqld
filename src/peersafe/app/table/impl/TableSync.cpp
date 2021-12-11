@@ -1206,7 +1206,7 @@ void TableSync::TryTableSync()
         return;
 
     app_.getJobQueue().addJob(
-        jtTABLESYNC, "tableSync", [this](Job&) { TableSyncThread(); });
+        jtTABLESYNC, "tableSync", [this](Job&) { TableSyncThread(); }, app_.doJobCounter());
 }
 
 void TableSync::TableSyncThread()
@@ -1488,7 +1488,7 @@ void TableSync::TryLocalSync()
 
     app_.getJobQueue().addJob(jtTABLELOCALSYNC, "tableLocalSync", [this](Job&) {
         LocalSyncThread();
-    });
+    },app_.doJobCounter());
 }
 void TableSync::LocalSyncThread()
 {

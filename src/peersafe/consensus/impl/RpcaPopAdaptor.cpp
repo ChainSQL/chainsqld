@@ -83,7 +83,7 @@ RpcaPopAdaptor::onAccept(
             JLOG(j_.info())
                 << "doAccept time used:" << utcTime() - timeStart << "ms";
             this->app_.getOPs().endConsensus();
-        });
+        }, app_.doJobCounter());
 }
 
 std::shared_ptr<Ledger const>

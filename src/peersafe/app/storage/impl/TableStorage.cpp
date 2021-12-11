@@ -108,7 +108,7 @@ namespace ripple {
         if (!bTableStorageThread_)
         {
             bTableStorageThread_ = true;
-            app_.getJobQueue().addJob(jtTABLESTORAGE, "tableStorage", [this](Job&) { TableStorageThread(); });
+            app_.getJobQueue().addJob(jtTABLESTORAGE, "tableStorage", [this](Job&) { TableStorageThread(); },app_.doJobCounter());
         }
     }
 

@@ -186,7 +186,7 @@ public:
                 app_.getJobQueue().addJob(
                     jtLEDGER_DATA, "gotStaleData", [this, packet_ptr](Job&) {
                         gotStaleData(packet_ptr);
-                    });
+                    }, app_.doJobCounter());
             }
 
             return false;
@@ -197,7 +197,7 @@ public:
             app_.getJobQueue().addJob(
                 jtLEDGER_DATA, "processLedgerData", [this, hash](Job&) {
                     doLedgerData(hash);
-                });
+                }, app_.doJobCounter());
 
         return true;
     }

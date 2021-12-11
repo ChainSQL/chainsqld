@@ -143,7 +143,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {
                 pApp->getInboundLedgers().acquire(
                     hash, 0, InboundLedger::Reason::CONSENSUS);
-            });
+            }, app_.doJobCounter());
         return boost::none;
     }
 

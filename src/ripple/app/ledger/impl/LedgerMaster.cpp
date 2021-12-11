@@ -1387,7 +1387,7 @@ LedgerMaster::checkLoadLedger()
                         InboundLedger::Reason::GENERIC);
                 }
                 JLOG(m_journal.warn()) << "checkLoadLedger complete!";
-            });
+            }, app_.doJobCounter());
     }
     else
     {
@@ -1586,7 +1586,7 @@ LedgerMaster::tryAdvance()
     if (!mAdvanceThread.exchange(true) && !mValidLedger.empty())
     {
         app_.getJobQueue().addJob(
-            jtADVANCE, "advanceLedger", [this](Job&) { advanceThread(); });
+            jtADVANCE, "advanceLedger", [this](Job&) { advanceThread(); }, app_.doJobCounter());
     }
 }
 
@@ -1706,7 +1706,7 @@ LedgerMaster::newPFWork(
     if (mPathFindThread < 2)
     {
         if (app_.getJobQueue().addJob(
-                jtUPDATE_PF, name, [this](Job& j) { updatePaths(j); }))
+                jtUPDATE_PF, name, [this](Job& j) { updatePaths(j); }, app_.doJobCounter()))
         {
             ++mPathFindThread;
         }
@@ -2045,7 +2045,7 @@ LedgerMaster::fetchForHistory(
                     app_.getJobQueue().addJob(
                         jtADVANCE, "tryFill", [this, ledger](Job& j) {
                             tryFill(j, ledger);
-                        });
+                        }, app_.doJobCounter());
                 }
             }
             progress = true;
@@ -2347,7 +2347,7 @@ LedgerMaster::gotFetchPack(bool progress, std::uint32_t seq)
         app_.getJobQueue().addJob(jtLEDGER_DATA, "gotFetchPack", [&](Job&) {
             app_.getInboundLedgers().gotFetchPack();
             mGotFetchPackThread.clear(std::memory_order_release);
-        });
+        }, app_.doJobCounter());
     }
 }
 

@@ -1114,12 +1114,12 @@ NetworkOPsImp::setHeartbeatTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!m_job_queue.isStopped()))
+                    (!app_.doIsStopped()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_TIMER, "NetOPs.heartbeat", [this](Job&) {
                             processHeartbeatTimer();
-                        });
+                        }, app_.doJobCounter());
                 }
                 // Recover as best we can if an unexpected error occurs.
                 if (e.value() != boost::system::errc::success &&
@@ -1145,12 +1145,12 @@ NetworkOPsImp::setClusterTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!m_job_queue.isStopped()))
+                    (!app_.doIsStopped()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_CLUSTER, "NetOPs.cluster", [this](Job&) {
                             processClusterTimer();
-                        });
+                        }, app_.doJobCounter());
                 }
                 // Recover as best we can if an unexpected error occurs.
                 if (e.value() != boost::system::errc::success &&
@@ -1245,7 +1245,7 @@ NetworkOPsImp::tryCheckSubTx()
         m_bCheckTxThread = true;
         m_job_queue.addJob(jtCheckSubTx, "NetOPs.processSubTx", [this](Job&) {
             processSubTxTimer();
-        });
+        }, app_.doJobCounter());
     }
 }
 
@@ -1288,7 +1288,7 @@ NetworkOPsImp::broadCastTxs()
                 std::make_shared<Message>(txs, protocol::mtTRANSACTIONS),
                 peer_in_set(toSkip)));       
             m_bBroadThread = false;
-        });
+        }, app_.doJobCounter());
     }
 }
 
@@ -1536,7 +1536,7 @@ NetworkOPsImp::submitTransaction(std::shared_ptr<STTx const> const& iTrans)
     m_job_queue.addJob(jtTRANSACTION, "submitTxn", [this, tx](Job&) {
         auto t = tx;
         processTransaction(t, false, false, FailHard::no);
-    });
+    }, app_.doJobCounter());
 }
 
 void
@@ -1732,7 +1732,7 @@ NetworkOPsImp::doTransactionAsync(
     {
         if (m_job_queue.addJob(jtBATCH, "transactionBatch", [this](Job&) {
                 transactionBatch();
-            }))
+            }, app_.doJobCounter()))
         {
             mDispatchState = DispatchState::scheduled;
         }
@@ -1782,7 +1782,7 @@ NetworkOPsImp::doTransactionSync(
                 if (m_job_queue.addJob(
                         jtBATCH, "transactionBatch", [this](Job&) {
                             transactionBatch();
-                        }))
+                        }, app_.doJobCounter()))
                 {
                     mDispatchState = DispatchState::scheduled;
                 }
@@ -3889,7 +3889,7 @@ NetworkOPsImp::reportFeeChange()
         m_job_queue.addJob(
             jtCLIENT, "reportFeeChange->pubServer", [this](Job&) {
                 pubServer();
-            });
+            }, app_.doJobCounter());
     }
 }
 
@@ -3899,7 +3899,7 @@ NetworkOPsImp::reportConsensusStateChange(ConsensusPhase phase)
     m_job_queue.addJob(
         jtCLIENT,
         "reportConsensusStateChange->pubConsensus",
-        [this, phase](Job&) { pubConsensus(phase); });
+        [this, phase](Job&) { pubConsensus(phase); }, app_.doJobCounter());
 }
 
 // This routine should only be used to publish accepted or validated

@@ -73,7 +73,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
-
+#include <ripple/nodestore/Scheduler.h>
 namespace ripple {
 
 
@@ -213,7 +213,7 @@ public:
               SchemaImp::journal("TaggedCache"))
 
         , cachedSLEs_(std::chrono::minutes(1), stopwatch())
-
+   
         //
         // Anything which calls addJob must be a descendant of the JobQueue
         //
@@ -261,7 +261,7 @@ public:
               [this](std::shared_ptr<SHAMap> const& set, bool fromAcquire) {
                   gotTXSet(set, fromAcquire);
               }))
-
+        
         , m_acceptedLedgerCache(
               "AcceptedLedger",
               4,
@@ -855,7 +855,7 @@ public:
                     TxDBPragma,
                     TxDBInit,
                     DatabaseCon::CheckpointerSetup{
-                        &app_.getJobQueue(), &logs()});
+                        &app_.getJobQueue(),&doJobCounter(), &logs()});
                 mTxnDB->getSession() << boost::str(
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
@@ -921,7 +921,7 @@ public:
                 LgrDBName,
                 LgrDBPragma,
                 LgrDBInit,
-                DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &logs()});
+                DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &doJobCounter(), &logs()});
             mLedgerDB->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config_->getValueFor(SizedItem::lgrDBCache)));
@@ -1129,6 +1129,20 @@ public:
             });
 
         stop(m_journal);
+    }
+
+    bool
+    doIsStopped() override
+    {
+        
+        if (isStopped())
+            return true;
+    }
+
+    JobCounter&
+    doJobCounter() override
+    {
+        return jobCounter();
     }
 
     LedgerIndex
