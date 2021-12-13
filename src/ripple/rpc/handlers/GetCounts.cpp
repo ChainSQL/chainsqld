@@ -34,6 +34,7 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/shamap/ShardFamily.h>
 #include <peersafe/app/misc/ConnectionPool.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 

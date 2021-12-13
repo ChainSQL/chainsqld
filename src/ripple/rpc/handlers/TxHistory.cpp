@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/core/DatabaseCon.h>
@@ -63,7 +64,7 @@ doTxHistory(RPC::JsonContext& context)
                     % startIndex);
 
     {
-        auto db = context.app.getTxnDB ().checkoutDb ();
+        auto db = context.app.getTxnDB ().checkoutDbRead();
 
         boost::optional<std::string> stxnHash;
         soci::statement st = (db->prepare << sql,

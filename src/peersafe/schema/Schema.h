@@ -72,6 +72,7 @@ class NodeFamily;
 class ShardFamily;
 class PeerReservationTable;
 class DatabaseCon;
+class TxnDBCon;
 class SHAMapStore;
 class SchemaManager;
 class ConnectionPool;
@@ -235,7 +236,7 @@ public:
     virtual CachedSLEs&
     cachedSLEs() = 0;
 
-    virtual DatabaseCon&
+    virtual TxnDBCon&
     getTxnDB() = 0;
     virtual DatabaseCon&
     getLedgerDB() = 0;

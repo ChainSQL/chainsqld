@@ -25,6 +25,7 @@
 #include <ripple/basics/chrono.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/protocol/STTx.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -78,7 +79,7 @@ TransactionMaster::getTxCount(bool chainsql, int ledgerIndex)
 
 	boost::optional<int> txCount;
 	{
-		auto db = mApp.getTxnDB().checkoutDb();
+		auto db = mApp.getTxnDB().checkoutDbRead();
 		*db << sql,
 			soci::into(txCount);
 

@@ -90,6 +90,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/SchemaManager.h>
 #include <peersafe/precompiled/PreContractFace.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <boost/optional.hpp>
 #include <sstream>
 #include <ripple/basics/Sustain.h>
@@ -784,7 +785,7 @@ public:
         return m_schemaManager->getSchema(id)->getTxQ();
     }
 
-    DatabaseCon&
+    TxnDBCon&
     getTxnDB(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));

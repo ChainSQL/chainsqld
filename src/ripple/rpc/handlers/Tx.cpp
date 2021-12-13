@@ -37,6 +37,7 @@
 #include <peersafe/app/util/Common.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -163,7 +164,7 @@ doTxChain(TxType txType, const RPC::JsonContext& context, Json::Value& retJson)
     boost::optional<std::string> previousTxid, nextTxid, ownerRead, nameRead,
         typeRead;
     {
-        auto db = context.app.getTxnDB().checkoutDb();
+        auto db = context.app.getTxnDB().checkoutDbRead();
 
         soci::statement st =
             (db->prepare << sql,
@@ -930,7 +931,7 @@ Json::Value doTxResult(RPC::JsonContext& context)
 	boost::optional<std::uint32_t> LedgerSeq;
 	boost::optional<std::string> TxResult;
 	{
-		auto db = context.app.getTxnDB().checkoutDb();
+		auto db = context.app.getTxnDB().checkoutDbRead();
 
 		soci::statement st = (db->prepare << sql,
 			soci::into(LedgerSeq),
