@@ -406,4 +406,61 @@ namespace ripple {
 		ctx_.view().update(sleSchema);
 		return tesSUCCESS;
 	}
+
+	NotTEC SchemaDelete::preflight(PreflightContext const& ctx)
+	{
+		auto const ret = preflight1(ctx);
+		if (!isTesSuccess(ret))
+			return ret;
+
+		if (!ctx.tx.isFieldPresent(sfSchemaID))
+			return temMALFORMED;
+
+        if (ctx.app.schemaId() != beast::zero)
+        return tefSCHEMA_TX_FORBIDDEN;
+
+		return preflight2(ctx);
+	}
+
+	TER SchemaDelete::preclaim(PreclaimContext const& ctx)
+	{
+        return tesSUCCESS;
+	}
+
+	TER SchemaDelete::doApply()
+	{
+		auto j = ctx_.app.journal("schemaDeleteApply");
+		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
+		if (sleSchema == nullptr)
+		{
+			return tefBAD_SCHEMAID;
+		}
+
+		auto const account = ctx_.tx[sfAccount];
+		if (!ctx_.tx.getSigningPubKey().empty())
+		{
+			if (!sleSchema->isFieldPresent(sfSchemaAdmin))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}
+			if (sleSchema->getAccountID(sfSchemaAdmin) != ctx_.tx.getAccountID(sfAccount))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}			
+		}
+		else
+		{
+			if (sleSchema->getAccountID(sfAccount) != ctx_.tx.getAccountID(sfAccount))
+			{
+				return tefBAD_SCHEMAACCOUNT;
+			}
+			auto const ret = checkMulsignValid(sleSchema->getFieldArray(sfValidators), ctx_.tx.getFieldArray(sfSigners));
+			if (!isTesSuccess(ret))
+				return ret;
+		}
+
+
+		ctx_.view().erase(sleSchema);
+		return tesSUCCESS;
+	}
 }

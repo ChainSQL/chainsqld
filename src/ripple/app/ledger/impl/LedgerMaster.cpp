@@ -1353,8 +1353,12 @@ LedgerMaster::checkSubChains()
                         JLOG(m_journal.info())
                             << "Removing schema when checkSubChains:"
                             << schemaId;
-                        app_.app().getSchema(schemaId).doStop();
-                        app_.getSchemaManager().removeSchema(schemaId);
+                        app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaId](Job&) {
+                                app_.app().doStopSchema(schemaId);
+                            });
                     }
                 }
             }

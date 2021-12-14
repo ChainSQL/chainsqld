@@ -35,6 +35,21 @@ namespace ripple {
 		TER doApply() override;
 	};
 
+	
+	class SchemaDelete : public Transactor
+	{
+	public:
+		explicit
+			SchemaDelete(ApplyContext& ctx)
+			: Transactor(ctx)
+		{
+		}
+		static NotTEC preflight(PreflightContext const& ctx);
+
+		static TER preclaim(PreclaimContext const& ctx);
+
+		TER doApply() override;
+	};
 }
 
 #endif

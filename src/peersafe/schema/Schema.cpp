@@ -1132,7 +1132,7 @@ public:
     }
 
     bool
-    doIsStopped() override
+    isShutdown() override
     {
         
         if (isStopped())

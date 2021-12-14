@@ -1114,7 +1114,7 @@ NetworkOPsImp::setHeartbeatTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!app_.doIsStopped()))
+                    (!app_.isShutdown()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_TIMER, "NetOPs.heartbeat", [this](Job&) {
@@ -1145,7 +1145,7 @@ NetworkOPsImp::setClusterTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!app_.doIsStopped()))
+                    (!app_.isShutdown()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_CLUSTER, "NetOPs.cluster", [this](Job&) {
@@ -4155,11 +4155,32 @@ NetworkOPsImp::checkSchemaTx(
 
             if (bOperatingSelf)
             {
-                app_.app().getSchema(schemaID).doStop();
-                app_.getSchemaManager().removeSchema(schemaID);
+                app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaID](Job&) {
+                                app_.app().doStopSchema(schemaID);
+                            });
+                //app_.app().getSchema(schemaID).doStop();
+                //if (app_.app().getSchema(schemaID).isShutdown())
+                  //  app_.getSchemaManager().removeSchema(schemaID);
             }
             else
                 app_.app().peerManager(schemaID).remove(vecValidators);
+        }
+    }
+    else if (stTxn->getTxnType() == ttSCHEMA_DELETE)
+    {
+        auto schemaID = stTxn->getFieldH256(sfSchemaID);
+
+        if (app_.app().hasSchema(schemaID))
+        {
+            app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaID](Job&) {
+                                app_.app().doStopSchema(schemaID);
+                            });
         }
     }
 }

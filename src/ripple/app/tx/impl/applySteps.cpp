@@ -109,6 +109,8 @@ invoke_preflight (PreflightContext const& ctx)
             return SchemaCreate::preflight(ctx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::preflight(ctx);
+        case ttSCHEMA_DELETE:		 
+            return SchemaDelete::preflight(ctx);
         case ttFREEZE_ACCOUNT:
             return FreezeAccount ::preflight(ctx);
         default:
@@ -211,6 +213,8 @@ invoke_preclaim(PreclaimContext const& ctx)
             return invoke_preclaim <SchemaCreate>(ctx);
         case ttSCHEMA_MODIFY:		 
             return invoke_preclaim <SchemaModify>(ctx);
+        case ttSCHEMA_DELETE:		 
+            return invoke_preclaim <SchemaDelete>(ctx);
         case ttFREEZE_ACCOUNT:
             return invoke_preclaim<FreezeAccount>(ctx);
         default:
@@ -280,6 +284,8 @@ invoke_calculateBaseFee(ReadView const& view, STTx const& tx)
             return SchemaCreate::calculateBaseFee(view,tx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::calculateBaseFee(view,tx);
+        case ttSCHEMA_DELETE:		 
+            return SchemaDelete::calculateBaseFee(view,tx);
         case ttFREEZE_ACCOUNT:
             return FreezeAccount::calculateBaseFee(view,tx);
         default:
@@ -362,6 +368,8 @@ invoke_calculateConsequences(STTx const& tx)
             return invoke_calculateConsequences <SchemaCreate>(tx);
         case ttSCHEMA_MODIFY:		 
             return invoke_calculateConsequences <SchemaModify>(tx);
+        case ttSCHEMA_DELETE:		 
+            return invoke_calculateConsequences <SchemaDelete>(tx);
         case ttFREEZE_ACCOUNT:
             return invoke_calculateConsequences<FreezeAccount>(tx);
         default:
@@ -486,6 +494,10 @@ invoke_apply(ApplyContext& ctx)
         }
         case ttSCHEMA_MODIFY: { 
             SchemaModify p(ctx); 
+            return p(); 
+        }
+        case ttSCHEMA_DELETE: { 
+            SchemaDelete p(ctx); 
             return p(); 
         }
         case ttFREEZE_ACCOUNT: {

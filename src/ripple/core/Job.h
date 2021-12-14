@@ -98,6 +98,8 @@ enum JobType {
     jtNS_SYNC_READ,
     jtNS_ASYNC_READ,
     jtNS_WRITE,
+
+    jtSTOP_SCHEMA, // Stop sub-chain
 };
 
 class Job

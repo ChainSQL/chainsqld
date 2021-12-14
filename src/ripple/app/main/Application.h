@@ -156,6 +156,9 @@ public:
     virtual void
     checkSigs(bool) = 0;
 
+    virtual void
+    doStopSchema(SchemaID schemaID) = 0;
+
     //
     // ---
     //

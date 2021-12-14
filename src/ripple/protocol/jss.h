@@ -600,7 +600,7 @@ JSS ( chainsql_tx );
  
 JSS ( SchemaCreate );
 JSS ( SchemaModify );
-
+JSS ( SchemaDelete );
 JSS ( FreezeAccount );
 
 JSS ( Contract );					// transaction type.

@@ -50,17 +50,17 @@ doStop(RPC::JsonContext& context)
          auto schemaID = from_hex_text<uint256>(schema);
          if (context.app.getSchemaManager().contains(schemaID))
          {
-             if(!context.app.app().getSchema(schemaID).doIsStopped())
+             if(!context.app.app().getSchema(schemaID).isShutdown())
              {
-                 context.app.app().getSchema(schemaID).doStop();
-                 if (context.app.app().getSchema(schemaID).doIsStopped())
-                 {
-                     context.app.getSchemaManager().removeSchema(schemaID);
-                     return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
-                 }
+                 context.app.app().getJobQueue().addJob(
+                     jtSTOP_SCHEMA, "StopSchema", [context, schemaID](Job&) {
+                         context.app.app().doStopSchema(schemaID);
+                     });
+                 return RPC::makeObjectValue("schemaID: " + schema + " server stopping");
              }
+             context.app.getSchemaManager().removeSchema(schemaID);
+             return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
          }
-         return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
     }
     return rpcError(rpcINVALID_PARAMS);
     

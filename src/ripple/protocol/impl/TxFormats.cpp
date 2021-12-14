@@ -328,6 +328,12 @@ TxFormats::TxFormats()
             {sfDestination, soeREQUIRED},
         },
         commonFields);
+
+    add(jss::SchemaDelete,  ttSCHEMA_DELETE,
+	{
+		{ sfSchemaID,			 soeREQUIRED }
+	},
+	commonFields);
 }
 
 TxFormats const&

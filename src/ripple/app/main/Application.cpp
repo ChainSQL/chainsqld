@@ -351,7 +351,8 @@ public:
     checkSigs(bool) override;
     int
     fdRequired() const override;
-
+    void
+    doStopSchema(SchemaID schemaID) override;
     //--------------------------------------------------------------------------
 
     Logs&
@@ -1239,7 +1240,13 @@ ApplicationImp::isShutdown()
     // from Stoppable mixin
     return isStopped();
 }
-
+void
+ApplicationImp::doStopSchema(SchemaID schemaID)
+{
+    getSchema(schemaID).doStop();
+    getSchemaManager().removeSchema(schemaID);
+       
+}
 bool
 ApplicationImp::checkSigs() const
 {

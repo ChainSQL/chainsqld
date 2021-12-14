@@ -100,7 +100,7 @@ public:
     virtual void
     doSweep() = 0;
     virtual bool
-    doIsStopped() = 0;
+    isShutdown() = 0;
     virtual JobCounter&
     doJobCounter() = 0;
     virtual void
