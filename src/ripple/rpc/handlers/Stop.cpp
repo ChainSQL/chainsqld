@@ -39,10 +39,7 @@ doStop(RPC::JsonContext& context)
     {
         std::unique_lock lock{context.app.getMasterMutex()};
         context.app.app().signalStop();
-        if (context.app.app().isShutdown())
-        {
-            return RPC::makeObjectValue(systemName() + " server stopping");
-        }
+        return RPC::makeObjectValue(systemName() + " server stopping");
     }
     else
     {
