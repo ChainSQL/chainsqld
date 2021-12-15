@@ -1693,6 +1693,7 @@ public:
 			{   "schema_list",		   &RPCParser::parseSchemaList,  	       0,  2 },
 			{   "schema_info",		   &RPCParser::parseSchemaID,    	       1,  1 },
 			{   "schema_accept",	   &RPCParser::parseSchemaID,		       1,  1 },
+            {   "schema_start",	       &RPCParser::parseSchemaID,		       1,  1 },
             {   "tx_in_pool",          &RPCParser::parseAsIs,                  0,  0 },
             {   "sync_info",           &RPCParser::parseSyncInfo,              0,  1 },
         };

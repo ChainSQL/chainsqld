@@ -196,6 +196,7 @@ printHelp(const po::options_description& desc)
 		   "     schema_list [<account>] [<running>]\n"
 		   "     schema_info <schemaid>\n"
 		   "     schema_accept <schemaid>\n"
+           "     schema_start <schemaid>\n";
            "     sync_info <nameInDB>\n";
 	             
 }
