@@ -149,14 +149,14 @@ namespace ripple {
 	{
 		auto j = ctx.app.journal("preclaimSchema");
 
-		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) &&
-			(!ctx.tx.isFieldPresent(sfAnchorLedgerHash) || 
-				!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash))))
+		if ((uint8_t)SchemaStragegy::with_state ==ctx.tx.getFieldU8(sfSchemaStrategy)
+			&&ctx.tx.isFieldPresent(sfAnchorLedgerHash)
+			&&!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash)))
 		{
 			JLOG(j.trace()) << "anchor ledger is not match the schema strategy.";
 			return temBAD_ANCHORLEDGER;
-		}
-
+		} 
+			
 		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 || 
 			ctx.tx.getFieldArray(sfPeerList).size() <= 0)
 		{
@@ -202,7 +202,13 @@ namespace ripple {
 		(*slep)[sfSchemaName] = ctx_.tx[sfSchemaName];
 		(*slep)[sfSchemaStrategy] = ctx_.tx[sfSchemaStrategy];
 		(*slep)[~sfSchemaAdmin] = ctx_.tx[~sfSchemaAdmin];
-		(*slep)[~sfAnchorLedgerHash] = ctx_.tx[~sfAnchorLedgerHash];
+		 
+		if ((uint8_t)SchemaStragegy::with_state ==ctx_.tx.getFieldU8(sfSchemaStrategy) 
+			&& !ctx_.tx.isFieldPresent(sfAnchorLedgerHash))
+			(*slep)[~sfAnchorLedgerHash] =
+				ctx_.app.getLedgerMaster().getValidatedLedger()->info().hash;
+        else
+            (*slep)[~sfAnchorLedgerHash] = ctx_.tx[~sfAnchorLedgerHash];
 
 		//Reset validators
 		{
