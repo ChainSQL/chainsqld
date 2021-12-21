@@ -54,6 +54,7 @@
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/protocol/STMap256.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -571,7 +572,14 @@ Ledger::rawInsert(std::shared_ptr<SLE> const& sle)
     Serializer ss;
     sle->add(ss);
     auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
-    if (!stateMap_->addGiveItem(std::move(item), false, false))
+    boost::optional<uint256> storageRoot = boost::none;
+    if (sle->isFieldPresent(sfStorageOverlay))
+    {
+        auto const& mapStore = sle->getFieldM256(sfStorageOverlay);
+        storageRoot = mapStore.rootHash();
+    }
+
+    if (!stateMap_->addGiveItem(std::move(item), false, false,storageRoot))
         LogicError("Ledger::rawInsert: key already exists");
 }
 
@@ -581,8 +589,14 @@ Ledger::rawReplace(std::shared_ptr<SLE> const& sle)
     Serializer ss;
     sle->add(ss);
     auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
+    boost::optional<uint256> storageRoot = boost::none;
+    if (sle->isFieldPresent(sfStorageOverlay))
+    {
+        auto const& mapStore = sle->getFieldM256(sfStorageOverlay);
+        storageRoot = mapStore.rootHash();
+    }
 
-    if (!stateMap_->updateGiveItem(std::move(item), false, false))
+    if (!stateMap_->updateGiveItem(std::move(item), false, false,storageRoot))
         LogicError("Ledger::rawReplace: key not found");
 }
 

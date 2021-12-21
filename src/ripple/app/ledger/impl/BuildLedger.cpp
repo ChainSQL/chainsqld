@@ -26,6 +26,7 @@
 #include <ripple/app/tx/apply.h>
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/misc/ContractHelper.h>
 
 namespace ripple {
 
@@ -59,7 +60,9 @@ buildLedgerImpl(
     {
         OpenView accum(&*built);
         assert(!accum.open());
+        app.getContractHelper().clearCache();
         applyTxs(accum, built);
+        app.getContractHelper().apply(accum);
         accum.apply(*built);
     }
 

@@ -76,6 +76,32 @@ SHAMapTreeNode::SHAMapTreeNode(
     assert(mItem->peekData().size() >= 12);
 }
 
+SHAMapTreeNode::SHAMapTreeNode(
+    std::shared_ptr<SHAMapItem const> item,
+    TNType type,
+    std::uint32_t seq,
+    boost::optional<uint256> const& storageRoot)
+    : SHAMapAbstractNode(type, seq)
+    ,mItem(std::move(item))
+    ,mStorageRoot(storageRoot)
+{
+    assert(mItem->peekData().size() >= 12);
+    updateHash();
+}
+
+SHAMapTreeNode::SHAMapTreeNode(
+    std::shared_ptr<SHAMapItem const> item,
+    TNType type,
+    std::uint32_t seq,
+    SHAMapHash const& hash,
+    boost::optional<uint256> const& storageRoot)
+    : SHAMapAbstractNode(type, seq, hash)
+    , mItem(std::move(item))
+    , mStorageRoot(storageRoot)
+{
+    assert(mItem->peekData().size() >= 12);
+}
+
 std::shared_ptr<SHAMapAbstractNode>
 SHAMapAbstractNode::makeTransaction(
     Slice data,
@@ -160,6 +186,55 @@ SHAMapAbstractNode::makeAccountState(
 
     return std::make_shared<SHAMapTreeNode>(
         std::move(item), tnACCOUNT_STATE, seq);
+}
+
+std::shared_ptr<SHAMapAbstractNode>
+SHAMapAbstractNode::makeContractState(
+    Slice data,
+    std::uint32_t seq,
+    SHAMapHash const& hash,
+    bool hashValid)
+{
+    Serializer s(data.data(), data.size());
+
+    uint256 tag;
+
+    if (s.size() < tag.bytes)
+        Throw<std::runtime_error>("short AS node");
+
+    // FIXME: improve this interface so that the above check isn't needed
+    if (!s.getBitString(tag, s.size() - tag.bytes))
+        Throw<std::out_of_range>(
+            "Short AS node (" + std::to_string(s.size()) + ")");
+
+    s.chop(tag.bytes);
+
+    if (tag.isZero())
+        Throw<std::runtime_error>("Invalid AS node");
+
+    uint256 storageRoot;
+    if (s.size() < storageRoot.bytes)
+        Throw<std::runtime_error>("short AS node");
+
+    // FIXME: improve this interface so that the above check isn't needed
+    if (!s.getBitString(storageRoot, s.size() - storageRoot.bytes))
+        Throw<std::out_of_range>(
+            "Short AS node (" + std::to_string(s.size()) + ")");
+
+    s.chop(storageRoot.bytes);
+
+    if (storageRoot.isZero())
+        Throw<std::runtime_error>("Invalid AS node");
+
+    auto item = std::make_shared<SHAMapItem const>(tag, s.peekData());
+
+    if (hashValid)
+        return std::make_shared<SHAMapTreeNode>(
+            std::move(item), tnCONTRACT_STATE, seq, hash,storageRoot);
+
+    return std::make_shared<SHAMapTreeNode>(
+        std::move(item), tnCONTRACT_STATE, seq, storageRoot);
+
 }
 
 std::shared_ptr<SHAMapAbstractNode>
@@ -251,6 +326,9 @@ SHAMapAbstractNode::makeFromWire(Slice rawNode)
     if (type == 4)
         return makeTransactionWithMeta(rawNode, seq, hash, hashValid);
 
+    if (type == 5)
+        return makeContractState(rawNode, seq, hash, hashValid);
+
     Throw<std::runtime_error>(
         "wire: Unknown type (" + std::to_string(type) + ")");
 }
@@ -279,6 +357,9 @@ SHAMapAbstractNode::makeFromPrefix(Slice rawNode, SHAMapHash const& hash)
 
     if (type == HashPrefix::leafNode)
         return makeAccountState(rawNode, seq, hash, hashValid);
+
+    if (type == HashPrefix::leafNodeContract)
+        return makeContractState(rawNode, seq, hash, hashValid);
 
     if (type == HashPrefix::innerNode)
         return SHAMapInnerNode::makeFullInner(rawNode, seq, hash, hashValid);
@@ -335,6 +416,14 @@ SHAMapTreeNode::updateHash()
     {
         nh = sha512Half(
             HashPrefix::leafNode, makeSlice(mItem->peekData()), mItem->key());
+    }
+    else if (mType == tnCONTRACT_STATE)
+    {
+        nh = sha512Half(
+            HashPrefix::leafNodeContract,
+            makeSlice(mItem->peekData()),
+            *mStorageRoot,
+            mItem->key());
     }
     else if (mType == tnTRANSACTION_MD)
     {
@@ -426,6 +515,12 @@ SHAMapTreeNode::verifyProof(Blob const& proofBlob, uint256 const& rootHash)
     return child == rootID;
 }
 
+boost::optional<uint256>
+SHAMapTreeNode::getStorageRoot()
+{
+    return mStorageRoot;
+}
+
 void
 SHAMapInnerNode::addRaw(Serializer& s, SHANodeFormat format) const
 {
@@ -503,6 +598,23 @@ SHAMapTreeNode::addRaw(Serializer& s, SHANodeFormat format) const
             s.add8(1);
         }
     }
+    else if (mType == tnCONTRACT_STATE)
+    {
+        if (format == snfPREFIX)
+        {
+            s.add32(HashPrefix::leafNodeContract);
+            s.addRaw(mItem->peekData());
+            s.addBitString(*mStorageRoot);
+            s.addBitString(mItem->key());
+        }
+        else
+        {
+            s.addRaw(mItem->peekData());
+            s.addBitString(*mStorageRoot);
+            s.addBitString(mItem->key());
+            s.add8(5);
+        }
+    }
     else if (mType == tnTRANSACTION_NM)
     {
         if (format == snfPREFIX)
@@ -536,10 +648,14 @@ SHAMapTreeNode::addRaw(Serializer& s, SHANodeFormat format) const
 }
 
 bool
-SHAMapTreeNode::setItem(std::shared_ptr<SHAMapItem const> i, TNType type)
+SHAMapTreeNode::setItem(
+    std::shared_ptr<SHAMapItem const> i,
+    TNType type,
+    boost::optional<uint256> storageRoot)
 {
     mType = type;
     mItem = std::move(i);
+    mStorageRoot = storageRoot;
     assert(isLeaf());
     assert(mSeq != 0);
     return updateHash();
@@ -602,6 +718,8 @@ SHAMapTreeNode::getString(const SHAMapNodeID& id) const
         ret += ",txn+md\n";
     else if (mType == tnACCOUNT_STATE)
         ret += ",as\n";
+    else if (mType == tnCONTRACT_STATE)
+        ret += ",contract as\n";
     else
         ret += ",leaf\n";
 

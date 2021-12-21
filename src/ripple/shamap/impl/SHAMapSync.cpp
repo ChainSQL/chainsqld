@@ -222,6 +222,19 @@ SHAMap::gmn_ProcessNodes(MissingNodes& mn, MissingNodes::StackEntry& se)
                 else
                     mn.deferredReads_.emplace_back(node, nodeID, branch);
             }
+            else if (d->isContract())
+            {
+                auto treeNode = static_cast<SHAMapTreeNode*>(d);
+                if (treeNode->getStorageRoot())
+                {
+                    auto root = *treeNode->getStorageRoot();
+                    //mn.missingHashes_.insert(SHAMapHash(root));
+                    //mn.missingNodes_.emplace_back(SHAMapNodeID(1,root), root);
+
+                    //if (--mn.max_ <= 0)
+                    //    return;
+                }
+            }
             else if (
                 d->isInner() &&
                 !static_cast<SHAMapInnerNode*>(d)->isFullBelow(mn.generation_))
@@ -288,6 +301,13 @@ SHAMap::gmn_ProcessDeferredReads(MissingNodes& mn)
             // When we finish this stack, we need to restart
             // with the parent of this node
             mn.resumes_[parent] = parentID;
+
+            //Deal with contract node
+            if (nodePtr->isContract())
+            {
+                auto treeNode = std::static_pointer_cast<SHAMapTreeNode>(nodePtr);
+                auto rootHash = treeNode->getStorageRoot();
+            }
         }
         else if ((mn.max_ > 0) && (mn.missingHashes_.insert(nodeHash).second))
         {

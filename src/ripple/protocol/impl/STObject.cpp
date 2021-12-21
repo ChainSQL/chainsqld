@@ -692,6 +692,12 @@ STObject::setFieldV256(SField const& field, STVector256 const& v)
 }
 
 void
+STObject::setFieldM256(SField const& field, STMap256 const& v)
+{
+    setFieldUsingSetValue<STMap256>(field, v);
+}
+
+void
 STObject::setAccountID(SField const& field, AccountID const& v)
 {
     setFieldUsingSetValue<STAccount>(field, v);

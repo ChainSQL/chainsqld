@@ -170,12 +170,14 @@ public:
     updateGiveItem(
         std::shared_ptr<SHAMapItem const>,
         bool isTransaction,
-        bool hasMeta);
+        bool hasMeta,
+        boost::optional<uint256> const& storageRoot = boost::none);
     bool
     addGiveItem(
         std::shared_ptr<SHAMapItem const>,
         bool isTransaction,
-        bool hasMeta);
+        bool hasMeta,
+        boost::optional<uint256> const& storageRoot = boost::none);
 
     // Save a copy if you need to extend the life
     // of the SHAMapItem beyond this SHAMap
@@ -301,6 +303,9 @@ public:
 
     Blob
     genNodeProof(uint256 key) const;
+
+    std::shared_ptr<SHAMapInnerNode>
+    getContractRootNode(boost::optional<uint256> root) const;
 
 private:
     using SharedPtrNodeStack = std::stack<

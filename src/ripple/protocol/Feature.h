@@ -118,7 +118,8 @@ class FeatureCollections
         "HardenedValidations",
         "fixAmendmentMajorityCalc",  // Fix Amendment majority calculation
         "NegativeUNL",
-        "TableSLEChange"
+        "TableSLEChange",
+        "ContractStorage"
     };
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
@@ -390,6 +391,7 @@ extern uint256 const featureHardenedValidations;
 extern uint256 const fixAmendmentMajorityCalc;
 extern uint256 const featureNegativeUNL;
 extern uint256 const featureTableSleChange;
+extern uint256 const featureContractStorage;
 
 }  // namespace ripple
 
