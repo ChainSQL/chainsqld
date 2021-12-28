@@ -231,8 +231,11 @@ public:
         @param maxNodes The maximum number of found nodes to return
         @param filter The filter to use when retrieving nodes
         @param return The nodes known to be missing
+
+        New:
+        The second param is the contract storage root hash vector.
     */
-    std::vector<std::pair<SHAMapNodeID, uint256>>
+    std::pair<std::vector<std::pair<SHAMapNodeID, uint256>>,std::set<uint256>>
     getMissingNodes(int maxNodes, SHAMapSyncFilter* filter);
 
     bool
@@ -245,7 +248,7 @@ public:
 
     bool
     getRootNode(Serializer& s, SHANodeFormat format) const;
-    std::vector<uint256>
+    std::pair<std::vector<uint256>,std::set<uint256>>
     getNeededHashes(int max, SHAMapSyncFilter* filter);
     SHAMapAddNode
     addRootNode(
@@ -445,7 +448,7 @@ private:
         // nodes we have discovered to be missing
         std::vector<std::pair<SHAMapNodeID, uint256>> missingNodes_;
         std::set<SHAMapHash> missingHashes_;
-
+        std::set<uint256> contractRoots_;
         // nodes we are in the process of traversing
         using StackEntry = std::tuple<
             SHAMapInnerNode*,  // pointer to the node

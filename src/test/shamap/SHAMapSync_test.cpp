@@ -151,14 +151,14 @@ public:
             // get the list of nodes we know we need
             auto nodesMissing = destination.getMissingNodes(2048, nullptr);
 
-            if (nodesMissing.empty())
+            if (nodesMissing.first.empty())
                 break;
 
             // get as many nodes as possible based on this information
             std::vector<SHAMapNodeID> gotNodeIDs_b;
             std::vector<Blob> gotNodes_b;
 
-            for (auto& it : nodesMissing)
+            for (auto& it : nodesMissing.first)
             {
                 // Don't use BEAST_EXPECT here b/c it will be called a
                 // non-deterministic number of times and the number of tests run

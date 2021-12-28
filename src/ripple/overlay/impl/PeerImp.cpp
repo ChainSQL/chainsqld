@@ -2978,7 +2978,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 {
     protocol::TMGetLedger& packet = *m;
     std::shared_ptr<SHAMap> shared;
-    SHAMap const* map = nullptr;
+    std::shared_ptr<SHAMap> map = nullptr;
     protocol::TMLedgerData reply;
     bool fatLeaves = true;
     std::shared_ptr<Ledger const> ledger;
@@ -3017,7 +3017,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         uint256 const txHash{packet.ledgerhash()};
 
         shared = app_.getInboundTransactions(schemaId).getSet(txHash, false);
-        map = shared.get();
+        map = shared;
 
         if (!map)
         {
@@ -3263,15 +3263,24 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 
         if (packet.itype() == protocol::liTX_NODE)
         {
-            map = &ledger->txMap();
+            map = ledger->txMapPtr();
             logMe += " TX:";
             logMe += to_string(map->getHash());
         }
         else if (packet.itype() == protocol::liAS_NODE)
         {
-            map = &ledger->stateMap();
+            map = ledger->stateMapPtr();
             logMe += " AS:";
             logMe += to_string(map->getHash());
+        }
+        else if (packet.itype() == protocol::liCONTRACT_NODE)
+        {
+            uint256 rootHash;
+            memcpy(rootHash.begin(), packet.roothash().data(), rootHash.size());
+            reply.set_roothash(rootHash.begin(), rootHash.size());
+            map = ledger->contractStorageMap(rootHash);
+            logMe += " CTS rootHash=";
+            logMe += to_string(rootHash);
         }
     }
 
@@ -3346,6 +3355,8 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                 info = "TX node";
             else if (packet.itype() == protocol::liAS_NODE)
                 info = "AS node";
+            else if (packet.itype() == protocol::liCONTRACT_NODE)
+                info = "CONTRACT node";
 
             if (!packet.has_ledgerhash())
                 info += ", no hash specified";

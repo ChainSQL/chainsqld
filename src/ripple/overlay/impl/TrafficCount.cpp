@@ -106,6 +106,11 @@ TrafficCount::categorize(
                 ? TrafficCount::category::gl_asn_share
                 : TrafficCount::category::gl_asn_get;
 
+        if (msg->itype() == protocol::liCONTRACT_NODE)
+            return (inbound || msg->has_requestcookie())
+                ? TrafficCount::category::gl_ctn_share
+                : TrafficCount::category::gl_ctn_get;
+
         return (inbound || msg->has_requestcookie())
             ? TrafficCount::category::gl_share
             : TrafficCount::category::gl_get;
@@ -132,6 +137,11 @@ TrafficCount::categorize(
             return (msg->query() == inbound)
                 ? TrafficCount::category::share_hash_asnode
                 : TrafficCount::category::get_hash_asnode;
+
+        if (msg->type() == protocol::TMGetObjectByHash::otCONTRACT_NODE)
+            return (msg->query() == inbound)
+                ? TrafficCount::category::share_hash_ctnode
+                : TrafficCount::category::get_hash_ctnode;
 
         if (msg->type() == protocol::TMGetObjectByHash::otCAS_OBJECT)
             return (msg->query() == inbound)
