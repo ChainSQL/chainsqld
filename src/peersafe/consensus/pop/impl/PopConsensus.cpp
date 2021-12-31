@@ -104,7 +104,7 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
     // roll back work,or is there such occasion?
     if (timeOutCount_ > adaptor_.parms().timeoutCOUNT_ROLLBACK)
     {
-        auto valLedger = adaptor_.getValidLedgerIndex();
+        //auto valLedger = adaptor_.getValidLedgerIndex();
         //May be view_ = 0 and previousLedger_.seq() < valLedger
         //if (view_ > 0 || previousLedger_.seq() > valLedger)
         {      
