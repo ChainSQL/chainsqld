@@ -98,31 +98,6 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
         // Check we are on the proper ledger (this may change phase_)
         checkLedger();
     }
-        
-
-    if (mode_.get() == ConsensusMode::wrongLedger)
-    {
-        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-        {
-            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
-                            << ":" << prevLedgerID_;
-
-            // if (initAcquireLedgerID_ == beast::zero)
-            //     initAcquireLedgerID_ = prevLedgerID_;
-
-            adaptor_.removePoolTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-
-            startRoundInternal(
-                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-        }
-        return;
-    }
-
-    if (!adaptor_.validating())
-        return;
 
     // Long time no consensus reach,rollback to initial state.
     // What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can
@@ -162,6 +137,30 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             }
         }
     }
+
+    if (mode_.get() == ConsensusMode::wrongLedger)
+    {
+        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+        {
+            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
+                            << ":" << prevLedgerID_;
+
+            // if (initAcquireLedgerID_ == beast::zero)
+            //     initAcquireLedgerID_ = prevLedgerID_;
+
+            adaptor_.removePoolTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
+
+            startRoundInternal(
+                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+        }
+        return;
+    }
+
+    if (!adaptor_.validating())
+        return;
 
     if (phase_ == ConsensusPhase::open)
     {
