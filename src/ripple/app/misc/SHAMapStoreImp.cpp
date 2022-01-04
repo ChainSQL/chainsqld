@@ -249,7 +249,7 @@ SHAMapStoreImp::makeNodeStore(std::string const& name, std::int32_t readThreads)
             name,
             scheduler_,
             readThreads,
-            app_.getJobQueue(),
+            app_.getStoppable(),
             std::move(writableBackend),
             std::move(archiveBackend),
             app_.config().section(ConfigSection::nodeDatabase()),
@@ -264,7 +264,7 @@ SHAMapStoreImp::makeNodeStore(std::string const& name, std::int32_t readThreads)
             name,
             scheduler_,
             readThreads,
-            app_.getJobQueue(),
+            app_.getStoppable(),
             app_.config().section(ConfigSection::nodeDatabase()),
             app_.journal(nodeStoreName_));
         fdRequired_ += db->fdRequired();

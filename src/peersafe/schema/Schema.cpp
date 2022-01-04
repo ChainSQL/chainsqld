@@ -1175,6 +1175,12 @@ public:
         return waitingBeginConsensus_;
     }
 
+    Stoppable&
+    getStoppable() override
+    {
+        return *this;
+    }
+
 private:
     // For a newly-started validator, this is the greatest persisted ledger
     // and new validations must be greater than this.

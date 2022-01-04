@@ -264,6 +264,8 @@ public:
     getSchemaManager() = 0;
     virtual bool
     getWaitinBeginConsensus() = 0;
+    virtual Stoppable&
+    getStoppable() = 0;
 };
 
 std::shared_ptr<Schema>
