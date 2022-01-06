@@ -53,7 +53,7 @@ SHAMapInnerNode::clone(std::uint32_t seq) const
 std::shared_ptr<SHAMapAbstractNode>
 SHAMapTreeNode::clone(std::uint32_t seq) const
 {
-    return std::make_shared<SHAMapTreeNode>(mItem, mType, seq, mHash);
+    return std::make_shared<SHAMapTreeNode>(mItem, mType, seq, mHash,mStorageRoot);
 }
 
 SHAMapTreeNode::SHAMapTreeNode(
