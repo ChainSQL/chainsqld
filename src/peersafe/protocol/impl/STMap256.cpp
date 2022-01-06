@@ -20,7 +20,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/jss.h>
 #include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
@@ -53,25 +52,6 @@ STMap256::STMap256(SerialIter& sit, SField const& name) : STBase(name)
             uStart = uValueEnd;
         }
     }
-}
-
-Json::Value
-STMap256::getJson(int) const
-{
-    Json::Value ret(Json::objectValue);
-
-    if (mRootHash)
-        ret[jss::hash] = to_string(*mRootHash);
-    else
-    {
-        for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-        {
-            ret[to_string(iter->first)] = to_string(iter->second);
-        }
-    }
-
-
-    return ret;
 }
 
 uint256&

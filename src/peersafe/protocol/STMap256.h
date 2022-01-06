@@ -24,6 +24,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/STInteger.h>
 #include <ripple/protocol/STBase.h>
 #include <ripple/shamap/SHAMap.h>
+#include <ripple/protocol/jss.h>
 
 
 namespace ripple {
@@ -98,7 +99,22 @@ public:
         mRootHash = v.mRootHash;
     }
 
-    Json::Value getJson(int) const;
+    Json::Value getJson(JsonOptions /*options*/) const override
+    {
+        Json::Value ret(Json::objectValue);
+
+        if (mRootHash)
+            ret[jss::hash] = to_string(*mRootHash);
+        else
+        {
+            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+            {
+                ret[to_string(iter->first)] = to_string(iter->second);
+            }
+        }
+
+        return ret;
+    }
 
 	uint256& operator[](const uint256& key);	
 
