@@ -1644,7 +1644,7 @@ public:
             {"server_info", &RPCParser::parseServerInfo, 0, 1},
             {"server_state", &RPCParser::parseServerInfo, 0, 1},
             {"crawl_shards", &RPCParser::parseAsIs, 0, 2},
-            {"stop", &RPCParser::parseAsIs, 0, 0},
+            {"stop",        &RPCParser::parseSchemaID, 1, 1},
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
