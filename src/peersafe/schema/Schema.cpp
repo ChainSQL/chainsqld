@@ -1840,12 +1840,14 @@ SchemaImp::loadOldLedger(
             return false;
         }
 
-        if (!loadLedger->walkLedger(app_.journal("Ledger")))
-        {
-            JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
-            assert(false);
-            return false;
-        }
+        m_ledgerMaster->setLoadLedger(loadLedger->info().seq);
+        // if (!loadLedger->walkLedger(app_.journal("Ledger")))
+        // {
+        //     JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
+        //     assert(false);
+        //     return false;
+        // }
+        
 
         if (!loadLedger->assertSane(app_.journal("Ledger")))
         {
