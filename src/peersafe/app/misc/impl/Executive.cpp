@@ -224,36 +224,39 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             return true;
         }
         // Transfer zxc.
-        TER ret = tesSUCCESS;
-        if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
-            !m_PreContractFace.isPrecompiledOrigin(
-                _p.receiveAddress, m_envInfo.block_number()) &&
-            !m_PreContractFace.isPrecompiledDiy(_p.receiveAddress))
-        {
-            // account not exist,activate it
-            ret = m_s.doPayment(
-                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        }
-        else
-        {
-            ret = m_s.transferBalance(
-                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        }
+		if(_p.valueTransfer != uint256(0))
+		{
+			TER ret = tesSUCCESS;
+			if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
+				!m_PreContractFace.isPrecompiledOrigin(
+					_p.receiveAddress, m_envInfo.block_number()) &&
+				!m_PreContractFace.isPrecompiledDiy(_p.receiveAddress))
+			{
+				// account not exist,activate it
+				ret = m_s.doPayment(
+					_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+			}
+			else
+			{
+				ret = m_s.transferBalance(
+					_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+			}
 
-        auto j = getJ();
-        JLOG(j.info()) << "Contract invoke , address : "
-                       << to_string(_p.codeAddress)
-                       << ", sender :" << to_string(_p.senderAddress)
-                       << ", receive :" << to_string(_p.receiveAddress)
-                       << ", amount :" << to_string(_p.valueTransfer);
+			auto j = getJ();
+			JLOG(j.info()) << "Contract invoke , address : "
+						<< to_string(_p.codeAddress)
+						<< ", sender :" << to_string(_p.senderAddress)
+						<< ", receive :" << to_string(_p.receiveAddress)
+						<< ", amount :" << to_string(_p.valueTransfer);
 
-        if (ret != tesSUCCESS)
-        {
-            m_excepted = ret;
-			//formatOutput(std::to_string(TERtoInt(ret)));
-			formatOutput(transHuman(ret));
-            return true;
-        }
+			if (ret != tesSUCCESS)
+			{
+				m_excepted = ret;
+				//formatOutput(std::to_string(TERtoInt(ret)));
+				formatOutput(transHuman(ret));
+				return true;
+			}
+		}        
     }
 
 	return !m_ext;
