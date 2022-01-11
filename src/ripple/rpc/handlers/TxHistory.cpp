@@ -60,7 +60,7 @@ doTxHistory(RPC::JsonContext& context)
     std::string sql =
         boost::str (boost::format (
             "SELECT TransID "
-            "FROM Transactions ORDER BY LedgerSeq desc LIMIT %u,20;")
+            "FROM Transactions WHERE (TransType != 'EnableAmendment' AND TransType != 'SetFee' AND TransType != 'UNLModify') ORDER BY LedgerSeq desc LIMIT %u,20;")
                     % startIndex);
 
     {
