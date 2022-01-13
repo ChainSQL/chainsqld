@@ -282,7 +282,9 @@ LedgerMaster::onConsensusReached(
 {
     updateConsensusTime();
 
-    if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
+    if (bWaitingInit &&
+        previousLedger &&
+        previousLedger->info().seq != mValidLedgerSeq)
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
@@ -294,6 +296,7 @@ LedgerMaster::onConsensusReached(
     checkSubChains();
     checkLoadLedger();
     app_.getTableSync().TryTableSync();
+    app_.getTableSync().InitTableItems();
     tryAdvance();
 }
 
