@@ -24,6 +24,7 @@
 #include <ripple/protocol/UintTypes.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <boost/format.hpp>
 
 namespace ripple {
@@ -109,14 +110,14 @@ LedgerAdjust::getAccountCount(LockedSociSession db)
 std::shared_ptr<SLE>
 LedgerAdjust::createSle(Schema& app)
 {
-    DatabaseCon& connection = app.getTxnDB();
+    TxnDBCon& connection = app.getTxnDB();
     Keylet key = keylet::statis();
     auto countSle = std::make_shared<SLE>(ltSTATIS, key.key);
-    countSle->setFieldU32(sfTxSuccessCountField, getTxSucessCount(connection.checkoutDb()));
-    countSle->setFieldU32(sfTxFailureCountField, getTxFailCount(connection.checkoutDb()));
-    countSle->setFieldU32(sfContractCallCountField, getContractCallCount(connection.checkoutDb()));
-    int contractCount = getContractCreateCount(connection.checkoutDb());
-    int accountCount = getAccountCount(connection.checkoutDb());
+    countSle->setFieldU32(sfTxSuccessCountField, getTxSucessCount(connection.checkoutDbRead()));
+    countSle->setFieldU32(sfTxFailureCountField, getTxFailCount(connection.checkoutDbRead()));
+    countSle->setFieldU32(sfContractCallCountField,getContractCallCount(connection.checkoutDbRead()));
+    int contractCount = getContractCreateCount(connection.checkoutDbRead());
+    int accountCount = getAccountCount(connection.checkoutDbRead());
     if(accountCount > 1)
         accountCount = accountCount - contractCount;
     countSle->setFieldU32(sfAccountCountField, accountCount);

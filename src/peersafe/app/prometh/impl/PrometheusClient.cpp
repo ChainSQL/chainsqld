@@ -29,6 +29,7 @@
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <boost/format.hpp>
 #include <memory>
 #include <ripple/core/ConfigSections.h>
@@ -169,14 +170,14 @@ PrometheusClient::timerEntry(NetClock::time_point const& now)
         }
         else
         {
-            DatabaseCon& connection = app_.getTxnDB();
-            txSucessCount_gauge.Set(LedgerAdjust::getTxSucessCount(connection.checkoutDb()));
-            txFailCount_gauge.Set(LedgerAdjust::getTxFailCount(connection.checkoutDb()));
-            contractCallCount_gauge.Set(LedgerAdjust::getContractCallCount(connection.checkoutDb()));
+            TxnDBCon& connection = app_.getTxnDB();
+            txSucessCount_gauge.Set( LedgerAdjust::getTxSucessCount(connection.checkoutDbRead()));
+            txFailCount_gauge.Set(LedgerAdjust::getTxFailCount(connection.checkoutDbRead()));
+            contractCallCount_gauge.Set(LedgerAdjust::getContractCallCount(connection.checkoutDbRead()));
            
-            int contractCount = LedgerAdjust::getContractCreateCount(connection.checkoutDb());
+            int contractCount = LedgerAdjust::getContractCreateCount(connection.checkoutDbRead());
             contractCreateCount_gauge.Set(contractCount);
-            int accountCount = LedgerAdjust::getAccountCount(connection.checkoutDb());
+            int accountCount = LedgerAdjust::getAccountCount(connection.checkoutDbRead());
             if (accountCount > 1)
                 accountCount = accountCount - contractCount;
             accountCount_gauge.Set(accountCount);
