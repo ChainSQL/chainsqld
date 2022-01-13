@@ -1079,7 +1079,7 @@ public:
         m_acceptedLedgerCache.sweep();
         cachedSLEs_.expire();
 
-        getTableSync().sweep();
+        getTableSync().Sweep();
     }
 
     void

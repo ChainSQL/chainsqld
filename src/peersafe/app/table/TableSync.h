@@ -87,9 +87,9 @@ public:
     void LocalSyncThread();
 
     void SetHaveSyncFlag(bool haveSync);
-    void sweep();
+    void Sweep();
+    bool InitTableItems();
 private:
-    bool initTableItems();
     std::tuple<AccountID, SecretKey, bool>
     ParseSecret(std::string secret, std::string user);
     std::tuple<AccountID, AccountID, SecretKey, bool> 
