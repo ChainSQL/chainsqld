@@ -33,7 +33,7 @@ CACertSite::CACertSite(Schema& app)
     : ValidatorSite(app)
     , timeKeeper_(app.timeKeeper())
     , publisherManifests_(app.publisherManifests())
-    , certList_(app.certList())
+    , userCertList_(app.userCertList())
 
 {
 }
@@ -104,8 +104,8 @@ CACertSite::parseJsonResponse(
             //publisher.expiration = TimeKeeper::time_point{
             //    TimeKeeper::duration{list["expiration"].asUInt()}};
             publisher.expiration = TimeKeeper::time_point::max();
-            // Update     certList_
-            certList_.setCertList(root_cert_list);
+            // Update     userCertList_
+            userCertList_.setCertList(root_cert_list);
         }
         break;
         case ListDisposition::same_sequence:

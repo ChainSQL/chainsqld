@@ -95,9 +95,6 @@ public:
     bool
     setSynTable();
 
-    bool
-    checkCertificate();
-
     std::shared_ptr<Ledger>
     getLastFullLedger(unsigned offset);
 
@@ -152,7 +149,7 @@ private:
     std::unique_ptr<ManifestCache> publisherManifests_;
     std::unique_ptr<ValidatorList> validators_;
     std::unique_ptr<ValidatorSite> validatorSites_;
-    std::unique_ptr<CertList> certList_;
+    std::unique_ptr<UserCertList> userCertList_;
     std::unique_ptr<CACertSite> caCertSites_;
     std::unique_ptr<AmendmentTable> m_amendmentTable;
     // std::unique_ptr <PreContractFace> m_preContractFace;
@@ -303,8 +300,8 @@ public:
               config_->VALIDATION_QUORUM))
         , validatorSites_(std::make_unique<ValidatorSite>(*this))
 
-        , certList_(std::make_unique<CertList>(
-              config_->ROOT_CERTIFICATES,
+        , userCertList_(std::make_unique<UserCertList>(
+              config_->USER_ROOT_CERTIFICATES,
               SchemaImp::journal("CertList")))
         , caCertSites_(std::make_unique<CACertSite>(*this))
 
@@ -724,10 +721,10 @@ public:
         return *validatorSites_;
     }
 
-    CertList&
-    certList() override
+    UserCertList&
+    userCertList() override
     {
-        return *certList_;
+        return *userCertList_;
     }
 
     ManifestCache&
@@ -1211,9 +1208,6 @@ bool
 SchemaImp::setup()
 {
     if (!setSynTable())
-        return false;
-
-    if (!checkCertificate())
         return false;
 
     setMaxDisallowedLedger();
@@ -2128,26 +2122,6 @@ SchemaImp::setSynTable()
     return true;
 }
 
-bool
-SchemaImp::checkCertificate()
-{
-    auto const vecCrtPath = config_->section("x509_crt_path").values();
-    if (vecCrtPath.empty())
-    {
-        return true;
-    }
-    else if (!config_->ROOT_CERTIFICATES.empty())
-    {
-        OpenSSL_add_all_algorithms();
-        return true;
-    }
-    else
-    {
-        std::cerr << "Root certificate configuration error ,please check cfg!"
-                  << std::endl;
-        return false;
-    }
-}
 
 std::shared_ptr<Schema>
 make_Schema(

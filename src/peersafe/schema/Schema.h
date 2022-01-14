@@ -52,7 +52,7 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
-class CertList;
+class UserCertList;
 class Cluster;
 class NodeStoreScheduler;
 class TxStoreDBConn;
@@ -164,8 +164,8 @@ public:
     validators() = 0;
     virtual ValidatorSite&
     validatorSites() = 0;
-    virtual CertList&
-    certList() = 0;
+    virtual UserCertList&
+    userCertList() = 0;
     virtual ManifestCache&
     validatorManifests() = 0;
     virtual ManifestCache&

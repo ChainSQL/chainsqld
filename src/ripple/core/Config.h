@@ -130,8 +130,11 @@ public:
     std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
 
-	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
-	std::vector <std::string>	SCHEMA_IDS;
+	std::vector<std::string>    USER_ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+	std::vector<std::string>	SCHEMA_IDS;
+
+    std::vector<std::string> PEER_ROOT_CERTIFICATES;
+    std::string PEER_X509_CRED;
 
     enum StartUpType
     {
@@ -331,6 +334,9 @@ public:
     int
     getValueFor(SizedItem item, boost::optional<std::size_t> node = boost::none)
         const;
+
+    bool
+    checkCertificates() const;
 };
 
 }  // namespace ripple

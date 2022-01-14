@@ -53,39 +53,19 @@ checkValidity(
 
     if (!(flags & SF_SIGGOOD))
     {
-		auto const certificate = tx.getFieldVL(sfCertificate);
+        auto const certVerify1 = tx.checkCertificate();
+        if (!certVerify1.first)
+        {
+            router.setFlags(id, SF_SIGBAD);
+            return {Validity::SigBad, certVerify1.second};
+        }
 
-		std::vector<std::string> rootCertificates = schema.certList().getCertList();
-
-		bool  bHasCert             = (!certificate.empty());
-		bool  bNeedCertVerify = (!rootCertificates.empty());
-
-		if (bHasCert  && bNeedCertVerify) {
-
-				auto const sigCertVerify = tx.checkCertSign();
-				if (!sigCertVerify.first) {
-
-					router.setFlags(id, SF_SIGBAD);
-					return{ Validity::SigBad, sigCertVerify.second };
-				}
-
-				// certification  au
-				std::string certInfo = sigCertVerify.second;
-
-				std::string sException;
-				if (!verifyCACert(certInfo, rootCertificates, sException)) {
-
-					std::string errInfo = "Certificate authentication failed. " + sException;
-					return{ Validity::SigBad,errInfo };
-				}
-		}
-		else if (bNeedCertVerify) {
-				return{ Validity::SigBad, "Missing Certificate field" };
-		}
-		else if(bHasCert){
-
-			return{ Validity::SigBad, "Root certificate has not been configurated" };
-		}
+        auto const certVerify2 =
+            schema.userCertList().verifyCred(certVerify1.second);
+        if (!certVerify2.first)
+        {
+            return {Validity::SigBad, certVerify2.second};
+        }
 
         // Don't know signature state. Check it.
         auto const requireCanonicalSig =
@@ -201,9 +181,5 @@ applyTransaction(
     }
 }
 
-bool verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException)
-{
-	return verifyCert(rootCerts, certUser, sException);
-}
 
 } // ripple

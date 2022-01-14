@@ -764,34 +764,36 @@ STTx::checkMultiSign(RequireFullyCanonicalSig requireCanonicalSig) const
     return {true, ""};
 }
 
-std::pair<bool, std::string> STTx::checkCertSign() const
+std::pair<bool, std::string>
+STTx::checkCertificate() const
 {
-	bool validSig = false;
-	try
-	{
-		auto const spk                 = getFieldVL(sfSigningPubKey);
-		auto const certificate       = getFieldVL(sfCertificate);
-		std::string sCertificate      = std::string(certificate.begin(), certificate.end());
-		PublicKey certPublicKey  = getPublicKeyFromX509(sCertificate);
+    if (!isFieldPresent(sfCertificate))
+    {
+        return {true, ""};
+    }
 
-		if (certPublicKey == PublicKey(makeSlice(spk)) ){
-			return{ true, sCertificate };
-		}
+    try
+    {
+        auto const spk = getFieldVL(sfSigningPubKey);
+        auto const certificate = getFieldVL(sfCertificate);
+        std::string sCertificate =
+            std::string(certificate.begin(), certificate.end());
+        PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
 
-	}
-	catch (std::exception const& e)
-	{
-		std::string sExcept(e.what());
-		sExcept = "checkCertSign()  exception :" + sExcept;
+        if (certPublicKey == PublicKey(makeSlice(spk)))
+        {
+            return {true, sCertificate};
+        }
+    }
+    catch (std::exception const& e)
+    {
+        std::string sExcept(e.what());
+        sExcept = "checkCertificate() exception :" + sExcept;
 
-		LogicError(sExcept);
-		return{ false," Failed to get the X509 certificate public key" };
-	}
+        return {false, sExcept};
+    }
 
-	if (validSig == false)
-		return{ false, "Cert signature and Tx signature not match ." };
-
-	return{ true, "" };
+    return {false, "certificate public key and signing public key not match"};
 }
 
 //------------------------------------------------------------------------------
