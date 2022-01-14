@@ -170,6 +170,13 @@ public:
     Json::Value
     txInPool();
 
+    void
+    sweep();
+
+protected:
+    void
+    removeExpired();
+
 private:
     Schema& app_;
 

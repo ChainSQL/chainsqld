@@ -1080,6 +1080,7 @@ public:
         cachedSLEs_.expire();
 
         getTableSync().Sweep();
+        getTxPool().sweep();
     }
 
     void
