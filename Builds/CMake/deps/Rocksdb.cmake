@@ -60,7 +60,7 @@ if (local_rocksdb)
   ExternalProject_Add (rocksdb
     PREFIX ${nih_cache_path}
     GIT_REPOSITORY https://github.com/facebook/rocksdb.git
-    GIT_TAG v6.7.3
+    GIT_TAG v6.14.5
     PATCH_COMMAND
       # only used by windows build
       ${CMAKE_COMMAND} -E copy
@@ -96,9 +96,9 @@ if (local_rocksdb)
       -Dlz4_FOUND=ON
       -USNAPPY_*
       -Usnappy_*
-      -Dsnappy_INCLUDE_DIRS=$<JOIN:$<TARGET_PROPERTY:snappy_lib,INTERFACE_INCLUDE_DIRECTORIES>,::>
-      -Dsnappy_LIBRARIES=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_RELEASE>>
-      -Dsnappy_FOUND=ON
+      -DSnappy_INCLUDE_DIRS=$<JOIN:$<TARGET_PROPERTY:snappy_lib,INTERFACE_INCLUDE_DIRECTORIES>,::>
+      -DSnappy_LIBRARIES=$<IF:$<CONFIG:Debug>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_DEBUG>,$<TARGET_PROPERTY:snappy_lib,IMPORTED_LOCATION_RELEASE>>
+      -DSnappy_FOUND=ON
       -DWITH_MD_LIBRARY=OFF
       -DWITH_RUNTIME_DEBUG=$<IF:$<CONFIG:Debug>,ON,OFF>
       -DFAIL_ON_WARNINGS=OFF
