@@ -209,6 +209,7 @@ Handler const handlerArray[]{
 	{   "schema_list",          byRef (&doSchemaList),         Role::USER,  NO_CONDITION    },
 	{   "schema_info",          byRef (&doSchemaInfo),         Role::USER,  NO_CONDITION },
 	{   "schema_accept",        byRef (&doSchemaAccept),       Role::ADMIN, NO_CONDITION },
+    {   "tx_in_pool",           byRef (&doTxInPool),           Role::USER,  NO_CONDITION },
 };
 
 class HandlerTable

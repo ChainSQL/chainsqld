@@ -302,4 +302,33 @@ TxPool::removeTx(uint256 hash)
     }
 }
 
+Json::Value
+TxPool::txInPool()
+{
+    Json::Value ret(Json::objectValue);
+    {
+        std::shared_lock read_lock_avoid{mutexAvoid_};
+
+        for (auto iter = mAvoidByHash.begin(); iter != mAvoidByHash.end();
+             ++iter)
+        {
+            ret["avoid"].append(
+                to_string(iter->first) + ":" + std::to_string(iter->second));
+        }
+
+        ret["avoid_size"] = (uint32_t)mAvoidByHash.size();
+    }
+
+    {
+        std::shared_lock read_lock_set{mutexSet_};
+        for (auto it = mTxsHash.begin(); it != mTxsHash.end(); it++)
+        {
+            if (mAvoidByHash.find(it->first) == mAvoidByHash.end())
+                ret["free"].append(to_string(it->first));
+        }
+    }
+
+    return ret;
+}
+
 }  // namespace ripple
