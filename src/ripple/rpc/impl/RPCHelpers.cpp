@@ -208,6 +208,8 @@ isValidatedOld(LedgerMaster& ledgerMaster, bool standalone)
     return ledgerMaster.getValidatedLedgerAge() > Tuning::maxValidatedLedgerAge;
 }
 
+}  // namespace
+
 template <class T>
 Status
 ledgerFromRequest(T& ledger, JsonContext& context)
@@ -265,7 +267,6 @@ ledgerFromRequest(T& ledger, JsonContext& context)
 
     return Status::OK;
 }
-}  // namespace
 
 template <class T>
 Status

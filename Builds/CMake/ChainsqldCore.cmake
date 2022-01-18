@@ -598,6 +598,7 @@ target_sources (chainsqld PRIVATE
   src/ripple/rpc/handlers/LedgerEntry.cpp
   src/ripple/rpc/handlers/LedgerHandler.cpp
   src/ripple/rpc/handlers/LedgerHeader.cpp
+  src/ripple/rpc/handlers/LedgerProof.cpp
   src/ripple/rpc/handlers/LedgerRequest.cpp
   src/ripple/rpc/handlers/LogLevel.cpp
   src/ripple/rpc/handlers/LogRotate.cpp

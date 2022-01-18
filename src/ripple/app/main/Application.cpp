@@ -290,6 +290,11 @@ public:
               *this,
               logs_->journal("SchemaManager")))
 
+        , m_peerCertList(std::make_unique<PeerCertList>(
+              config_->PEER_ROOT_CERTIFICATES,
+              config_->PEER_X509_CRED,
+              logs_->journal("PeerCertList")))
+
         , sweepTimer_(get_io_service())
 
         , entropyTimer_(get_io_service())
@@ -311,10 +316,6 @@ public:
               std::chrono::milliseconds(100),
               get_io_service())
         , grpcServer_(std::make_unique<GRPCServer>(*this))
-        , m_peerCertList(std::make_unique<PeerCertList>(
-              config_->PEER_ROOT_CERTIFICATES,
-              config_->PEER_X509_CRED,
-              logs_->journal("PeerCertList")))
     {
         add(m_resourceManager.get());
 

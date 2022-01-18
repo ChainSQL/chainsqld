@@ -30,10 +30,11 @@
 
 namespace ripple {
 
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations;
+class RCLValidationsPolicy;
 class RCLValidationsAdaptor;
-using RCLValidations = Validations<RCLValidationsAdaptor>;
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 class SHAMap;
 namespace test {
 class NegativeUNLVoteInternal_test;

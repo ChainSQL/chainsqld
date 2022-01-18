@@ -21,6 +21,7 @@
 #define RIPPLE_APP_CONSENSUSS_VALIDATIONS_H_INCLUDED
 
 #include <ripple/app/ledger/Ledger.h>
+#include <ripple/basics/ScopedLock.h>
 #include <ripple/protocol/Protocol.h>
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STValidation.h>
@@ -141,6 +142,58 @@ public:
     }
 };
 
+/** Implements the StalePolicy policy class for adapting Validations in the RCL
+
+    Manages storing and writing stale RCLValidations to the sqlite DB.
+*/
+class RCLValidationsPolicy
+{
+    using LockType = std::mutex;
+    using ScopedLockType = std::lock_guard<LockType>;
+    using ScopedUnlockType = GenericScopedUnlock<LockType>;
+
+    Schema& app_;
+    beast::Journal j_;
+    bool write_ = false;
+
+    // Lock for managing staleValidations_ and writing_
+    std::mutex staleLock_;
+    std::vector<RCLValidation> staleValidations_;
+    bool staleWriting_ = false;
+
+    // Write the stale validations to sqlite DB, the scoped lock argument
+    // is used to remind callers that the staleLock_ must be *locked* prior
+    // to making the call
+    void
+    doStaleWrite(ScopedLockType&);
+
+public:
+    RCLValidationsPolicy(Schema& app, beast::Journal j);
+
+    /** Current time used to determine if validations are stale.
+     */
+    NetClock::time_point
+    now() const;
+
+    /** Handle a newly stale validation.
+
+        @param v The newly stale validation
+
+        @warning This should do minimal work, as it is expected to be called
+                 by the generic Validations code while it may be holding an
+                 internal lock
+    */
+    void
+    onStale(RCLValidation&& v);
+
+    /** Flush current validations to disk before shutdown.
+
+        @param remaining The remaining validations to flush
+    */
+    void
+    flush(hash_map<PublicKey, RCLValidation>&& remaining);
+};
+
 /** Wraps a ledger instance for use in generic Validations LedgerTrie.
 
     The LedgerTrie models a ledger's history as a map from Seq -> ID. Any
@@ -180,8 +233,7 @@ public:
         @return The ID of this ledger's ancestor with that sequence number or
                 ID{0} if one was not determined
     */
-    ID
-    operator[](Seq const& s) const;
+    ID operator[](Seq const& s) const;
 
     /// Find the sequence number of the earliest mismatching ancestor
     friend Seq
@@ -233,8 +285,7 @@ private:
 };
 
 /// Alias for RCL-specific instantiation of generic Validations
-using RCLValidations = Validations<RCLValidationsAdaptor>;
-
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 
 }  // namespace ripple
 
