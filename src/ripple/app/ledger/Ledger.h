@@ -314,6 +314,29 @@ public:
         return *txMap_;
     }
 
+    std::shared_ptr<SHAMap> const&
+    txMapPtr() const
+    {
+        return txMap_;
+    }
+
+    std::shared_ptr<SHAMap> const&
+    stateMapPtr() const
+    {
+        return stateMap_;
+    }
+
+    std::shared_ptr<SHAMap> const
+    contractStorageMap(uint256 const& root)const
+    {
+        auto mapPtr = std::make_shared<SHAMap>(
+            SHAMapType::STATE, stateMap_->family());
+        if (mapPtr && mapPtr->fetchRoot(SHAMapHash(root), nullptr))
+            return mapPtr;
+        else
+            return nullptr;
+    }
+
     // returns false on error
     bool
     addSLE(SLE const& sle);

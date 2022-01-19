@@ -237,7 +237,7 @@ RpcaPopAdaptor::peerValidation(
         }
 
         JLOG(j_.info()) << "recvValidation " << val->getLedgerHash() << " from "
-                        << peer->id();
+                        << getPubIndex(peer->getValPublic());
 
         app_.getOPs().pubValidation(val);
 
@@ -487,6 +487,7 @@ RpcaPopAdaptor::handleNewValidation(
         {
             auto result =
                 checkLedgerAccept(hash, val->getFieldU32(sfLedgerSequence));
+
             if (result.first && result.second)
             {
                 doValidLedger(result.first);
@@ -496,7 +497,7 @@ RpcaPopAdaptor::handleNewValidation(
     }
     else
     {
-        JLOG(j.debug()) << "Val for " << hash << " from "
+        JLOG(j.info()) << "Val for " << hash << " from "
                         << toBase58(TokenType::NodePublic, signingKey)
                         << " not added UNlisted";
     }

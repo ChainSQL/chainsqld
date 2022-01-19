@@ -70,7 +70,7 @@ include(deps/date)
 include(deps/Protobuf)
 include(deps/gRPC)
 include(deps/LibFF)
-
+include(deps/Prometheus-cpp)
 ###
 
 add_subdirectory(src/eth/evmc)

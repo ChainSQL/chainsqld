@@ -39,6 +39,7 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/ContractHelper.h>
 
 
 namespace ripple {
@@ -855,8 +856,10 @@ Transactor::operator()()
 		return { terResult, false };
 	}
 	if (terResult.ter == tesSUCCESS)
-	{
+    {
+        ctx_.app.getContractHelper().clearDirty();
 		terResult = apply();
+        ctx_.app.getContractHelper().flushDirty(terResult.ter);
 	}
 
     // No transaction can return temUNKNOWN from apply,
@@ -953,9 +956,9 @@ Transactor::operator()()
     }
 
 	// Always apply to ledger, even if tx invalid.
-	applied = true;
+	//applied = true;
 
-    if (applied)
+    //if (applied)
     {
         // Transaction succeeded fully or (retries are not allowed and the
         // transaction could claim a fee)
@@ -979,7 +982,7 @@ Transactor::operator()()
 
     JLOG(j_.trace()) << (applied ? "applied" : "not applied") << transToken(terResult.ter);
 
-	return std::make_pair(terResult, applied);
+	return std::make_pair(terResult, true);
 }
 
 }  // namespace ripple

@@ -22,11 +22,9 @@
 #include <ripple/protocol/impl/AccountID.cpp>
 #include <ripple/protocol/impl/Book.cpp>
 #include <ripple/protocol/impl/BuildInfo.cpp>
-#include <ripple/protocol/impl/ByteOrder.cpp>
 #include <ripple/protocol/impl/digest.cpp>
 #include <ripple/protocol/impl/ErrorCodes.cpp>
 #include <ripple/protocol/impl/Feature.cpp>
-#include <ripple/protocol/impl/HashPrefix.cpp>
 #include <ripple/protocol/impl/Indexes.cpp>
 #include <ripple/protocol/impl/Issue.cpp>
 #include <ripple/protocol/impl/Keylet.cpp>
@@ -61,8 +59,7 @@
 #include <ripple/protocol/impl/STVar.cpp>
 #include <ripple/protocol/impl/STVector256.cpp>
 #include <peersafe/protocol/impl/STMap256.cpp>
-#include <ripple/protocol/impl/IOUAmount.cpp>
-#include <ripple/protocol/impl/RippleAddress.cpp>
+#include <ripple/basics/impl/IOUAmount.cpp>
 #include <peersafe/protocol/impl/STEntry.cpp>
 #include <peersafe/protocol/impl/Contract.cpp>
 #include <peersafe/protocol/impl/STProposeSet.cpp>

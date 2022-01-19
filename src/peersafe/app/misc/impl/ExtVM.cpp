@@ -4,6 +4,8 @@
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/protocol/TableDefines.h>
+#include <peersafe/app/misc/ContractHelper.h>
+#include <ripple/protocol/Feature.h>
 
 #include <boost/thread.hpp>
 #include <eth/vm/Common.h>
@@ -108,35 +110,73 @@ ExtVM::balance(evmc_address const& addr)
 evmc_uint256be
 ExtVM::store(evmc_uint256be const& key)
 {
-    SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
+    AccountID contract = fromEvmC(myAddress);
+    SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
+    ContractHelper& helper = oSle_.ctx().app.getContractHelper();
+    auto seq = oSle_.ctx().view().seq();
 
     uint256 uKey = fromEvmC(key);
-    try
+    if (mapStore.rootHash() || helper.hasStorage(contract))
     {
-        auto& uV = mapStore.at(uKey);
-        return toEvmC(uV);
+        //check cache first
+        if (auto value = helper.fetchFromCache(contract,uKey))
+            return toEvmC(*value);
+
+        //fetch from SHAMap
+        auto root = mapStore.rootHash();
+        if (root)
+        {
+            if (auto value = helper.fetchValue(contract,*root, uKey))
+                return toEvmC(*value);
+        }
     }
-    catch (std::exception e)
+    else if (!mapStore.isDefault())
     {
-        return toEvmC(uint256(0));
+        try
+        {
+            auto& uV = mapStore.at(uKey);
+            return toEvmC(uV);
+        }
+        catch (std::exception e)
+        {
+            return toEvmC(uint256(0));
+        }
     }
+
+    return toEvmC(uint256(0));
 }
 
 void
 ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
 {
-    SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
+    AccountID contract = fromEvmC(myAddress);
+    SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
+    ContractHelper& helper = oSle_.ctx().app.getContractHelper();
+    auto seq = oSle_.ctx().view().seq();
 
+    
     uint256 uKey = fromEvmC(key);
     uint256 uValue = fromEvmC(value);
-    if (uValue == uint256(0))
-        mapStore.erase(uKey);
+    if (mapStore.rootHash() || 
+        (mapStore.isDefault() && oSle_.ctx().view().rules().enabled(featureContractStorage)))
+    {
+        auto root = mapStore.rootHash();
+        if (uValue == uint256(0))
+            helper.eraseStorage(contract,root,uKey);
+        else
+            helper.setStorage(contract,root,uKey,uValue);
+    }
     else
-        mapStore[uKey] = uValue;
+    {
+        if (uValue == uint256(0))
+            mapStore.erase(uKey);
+        else
+            mapStore[uKey] = uValue;
 
-    oSle_.ctx().view().update(pSle);
+        oSle_.ctx().view().update(pSle);
+    }
 }
 
 eth::bytes const&

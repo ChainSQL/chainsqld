@@ -127,7 +127,8 @@ public:
         tnINNER = 1,
         tnTRANSACTION_NM = 2,  // transaction, no metadata
         tnTRANSACTION_MD = 3,  // transaction, with metadata
-        tnACCOUNT_STATE = 4
+        tnACCOUNT_STATE = 4,
+        tnCONTRACT_STATE = 5
     };
 
 protected:
@@ -157,6 +158,8 @@ public:
     isLeaf() const;
     bool
     isInner() const;
+    bool
+    isContract() const;
     bool
     isValid() const;
     bool
@@ -198,6 +201,12 @@ private:
 
     static std::shared_ptr<SHAMapAbstractNode>
     makeTransactionWithMeta(
+        Slice data,
+        std::uint32_t seq,
+        SHAMapHash const& hash,
+        bool hashValid);
+    static std::shared_ptr<SHAMapAbstractNode>
+    makeContractState(
         Slice data,
         std::uint32_t seq,
         SHAMapHash const& hash,
@@ -276,6 +285,7 @@ class SHAMapTreeNode : public SHAMapAbstractNode
 {
 private:
     std::shared_ptr<SHAMapItem const> mItem;
+    boost::optional<uint256> mStorageRoot;
 
 public:
     SHAMapTreeNode(const SHAMapTreeNode&) = delete;
@@ -291,6 +301,17 @@ public:
         TNType type,
         std::uint32_t seq,
         SHAMapHash const& hash);
+    SHAMapTreeNode(
+        std::shared_ptr<SHAMapItem const> item,
+        TNType type,
+        std::uint32_t seq,
+        boost::optional<uint256> const& storageRoot);
+    SHAMapTreeNode(
+        std::shared_ptr<SHAMapItem const> item,
+        TNType type,
+        std::uint32_t seq,
+        SHAMapHash const& hash,
+        boost::optional<uint256> const& storageRoot);
     std::shared_ptr<SHAMapAbstractNode>
     clone(std::uint32_t seq) const override;
 
@@ -308,7 +329,7 @@ public:  // public only to SHAMap
     std::shared_ptr<SHAMapItem const> const&
     peekItem() const;
     bool
-    setItem(std::shared_ptr<SHAMapItem const> i, TNType type);
+    setItem(std::shared_ptr<SHAMapItem const> i, TNType type, boost::optional<uint256> storageRoot);
 
     std::string
     getString(SHAMapNodeID const&) const override;
@@ -317,6 +338,9 @@ public:  // public only to SHAMap
 
     bool
     verifyProof(Blob const& proofBlob, uint256 const& rootHash);
+
+    boost::optional<uint256>
+    getStorageRoot();
 };
 
 // SHAMapAbstractNode
@@ -362,13 +386,19 @@ inline bool
 SHAMapAbstractNode::isLeaf() const
 {
     return (mType == tnTRANSACTION_NM) || (mType == tnTRANSACTION_MD) ||
-        (mType == tnACCOUNT_STATE);
+        (mType == tnACCOUNT_STATE) || (mType == tnCONTRACT_STATE);
 }
 
 inline bool
 SHAMapAbstractNode::isInner() const
 {
     return mType == tnINNER;
+}
+
+inline bool
+SHAMapAbstractNode::isContract() const
+{
+    return mType == tnCONTRACT_STATE;
 }
 
 inline bool

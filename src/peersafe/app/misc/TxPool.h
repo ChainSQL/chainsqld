@@ -167,6 +167,16 @@ public:
     void
     checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash);
 
+    Json::Value
+    txInPool();
+
+    void
+    sweep();
+
+protected:
+    void
+    removeExpired();
+
 private:
     Schema& app_;
 

@@ -26,6 +26,8 @@
 #include <ripple/app/tx/apply.h>
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/app/misc/ContractHelper.h>
 
 namespace ripple {
 
@@ -59,7 +61,11 @@ buildLedgerImpl(
     {
         OpenView accum(&*built);
         assert(!accum.open());
+        app.getContractHelper().clearCache();
         applyTxs(accum, built);
+        auto count = accum.newAccountCount(*built);
+        LedgerAdjust::updateAccountCount(app, accum, count);
+        app.getContractHelper().apply(accum);
         accum.apply(*built);
     }
 
@@ -166,6 +172,8 @@ applyTransactions(
         if (!changes || (pass >= LEDGER_RETRY_PASSES))
             certainRetry = false;
     }
+    //Modify the sle of the statistics
+    LedgerAdjust::updateTxCount(app, view, count, failed.size());
 
     // If there are any transactions left, we must have
     // tried them in at least one final pass

@@ -301,7 +301,7 @@ OverlayImpl::onHandoff(
             {
                 m_peerFinder->on_closed(slot);
                 JLOG(journal.debug())
-                    << "Peer " << remote_endpoint << " redirected, slots full";
+                    << "Peer " << remote_endpoint << " redirected, slots full,result="<<(int)result;
                 handoff.moved = false;
                 handoff.response = makeRedirectResponse(
                     slot, request, remote_endpoint.address());

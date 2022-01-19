@@ -176,13 +176,7 @@ applyTransaction(
     try
     {
         auto const result = apply(app, view, txn, flags, j);
-        if (result.second)
-        {
-            JLOG(j.debug())
-                << "Transaction applied: " << transHuman(result.first);
-            return ApplyResult::Success;
-        }
-
+  
         if (isTefFailure(result.first) || isTemMalformed(result.first) ||
             isTelLocal(result.first))
         {
@@ -191,7 +185,12 @@ applyTransaction(
                 << "Transaction failure: " << transHuman(result.first);
             return ApplyResult::Fail;
         }
-
+         if (result.second)
+        {
+            JLOG(j.debug())
+                << "Transaction applied: " << transHuman(result.first);
+            return ApplyResult::Success;
+        }
         JLOG(j.debug()) << "Transaction retry: " << transHuman(result.first);
         return ApplyResult::Retry;
     }

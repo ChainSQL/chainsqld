@@ -69,6 +69,7 @@ namespace ripple {
 		nodes[jss::table] = mapCount[ltTABLE];
         nodes[jss::tablelist] = mapCount[ltTABLELIST];
 		nodes[jss::schema] = mapCount[ltSCHEMA];
+		nodes[jss::Statis] = mapCount[ltSTATIS];
 
 		int txCount = 0;
 		for (auto const& tx : lpLedger->txs)

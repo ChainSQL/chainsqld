@@ -359,6 +359,8 @@ public:
     void
     onLastFullLedgerLoaded(std::shared_ptr<Ledger const> const& ledger);
 
+    void
+    setLoadLedger(LedgerIndex const index);
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);
@@ -407,7 +409,6 @@ private:
 
     void
     checkLoadLedger();
-
 private:
     Schema& app_;
     beast::Journal m_journal;
@@ -492,6 +493,7 @@ private:
     std::atomic_bool subChainInited_{false};
     std::atomic_bool ledgerLoadInited{false};
 
+    LedgerIndex  load_ledger_index_;
 private:
     struct Stats
     {

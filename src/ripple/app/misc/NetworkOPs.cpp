@@ -78,6 +78,7 @@
 // #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -507,7 +508,7 @@ public:
     Json::Value
     getServerInfo(bool human, bool admin, bool counters) override;
     std::string
-    getServerStatus();
+    getServerStatus() override;
     void
     clearLedgerFetch() override;
     Json::Value
@@ -1232,7 +1233,7 @@ NetworkOPsImp::processHeartbeatTimer()
         reportConsensusStateChange(currPhase);
         mLastConsensusPhase = currPhase;
     }
-
+    app_.getPrometheusClient().timerEntry(now);
     setHeartbeatTimer();
 }
 
@@ -1396,6 +1397,20 @@ NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
 				jvObj[jss::status] = status;
 				p->send(jvObj, true);
 			}
+
+            // remove from tx-pool and reset account sequence
+            if (status == "validate_timeout")
+            {
+                auto tx =
+                    app_.getMasterTransaction().fetch(iter->first);
+                if (tx)
+                {
+                    auto act = tx->getSTransaction()->getAccountID(
+                        sfAccount);
+                    app_.getStateManager().resetAccountSeq(act);
+                }
+                app_.getTxPool().removeTx(iter->first);
+            }
 
 			iter = subTx.erase(iter);
 		}

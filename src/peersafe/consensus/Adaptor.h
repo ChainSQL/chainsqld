@@ -401,6 +401,7 @@ public:
     doValidLedger(std::shared_ptr<Ledger const> const& ledger)
     {
         ledgerMaster_.doValid(ledger);
+        ledgerMaster_.onConsensusReached(false, nullptr);
     }
 
     /** Notified of change in consensus mode

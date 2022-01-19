@@ -65,6 +65,11 @@ struct ConfigSection
     {
         return "crypto_alg";
     }
+    static std::string
+    prometheus()
+    {
+        return "prometheus";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.

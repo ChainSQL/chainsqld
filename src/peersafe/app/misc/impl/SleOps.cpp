@@ -378,7 +378,7 @@ namespace ripple {
 		if (ret != tesSUCCESS)
 		{
 			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
+			JLOG(j.warn())
 				<< "SleOps disposeTableTx,apply result:"
 				<< transToken(ret);
 		}
