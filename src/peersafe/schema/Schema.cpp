@@ -56,6 +56,7 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
 #include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/ConnectionPool.h>
@@ -176,6 +177,7 @@ private:
     std::unique_ptr<DatabaseCon> mLedgerDB;
     std::unique_ptr<DatabaseCon> mWalletDB;
     std::unique_ptr<PeerManager> m_peerManager;
+    std::unique_ptr<PrometheusClient> m_pPrometheusClient;
 
 public:
     SchemaImp(
@@ -360,6 +362,11 @@ public:
         , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
+        , m_pPrometheusClient(std::make_unique<PrometheusClient>(
+              *this,
+              *config_,
+              toBase58(TokenType::NodePublic, nodeIdentity().first),
+              SchemaImp::journal("PrometheusClient")))
 
     {
     }
@@ -590,6 +597,12 @@ public:
     getShardStore() override
     {
         return shardStore_.get();
+    }
+
+    PrometheusClient&
+    getPrometheusClient() override
+    {
+        return *m_pPrometheusClient;
     }
 
     RPC::ShardArchiveHandler*
@@ -1066,7 +1079,8 @@ public:
         m_acceptedLedgerCache.sweep();
         cachedSLEs_.expire();
 
-        getTableSync().sweep();
+        getTableSync().Sweep();
+        getTxPool().sweep();
     }
 
     void
@@ -1840,12 +1854,14 @@ SchemaImp::loadOldLedger(
             return false;
         }
 
-        if (!loadLedger->walkLedger(app_.journal("Ledger")))
-        {
-            JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
-            assert(false);
-            return false;
-        }
+        m_ledgerMaster->setLoadLedger(loadLedger->info().seq);
+        // if (!loadLedger->walkLedger(app_.journal("Ledger")))
+        // {
+        //     JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
+        //     assert(false);
+        //     return false;
+        // }
+        
 
         if (!loadLedger->assertSane(app_.journal("Ledger")))
         {

@@ -699,6 +699,8 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/tx/impl/FreezeAccount.cpp
   src/peersafe/app/util/Common.cpp
   src/peersafe/app/util/TableSyncUtil.cpp
+  src/peersafe/app/prometh/impl/PrometheusClient.cpp
+  src/peersafe/app/ledger/LedgerAdjust.cpp
   src/peersafe/basics/impl/characterUtilities.cpp
   src/peersafe/crypto/impl/AES.cpp
   src/peersafe/crypto/impl/ECDSAKey.cpp

@@ -280,7 +280,7 @@ Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
     auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
     if (inboundLedger && !inboundLedger->isComplete() && !inboundLedger->isFailed())
     {
-        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
+        JLOG(j_.info()) << "touch inboundLedger for " << prevLedgerHash;
         inboundLedger->touch();
     }
 }

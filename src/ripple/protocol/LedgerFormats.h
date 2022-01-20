@@ -106,7 +106,9 @@ enum LedgerEntryType {
 
     ltSCHEMA_INDEX = 'k',
 
-    ltTABLE = 't'
+    ltTABLE = 't',
+
+    ltSTATIS = 'I'
 };
 
 /**

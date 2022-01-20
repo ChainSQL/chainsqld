@@ -9,16 +9,20 @@ uint32_t
 StateManager::getAccountSeq(AccountID const& id, ReadView const& view)
 {
 	std::lock_guard lock(mutex_);
-	if (accountState_.find(id) != accountState_.end())
-	{
-		return accountState_[id].sequence;
-	}
-	
 	auto sle = view.read(keylet::account(id));
 	if (sle)
 	{
-		accountState_[id].sequence = sle->getFieldU32(sfSequence);
-		return sle->getFieldU32(sfSequence);
+        auto seq = sle->getFieldU32(sfSequence);
+        if (accountState_.find(id) != accountState_.end() &&
+            accountState_[id].sequence >= seq)
+        {
+                return accountState_[id].sequence;
+        }
+        else
+        {
+            accountState_[id].sequence = sle->getFieldU32(sfSequence);
+            return sle->getFieldU32(sfSequence);
+        }		
 	}
 	else
 	{

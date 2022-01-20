@@ -19,6 +19,7 @@
 
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/StateManager.h>
 
 namespace ripple {
 
@@ -300,6 +301,106 @@ TxPool::removeTx(uint256 hash)
             mAvoidByHash.erase(hash);
         }
     }
+}
+
+Json::Value
+TxPool::txInPool()
+{
+    Json::Value ret(Json::objectValue);
+    {
+        std::shared_lock read_lock_avoid{mutexAvoid_};
+
+        for (auto iter = mAvoidByHash.begin(); iter != mAvoidByHash.end();
+             ++iter)
+        {
+            ret["avoid"].append(
+                to_string(iter->first) + ":" + std::to_string(iter->second));
+        }
+
+        ret["avoid_size"] = (uint32_t)mAvoidByHash.size();
+    }
+
+    {
+        std::shared_lock read_lock_set{mutexSet_};
+        for (auto it = mTxsHash.begin(); it != mTxsHash.end(); it++)
+        {
+            if (mAvoidByHash.find(it->first) == mAvoidByHash.end())
+                ret["free"].append(to_string(it->first));
+        }
+    }
+
+    return ret;
+}
+
+void
+TxPool::sweep()
+{
+    removeExpired();
+}
+
+void
+TxPool::removeExpired()
+{
+    // Remove txs the lastLedgerSequence reach.
+    uint64_t txCnt = 0;
+    auto seq = app_.getLedgerMaster().getValidLedgerIndex();
+
+    std::shared_lock read_lock_set{mutexSet_};
+    std::shared_lock read_lock_avoid{mutexAvoid_};
+
+    auto iter = mTxsSet.begin();
+    std::set<AccountID> setAccounts;
+    while (iter != mTxsSet.end())
+    {
+        auto pTx = *iter;
+        if (pTx && pTx->getSTransaction())
+        {
+            auto seqTx =
+                pTx->getSTransaction()->getFieldU32(sfLastLedgerSequence);
+            auto& hash = pTx->getID();
+            if (seqTx < seq)
+            {
+                setAccounts.emplace(
+                    pTx->getSTransaction()->getAccountID(sfAccount));
+                iter = mTxsSet.erase(iter);
+                mTxsHash.erase(hash);
+                if (mAvoidByHash.find(hash) != mAvoidByHash.end())
+                {
+                    LedgerIndex seq = mAvoidByHash[hash];
+                    mAvoidBySeq[seq].erase(hash);
+                    if (mAvoidBySeq[seq].size() == 0)
+                    {
+                        mAvoidBySeq.erase(seq);
+                    }
+                    mAvoidByHash.erase(hash);
+                }
+                txCnt++;
+                continue;
+            }
+        }
+        iter++;
+    }
+    for (auto const& account : setAccounts)
+    {
+        app_.getStateManager().resetAccountSeq(account);
+    }
+
+    // sweep avoid
+    auto it = mAvoidByHash.begin();
+    while (it != mAvoidByHash.end())
+    {
+        if (it->second < seq)
+        {
+            auto seqTmp = it->second;
+            it = mAvoidByHash.erase(it);
+            if (mAvoidBySeq.find(seqTmp) != mAvoidBySeq.end())
+                mAvoidBySeq.erase(seqTmp);
+        }
+        else
+            it++;
+    }
+    if (txCnt > 0)
+        JLOG(j_.warn()) << "TxPool sweep removed " << txCnt << " txs.";
 }
 
 }  // namespace ripple

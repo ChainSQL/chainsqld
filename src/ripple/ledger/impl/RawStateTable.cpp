@@ -172,6 +172,30 @@ RawStateTable::apply(RawView& to) const
     }
 }
 
+std::size_t
+RawStateTable::accountCount() const
+{
+    std::size_t count = 0;
+    for (auto const& elem : items_)
+    {
+        auto const& item = elem.second;
+        std::shared_ptr<SLE> const& sle = item.second;
+        switch (item.first)
+        {
+            case Action::erase:
+                break;
+            case Action::insert:
+                if (sle->getType() == ltACCOUNT_ROOT && !sle->isFieldPresent(sfContractCode))
+                    count++;
+                    
+                break;
+            case Action::replace:
+                break;
+        }
+    }
+    return count;
+}
+
 bool
 RawStateTable::exists(ReadView const& base, Keylet const& k) const
 {

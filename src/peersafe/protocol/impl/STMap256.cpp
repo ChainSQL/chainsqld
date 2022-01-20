@@ -20,61 +20,76 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/protocol/jss.h>
 #include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
-	//STMap256::STMap256(SerialIter& sit, SField const& name)
-	//	: STBase(name)
-	//{
-	//	Blob data = sit.getVL();
-	//	auto const count = data.size() / (256 / 8) / 2;
+STMap256::STMap256()
+{
+    
+}
 
-	//	Blob::iterator begin = data.begin();
-	//	unsigned int uStart = 0;
-	//	for (unsigned int i = 0; i != count; i++)
-	//	{
-	//		unsigned int uKeyEnd = uStart + (256 / 8);
-	//		unsigned int uValueEnd = uStart + (256 / 8) * 2;
-	//		// This next line could be optimized to construct a default
-	//		// uint256 in the map and then copy into it
-	//		mValue.insert(std::make_pair(uint256(Blob(begin + uStart, begin + uKeyEnd)),
-	//			uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
-	//		uStart = uValueEnd;
-	//	}
-	//}
+STMap256::STMap256(SerialIter& sit, SField const& name) : STBase(name)
+{
+    Blob data = sit.getVL();
+    if (data.size() == 256 / 8)
+        mRootHash = uint256(data);
+    else
+    {
+        auto const count = data.size() / (256 / 8) / 2;
 
-	//void
-	//	STMap256::add(Serializer& s) const
-	//{
-	//	assert(fName->isBinary());
-	//	assert(fName->fieldType == STI_MAP256);
-	//	for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-	//	{
-	//		s.add256(iter->first);
-	//		s.add256(iter->second);
-	//	}
-	//}
+        Blob::iterator begin = data.begin();
+        unsigned int uStart = 0;
+        for (unsigned int i = 0; i != count; i++)
+        {
+            unsigned int uKeyEnd = uStart + (256 / 8);
+            unsigned int uValueEnd = uStart + (256 / 8) * 2;
+            // This next line could be optimized to construct a default
+            // uint256 in the map and then copy into it
+            mValue.insert(std::make_pair(
+                uint256(Blob(begin + uStart, begin + uKeyEnd)),
+                uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
+            uStart = uValueEnd;
+        }
+    }
+}
 
-	//bool
-	//	STMap256::isEquivalent(const STBase& t) const
-	//{
-	//	const STMap256* v = dynamic_cast<const STMap256*> (&t);
-	//	return v && (mValue == v->mValue);
-	//}
+uint256&
+STMap256::operator[](const uint256& key)
+{
+    assert(!mRootHash);
+    return mValue[key];
+}
 
-	//Json::Value
-	//	STMap256::getJson(int) const
-	//{
-	//	Json::Value ret(Json::objectValue);
+uint256&
+STMap256::at(const uint256& key)
+{
+    assert(!mRootHash);
+    return mValue.at(key);
+}
 
-	//	for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-	//	{
-	//		ret[to_string(iter->first)] = to_string(iter->second);
-	//	}
+size_t
+STMap256::erase(const uint256& key)
+{
+    assert(!mRootHash);
+    return mValue.erase(key);
+}
 
-	//	return ret;
-	//}
+void
+STMap256::updateRoot(const uint256& rootHash)
+{
+    mRootHash = rootHash;
+}
+
+boost::optional<uint256> STMap256::rootHash()
+{
+    return mRootHash;
+}
+
+boost::optional<uint256>
+STMap256::rootHash() const
+{
+    return mRootHash;
+}
 
 } // ripple

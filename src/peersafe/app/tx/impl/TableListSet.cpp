@@ -318,8 +318,12 @@ namespace ripple {
 			auto const sleAccount = view.read(keylet::account(sourceID));
 			// Check reserve and funds availability
 			{
+                 bool isContract = false;
+                 if (sleAccount->isFieldPresent(sfContractCode))
+                    isContract = true;
+		
 				auto const reserve = view.fees().accountReserve(
-					(*sleAccount)[sfOwnerCount] + 1);
+					(*sleAccount)[sfOwnerCount] + 1, isContract);
 				STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
 				if (priorBalance < reserve)
 					return tefINSU_RESERVE_TABLE;

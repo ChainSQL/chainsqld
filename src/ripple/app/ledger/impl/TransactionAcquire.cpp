@@ -148,7 +148,7 @@ TransactionAcquire::trigger(std::shared_ptr<Peer> const& peer)
         ConsensusTransSetSF sf(app_, app_.getTempNodeCache());
         auto nodes = mMap->getMissingNodes(256, &sf);
 
-        if (nodes.empty())
+        if (nodes.first.empty())
         {
             if (mMap->isValid())
                 mComplete = true;
@@ -167,7 +167,7 @@ TransactionAcquire::trigger(std::shared_ptr<Peer> const& peer)
         if (mTimeouts != 0)
             tmGL.set_querytype(protocol::qtINDIRECT);
 
-        for (auto const& node : nodes)
+        for (auto const& node : nodes.first)
         {
             *tmGL.add_nodeids() = node.first.getRawString();
         }

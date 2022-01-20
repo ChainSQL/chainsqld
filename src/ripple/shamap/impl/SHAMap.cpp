@@ -835,7 +835,8 @@ bool
 SHAMap::addGiveItem(
     std::shared_ptr<SHAMapItem const> item,
     bool isTransaction,
-    bool hasMeta)
+    bool hasMeta,
+    boost::optional<uint256> const& storageRoot)
 {
     // add the specified item, does not update
     uint256 tag = item->key();
@@ -843,6 +844,8 @@ SHAMap::addGiveItem(
         ? SHAMapTreeNode::tnACCOUNT_STATE
         : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
                    : SHAMapTreeNode::tnTRANSACTION_NM);
+    if (storageRoot)
+        type = SHAMapTreeNode::tnCONTRACT_STATE;
 
     assert(state_ != SHAMapState::Immutable);
 
@@ -869,7 +872,8 @@ SHAMap::addGiveItem(
         int branch = nodeID.selectBranch(tag);
         assert(inner->isEmptyBranch(branch));
         auto newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_,storageRoot);
+        
         inner->setChild(branch, newNode);
     }
     else
@@ -899,13 +903,13 @@ SHAMap::addGiveItem(
         assert(node->isInner());
 
         std::shared_ptr<SHAMapTreeNode> newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_,storageRoot);
         assert(newNode->isValid() && newNode->isLeaf());
         auto inner = std::static_pointer_cast<SHAMapInnerNode>(node);
         inner->setChild(b1, newNode);
 
         newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(otherItem), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(otherItem), leaf->getType(), seq_,leaf->getStorageRoot());
         assert(newNode->isValid() && newNode->isLeaf());
         inner->setChild(b2, newNode);
     }
@@ -939,7 +943,8 @@ bool
 SHAMap::updateGiveItem(
     std::shared_ptr<SHAMapItem const> item,
     bool isTransaction,
-    bool hasMeta)
+    bool hasMeta,
+    boost::optional<uint256> const& storageRoot)
 {
     // can't change the tag but can change the hash
     uint256 tag = item->key();
@@ -963,12 +968,15 @@ SHAMap::updateGiveItem(
     }
 
     node = unshareNode(std::move(node), nodeID);
+    SHAMapTreeNode::TNType type;
+    if (storageRoot)
+        type = SHAMapTreeNode::TNType::tnCONTRACT_STATE;
+    else
+        type = !isTransaction ? SHAMapTreeNode::tnACCOUNT_STATE
+                              : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
+                                         : SHAMapTreeNode::tnTRANSACTION_NM);
 
-    if (!node->setItem(
-            std::move(item),
-            !isTransaction ? SHAMapTreeNode::tnACCOUNT_STATE
-                           : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
-                                      : SHAMapTreeNode::tnTRANSACTION_NM)))
+    if (!node->setItem(std::move(item),type,storageRoot))
     {
         JLOG(journal_.trace()) << "SHAMap setItem, no change";
         return true;
@@ -1346,4 +1354,17 @@ SHAMap::genNodeProof(uint256 key) const
     return b;
 }
 
+std::shared_ptr<SHAMapInnerNode>
+SHAMap::getContractRootNode(boost::optional<uint256> root) const
+{
+    if (root)
+    {
+        auto mapPtr = std::make_shared<SHAMap>(SHAMapType::STATE, *root, f_);
+        if (mapPtr && mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
+        {
+            return std::static_pointer_cast<SHAMapInnerNode>(mapPtr->root_);
+        }
+    }
+    return nullptr;
+}
 }  // namespace ripple

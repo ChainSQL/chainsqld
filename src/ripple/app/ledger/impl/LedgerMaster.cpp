@@ -282,7 +282,9 @@ LedgerMaster::onConsensusReached(
 {
     updateConsensusTime();
 
-    if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
+    if (bWaitingInit &&
+        previousLedger &&
+        previousLedger->info().seq != mValidLedgerSeq)
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
@@ -294,6 +296,7 @@ LedgerMaster::onConsensusReached(
     checkSubChains();
     checkLoadLedger();
     app_.getTableSync().TryTableSync();
+    app_.getTableSync().InitTableItems();
     tryAdvance();
 }
 
@@ -1359,6 +1362,11 @@ LedgerMaster::checkSubChains()
     }
 }
 
+void
+LedgerMaster::setLoadLedger(LedgerIndex const index)
+{
+    load_ledger_index_ = index;
+}
 
 void
 LedgerMaster::checkLoadLedger()
@@ -1379,6 +1387,23 @@ LedgerMaster::checkLoadLedger()
                         InboundLedger::Reason::GENERIC);
                 }
                 JLOG(m_journal.warn()) << "checkLoadLedger complete!";
+            });
+    }
+    else
+    {
+        app_.getJobQueue().addJob(
+            jtCheckLoadLedger, "SchemaImp::checkLoadLedger", [this](Job&) {
+                if (load_ledger_index_ > 1)
+                {
+                    auto loadLedger = getLedgerBySeq(load_ledger_index_);
+                    if (loadLedger && !loadLedger->walkLedger(m_journal))
+                    {
+                        JLOG(m_journal.fatal()) << "Ledger "<<loadLedger->info().seq << " is missing nodes.";
+                        app_.getInboundLedgers().acquire(loadLedger->info().hash,
+                            loadLedger->info().seq,
+                            InboundLedger::Reason::GENERIC);
+                    }
+                }
             });
     }
 }

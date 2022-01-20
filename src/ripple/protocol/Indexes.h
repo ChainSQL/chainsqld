@@ -245,7 +245,11 @@ schema(
     AccountID const& source,
     std::uint32_t seq,
     uint256 const& prevLedgerHash) noexcept;
+
+Keylet
+statis() noexcept;
 }  // namespace keylet
+
 
 // Everything below is deprecated and should be removed in favor of keylets:
 

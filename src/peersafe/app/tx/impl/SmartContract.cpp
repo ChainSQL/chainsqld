@@ -28,6 +28,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
+#include <peersafe/app/ledger/LedgerAdjust.h>
 
 namespace ripple {
 
@@ -111,7 +112,11 @@ namespace ripple {
 				std::string errMsg = e.takeOutput().toString();
 				JLOG(ctx_.journal.warn()) << "SmartContract exception:"<< errMsg;
 				setExtraMsg(errMsg);
-			}				
+			}	
+			if(ctx_.tx.getFieldU16(sfContractOpType) == ContractCreation)
+				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CREATE);
+            else
+				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CALL);
 			return e.finalize();
 		}			
 		else

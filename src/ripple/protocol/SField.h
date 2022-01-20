@@ -424,6 +424,11 @@ extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfGas;
+extern SF_U32 const sfContractCreateCountField;
+extern SF_U32 const sfContractCallCountField;
+extern SF_U32 const sfTxSuccessCountField;
+extern SF_U32 const sfTxFailureCountField;
+extern SF_U32 const sfAccountCountField;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;

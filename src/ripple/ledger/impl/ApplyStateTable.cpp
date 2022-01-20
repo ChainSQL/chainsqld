@@ -637,6 +637,11 @@ ApplyStateTable::threadOwners(
        // Nothing to do
        break;
     }
+    case ltSTATIS:
+    {
+       // Nothing to do
+       break;
+    }
     case ltESCROW:
     {
         threadTx (base, meta, (*sle)[sfAccount], mods, j);

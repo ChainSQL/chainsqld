@@ -296,6 +296,16 @@ LedgerFormats::LedgerFormats()
             {sfSchemaIndexes, soeREQUIRED},
         },
         commonFields);
+
+    add(jss::Statis,ltSTATIS,
+        {
+            {sfContractCreateCountField, soeREQUIRED},
+            {sfContractCallCountField,   soeREQUIRED},
+            {sfTxSuccessCountField,      soeREQUIRED},
+            {sfTxFailureCountField,      soeREQUIRED},
+            {sfAccountCountField,        soeREQUIRED},
+        },
+        commonFields);
 }
 
 LedgerFormats const&

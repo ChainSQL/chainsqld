@@ -276,6 +276,22 @@ SHAMap::walkMap(std::vector<SHAMapMissingNode>& missingNodes, int maxMissing)
                         nodeStack.push(
                             std::static_pointer_cast<SHAMapInnerNode>(
                                 nextNode));
+                    else if (nextNode->isContract())
+                    {
+                        //Add storage root to stack,to do walk successively.
+                        auto treeNode =
+                            std::static_pointer_cast<SHAMapTreeNode>(nextNode);
+                        auto rootHash = treeNode->getStorageRoot();
+                        auto storageRoot = getContractRootNode(rootHash);
+                        if (storageRoot)
+                            nodeStack.push(storageRoot);
+                        else if (rootHash)
+                        {
+                            missingNodes.emplace_back(type_, *rootHash);
+                            if (--maxMissing <= 0)
+                                return;
+                        }
+                    }
                 }
                 else
                 {

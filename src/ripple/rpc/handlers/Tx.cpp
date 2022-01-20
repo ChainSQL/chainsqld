@@ -38,6 +38,7 @@
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/app/misc/TxPool.h>
 
 namespace ripple {
 
@@ -973,6 +974,13 @@ doTxCount(RPC::JsonContext& context)
 
     return ret;
 }
+
+Json::Value
+doTxInPool(RPC::JsonContext& context)
+{
+    return context.app.getTxPool().txInPool();
+}
+
 Json::Value
 doGetCrossChainTx(RPC::JsonContext& context)
 {
