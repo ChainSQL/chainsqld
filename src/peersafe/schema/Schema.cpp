@@ -365,7 +365,7 @@ public:
         , m_pPrometheusClient(std::make_unique<PrometheusClient>(
               *this,
               *config_,
-              toBase58(TokenType::NodePublic, nodeIdentity().first),
+              app.getPromethExposer(),
               SchemaImp::journal("PrometheusClient")))
 
     {

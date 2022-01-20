@@ -36,7 +36,7 @@
 namespace ripple {
 
 std::string
-getPort(Schema& app)
+static getPort(Application& app)
 {
     std::string port;
     auto prometh_section = app.config().section(ConfigSection::prometheus());
@@ -52,8 +52,8 @@ getPort(Schema& app)
     return port;
 }
 
-PrometheusClient::PrometheusClient(
-    Schema& app,
+PromethExposer::PromethExposer(
+    Application& app,
     Config& cfg,
     std::string const& pubKey,
     beast::Journal journal)
@@ -61,54 +61,11 @@ PrometheusClient::PrometheusClient(
     , journal_(journal)
     , cfg_(cfg)
     , pubkey_node_(pubKey)
-    , mPromethTime(app.timeKeeper().closeTime())
     , exposer()
     , registry(std::make_shared<prometheus::Registry>())
-    , schema_gauge(prometheus::BuildGauge()
-                             .Name("Chainsqld_schema_total")
-                             .Help("Number of schema")
-                             .Register(*registry)
-                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"peer", pubkey_node_}}))
-    , peer_gauge(prometheus::BuildGauge()
-                            .Name("Chainsqld_peer_status")
-                            .Help("peer status")
-                            .Register(*registry)
-                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}, {"peer_status", "peer_status"}}))
-    , txSucessCount_gauge(prometheus::BuildGauge()
-                                    .Name("Chainsqld_tx_success_count")
-                                    .Help("tx success count")
-                                    .Register(*registry)
-                                    .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-    , txFailCount_gauge(prometheus::BuildGauge()
-                                  .Name("Chainsqld_tx_fail_count")
-                                  .Help("tx fail count")
-                                  .Register(*registry)
-                                  .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-    , contractCreateCount_gauge(prometheus::BuildGauge()
-                                        .Name("Chainsqld_contract_create_count")
-                                        .Help("contract create count")
-                                        .Register(*registry)
-                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-    , contractCallCount_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_contract_call_count")
-                                        .Help("contract call count")
-                                        .Register(*registry)
-                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-    , accountCount_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_account_count")
-                                   .Help("account count")
-                                   .Register(*registry)
-                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-    , blockHeight_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_block_height")
-                                   .Help("block height")
-                                   .Register(*registry)
-                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", pubkey_node_}}))
-
+   
 {
      using namespace prometheus;
-    //contractCallCount_gauge.
-    // ask the exposer to scrape the registry on incoming HTTP requests
 
     try
     {
@@ -124,10 +81,79 @@ PrometheusClient::PrometheusClient(
     {
         // ignore any exceptions, so the command
         // line client works without a config file
-        app_.logs().journal("PrometheusClient").error();
+        app_.logs().journal("PromethExposer").error();
     }   
     
 
+}
+PromethExposer::~PromethExposer()
+{
+}
+std::shared_ptr<prometheus::Registry>&
+PromethExposer::getRegistry()
+{
+    return registry;
+}
+
+std::string const&
+PromethExposer::getPubKey()
+{
+    return pubkey_node_;
+}
+
+PrometheusClient::PrometheusClient(
+    Schema& app,
+    Config& cfg,
+    PromethExposer& exposer,
+    beast::Journal journal)
+    : app_(app)
+    , journal_(journal)
+    , cfg_(cfg)
+    , exposer_(exposer)
+    , mPromethTime(app.timeKeeper().closeTime())
+    , schema_gauge(prometheus::BuildGauge()
+                             .Name("Chainsqld_schema_total")
+                             .Help("Number of schema")
+                             .Register(*exposer_.getRegistry())
+                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"peer", exposer_.getPubKey()}}))
+    , peer_gauge(prometheus::BuildGauge()
+                            .Name("Chainsqld_peer_status")
+                            .Help("peer status")
+                            .Register(*exposer_.getRegistry())
+                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}, {"peer_status", "peer_status"}}))
+    , txSucessCount_gauge(prometheus::BuildGauge()
+                                    .Name("Chainsqld_tx_success_count")
+                                    .Help("tx success count")
+                                    .Register(*exposer_.getRegistry())
+                                    .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , txFailCount_gauge(prometheus::BuildGauge()
+                                  .Name("Chainsqld_tx_fail_count")
+                                  .Help("tx fail count")
+                                  .Register(*exposer_.getRegistry())
+                                  .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , contractCreateCount_gauge(prometheus::BuildGauge()
+                                        .Name("Chainsqld_contract_create_count")
+                                        .Help("contract create count")
+                                        .Register(*exposer_.getRegistry())
+                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , contractCallCount_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_contract_call_count")
+                                        .Help("contract call count")
+                                        .Register(*exposer_.getRegistry())
+                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , accountCount_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_account_count")
+                                   .Help("account count")
+                                   .Register(*exposer_.getRegistry())
+                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , blockHeight_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_block_height")
+                                   .Help("block height")
+                                   .Register(*exposer_.getRegistry())
+                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+
+{
+    
 }
 PrometheusClient::~PrometheusClient()
 {
@@ -137,7 +163,7 @@ PrometheusClient::~PrometheusClient()
 void
 PrometheusClient::timerEntry(NetClock::time_point const& now)
 {
-    std::string port = getPort(app_);
+    std::string port = getPort(app_.app());
      
     if (port.empty() || now - mPromethTime < promethDataCollectionInterval)
     {
