@@ -28,7 +28,7 @@ namespace ripple {
 		PromethExposer(Application& app, Config& cfg,std::string const& pubKey, beast::Journal j);
 		virtual ~PromethExposer();
         std::shared_ptr<prometheus::Registry>&  getRegistry();
-		std::string const& PromethExposer::getPubKey();
+		std::string const& getPubKey();
        
 	private:
 		Application&										app_;
