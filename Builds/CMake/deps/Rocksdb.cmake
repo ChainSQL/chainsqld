@@ -9,7 +9,7 @@ set_target_properties (rocksdb_lib
 option (local_rocksdb "use local build of rocksdb." OFF)
 
 if(DEFINED ENV{ROCKSDB_ROOT})
-  message($ENV{ROCKSDB_ROOT})
+  message(STATUS "ROCKSDB_ROOT: $ENV{ROCKSDB_ROOT}")
   set(ROCKSDB_INCLUDE_DIR $ENV{ROCKSDB_ROOT}/include/rocksdb)
   set(ROCKSDB_LIBRARY_DIR $ENV{ROCKSDB_ROOT}/lib)
   set_target_properties (rocksdb_lib PROPERTIES
@@ -79,12 +79,12 @@ else()
         ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/rocks_thirdparty.inc
         <SOURCE_DIR>/thirdparty.inc
-      COMMAND
-        # fixup their build version file to keep the values
-        # from changing always
-        ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/rocksdb_build_version.cc.in
-        <SOURCE_DIR>/util/build_version.cc.in
+      # COMMAND
+      #   # fixup their build version file to keep the values
+      #   # from changing always
+      #   ${CMAKE_COMMAND} -E copy_if_different
+      #   ${CMAKE_CURRENT_SOURCE_DIR}/Builds/CMake/rocksdb_build_version.cc.in
+      #   <SOURCE_DIR>/util/build_version.cc.in
       CMAKE_ARGS
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
