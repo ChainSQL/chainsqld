@@ -6,24 +6,33 @@
   ENDIF()
 
   if (APPLE)
-    find_program(HOMEBREW brew)
-    if (NOT HOMEBREW STREQUAL "HOMEBREW-NOTFOUND")
-      execute_process(COMMAND brew --prefix mysql-client
-        OUTPUT_VARIABLE MYSQL_ROOT
-        OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-      FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
-        ${MYSQL_ROOT}/include/
-        ${MYSQL_ROOT}/include/mysql
-      )
-      FIND_LIBRARY(MYSQL_LIBRARY
+    if(DEFINED ENV{MYSQL_ROOT_DIR})
+     set(MYSQL_INCLUDE_DIR $ENV{MYSQL_ROOT_DIR}/include/mysql)
+     set(MYSQL_LIBRARY_DIR $ENV{MYSQL_ROOT_DIR}/lib)
+     FIND_LIBRARY(MYSQL_LIBRARY
         NAMES ${MYSQL_NAMES}
-        PATHS ${MYSQL_ROOT}/lib
+        PATHS ${MYSQL_LIBRARY_DIR}
       )
-      get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
-      FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
-        /usr/lib /usr/local/lib /usr/local/mysql/lib ${MYSQL_ROOT}/lib
-      )
+    else()
+      find_program(HOMEBREW brew)
+      if (NOT HOMEBREW STREQUAL "HOMEBREW-NOTFOUND")
+        execute_process(COMMAND brew --prefix mysql-client
+          OUTPUT_VARIABLE MYSQL_ROOT
+          OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+        FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
+          ${MYSQL_ROOT}/include/
+          ${MYSQL_ROOT}/include/mysql
+        )
+        FIND_LIBRARY(MYSQL_LIBRARY
+          NAMES ${MYSQL_NAMES}
+          PATHS ${MYSQL_ROOT}/lib
+        )
+        get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
+        FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
+          /usr/lib /usr/local/lib /usr/local/mysql/lib ${MYSQL_ROOT}/lib
+        )
+      endif()
     endif()
   endif()
 
