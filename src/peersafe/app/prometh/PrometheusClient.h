@@ -22,10 +22,30 @@
 namespace ripple {
 	//prometheus sync tool class
 	
+	class PromethExposer {
+
+	public:
+		PromethExposer(Application& app, Config& cfg,std::string const& pubKey, beast::Journal j);
+		virtual ~PromethExposer();
+        std::shared_ptr<prometheus::Registry>&  getRegistry();
+		std::string const& PromethExposer::getPubKey();
+       
+	private:
+		Application&										app_;
+		beast::Journal                              journal_;
+		Config&                                     cfg_;
+		
+        std::string pubkey_node_;
+		
+		std::shared_ptr<prometheus::Exposer>  exposer;
+        std::shared_ptr<prometheus::Registry> registry;
+        
+		
+	};
 	class PrometheusClient {
 
 	public:
-		PrometheusClient(Schema& app, Config& cfg,std::string const& pubKey, beast::Journal journal);
+		PrometheusClient(Schema& app, Config& cfg,PromethExposer& exposer, beast::Journal journal);
 		
 		virtual ~PrometheusClient();
 		void timerEntry(NetClock::time_point const& now);
@@ -35,11 +55,9 @@ namespace ripple {
 		Schema&										app_;
 		beast::Journal                              journal_;
 		Config&                                     cfg_;
-		
-        std::string pubkey_node_;
+
 		NetClock::time_point mPromethTime;
-		std::shared_ptr<prometheus::Exposer>  exposer;
-        std::shared_ptr<prometheus::Registry> registry;
+		PromethExposer&  exposer_;
 		prometheus::Gauge& schema_gauge;
 		prometheus::Gauge& peer_gauge;
 		prometheus::Gauge& txSucessCount_gauge;

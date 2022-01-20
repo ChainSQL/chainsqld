@@ -33,7 +33,7 @@
 #include <boost/asio.hpp>
 #include <memory>
 #include <mutex>
-
+#include <peersafe/app/prometh/PrometheusClient.h>
 namespace ripple {
 
 namespace unl {
@@ -258,6 +258,8 @@ public:
 
     virtual PreContractFace&		
     getPreContractFace() = 0;
+    virtual PromethExposer& 
+    getPromethExposer() = 0;
     virtual TxStoreDBConn&
     getTxStoreDBConn(SchemaID const& id = beast::zero) = 0;
     virtual TxStore&

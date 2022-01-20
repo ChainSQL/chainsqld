@@ -94,7 +94,7 @@
 #include <boost/optional.hpp>
 #include <sstream>
 #include <ripple/basics/Sustain.h>
-
+#include <peersafe/app/prometh/PrometheusClient.h>
 namespace ripple {
 
 // VFALCO TODO Move the function definitions into the class declaration
@@ -197,6 +197,7 @@ public:
     io_latency_sampler m_io_latency_sampler;
     std::unique_ptr<GRPCServer> grpcServer_;
     std::unique_ptr <PreContractFace> m_preContractFace;
+    std::unique_ptr<PromethExposer> m_promethExposer;
     //--------------------------------------------------------------------------
 
     static std::size_t
@@ -296,6 +297,11 @@ public:
               std::chrono::milliseconds(100),
               get_io_service())
         , grpcServer_(std::make_unique<GRPCServer>(*this))
+        , m_promethExposer(std::make_unique<PromethExposer>(
+            *this,
+            *config_,
+            toBase58(TokenType::NodePublic, nodeIdentity().first),
+            logs_->journal("PromethExposer")))
     {
         add(m_resourceManager.get());
 
@@ -442,6 +448,11 @@ public:
     PreContractFace& getPreContractFace() override
 	{
 		return *m_preContractFace;
+	}
+
+    PromethExposer& getPromethExposer() override
+	{
+		return *m_promethExposer;
 	}
 
     TxStore&
