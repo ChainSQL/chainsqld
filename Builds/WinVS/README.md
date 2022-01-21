@@ -49,7 +49,7 @@
 
 ### install mysql
 > 1. 下载 [mysql8.0 for windows](https://dev.mysql.com/downloads/installer/)。建议优先选择 x86，64-bit 的压缩包并安装。
-> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 mysql8.0 的安装目录
+> 2. 将 MYSQL_DIR 环境变量设置为 mysql8.0 的安装目录
 
 ## 编译 chainsqld
 ### 下载源码

@@ -81,6 +81,28 @@ Extract it to a folder, making note of where, open a terminal, then:
 Create an environment variable `BOOST_ROOT` in one of your `rc` files, pointing
 to the root of the extracted directory.
 
+### Configure Library Paths
+
+If you didn't persistently set the `BOOST_ROOT` environment variable to the
+root of the extracted directory above, then you should set it temporarily.
+
+For example, assuming your username were `Abigail` and you extracted Boost
+1.70.0 in `/Users/Abigail/Downloads/boost_1_70_0`, you would do for any
+shell in which you want to build:
+
+```
+echo 'export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_70_0' >> ~/.zshrc
+```
+
+You need to specify the mysql-client lib path for `MYSQL_DIR` environment variable.
+For example, you install mysql-client through brew, the path will be under brew install 
+path just like: `/opt/homebrew/opt/mysql-client@5.7`, you would do for any
+shell in which you want to build:
+
+```
+echo 'export MYSQL_DIR=/opt/homebrew/opt/mysql-client@5.7' >> ~/.zshrc
+```
+
 ### Dependencies for Building Source Documentation
 
 Source code documentation is not required for running/debugging chainsqld. That
@@ -111,28 +133,6 @@ features, you can consider using the `develop` branch instead.
 
 ```
 git checkout develop
-```
-
-### Configure Library Paths
-
-If you didn't persistently set the `BOOST_ROOT` environment variable to the
-root of the extracted directory above, then you should set it temporarily.
-
-For example, assuming your username were `Abigail` and you extracted Boost
-1.70.0 in `/Users/Abigail/Downloads/boost_1_70_0`, you would do for any
-shell in which you want to build:
-
-```
-echo 'export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_70_0' >> ~/.zshrc
-```
-
-You need to specify the mysql-client lib path for `MYSQL_ROOT_DIR` environment variable.
-For example, you install mysql-client through brew, the path will be under brew install 
-path just like: `/opt/homebrew/opt/mysql-client@5.7`, you would do for any
-shell in which you want to build:
-
-```
-echo 'export MYSQL_ROOT_DIR=/opt/homebrew/opt/mysql-client@5.7' >> ~/.zshrc
 ```
 
 ### Generate and Build
@@ -230,5 +230,3 @@ Several other infrequently used options are available - run `ccmake` or
 `chainsqld` builds a set of unit tests into the server executable. To run these unit
 tests after building, pass the `--unittest` option to the compiled `chainsqld`
 executable. The executable will exit with summary info after running the unit tests.
-
-

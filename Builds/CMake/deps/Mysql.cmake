@@ -6,10 +6,10 @@
   ENDIF()
 
   if (APPLE)
-    if(DEFINED ENV{MYSQL_ROOT_DIR})
-     set(MYSQL_INCLUDE_DIR $ENV{MYSQL_ROOT_DIR}/include/mysql)
-     set(MYSQL_LIBRARY_DIR $ENV{MYSQL_ROOT_DIR}/lib)
-     FIND_LIBRARY(MYSQL_LIBRARY
+    if(DEFINED ENV{MYSQL_DIR})
+      set(MYSQL_INCLUDE_DIR $ENV{MYSQL_DIR}/include/mysql)
+      set(MYSQL_LIBRARY_DIR $ENV{MYSQL_DIR}/lib)
+      FIND_LIBRARY(MYSQL_LIBRARY
         NAMES ${MYSQL_NAMES}
         PATHS ${MYSQL_LIBRARY_DIR}
       )
@@ -38,8 +38,8 @@
 
   if (NOT MYSQL_LIBRARY)
       FIND_PATH(MYSQL_INCLUDE_DIR mysql.h
-          IF (WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
-              $ENV{MYSQL_ROOT_DIR}/include
+          IF (WIN32 AND DEFINED ENV{MYSQL_DIR})
+              $ENV{MYSQL_DIR}/include
           ELSE()
               /usr/local/include/mysql
               /usr/include/mysql
@@ -48,8 +48,8 @@
           )
 
 
-      if(WIN32 AND DEFINED ENV{MYSQL_ROOT_DIR})
-          set(SEARCH_PATHS $ENV{MYSQL_ROOT_DIR}/lib)
+      if(WIN32 AND DEFINED ENV{MYSQL_DIR})
+          set(SEARCH_PATHS $ENV{MYSQL_DIR}/lib)
       else()
           set(SEARCH_PATHS 
               /usr/lib 
