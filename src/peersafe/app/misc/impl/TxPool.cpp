@@ -278,28 +278,28 @@ TxPool::timerEntry(NetClock::time_point const& now)
 void
 TxPool::removeTx(uint256 hash)
 {
-    if (mTxsHash.find(hash) != mTxsHash.end())
     {
-        // remove from Tx pool.
+        std::unique_lock lock(mutexSet_);
+        if (mTxsHash.find(hash) != mTxsHash.end())
         {
-            std::unique_lock lock(mutexSet_);
+            // remove from Tx pool.
             auto iter = mTxsHash.at(hash);
             mTxsHash.erase(hash);
             mTxsSet.erase(iter);
         }
-
-        // remove from avoid set.
-        std::unique_lock lock(mutexAvoid_);
-        if (mAvoidByHash.find(hash) != mAvoidByHash.end())
+    }
+    
+    // remove from avoid set.
+    std::unique_lock lock(mutexAvoid_);
+    if (mAvoidByHash.find(hash) != mAvoidByHash.end())
+    {
+        LedgerIndex seq = mAvoidByHash[hash];
+        mAvoidBySeq[seq].erase(hash);
+        if (mAvoidBySeq[seq].size())
         {
-            LedgerIndex seq = mAvoidByHash[hash];
-            mAvoidBySeq[seq].erase(hash);
-            if (mAvoidBySeq[seq].size())
-            {
-                mAvoidBySeq.erase(seq);
-            }
-            mAvoidByHash.erase(hash);
+            mAvoidBySeq.erase(seq);
         }
+        mAvoidByHash.erase(hash);
     }
 }
 
