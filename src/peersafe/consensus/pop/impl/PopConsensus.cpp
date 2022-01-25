@@ -316,6 +316,11 @@ PopConsensus::getJson(bool full) const
 
     ret["parms"] = adaptor_.parms().getJson();
 
+    if (mode_.get() == ConsensusMode::wrongLedger)
+    {
+        ret["time_since_consensus"] = (uint32_t)timeSinceConsensus();
+    }
+
     if (full)
     {
         if (result_)
