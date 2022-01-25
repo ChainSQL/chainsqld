@@ -194,21 +194,21 @@ PrometheusClient::timerEntry(NetClock::time_point const& now)
             count = sleStatis->getFieldU32(sfAccountCountField);
             accountCount_gauge.Set(count);
         }
-        else
-        {
-            TxnDBCon& connection = app_.getTxnDB();
-            txSucessCount_gauge.Set( LedgerAdjust::getTxSucessCount(connection.checkoutDbRead()));
-            txFailCount_gauge.Set(LedgerAdjust::getTxFailCount(connection.checkoutDbRead()));
-            contractCallCount_gauge.Set(LedgerAdjust::getContractCallCount(connection.checkoutDbRead()));
-           
-            int contractCount = LedgerAdjust::getContractCreateCount(connection.checkoutDbRead());
-            contractCreateCount_gauge.Set(contractCount);
-            int accountCount = LedgerAdjust::getAccountCount(connection.checkoutDbRead());
-            if (accountCount > 1)
-                accountCount = accountCount - contractCount;
-            accountCount_gauge.Set(accountCount);
-        }
-        blockHeight_gauge.Set(ledger->info().seq -1);
+        //else
+        //{
+        //    TxnDBCon& connection = app_.getTxnDB();
+        //    txSucessCount_gauge.Set( LedgerAdjust::getTxSucessCount(connection.checkoutDbRead()));
+        //    txFailCount_gauge.Set(LedgerAdjust::getTxFailCount(connection.checkoutDbRead()));
+        //    contractCallCount_gauge.Set(LedgerAdjust::getContractCallCount(connection.checkoutDbRead()));
+        //   
+        //    int contractCount = LedgerAdjust::getContractCreateCount(connection.checkoutDbRead());
+        //    contractCreateCount_gauge.Set(contractCount);
+        //    int accountCount = LedgerAdjust::getAccountCount(connection.checkoutDbRead());
+        //    if (accountCount > 1)
+        //        accountCount = accountCount - contractCount;
+        //    accountCount_gauge.Set(accountCount);
+        //}
+        //blockHeight_gauge.Set(ledger->info().seq -1);
     }
     else
         blockHeight_gauge.Set(-1);
