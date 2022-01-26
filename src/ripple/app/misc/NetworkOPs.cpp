@@ -1924,6 +1924,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     auto const trans = sterilize(*tx);
                     auto t = std::make_shared<Transaction>(trans, reason, app_);
                     submit_held.emplace_back(t, false, false, FailHard::no);
+                    app_.getMasterTransaction().canonicalize(&t, true);
                     t->setApplying();
                 }
             }

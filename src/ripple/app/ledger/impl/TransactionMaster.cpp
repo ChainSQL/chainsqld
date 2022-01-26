@@ -221,14 +221,17 @@ TxStore& TransactionMaster::getConsensusTxStore()
 }
 
 void
-TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction)
+TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction,bool bReplace /* = false */)
 {
     uint256 const tid = (*pTransaction)->getID();
     if (tid != beast::zero)
     {
         auto txn = *pTransaction;
         // VFALCO NOTE canonicalize can change the value of txn!
-        mCache.canonicalize_replace_client(tid, txn);
+        if (!bReplace)
+            mCache.canonicalize_replace_client(tid, txn);
+        else
+            mCache.canonicalize_replace_cache(tid, txn);
         *pTransaction = txn;
     }
 }
