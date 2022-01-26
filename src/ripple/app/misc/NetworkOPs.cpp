@@ -1398,19 +1398,19 @@ NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
 				p->send(jvObj, true);
 			}
 
-            // remove from tx-pool and reset account sequence
-            if (status == "validate_timeout")
-            {
-                auto tx =
-                    app_.getMasterTransaction().fetch(iter->first);
-                if (tx)
-                {
-                    auto act = tx->getSTransaction()->getAccountID(
-                        sfAccount);
-                    app_.getStateManager().resetAccountSeq(act);
-                }
-                app_.getTxPool().removeTx(iter->first);
-            }
+            //// remove from tx-pool and reset account sequence
+            //if (status == "validate_timeout")
+            //{
+            //    auto tx =
+            //        app_.getMasterTransaction().fetch(iter->first);
+            //    if (tx)
+            //    {
+            //        auto act = tx->getSTransaction()->getAccountID(
+            //            sfAccount);
+            //        app_.getStateManager().resetAccountSeq(act);
+            //    }
+            //    app_.getTxPool().removeTx(iter->first);
+            //}
 
 			iter = subTx.erase(iter);
 		}

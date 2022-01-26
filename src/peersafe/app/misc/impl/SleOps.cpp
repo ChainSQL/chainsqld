@@ -279,7 +279,7 @@ namespace ripple {
 
         jsonLog[jss::account] = to_string(contractID);
         auto j = ctx_.app.journal("Executive");        
-        JLOG(j.info()) << "Contract log or event: " << jsonLog;
+        JLOG(j.debug()) << "Contract log or event: " << jsonLog;
 
         //getTx().
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
