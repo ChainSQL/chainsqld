@@ -110,6 +110,7 @@ getCountsJson(Schema& app, int minObjectCount)
         app.getAcceptedLedgerCache().getCacheSize();
     ret["LedgerHistorySize"] =
         app.getLedgerMaster().getLedgerHistory().getCacheSize();
+    ret["HeldTransactionSize"] = app.getLedgerMaster().heldTransactionSize();
         
     ret[jss::fullbelow_size] =
         static_cast<int>(app.getNodeFamily().getFullBelowCache(0)->size());

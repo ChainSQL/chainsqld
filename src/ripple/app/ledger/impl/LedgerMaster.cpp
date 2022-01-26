@@ -1408,6 +1408,12 @@ LedgerMaster::checkLoadLedger()
     }
 }
 
+int
+LedgerMaster::heldTransactionSize()
+{
+    return mHeldTransactions.size();
+}
+
 void
 LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {

@@ -361,6 +361,10 @@ public:
 
     void
     setLoadLedger(LedgerIndex const index);
+
+    int
+    heldTransactionSize();
+
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);
