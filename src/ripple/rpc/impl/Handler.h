@@ -100,7 +100,9 @@ conditionMet(Condition condition_required, T& context)
         if (!context.app.config().standalone())
         {
             auto const& serverStatus = context.netOps.getServerStatus();
-            if (serverStatus != "normal")
+            if (serverStatus != "normal" &&
+                context.ledgerMaster.getValidatedLedgerAge() >
+                Tuning::maxValidatedLedgerAge)
             {
                 JLOG(context.j.info()) << "Server is abnormal";
                 if (context.apiVersion == 1)
