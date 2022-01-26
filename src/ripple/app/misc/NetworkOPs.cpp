@@ -641,7 +641,7 @@ public:
         int iTopicNum,
         const Blob& byValue) override;
 
-	void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
+    void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
 
     bool waitingForInit() override;
 
@@ -673,8 +673,8 @@ public:
     bool
     unsubLedger(std::uint64_t uListener) override;
 
-	virtual bool subViewChange(InfoSub::ref ispListener) override;
-	virtual bool unsubViewChange(std::uint64_t uListener) override;
+    virtual bool subViewChange(InfoSub::ref ispListener) override;
+    virtual bool unsubViewChange(std::uint64_t uListener) override;
     // for all txs which changes the table
     virtual void
     subTable(
@@ -918,20 +918,20 @@ private:
     // SubMapType mSubRTTransactions;    // All proposed and accepted
     // transactions. SubMapType mSubValidations;       // Received validations.
     // SubMapType mSubPeerStatus;        // peer status changes
-	enum SubTypes
-	{
-		sLedger,                    // Accepted ledgers.
-		sManifests,                 // Received validator manifests.
-		sServer,                    // When server changes connectivity state.
-		sTransactions,              // All accepted transactions.
-		sRTTransactions,            // All proposed and accepted transactions.
-		sValidations,               // Received validations.
-		sPeerStatus,                // Peer status changes.
+    enum SubTypes
+    {
+        sLedger,                    // Accepted ledgers.
+        sManifests,                 // Received validator manifests.
+        sServer,                    // When server changes connectivity state.
+        sTransactions,              // All accepted transactions.
+        sRTTransactions,            // All proposed and accepted transactions.
+        sValidations,               // Received validations.
+        sPeerStatus,                // Peer status changes.
         sConsensusPhase,  // Consensus phase
-		sLogs,
-		sViewChange,				 // ViewChange
+        sLogs,
+        sViewChange,				 // ViewChange
 
-		sLastEntry = sViewChange			// as this name implies, any new entry must
+        sLastEntry = sViewChange			// as this name implies, any new entry must
                                     // be ADDED ABOVE this one
     };
     std::array<SubMapType, SubTypes::sLastEntry + 1> mStreamMaps;
@@ -1378,25 +1378,25 @@ NetworkOPsImp::processAccountDelay(std::map<AccountID, int> const& map)
 void
 NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
 {
-	auto iter = subTx.begin();
-	while (iter != subTx.end())
-	{
-		auto now = std::chrono::system_clock::now();
-		using duration_type = std::chrono::duration<double>;
-		duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
-		if (time_span.count() >= TX_TIMEOUT)
-		//if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
-		{
-			//notify time out
-			InfoSub::pointer p = iter->second.first.lock();
-			if (p)
-			{
-				Json::Value jvObj(Json::objectValue);
-				jvObj[jss::type] = "singleTransaction";
-				jvObj[jss::transaction][jss::hash] = to_string(iter->first);
-				jvObj[jss::status] = status;
-				p->send(jvObj, true);
-			}
+    auto iter = subTx.begin();
+    while (iter != subTx.end())
+    {
+        auto now = std::chrono::system_clock::now();
+        using duration_type = std::chrono::duration<double>;
+        duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
+        if (time_span.count() >= TX_TIMEOUT)
+        //if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
+        {
+            //notify time out
+            InfoSub::pointer p = iter->second.first.lock();
+            if (p)
+            {
+                Json::Value jvObj(Json::objectValue);
+                jvObj[jss::type] = "singleTransaction";
+                jvObj[jss::transaction][jss::hash] = to_string(iter->first);
+                jvObj[jss::status] = status;
+                p->send(jvObj, true);
+            }
 
             //// remove from tx-pool and reset account sequence
             //if (status == "validate_timeout")
@@ -1412,13 +1412,13 @@ NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
             //    app_.getTxPool().removeTx(iter->first);
             //}
 
-			iter = subTx.erase(iter);
-		}
-		else
-		{
-			iter++;
-		}
-	}
+            iter = subTx.erase(iter);
+        }
+        else
+        {
+            iter++;
+        }
+    }
 }
 
 void
@@ -2696,7 +2696,7 @@ NetworkOPsImp::pubServer()
         jvObj[jss::load_base] = f.loadBaseServer;
         jvObj[jss::load_factor_server] = f.loadFactorServer;
         jvObj[jss::base_fee] = f.baseFee.jsonClipped();
-		jvObj[jss::schema_id] = to_string(app_.schemaId());
+        jvObj[jss::schema_id] = to_string(app_.schemaId());
 
         if (f.em)
         {
@@ -2845,30 +2845,30 @@ NetworkOPsImp::pubValidation(std::shared_ptr<STValidation> const& val)
 
 void NetworkOPsImp::pubViewChange(uint32_t ledgerSeq, uint64_t view)
 {
-	ScopedLockType sl(mSubLock);
+    ScopedLockType sl(mSubLock);
 
-	if (!mStreamMaps[sViewChange].empty())
-	{
-		Json::Value jvObj(Json::objectValue);
+    if (!mStreamMaps[sViewChange].empty())
+    {
+        Json::Value jvObj(Json::objectValue);
 
-		jvObj[jss::type] = "viewChange";
-		jvObj[jss::ledger_index] = ledgerSeq;
-		jvObj[jss::view] = (uint32_t)view;
+        jvObj[jss::type] = "viewChange";
+        jvObj[jss::ledger_index] = ledgerSeq;
+        jvObj[jss::view] = (uint32_t)view;
 
-		for (auto i = mStreamMaps[sViewChange].begin();
-			i != mStreamMaps[sViewChange].end(); )
-		{
-			if (auto p = i->second.lock())
-			{
-				p->send(jvObj, true);
-				++i;
-			}
-			else
-			{
-				i = mStreamMaps[sViewChange].erase(i);
-			}
-		}
-	}
+        for (auto i = mStreamMaps[sViewChange].begin();
+            i != mStreamMaps[sViewChange].end(); )
+        {
+            if (auto p = i->second.lock())
+            {
+                p->send(jvObj, true);
+                ++i;
+            }
+            else
+            {
+                i = mStreamMaps[sViewChange].erase(i);
+            }
+        }
+    }
 }
 
 void NetworkOPsImp::pubPeerStatus (
@@ -3678,8 +3678,10 @@ NetworkOPsImp::getServerStatus()
 
     bool consensusValid = m_ledgerMaster.getValidatedLedgerAge() < timeout;
     auto mode = mConsensus.mode();
+    auto phase = mConsensus.phase();
 
-    if (consensusValid &&
+    if ((consensusValid ||
+        phase == ConsensusPhase::accepted) &&
         (mode == ConsensusMode::proposing ||
          mode == ConsensusMode::switchedLedger ||
          (mode == ConsensusMode::observing && !mConsensus.validating())))
@@ -3789,7 +3791,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 lpAccepted->fees().increment.jsonClipped();
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
-			jvObj[jss::schema_id] = to_string(app_.schemaId());
+            jvObj[jss::schema_id] = to_string(app_.schemaId());
              
             int iSuccess = 0;
             int iFailure = 0;
@@ -4093,9 +4095,9 @@ NetworkOPsImp::checkSchemaTx(
             }
         }
 
-		//update validators list
-		if (!bOperatingSelf)
-		{
+        //update validators list
+        if (!bOperatingSelf)
+        {
             //Since the code is called by doAdvance,in case different node on subchain
             //execute the 'modify' in different ledger,and result in different validator
             //for subchain nodes and consensus cannot reach. Here we add a mechanism:
@@ -4114,7 +4116,7 @@ NetworkOPsImp::checkSchemaTx(
                     schemaID,
                     app_.app().peerManager(schemaID),
                     app_.app().getHashRouter(schemaID));
-		}
+        }
 
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);
@@ -4471,26 +4473,26 @@ NetworkOPsImp::pubTxResult(
     bool bValidated,
     bool bForTableTx)
 {
-	ScopedLockType sl(mSubLock);
-	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
-	if (!subTx.empty())
-	{
-		auto txId   = stTxn.getTransactionID();
-		auto simiIt	= subTx.find(txId);
-		if (simiIt != subTx.end())
-		{
-			//bool bPendErase = false;
-			InfoSub::pointer p = simiIt->second.first.lock();
-			if (p)
-			{
-				Json::Value jvObj(Json::objectValue);
-				jvObj[jss::type] = "singleTransaction";
-				jvObj[jss::transaction] = stTxn.getJson(JsonOptions::none);
-				if (jvObj[jss::transaction].isMember(jss::Raw) &&
-					jvObj[jss::transaction][jss::Raw].asString().size() > RAW_SHOW_SIZE)
-				{
-					jvObj[jss::transaction].removeMember(jss::Raw);
-				}
+    ScopedLockType sl(mSubLock);
+    auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
+    if (!subTx.empty())
+    {
+        auto txId   = stTxn.getTransactionID();
+        auto simiIt	= subTx.find(txId);
+        if (simiIt != subTx.end())
+        {
+            //bool bPendErase = false;
+            InfoSub::pointer p = simiIt->second.first.lock();
+            if (p)
+            {
+                Json::Value jvObj(Json::objectValue);
+                jvObj[jss::type] = "singleTransaction";
+                jvObj[jss::transaction] = stTxn.getJson(JsonOptions::none);
+                if (jvObj[jss::transaction].isMember(jss::Raw) &&
+                    jvObj[jss::transaction][jss::Raw].asString().size() > RAW_SHOW_SIZE)
+                {
+                    jvObj[jss::transaction].removeMember(jss::Raw);
+                }
                 jvObj[jss::status] = std::get<0>(disposRes);
                 if (std::get<1>(disposRes).size() != 0)
                 {
@@ -4730,7 +4732,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
 {
     if (auto lpClosed = m_ledgerMaster.getValidatedLedger())
     {
-		jvResult[jss::type] = "ledgerClosed";
+        jvResult[jss::type] = "ledgerClosed";
         jvResult[jss::ledger_index] = lpClosed->info().seq;
         jvResult[jss::ledger_hash] = to_string(lpClosed->info().hash);
         jvResult[jss::ledger_time] = Json::Value::UInt(
@@ -4744,7 +4746,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::reserve_base] =
             lpClosed->fees().accountReserve(0).jsonClipped();
         jvResult[jss::reserve_inc] = lpClosed->fees().increment.jsonClipped();
-		jvResult[jss::schema_id] = to_string(app_.schemaId());
+        jvResult[jss::schema_id] = to_string(app_.schemaId());
     }
 
     if ((mMode >= OperatingMode::SYNCING) && !isNeedNetworkLedger())
@@ -4770,15 +4772,15 @@ NetworkOPsImp::unsubLedger(std::uint64_t uSeq)
 
 bool NetworkOPsImp::subViewChange(InfoSub::ref ispListener)
 {
-	ScopedLockType sl(mSubLock);
-	return mStreamMaps[sViewChange].emplace(
-		ispListener->getSeq(), ispListener).second;
+    ScopedLockType sl(mSubLock);
+    return mStreamMaps[sViewChange].emplace(
+        ispListener->getSeq(), ispListener).second;
 }
 
 bool NetworkOPsImp::unsubViewChange(std::uint64_t uSeq)
 {
-	ScopedLockType sl(mSubLock);
-	return mStreamMaps[sViewChange].erase(uSeq);
+    ScopedLockType sl(mSubLock);
+    return mStreamMaps[sViewChange].erase(uSeq);
 }
 
 //for all txs which changes the table
@@ -4889,7 +4891,7 @@ NetworkOPsImp::subServer(
     beast::rngfill(uRandom.begin(), uRandom.size(), crypto_prng());
 
     auto const& feeTrack = app_.getFeeTrack();
-	jvResult[jss::type] = "serverStatus";
+    jvResult[jss::type] = "serverStatus";
     jvResult[jss::random] = to_string(uRandom);
     jvResult[jss::server_status] = strOperatingMode(admin);
     jvResult[jss::load_base] = feeTrack.getLoadBase();
@@ -4898,7 +4900,7 @@ NetworkOPsImp::subServer(
     jvResult[jss::hostid] = getHostId(admin);
     jvResult[jss::pubkey_node] =
         toBase58(TokenType::NodePublic, app_.nodeIdentity().first);
-	jvResult[jss::schema_id] = to_string(app_.schemaId());
+    jvResult[jss::schema_id] = to_string(app_.schemaId());
 
     std::lock_guard sl(mSubLock);
     return mStreamMaps[sServer]
