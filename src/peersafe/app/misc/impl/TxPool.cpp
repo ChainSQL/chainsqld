@@ -353,9 +353,10 @@ TxPool::removeExpired()
     while (iter != mTxsSet.end())
     {
         auto pTx = *iter;
-        if (pTx && pTx->getSTransaction())
+        if (pTx && pTx->getSTransaction() &&
+            pTx->getSTransaction()->isFieldPresent(sfLastLedgerSequence))
         {
-            auto seqTx =
+            auto seqTx = 
                 pTx->getSTransaction()->getFieldU32(sfLastLedgerSequence);
             auto& hash = pTx->getID();
             if (seqTx < seq)
