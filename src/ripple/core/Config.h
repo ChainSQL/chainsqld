@@ -130,6 +130,7 @@ public:
     std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
 
+    std::vector<std::string>    TRUSTED_CA_LIST;
 	std::vector<std::string>    USER_ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
 	std::vector<std::string>	SCHEMA_IDS;
 

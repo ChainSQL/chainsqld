@@ -529,6 +529,26 @@ Config::loadFromString(std::string const& fileContents)
     if (auto s = getIniFileSection(secConfig, SECTION_SNTP))
         SNTP_SERVERS = *s;
 
+    if (auto s = getIniFileSection(secConfig, SECTOIN_TRUSTED_CA_LIST))
+    {
+        auto const vecCaList = *s;
+		std::set<std::string> setCaList;
+		for (auto caItem : vecCaList) {
+
+//			std::string cafile;
+//			std::ifstream ifsPath(caItem.c_str());
+//			cafile.assign(
+//				std::istreambuf_iterator<char>(ifsPath),
+//				std::istreambuf_iterator<char>());
+//
+//			if (cafile.empty() || setCaList.count(cafile) !=0 )
+//				continue;
+//
+//			setCaList.insert(cafile);
+			TRUSTED_CA_LIST.push_back(caItem);
+		}
+    }
+
     if (auto s = getIniFileSection(secConfig, SECTION_USER_X509_ROOT_PATH))
     {
 

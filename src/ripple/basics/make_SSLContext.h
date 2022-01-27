@@ -35,7 +35,8 @@ make_SSLContextAuthed(
     std::string const& keyFile,
     std::string const& certFile,
     std::string const& chainFile,
-    std::string const& cipherList);
+    std::string const& cipherList,
+    std::vector<std::string> const& vecCaList);
 
 }  // namespace ripple
 

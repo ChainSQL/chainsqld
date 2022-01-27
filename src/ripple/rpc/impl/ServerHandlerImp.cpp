@@ -1094,7 +1094,7 @@ ServerHandler::Setup::makeContexts()
                 p.context = make_SSLContext(p.ssl_ciphers);
             else
                 p.context = make_SSLContextAuthed(
-                    p.ssl_key, p.ssl_cert, p.ssl_chain, p.ssl_ciphers);
+                    p.ssl_key, p.ssl_cert, p.ssl_chain, p.ssl_ciphers, p.ssl_calist);
         }
         else
         {
@@ -1148,6 +1148,7 @@ to_Port(ParsedPort const& parsed, std::ostream& log)
     p.ssl_cert = parsed.ssl_cert;
     p.ssl_chain = parsed.ssl_chain;
     p.ssl_ciphers = parsed.ssl_ciphers;
+    p.ssl_verify = parsed.ssl_verify;
     p.pmd_options = parsed.pmd_options;
     p.ws_queue_limit = parsed.ws_queue_limit;
     p.limit = parsed.limit;
@@ -1181,7 +1182,12 @@ parse_Ports(Config const& config, std::ostream& log)
         ParsedPort parsed = common;
         parsed.name = name;
         parse_Port(parsed, config[name], log);
-        result.push_back(to_Port(parsed, log));
+        auto port = to_Port(parsed, log);
+        if(port.ssl_verify)
+        {
+            port.ssl_calist = config.TRUSTED_CA_LIST;
+        }
+        result.push_back(port);
     }
 
     if (config.standalone())
