@@ -187,6 +187,7 @@ public:
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
+    boost::asio::steady_timer mallocTrimTimer_;
     bool startTimers_;
     boost::asio::signal_set m_signals;
     std::condition_variable cv_;
@@ -281,6 +282,8 @@ public:
         , sweepTimer_(get_io_service())
 
         , entropyTimer_(get_io_service())
+
+        , mallocTrimTimer_(get_io_service())
 
         , startTimers_(false)
 
@@ -844,6 +847,7 @@ public:
         {
             setSweepTimer();
             setEntropyTimer();
+            setMallocTrimTimer();
         }
 
         m_io_latency_sampler.start();
@@ -889,6 +893,15 @@ public:
             {
                 JLOG(m_journal.error())
                     << "Application: entropyTimer cancel error: "
+                    << ec.message();
+            }
+
+            ec.clear();
+            mallocTrimTimer_.cancel(ec);
+            if (ec)
+            {
+                JLOG(m_journal.error())
+                    << "Application: mallocTrimTimer cancel error: "
                     << ec.message();
             }
         }
@@ -979,6 +992,41 @@ public:
             using namespace std::chrono_literals;
             entropyTimer_.expires_from_now(5min);
             entropyTimer_.async_wait(std::move(*optionalCountedHandler));
+        }
+    }
+
+    void
+    setMallocTrimTimer()
+    {
+        // Only start the timer if waitHandlerCounter_ is not yet joined.
+        if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
+                [this](boost::system::error_code const& e) {
+                    if ((e.value() == boost::system::errc::success) &&
+                        (!m_jobQueue->isStopped()))
+                    {
+                        m_jobQueue->addJob(
+                            jtMALLOC_TRIM, "malloc_trim", [this](Job&) { 
+                                #ifdef __GLIBC__
+                                malloc_trim(0);
+                                #endif
+                                setMallocTrimTimer();
+                            });
+                    }
+                    // Recover as best we can if an unexpected error occurs.
+                    if (e.value() != boost::system::errc::success &&
+                        e.value() != boost::asio::error::operation_aborted)
+                    {
+                        // Try again later and hope for the best.
+                        JLOG(m_journal.error())
+                            << "MallocTrim timer got error '" << e.message()
+                            << "'.  Restarting timer.";
+                        setMallocTrimTimer();
+                    }
+                }))
+        {
+            using namespace std::chrono;
+            mallocTrimTimer_.expires_from_now(1min);
+            mallocTrimTimer_.async_wait(std::move(*optionalCountedHandler));
         }
     }
 

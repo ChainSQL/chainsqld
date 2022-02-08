@@ -64,6 +64,7 @@ add(    jtCONSENSUS_t,   "trustedConsensus",        2,        false, 500ms,  150
 add(    jtWRITE,         "writeObjects",            maxLimit, false, 1750ms,  2500ms);
 add(    jtACCEPT,        "acceptLedger",            maxLimit, false, 0ms,     0ms);
 add(    jtSWEEP,         "sweep",                   maxLimit, false, 0ms,     0ms);
+add(    jtMALLOC_TRIM,   "malloc_trim",             1,        false, 0ms,     0ms);
 add(    jtNETOP_CLUSTER, "clusterReport",           1,        false, 9999ms,  9999ms);
 add(    jtNETOP_TIMER,   "heartbeat",               1,        false, 999ms,   999ms);
 add(    jtADMIN,         "administration",          maxLimit, false, 0ms,     0ms);

@@ -946,7 +946,8 @@ Config::loadFromString(std::string const& fileContents)
             "Cannot configure 'use_tx_tables=0' with 'save_tx_binary=1' in "
             "config file.");
     }
-    get_if_exists(section("consensus"), "batch_broadcast", BATCH_BROADCAST);
+    get_if_exists(
+        section(SECTION_CONSENSUS), "batch_broadcast", BATCH_BROADCAST);
 
     get_if_exists(
         section(SECTION_GOVERNANCE), "open_account_delay", OPEN_ACCOUNT_DELAY);

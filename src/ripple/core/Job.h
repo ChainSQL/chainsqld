@@ -75,6 +75,7 @@ enum JobType {
     jtWRITE,         // Write out hashed objects
     jtACCEPT,        // Accept a consensus ledger
     jtSWEEP,         // Sweep for stale structures
+    jtMALLOC_TRIM,   // TRIM G_LIBC memory
     jtNETOP_CLUSTER, // NetworkOPs cluster peer report
     jtNETOP_TIMER,   // NetworkOPs net timer processing
     jtADMIN,         // An administrative operation
