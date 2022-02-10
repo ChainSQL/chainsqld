@@ -1348,7 +1348,7 @@ private:
         return jvRequest;
     }
 
-    // tx <transaction_id> [binary]
+    // tx_merkle_proof <transaction_id> [binary]
     Json::Value
     parseTxMerkleProof(Json::Value const& jvParams)
     {
@@ -1361,6 +1361,18 @@ private:
         }
 
         jvRequest[jss::transaction] = jvParams[0u].asString();
+        return jvRequest;
+    }
+
+    // tx_merkle_verify <transaction_id> <proof>
+    Json::Value
+    parseTxMerkleVerify(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest{Json::objectValue};
+
+        jvRequest[jss::transaction_hash] = jvParams[0u].asString();
+        jvRequest[jss::proof] = jvParams[1u].asString();
+
         return jvRequest;
     }
 
@@ -1673,6 +1685,7 @@ public:
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
+            {"tx_merkle_verify", &RPCParser::parseTxMerkleVerify, 2, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_count", &RPCParser::parseLedgerId, 0, 1},
             {"tx_history", &RPCParser::parseTxHistory, 1, -1},

@@ -762,7 +762,72 @@ doTxMerkleProof(RPC::JsonContext& context)
 }
 
 Json::Value
-doTxMerkleVerify(RPC::JsonContext& context)
+doTxMerkleVerifyFromCommandline(RPC::JsonContext& context)
+{
+    if (!context.params.isMember(jss::transaction_hash))
+        return RPC::missing_field_error(jss::transaction_hash);
+
+    if (!context.params.isMember(jss::proof))
+        return RPC::missing_field_error(jss::proof);
+
+    std::string txHash = context.params[jss::transaction_hash].asString();
+    if (!isHexTxID(txHash))
+        return rpcError(rpcNOT_IMPL);
+
+    TxArgs args;
+    args.hash = from_hex_text<uint256>(txHash);
+
+    args.binary = context.params.isMember(jss::binary) &&
+        context.params[jss::binary].asBool();
+
+    std::pair<TxResult, RPC::Status> res = doTxHelp(context, args);
+
+    RPC::Status const& error = res.second;
+    TxResult const& result = res.first;
+    // handle errors
+    if (error.toErrorCode() != rpcSUCCESS)
+    {
+        return rpcError(error.toErrorCode());
+    }
+
+    assert(result.txn);
+
+    if (!result.ledger || !result.validated)
+    {
+        return rpcError(rpcTXN_NOT_VALIDATED);
+    }
+
+    // Get SHAMapItem
+    auto item = result.ledger->txMap().peekItem(args.hash);
+    if (!item)
+    {
+        return rpcError(rpcTXN_NOT_FOUND);
+    }
+
+    // Make SHAMapTreeNode
+    std::shared_ptr<SHAMapTreeNode> node = std::make_shared<SHAMapTreeNode>(
+        std::move(item), SHAMapTreeNode::tnTRANSACTION_MD, 0);
+
+    // Verify node merkle proof
+    if (!context.params[jss::proof].isString())
+        return RPC::make_param_error(
+            "Element proof is malformed, must be a string.");
+    auto proof = strUnHex(context.params[jss::proof].asString());
+    if (!proof || !proof->size())
+        return RPC::make_param_error(
+            "Element proof is malformed, must be a hex string.");
+
+    if (!node->verifyProof(*proof, result.ledger->info().txHash))
+    {
+        return RPC::make_error(
+            rpcBAD_PROOF, "Tx node merkle proof verify failed.");
+    }
+
+    return Json::objectValue;
+}
+
+Json::Value
+doTxMerkleVerifyFromRPC(RPC::JsonContext& context)
 {
     if (!context.params.isMember(jss::ledger))
         return RPC::missing_field_error(jss::ledger);
@@ -865,6 +930,18 @@ doTxMerkleVerify(RPC::JsonContext& context)
     }
 
     return Json::objectValue;
+}
+
+Json::Value
+doTxMerkleVerify(RPC::JsonContext& context)
+{
+    if (context.params.isMember(jss::transaction_hash) &&
+        context.params.isMember(jss::proof))
+    {
+        return doTxMerkleVerifyFromCommandline(context);
+    }
+
+    return doTxMerkleVerifyFromRPC(context);
 }
 
 std::pair<org::zxcl::rpc::v1::GetTransactionResponse, grpc::Status>

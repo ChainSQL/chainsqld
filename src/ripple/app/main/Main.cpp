@@ -188,6 +188,8 @@ printHelp(const po::options_description& desc)
            "     t_auditposition <job_id>\n"
            "     tx_count\n"
            "     tx <id>\n"
+           "     tx_merkle_proof <id> [binary]\n"
+           "     tx_merkle_verify <id> <proof>\n"
            "     validation_create [<seed>|<pass_phrase>|<key>]\n"
            "     validators\n"
            "     validator_list_sites\n"
