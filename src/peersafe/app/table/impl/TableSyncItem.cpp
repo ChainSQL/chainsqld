@@ -1029,6 +1029,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
             if (ret == soci_exception) {
                 SetSyncState(SYNC_STOP);
+                break;
             }
             //JLOG(journal_.info()) <<
             //    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
@@ -1041,7 +1042,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
 
             SetSyncState(SYNC_STOP);
-            continue;
+            break;
         }
 
 		try
@@ -1086,7 +1087,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
 					auto ret = DealWithTx(vecTxs, seq,closeTime);
-					uTxDBUpdateHash_ = tx.getTransactionID();
+					//uTxDBUpdateHash_ = tx.getTransactionID();
 
 					if (app_.getOPs().hasChainSQLTxListener())
 						tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
@@ -1115,28 +1116,31 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 			JLOG(journal_.info()) <<
 				"find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
-
+            uTxDBUpdateHash_.zero();
+            // write tx time into db,so next start chainsqld can get
+            // last txntime and compare it to time condition
+            auto ret = getTableStatusDB().UpdateSyncDB(
+                to_string(accountID_),
+                sTableNameInDB_,
+                LedgerCheckHash,
+                LedgerSeq,
+                LedgerHash,
+                LedgerSeq,
+                to_string(uTxDBUpdateHash_),
+                std::to_string(iter->closetime()),
+                PreviousCommit);
+            if (ret == soci_exception)
+            {
+                SetSyncState(SYNC_STOP);
+                break;
+            }
 		}
 		catch (soci::soci_error& e) {
 			
 			JLOG(journal_.error()) << "soci::soci_error : " << std::string(e.what());
 			SetSyncState(SYNC_STOP);
-			continue;
+			break;
 		}
-
-
-		uTxDBUpdateHash_.zero();
-        // write tx time into db,so next start rippled can get last txntime and compare it to time condition
-		auto ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_,
-            LedgerCheckHash, LedgerSeq,
-            LedgerHash, LedgerSeq,
-            to_string(uTxDBUpdateHash_), std::to_string(iter->closetime()), PreviousCommit);
-		if (ret == soci_exception) {
-			SetSyncState(SYNC_STOP);
-		}
-
-		//if (uTxDBUpdateHash_.isNonZero())
-		//	SetSyncState(SYNC_STOP);
 	}
 
 	return true;
