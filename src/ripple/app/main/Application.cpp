@@ -95,6 +95,10 @@
 #include <sstream>
 #include <ripple/basics/Sustain.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
+
 namespace ripple {
 
 // VFALCO TODO Move the function definitions into the class declaration
