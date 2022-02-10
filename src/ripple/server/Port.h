@@ -103,7 +103,7 @@ struct ParsedPort
     std::string ssl_cert;
     std::string ssl_chain;
     std::string ssl_ciphers;
-    bool ssl_verify;
+    bool ssl_verify = false;
     boost::beast::websocket::permessage_deflate pmd_options;
     int limit = 0;
     std::uint16_t ws_queue_limit;
