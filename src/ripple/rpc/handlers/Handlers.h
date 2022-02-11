@@ -194,7 +194,7 @@ Json::Value doGetCheckHash(RPC::JsonContext&);
 Json::Value doValidators            (RPC::JsonContext&);
 Json::Value doValidatorListSites    (RPC::JsonContext&);
 Json::Value doTxInPool(RPC::JsonContext&);
-
+Json::Value doSyncInfo(RPC::JsonContext&);
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);
 

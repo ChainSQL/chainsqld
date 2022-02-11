@@ -154,6 +154,7 @@ printHelp(const po::options_description& desc)
            "     gateway_balances [<ledger>] <issuer_account> [ <hotwallet> [ "
            "<hotwallet> ]]\n"
            "     get_counts\n"
+           "     g_accountTables <account> [<detail>]\n"
            "     json <method> <json>\n"
            "     ledger [<id>|current|closed|validated] [full]\n"
            "     ledger_accept\n"
@@ -194,7 +195,8 @@ printHelp(const po::options_description& desc)
 		   "     gen_csr <seed> <x509_subject>\n"
 		   "     schema_list [<account>] [<running>]\n"
 		   "     schema_info <schemaid>\n"
-		   "     schema_accept <schemaid>\n";
+		   "     schema_accept <schemaid>\n"
+           "     sync_info <nameInDB>\n";
 	             
 }
 

@@ -2073,4 +2073,53 @@ bool TableSync::GetCurrentAuditPos(std::string sNickName, TableSyncItem::taskInf
     return true;
 }
 
+Json::Value
+TableSync::SyncInfo(std::string const& nameInDB)
+{
+    TableSyncItem::BaseInfo stItem;
+    std::string PreviousCommit;
+    std::list<std::shared_ptr<TableSyncItem>> tmList;
+    {
+        std::lock_guard lock(mutexlistTable_);
+        for (std::list<std::shared_ptr<TableSyncItem>>::iterator iter =
+                 listTableInfo_.begin();
+             iter != listTableInfo_.end();
+             ++iter)
+        {
+            tmList.push_back(*iter);
+        }
+    }
+
+    Json::Value ret(Json::objectValue);
+    ret[jss::Tables] = Json::Value(Json::arrayValue);
+    for (auto iter = tmList.begin(); iter != tmList.end(); iter++)
+    {
+        auto pItem = *iter;
+        pItem->GetBaseInfo(stItem);
+        if (!nameInDB.empty() && stItem.sTableNameInDB != nameInDB)
+            continue;
+        Json::Value table(Json::objectValue);
+        table[jss::Owner] = to_string(stItem.accountID);
+        table[jss::TableName] = stItem.sTableName;
+        table[jss::NameInDB] = stItem.sTableNameInDB;
+        table[jss::TxnLgrSeq] = stItem.uTxSeq;
+        table["LedgerSeq"] = stItem.u32SeqLedger;
+        table["Deleted"] = stItem.isDeleted;
+        table["SyncState"] = stItem.eState;
+        table["IsSyncing"] = IsNeedSyn(pItem);
+        ret[jss::Tables].append(table);
+    }
+    return ret;
+}
+
+Json::Value doSyncInfo(RPC::JsonContext& context)
+{
+    std::string sNameInDB;
+    if(context.params.isMember(jss::nameInDB))
+    {
+        sNameInDB = context.params[jss::nameInDB].asString();
+    }
+    return context.app.getTableSync().SyncInfo(sNameInDB);
+}
+
 }

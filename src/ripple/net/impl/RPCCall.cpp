@@ -979,6 +979,23 @@ private:
         return jvRequest;
     }
 
+    Json::Value
+    parseAccountTables(Json::Value const& jvParams)
+    {
+        std::string strIdent = jvParams[0u].asString();
+        if (!parseBase58<AccountID>(strIdent))
+            return rpcError(rpcACT_MALFORMED);
+
+        // Get info on account.
+        Json::Value jvRequest(Json::objectValue);
+        jvRequest[jss::account] = strIdent;
+        if (jvParams.size() == 2)
+        {
+            jvRequest["detail"] = (jvParams[1u].asString() == "detail");
+        }
+
+        return jvRequest;
+    }
     // TODO: Get index from an alternate syntax: rXYZ:<index>
     Json::Value
     parseAccountRaw1(Json::Value const& jvParams)
@@ -1481,7 +1498,7 @@ private:
 				return rpcError(rpcINVALID_PARAMS);
 			}
 
-			jvRequest[jss::Account] = jvParams[0u].asString();
+			jvRequest[jss::account] = jvParams[0u].asString();
 			jvRequest[jss::running] = jvParams[1u].asBool();
 
 
@@ -1495,7 +1512,7 @@ private:
 			}
 			else
 			{
-				jvRequest[jss::Account] = jvParams[0u].asString();
+                jvRequest[jss::account] = jvParams[0u].asString();
 			}
 		}
 		else
@@ -1520,6 +1537,18 @@ private:
 
 		return jvRequest;
 	}
+
+    Json::Value parseSyncInfo(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+
+        if (jvParams.size() == 1)
+        {
+            jvRequest[jss::nameInDB] = jvParams[0u].asString();
+        }
+
+        return jvRequest;
+    }
 
 public:
     //--------------------------------------------------------------------------
@@ -1576,6 +1605,7 @@ public:
             {"download_shard", &RPCParser::parseDownloadShard, 2, -1},
             {"feature", &RPCParser::parseFeature, 0, 2},
             {"fetch_info", &RPCParser::parseFetchInfo, 0, 1},
+            {"g_accountTables", &RPCParser::parseAccountTables,1,2},
             {"gateway_balances", &RPCParser::parseGatewayBalances, 1, -1},
             {"get_counts", &RPCParser::parseGetCounts, 0, 1},
             {"json", &RPCParser::parseJson, 2, 2},
@@ -1664,6 +1694,7 @@ public:
 			{   "schema_info",		   &RPCParser::parseSchemaID,    	       1,  1 },
 			{   "schema_accept",	   &RPCParser::parseSchemaID,		       1,  1 },
             {   "tx_in_pool",          &RPCParser::parseAsIs,                  0,  0 },
+            {   "sync_info",           &RPCParser::parseSyncInfo,              0,  1 },
         };
 
         auto const count = jvParams.size();

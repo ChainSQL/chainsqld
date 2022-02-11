@@ -89,6 +89,8 @@ public:
     void SetHaveSyncFlag(bool haveSync);
     void Sweep();
     bool InitTableItems();
+    Json::Value SyncInfo(std::string const& nameInDB);
+
 private:
     std::tuple<AccountID, SecretKey, bool>
     ParseSecret(std::string secret, std::string user);

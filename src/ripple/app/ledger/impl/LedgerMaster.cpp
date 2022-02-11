@@ -1392,7 +1392,7 @@ LedgerMaster::checkLoadLedger()
     else
     {
         app_.getJobQueue().addJob(
-            jtCheckLoadLedger, "SchemaImp::checkLoadLedger", [this](Job&) {
+            jtCheckLoadLedger, "LedgerMaster::checkLoadLedger", [this](Job&) {
                 if (load_ledger_index_ > 1)
                 {
                     auto loadLedger = getLedgerBySeq(load_ledger_index_);

@@ -171,12 +171,12 @@ Handler const handlerArray[]{
     {   "ledger_txs",           byRef (&doLedgerTxs),          Role::USER,  NO_CONDITION  },  
     {   "g_dbname",             byRef (&doGetDBName),          Role::USER,    NO_CONDITION     },
 	{   "g_userToken",          byRef(&doGetUserToken),        Role::USER,    NO_CONDITION },
-	{   "g_getcheckhash",       byRef(&doGetCheckHash),       Role::USER,    NO_CONDITION     },
-	{   "g_accountTables",      byRef(&doGetAccountTables),   Role::USER,   NO_CONDITION },
+	{   "g_getcheckhash",       byRef(&doGetCheckHash),        Role::USER,    NO_CONDITION     },
+	{   "g_accountTables",      byRef(&doGetAccountTables),    Role::USER,   NO_CONDITION },
     {   "t_drop",               byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
     {   "t_rename",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
-    {   "t_assign",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
-    {   "t_cancelassign",       byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
+    //{   "t_assign",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
+    //{   "t_cancelassign",       byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
 	{   "t_grant",              byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
     {   "t_report",             byRef(&doRpcSubmit),           Role::USER,   NO_CONDITION },
 	{   "r_insert",             byRef (&doRpcSubmit),          Role::USER,   NO_CONDITION },
@@ -203,13 +203,14 @@ Handler const handlerArray[]{
 	{   "g_createrandom",       byRef (&doCreateRandom),       Role::USER,   NO_CONDITION },
     {   "g_cryptdata",          byRef (&doCryptData),          Role::USER,   NO_CONDITION },
 
-	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::USER,  NO_CONDITION     },
+	{   "ledger_objects",       byRef (&doLedgerObjects),      Role::ADMIN,  NO_CONDITION     },
     {   "node_size",            byRef (&doNodeSize),           Role::ADMIN, NO_CONDITION    },
     {   "malloc_trim",          byRef (&doMallocTrim),         Role::ADMIN, NO_CONDITION    },
 	{   "schema_list",          byRef (&doSchemaList),         Role::USER,  NO_CONDITION    },
 	{   "schema_info",          byRef (&doSchemaInfo),         Role::USER,  NO_CONDITION },
 	{   "schema_accept",        byRef (&doSchemaAccept),       Role::ADMIN, NO_CONDITION },
     {   "tx_in_pool",           byRef (&doTxInPool),           Role::USER,  NO_CONDITION },
+    {   "sync_info",            byRef (&doSyncInfo),           Role::USER,  NO_CONDITION },
 };
 
 class HandlerTable
