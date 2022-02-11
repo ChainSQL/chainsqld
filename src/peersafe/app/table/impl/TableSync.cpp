@@ -83,7 +83,7 @@ TableSync::~TableSync()
 
 bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash,std::string sNameInDB, protocol::TMTableData &m)
 {
-	m.set_tablename(sNameInDB);
+    m.set_nameindb(sNameInDB);
 	m.set_ledgerseq(TxnLgrSeq);
 	m.set_lastledgerseq(PreviousTxnLgrSeq);
 	m.set_lastledgerhash(to_string(PrevTxnLedgerHash));
@@ -198,7 +198,7 @@ bool TableSync::SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t
         
     return false;    
 }
-bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply)
+bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string nameInDB, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply)
 {
     reply.set_ledgerhash(to_string(hash));
     reply.set_ledgerseq(iSeq);
@@ -206,7 +206,7 @@ bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLa
     reply.set_lastledgerhash(to_string(lastHash));
     reply.set_seekstop(true);
     reply.set_account(account);
-    reply.set_tablename(tablename);
+    reply.set_nameindb(nameInDB);
     reply.set_ledgercheckhash(to_string(checkHash));
     reply.set_closetime(time);
 	reply.set_etargettype(eTargeType);
@@ -439,14 +439,14 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
     if (app_.getLedgerMaster().haveLedger(checkIndex, stopIndex))
     {
         auto ledger = app_.getLedgerMaster().getLedgerBySeq(stopIndex);       
-        auto tup = getTableEntry(*ledger, ownerID, m->tablename());
+        auto tup = getTableEntryByNameInDB(*ledger, ownerID, m->nameindb());
         auto pEntry = std::get<1>(tup);
         bool changed = isTableSLEChanged(pEntry, lastTxChangeIndex, false);
 		
         if (!changed && pEntry)
         {
             auto time = ledger->info().closeTime.time_since_epoch().count();
-            this->SendSeekEndReply(stopIndex, ledger->info().hash, iLastFindSeq, uLashFindHash, lastTxChangeHash, m->account(), m->tablename(), sNickName, time, eTargetType, wPeer);
+            this->SendSeekEndReply(stopIndex, ledger->info().hash, iLastFindSeq, uLashFindHash, lastTxChangeHash, m->account(), m->nameindb(), sNickName, time, eTargetType, wPeer);
             return;
         }
     }
@@ -455,14 +455,14 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
     {
         auto ledger = app_.getLedgerMaster().getLedgerBySeq(i);
         if (!ledger)   break;
-        auto tup = getTableEntry(*ledger, ownerID, m->tablename());
+        auto tup = getTableEntryByNameInDB(*ledger, ownerID, m->nameindb());
         auto pEntry = std::get<1>(tup);
         bool changed = isTableSLEChanged(pEntry, lastTxChangeIndex, true);
 
         auto time = ledger->info().closeTime.time_since_epoch().count();
 		if (changed)
         {   
-            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, pEntry->getFieldH256(sfTxnLedgerHash),lastTxChangeIndex, lastTxChangeHash,m->tablename());
+            this->SendSeekResultReply(m->account(), i == stopIndex,time,wPeer, sNickName, eTargetType, ledger->info().seq, pEntry->getFieldH256(sfTxnLedgerHash),lastTxChangeIndex, lastTxChangeHash,m->nameindb());
             iLastFindSeq = i;
             uLashFindHash = ledger->info().hash;
             lastTxChangeIndex = i;
@@ -471,7 +471,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
         }
         else if(iBlockEnd == i || (!bGetLost && i == stopIndex) || pEntry == nullptr)
         {       
-            this->SendSeekEndReply(i, ledger->info().hash, iLastFindSeq, uLashFindHash, lastTxChangeHash, m->account(), m->tablename(), sNickName, time, eTargetType, wPeer);
+            this->SendSeekEndReply(i, ledger->info().hash, iLastFindSeq, uLashFindHash, lastTxChangeHash, m->account(), m->nameindb(), sNickName, time, eTargetType, wPeer);
             break;
         }
         else
@@ -480,11 +480,11 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
         }
     }
 }
-bool TableSync::SendSyncRequest(AccountID accountID, std::string sTableName, LedgerIndex iStartSeq, uint256 iStartHash, LedgerIndex iCheckSeq, uint256 iCheckHash, LedgerIndex iStopSeq, bool bGetLost, std::shared_ptr <TableSyncItem> pItem)
+bool TableSync::SendSyncRequest(AccountID accountID, std::string sNameInDB, LedgerIndex iStartSeq, uint256 iStartHash, LedgerIndex iCheckSeq, uint256 iCheckHash, LedgerIndex iStopSeq, bool bGetLost, std::shared_ptr <TableSyncItem> pItem)
 {
     protocol::TMGetTable tmGT;
     tmGT.set_account(to_string(accountID));
-    tmGT.set_tablename(sTableName);
+    tmGT.set_nameindb(sNameInDB);
     tmGT.set_ledgerseq(iStartSeq);
     tmGT.set_ledgerhash(to_string(iStartHash)); 
     tmGT.set_ledgerstopseq(iStopSeq);
@@ -1035,7 +1035,7 @@ bool TableSync::GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, s
     auto ledgerSeq = data.ledgerseq();
 
     std::string sNickName = data.has_nickname() ? data.nickname() : "";
-    std::shared_ptr <TableSyncItem> pItem = GetRightItem(accountID, data.tablename(), sNickName, (TableSyncItem::SyncTargetType)data.etargettype());
+    std::shared_ptr <TableSyncItem> pItem = GetRightItem(accountID, data.nameindb(), sNickName, (TableSyncItem::SyncTargetType)data.etargettype());
     
     if (pItem == NULL)   return false;
      

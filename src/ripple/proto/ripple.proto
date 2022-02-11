@@ -374,7 +374,7 @@ message TMGetTable
     optional bytes ledgerHash       = 2;
     required uint32 ledgerCheckSeq  = 3;	
     optional bytes ledgerCheckHash  = 4;  
-    required bytes tablename        = 5;
+    required bytes nameInDB         = 5;
     required bytes account          = 6;
     optional uint32 ledgerStopSeq   = 7;     
     required bool getLost           = 8;
@@ -408,7 +408,7 @@ message TMTableData
     required bytes        ledgerCheckHash     = 3;
     required uint32       lastLedgerSeq       = 4;
     required bytes        lastLedgerHash      = 5;
-    required bytes        tablename           = 6;
+    required bytes        nameInDB            = 6;
     required bytes        account             = 7;
     repeated TMLedgerNode txNodes             = 8;
     required bool         seekStop            = 9;
