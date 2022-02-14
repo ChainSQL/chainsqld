@@ -325,8 +325,8 @@ initAuthenticated(
         auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
         if(EVP_PKEY_EC == pkID)
         {
-            static int my_pref_list[] = {NID_secp256k1};
-            SSL_CTX_set1_curves(context.native_handle(), my_pref_list, 1);
+            static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
+            SSL_CTX_set1_curves(context.native_handle(), my_pref_list, 2);
         }
 
         cert_set = true;
