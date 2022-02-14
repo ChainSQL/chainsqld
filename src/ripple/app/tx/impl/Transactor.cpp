@@ -219,29 +219,17 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
         return terNO_ACCOUNT;
 
     auto const balance = (*sle)[sfBalance].zxc();
+    ZXCAmount reserve =
+        ctx.view.fees().accountReserve((*sle)[sfOwnerCount]);
 	if (ctx.tx.getTxnType() == ttTABLELISTSET && ctx.tx.getFieldU16(sfOpType) == T_CREATE)
 	{
 		//If no judgment here ,tx will go into ledger and deduct expensive fee
-		auto const reserve =
-			ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
-
-        if (balance < reserve)
-			return tecINSUFFICIENT_RESERVE;
+		reserve = ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
 	}
 
-    if (balance < feePaid)
+    if (balance < reserve + feePaid)
     {
-        JLOG(ctx.j.trace()) << "Insufficient balance:"
-                            << " balance=" << to_string(balance)
-                            << " paid=" << to_string(feePaid);
-
-        if ((balance > beast::zero) && !ctx.view.open())
-        {
-            // Closed ledger, non-zero balance, less than fee
-            return tecINSUFF_FEE;
-        }
-
-        return terINSUF_FEE_B;
+         return tecINSUFF_FEE;
     }
 
     return tesSUCCESS;
