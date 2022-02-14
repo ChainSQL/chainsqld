@@ -320,6 +320,14 @@ initAuthenticated(
             LogicError(error_message("Problem with SSL certificate file.", ec)
                            .c_str());
         }
+        
+        X509* cert = ripple::readCertFromFile(cert_file.c_str());
+        auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
+        if(EVP_PKEY_EC == pkID)
+        {
+            static int my_pref_list[] = {NID_secp256k1};
+            SSL_CTX_set1_curves(context.native_handle(), my_pref_list, 1);
+        }
 
         cert_set = true;
     }
