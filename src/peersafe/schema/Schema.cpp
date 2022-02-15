@@ -1135,8 +1135,7 @@ public:
     isShutdown() override
     {
         
-        if (isStopped())
-            return true;
+        return isStopped();
     }
 
     JobCounter&
