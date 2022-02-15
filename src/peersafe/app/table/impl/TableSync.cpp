@@ -523,8 +523,7 @@ TableSync::InitTableItems()
         return true;
     }
 
-    if (app_.getLedgerMaster().getValidatedLedger() != nullptr &&
-        app_.getLedgerMaster().getValidLedgerIndex() > 1 /*RR-1835*/)
+    if (app_.getLedgerMaster().getValidatedLedger() != nullptr)
     {
         CreateTableItems();
         bInitTableItems_ = true;
