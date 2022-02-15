@@ -87,12 +87,12 @@ namespace ripple {
 		auto balance = sle->getFieldAmount(sfBalance).zxc().drops();
 		if (balance < totalCost)
 		{
-                    JLOG(ctx.j.trace())
-                        << "Not enough zxc: Require >" << totalCost << "="
-                        << gas << "*" << gas_price << "+" << value << " Got"
-                        << balance
-                        << "for sender: " << tx.getAccountID(sfAccount);
-			return terINSUF_FEE_B;
+            JLOG(ctx.j.trace())
+                << "Not enough zxc: Require >" << totalCost << "="
+                << gas << "*" << gas_price << "+" << value << " Got"
+                << balance
+                << "for sender: " << tx.getAccountID(sfAccount);
+            return tecINSUFF_FEE;
 		}
 		return tesSUCCESS;
 	}
