@@ -63,7 +63,46 @@ PromethExposer::PromethExposer(
     , pubkey_node_(pubKey)
     , exposer()
     , registry(std::make_shared<prometheus::Registry>())
-   
+    , schema_gauge(prometheus::BuildGauge()
+                             .Name("Chainsqld_schema_total")
+                             .Help("Number of schema")
+                             .Labels({{"pubkey_node", pubkey_node_}})
+                             .Register(*registry))
+    , peer_gauge(prometheus::BuildGauge()
+                            .Name("Chainsqld_peer_status")
+                            .Help("peer status")
+                            .Labels({{"pubkey_node", pubkey_node_}})
+                            .Register(*registry))
+    , txSucessCount_gauge(prometheus::BuildGauge()
+                                    .Name("Chainsqld_tx_success_count")
+                                    .Help("tx success count")
+                                    .Labels({{"pubkey_node", pubkey_node_}})
+                                    .Register(*registry))
+    , txFailCount_gauge(prometheus::BuildGauge()
+                                  .Name("Chainsqld_tx_fail_count")
+                                  .Help("tx fail count")
+                                  .Labels({{"pubkey_node", pubkey_node_}})
+                                  .Register(*registry))
+    , contractCreateCount_gauge(prometheus::BuildGauge()
+                                        .Name("Chainsqld_contract_create_count")
+                                        .Help("contract create count")
+                                        .Labels({{"pubkey_node", pubkey_node_}})
+                                        .Register(*registry))
+    , contractCallCount_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_contract_call_count")
+                                        .Help("contract call count")
+                                        .Labels({{"pubkey_node", pubkey_node_}})
+                                        .Register(*registry))
+    , accountCount_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_account_count")
+                                   .Help("account count")
+                                   .Labels({{"pubkey_node", pubkey_node_}})
+                                   .Register(*registry))
+    , blockHeight_gauge(prometheus::BuildGauge()
+                                   .Name("Chainsqld_block_height")
+                                   .Help("block height")
+                                   .Labels({{"pubkey_node", pubkey_node_}})
+                                   .Register(*registry))
 {
      using namespace prometheus;
 
@@ -88,17 +127,67 @@ PromethExposer::PromethExposer(
 }
 PromethExposer::~PromethExposer()
 {
+    registry.reset();
+
 }
-std::shared_ptr<prometheus::Registry>&
+std::shared_ptr<prometheus::Registry>
 PromethExposer::getRegistry()
 {
-    return registry;
+        return registry;
 }
 
 std::string const&
 PromethExposer::getPubKey()
 {
     return pubkey_node_;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getSchemaGauge()
+{
+    return schema_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getPeerGauge()
+{
+    return peer_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getTxSucessCountGauge()
+{
+    return txSucessCount_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getTxFailCountGauge()
+{
+    return txFailCount_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getContractCreateCountGauge()
+{
+    return contractCreateCount_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getContractCallCountGauge()
+{
+    return contractCallCount_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getAccountCountGauge()
+{
+    return accountCount_gauge;
+}
+
+prometheus::Family<prometheus::Gauge>&
+PromethExposer::getBlockHeightGauge()
+{
+    return blockHeight_gauge;
 }
 
 PrometheusClient::PrometheusClient(
@@ -111,52 +200,28 @@ PrometheusClient::PrometheusClient(
     , cfg_(cfg)
     , mPromethTime(app.timeKeeper().closeTime())
     , exposer_(exposer)
-    , schema_gauge(prometheus::BuildGauge()
-                             .Name("Chainsqld_schema_total")
-                             .Help("Number of schema")
-                             .Register(*exposer_.getRegistry())
-                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"peer", exposer_.getPubKey()}}))
-    , peer_gauge(prometheus::BuildGauge()
-                            .Name("Chainsqld_peer_status")
-                            .Help("peer status")
-                            .Register(*exposer_.getRegistry())
-                            .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}, {"peer_status", "peer_status"}}))
-    , txSucessCount_gauge(prometheus::BuildGauge()
-                                    .Name("Chainsqld_tx_success_count")
-                                    .Help("tx success count")
-                                    .Register(*exposer_.getRegistry())
-                                    .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
-    , txFailCount_gauge(prometheus::BuildGauge()
-                                  .Name("Chainsqld_tx_fail_count")
-                                  .Help("tx fail count")
-                                  .Register(*exposer_.getRegistry())
-                                  .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
-    , contractCreateCount_gauge(prometheus::BuildGauge()
-                                        .Name("Chainsqld_contract_create_count")
-                                        .Help("contract create count")
-                                        .Register(*exposer_.getRegistry())
-                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
-    , contractCallCount_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_contract_call_count")
-                                        .Help("contract call count")
-                                        .Register(*exposer_.getRegistry())
-                                        .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
-    , accountCount_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_account_count")
-                                   .Help("account count")
-                                   .Register(*exposer_.getRegistry())
-                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
-    , blockHeight_gauge(prometheus::BuildGauge()
-                                   .Name("Chainsqld_block_height")
-                                   .Help("block height")
-                                   .Register(*exposer_.getRegistry())
-                                   .Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())},{"pubkey_node", exposer_.getPubKey()}}))
+    , schema_gauge(exposer_.getSchemaGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , peer_gauge(exposer_.getPeerGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}, {"peer_status", "peer_status"}}))
+    , txSucessCount_gauge(exposer_.getTxSucessCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , txFailCount_gauge(exposer_.getTxFailCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , contractCreateCount_gauge(exposer_.getContractCreateCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , contractCallCount_gauge(exposer_.getContractCallCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , accountCount_gauge(exposer_.getAccountCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , blockHeight_gauge(exposer_.getBlockHeightGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
 
 {
     
 }
 PrometheusClient::~PrometheusClient()
 {
+    exposer_.getSchemaGauge().Remove(&schema_gauge);
+    exposer_.getPeerGauge().Remove(&peer_gauge);
+    exposer_.getTxSucessCountGauge().Remove(&txSucessCount_gauge);
+    exposer_.getTxFailCountGauge().Remove(&txFailCount_gauge);
+    exposer_.getContractCreateCountGauge().Remove(&contractCreateCount_gauge);
+    exposer_.getContractCallCountGauge().Remove(&contractCallCount_gauge);
+    exposer_.getAccountCountGauge().Remove(&accountCount_gauge);
+    exposer_.getBlockHeightGauge().Remove(&blockHeight_gauge);
 }
 
 

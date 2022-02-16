@@ -183,6 +183,7 @@ public:
     std::unique_ptr<JobQueue> m_jobQueue;
     std::unique_ptr<ServerHandler> serverHandler_;
     std::unique_ptr<LoadManager> m_loadManager;
+    std::unique_ptr<PromethExposer> m_promethExposer;
     std::unique_ptr<SchemaManager> m_schemaManager;
     std::unique_ptr<Overlay> m_overlay;
 
@@ -202,7 +203,7 @@ public:
     io_latency_sampler m_io_latency_sampler;
     std::unique_ptr<GRPCServer> grpcServer_;
     std::unique_ptr <PreContractFace> m_preContractFace;
-    std::unique_ptr<PromethExposer> m_promethExposer;
+    
     //--------------------------------------------------------------------------
 
     static std::size_t
@@ -278,6 +279,11 @@ public:
 
         , m_loadManager(
               make_LoadManager(*this, *this, logs_->journal("LoadManager")))
+         , m_promethExposer(std::make_unique<PromethExposer>(
+            *this,
+            *config_,
+            toBase58(TokenType::NodePublic, nodeIdentity().first),
+            logs_->journal("PromethExposer")))
 
         , m_schemaManager(std::make_unique<SchemaManager>(
               *this,
@@ -304,11 +310,6 @@ public:
               std::chrono::milliseconds(100),
               get_io_service())
         , grpcServer_(std::make_unique<GRPCServer>(*this))
-        , m_promethExposer(std::make_unique<PromethExposer>(
-            *this,
-            *config_,
-            toBase58(TokenType::NodePublic, nodeIdentity().first),
-            logs_->journal("PromethExposer")))
     {
         add(m_resourceManager.get());
 
