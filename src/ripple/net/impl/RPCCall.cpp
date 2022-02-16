@@ -1538,6 +1538,21 @@ private:
 		return jvRequest;
 	}
 
+    Json::Value parseStopSchemaID(Json::Value const& jvParams)
+	{
+		Json::Value     jvRequest(Json::objectValue);
+
+		if (jvParams.size() > 1)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+        }
+        else if (jvParams.size() == 1)
+        {
+            jvRequest[jss::schema] = jvParams[0u].asString();
+        }
+		return jvRequest;
+	}
+
     Json::Value parseSyncInfo(Json::Value const& jvParams)
     {
         Json::Value jvRequest(Json::objectValue);
@@ -1644,7 +1659,7 @@ public:
             {"server_info", &RPCParser::parseServerInfo, 0, 1},
             {"server_state", &RPCParser::parseServerInfo, 0, 1},
             {"crawl_shards", &RPCParser::parseAsIs, 0, 2},
-            {"stop",        &RPCParser::parseSchemaID, 1, 1},
+            {"stop",        &RPCParser::parseStopSchemaID, 0, 1},
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},

@@ -35,7 +35,17 @@ struct JsonContext;
 Json::Value
 doStop(RPC::JsonContext& context)
 {
-	if (!context.params.isMember(jss::schema))
+    uint256 schemaID = beast::zero;
+    if (context.params.isMember(jss::schema))
+    {
+        auto const schema = context.params[jss::schema].asString();
+        if (schema.length() < 64)
+            return rpcError(rpcINVALID_PARAMS); 
+        schemaID = from_hex_text<uint256>(schema);
+
+    }
+
+	if (!context.params.isMember(jss::schema) || schemaID.isZero())
     {
         std::unique_lock lock{context.app.getMasterMutex()};
         context.app.app().signalStop();
