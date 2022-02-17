@@ -282,7 +282,7 @@ public:
          , m_promethExposer(std::make_unique<PromethExposer>(
             *this,
             *config_,
-            toBase58(TokenType::NodePublic, nodeIdentity().first),
+            toBase58(TokenType::NodePublic, validatorKeys_.publicKey),
             logs_->journal("PromethExposer")))
 
         , m_schemaManager(std::make_unique<SchemaManager>(
