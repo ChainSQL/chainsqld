@@ -273,7 +273,7 @@ PrometheusClient::timerEntry(NetClock::time_point const& now)
         //        accountCount = accountCount - contractCount;
         //    accountCount_gauge.Set(accountCount);
         //}
-        //blockHeight_gauge.Set(ledger->info().seq -1);
+        blockHeight_gauge.Set(ledger->info().seq -1);
     }
     else
         blockHeight_gauge.Set(-1);
