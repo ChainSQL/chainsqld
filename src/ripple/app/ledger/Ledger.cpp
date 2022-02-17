@@ -381,6 +381,20 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
 	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+    Keylet key = keylet::statis();
+    auto statisSle = ledger.read(key);
+    if (statisSle)
+        stateMap_->delItem(statisSle->key());
+
+    key = keylet::chainId();
+    auto chainIdSle = ledger.read(key);
+    if (chainIdSle)
+        stateMap_->delItem(chainIdSle->key());
+
+    key = keylet::schema_index();
+    auto schemaIndexSle = ledger.read(key);
+    if (schemaIndexSle)
+        stateMap_->delItem(schemaIndexSle->key());
 
     //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
