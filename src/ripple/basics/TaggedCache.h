@@ -229,12 +229,12 @@ public:
                 }
                 else if (cit->second.last_access <= when_expire)
                 {
-					// //added code
-					// if (needContinue(now, cit->second))
-					// {
-					// 	++cit;
-					// 	continue;
-					// }
+                    // added code
+                    if (needContinue(now, cit->second))
+                    {
+                        ++cit;
+                        continue;
+                    }
                     // strong, expired
                     --m_cache_count;
                     ++cacheRemovals;
