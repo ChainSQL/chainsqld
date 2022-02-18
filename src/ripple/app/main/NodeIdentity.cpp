@@ -104,6 +104,8 @@ loadNodeIdentity(Application& app)
                     pk = derivePublicKey(KeyType::gmalg, *sk);
                     break;
                 }
+                default:
+                    break;
             }
             
 

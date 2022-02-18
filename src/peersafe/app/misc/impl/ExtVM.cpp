@@ -114,7 +114,6 @@ ExtVM::store(evmc_uint256be const& key)
     SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
     ContractHelper& helper = oSle_.ctx().app.getContractHelper();
-    auto seq = oSle_.ctx().view().seq();
 
     uint256 uKey = fromEvmC(key);
     if (mapStore.rootHash() || helper.hasStorage(contract))
@@ -154,9 +153,7 @@ ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
     ContractHelper& helper = oSle_.ctx().app.getContractHelper();
-    auto seq = oSle_.ctx().view().seq();
 
-    
     uint256 uKey = fromEvmC(key);
     uint256 uValue = fromEvmC(value);
     if (mapStore.rootHash() || 
