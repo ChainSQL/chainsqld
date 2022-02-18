@@ -86,6 +86,9 @@ struct sync_status
         prevSeq = 0;
         mapSynced.clear();
     }
+
+    Json::Value
+    getJson() const;
 };
 
 class TxPool
@@ -129,6 +132,12 @@ public:
     getQueuedTxCountInPool() const
     {
         return mTxsSet.size() - mAvoidByHash.size();
+    }
+
+    inline Json::Value
+    syncStatusJson() const
+    {
+        return mSyncStatus.getJson();
     }
 
     // Get at most specified counts of Tx from TxPool.

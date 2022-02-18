@@ -23,6 +23,16 @@
 
 namespace ripple {
 
+Json::Value
+sync_status::getJson() const
+{
+    Json::Value ret(Json::objectValue);
+    ret["pool_start_seq"] = pool_start_seq;
+    ret["max_advance_seq"] = max_advance_seq;
+    ret["prev_hash"] = to_string(prevHash);
+    return ret;
+}
+
 uint64_t
 TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set)
 {

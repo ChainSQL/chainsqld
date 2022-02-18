@@ -306,6 +306,8 @@ PopConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
+    ret["tx_pool_sync_status"] = adaptor_.getSyncStatusJson();
+
     ret["initialized"] = !waitingForInit();
 
     ret["timeout_count"] = timeOutCount_;
