@@ -276,6 +276,12 @@ public:
     {
         app_.getTxPool().clearAvoid(seq);
     }
+    inline Json::Value
+    getSyncStatusJson()
+    {
+        return app_.getTxPool().syncStatusJson();
+    }
+
 
     /** Share the given tx set to peers.
 
