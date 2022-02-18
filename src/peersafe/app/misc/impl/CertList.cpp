@@ -51,6 +51,13 @@ UserCertList::setCertList(std::vector<std::string> const& certList)
     rootCertList_ = certList;
 }
 
+void
+UserCertList::setRevoked(std::set<std::string>& revokedList)
+{
+    boost::unique_lock<boost::shared_mutex> write_lock{mutex_};
+    revokedList_.merge(revokedList);
+}
+
 std::pair<bool, std::string>
 UserCertList::verifyCred(std::string const& cred)
 {
@@ -63,13 +70,18 @@ UserCertList::verifyCred(std::string const& cred)
 
     if (rootCertList_.empty())
     {
-        return {false, "user root certificates not configed"};
+        return {false, "user root certificates not configured"};
     }
 
     if (cred.empty())
     {
         return {false, "missing user certificate"};
     }
+
+    //check if revoked
+    auto serial = getSerialNumber(cred);
+    if (revokedList_.find(serial) != revokedList_.end())
+        return {false, "certificate is revoked."};
 
     return verifyCredWithRootCerts(rootCertList_, cred);
 }

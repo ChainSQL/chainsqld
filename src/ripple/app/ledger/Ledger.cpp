@@ -372,7 +372,6 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//{
 	//	info_.closeFlags |= sLCF_SHAMapV2;
 	//}
-
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
 	
     Keylet key = keylet::statis();

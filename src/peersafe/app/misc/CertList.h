@@ -50,6 +50,7 @@ private:
     boost::shared_mutex mutable mutex_;
 
     std::vector<std::string> rootCertList_;
+    std::set<std::string> revokedList_;
     beast::Journal j_;
 
 public:
@@ -65,6 +66,9 @@ public:
 
     void
     setCertList(std::vector<std::string> const& certList);
+
+    void
+    setRevoked(std::set<std::string>& revokedList);
 
 public:
     std::pair<bool, std::string>

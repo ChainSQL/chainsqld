@@ -230,7 +230,33 @@ namespace ripple {
 		return publicKey;
 	}
 
-    bool genCsr(KeyType keyType,std::string const& seedStr, x509_subject const& sub, std::string const& reqPath, std::string & exception)
+	std::string getSerialNumber(std::string const& certificate)
+    {
+        std::string ret;
+        X509* x509Ca = readCertFromString(certificate);
+        if (x509Ca)
+        {
+            ASN1_INTEGER* bs = NULL;
+            char* res = NULL;
+            BIGNUM* bn = NULL;
+            bs = X509_get_serialNumber(x509Ca);
+            if (bs->length == 0)
+            {
+                Throw<std::runtime_error>("X509_get_serialNumber() failed length=0");
+                return ret;
+            }
+            bn = ASN1_INTEGER_to_BN(bs, NULL);
+            res = BN_bn2hex(bn);
+            ret = std::string(res);
+            OPENSSL_free(res);
+            res = NULL;
+            BN_free(bn);
+            bn = NULL;
+        }
+		return ret;
+    }
+
+	bool genCsr(KeyType keyType,std::string const& seedStr, x509_subject const& sub, std::string const& reqPath, std::string & exception)
 	{
 		//  OpenSSL_add_all_algorithms is not thread safe
 
