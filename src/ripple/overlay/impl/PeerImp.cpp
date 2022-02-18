@@ -3297,9 +3297,11 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         ? (std::min(packet.querydepth(), 3u))
         : (isHighLatency() ? 2 : 1);
 
+    std::uint64_t i64NodeByteSize = 0;
+
     for (int i = 0;
          (i < packet.nodeids().size() &&
-          (reply.nodes().size() < Tuning::maxReplyNodes));
+          (reply.nodes().size() < Tuning::maxReplyNodes && i64NodeByteSize < Tuning::maxReplyByteSize));
          ++i)
     {
         SHAMapNodeID mn(packet.nodeids(i).data(), packet.nodeids(i).size());
@@ -3335,6 +3337,9 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                     node->set_nodeid(nID.getDataPtr(), nID.getLength());
                     node->set_nodedata(
                         &rawNodeIterator->front(), rawNodeIterator->size());
+                    i64NodeByteSize += rawNodeIterator->size();
+                    if(i64NodeByteSize > Tuning::maxReplyByteSize)
+                        break;
                 }
             }
             else
