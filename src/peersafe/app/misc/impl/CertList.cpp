@@ -33,29 +33,29 @@ CertVerify::verifyCredWithRootCerts(
 }
 
 // ------------------------------------------------------------------------------
-// User certificate for client access
-std::vector<std::string>
-UserCertList::getCertList() const
-{
-    boost::unique_lock<boost::shared_mutex> read_lock{mutex_};
-    std::vector<std::string> ret(rootCertList_);
-    return ret;
-}
+//// User certificate for client access
+//std::vector<std::string>
+//UserCertList::getCertList() const
+//{
+//    boost::unique_lock<boost::shared_mutex> read_lock{mutex_};
+//    std::vector<std::string> ret(rootCertList_);
+//    return ret;
+//}
 
 void
-UserCertList::setCertList(std::vector<std::string> const& certList)
+UserCertList::setCertListFromSite(std::set<std::string> const& certList)
 {
     boost::unique_lock<boost::shared_mutex> write_lock{mutex_};
 
-    rootCertList_.clear();
-    rootCertList_ = certList;
+    rootCertListFromSite_.clear();
+    rootCertListFromSite_ = certList;
 }
 
 void
 UserCertList::setRevoked(std::set<std::string>& revokedList)
 {
     boost::unique_lock<boost::shared_mutex> write_lock{mutex_};
-    revokedList_.merge(revokedList);
+    revokedList_ = revokedList;
 }
 
 std::pair<bool, std::string>
@@ -83,7 +83,10 @@ UserCertList::verifyCred(std::string const& cred)
     if (revokedList_.find(serial) != revokedList_.end())
         return {false, "certificate is revoked."};
 
-    return verifyCredWithRootCerts(rootCertList_, cred);
+    std::set<std::string> setList(rootCertList_);
+    setList.merge(rootCertListFromSite_);
+    std::vector<std::string> vecCerts(setList.begin(), setList.end());
+    return verifyCredWithRootCerts(vecCerts, cred);
 }
 
 // ------------------------------------------------------------------------------

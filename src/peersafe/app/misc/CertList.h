@@ -49,23 +49,24 @@ class UserCertList : public CertVerify
 private:
     boost::shared_mutex mutable mutex_;
 
-    std::vector<std::string> rootCertList_;
+    std::set<std::string> rootCertList_;
+    std::set<std::string> rootCertListFromSite_;
     std::set<std::string> revokedList_;
     beast::Journal j_;
 
 public:
     UserCertList(std::vector<std::string>& rootList, beast::Journal j)
-        : rootCertList_(rootList), j_(j)
+        : rootCertList_(rootList.begin(),rootList.end()), j_(j)
     {
     }
     ~UserCertList() = default;
 
 public:
-    std::vector<std::string>
-    getCertList() const;
+    //std::vector<std::string>
+    //getCertList() const;
 
     void
-    setCertList(std::vector<std::string> const& certList);
+    setCertListFromSite(std::set<std::string> const& certList);
 
     void
     setRevoked(std::set<std::string>& revokedList);

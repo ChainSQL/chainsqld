@@ -88,13 +88,13 @@ CACertSite::parseJsonResponse(
             // update CA root certs
             Json::Value const& newList = list["certs"];
 
-            std::vector<std::string> root_cert_list;  // root cert list
+            std::set<std::string> root_cert_list;  // root cert list
             for (auto const& val : newList)
             {
                 if (val.isObject() && val.isMember("cert") &&
                     val["cert"].isString())
                 {
-                    root_cert_list.push_back(val["cert"].asString());
+                    root_cert_list.insert(val["cert"].asString());
                 }
             }
 
@@ -114,7 +114,7 @@ CACertSite::parseJsonResponse(
             publisher.sequence = list["sequence"].asUInt();
             publisher.expiration = TimeKeeper::time_point::max();
 
-            userCertList_.setCertList(root_cert_list);
+            userCertList_.setCertListFromSite(root_cert_list);
             userCertList_.setRevoked(revoked_list);
         }
         break;
