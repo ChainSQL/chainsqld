@@ -35,6 +35,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/app/tx/SqlStatement.h>
 #include <peersafe/app/tx/SqlTransaction.h>
 #include <peersafe/app/tx/SmartContract.h>
+#include <peersafe/app/tx/AccountAuthorize.h>
 
 namespace ripple {
 	template<class T>
@@ -57,6 +58,7 @@ namespace ripple {
 		case ttSQLTRANSACTION:  return invoke_preclaim_direct<SqlTransaction>(ctx);
 		case ttACCOUNT_SET:     return invoke_preclaim_direct<SetAccount>(ctx);
 		case ttTRUST_SET:		return invoke_preclaim_direct<SetTrust>(ctx);
+		case ttAUTHORIZE:		return invoke_preclaim_direct<AccountAuthorize>(ctx);
 		default:
 			assert(false);
 			return temUNKNOWN;
@@ -107,7 +109,7 @@ namespace ripple {
 		case ttSQLTRANSACTION:	{ SqlTransaction p(ctx); return p.applyDirect(); }
 		case ttACCOUNT_SET:     { SetAccount     p(ctx); return p.applyDirect(); }
 		case ttTRUST_SET:       { SetTrust       p(ctx); return p.applyDirect(); }
-					
+		case ttAUTHORIZE:       { AccountAuthorize       p(ctx); return p.applyDirect(); }			
 		default:
 			assert(false);
 			return temUNKNOWN;

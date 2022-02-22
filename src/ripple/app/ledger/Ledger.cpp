@@ -225,6 +225,9 @@ Ledger::Ledger(
             auto admin = ripple::parseBase58<AccountID>(result.first);
             auto const sle = std::make_shared<SLE>(keylet::admin());
             sle->setAccountID(sfAccount, *admin);
+            std::uint32_t flags = lsfPaymentAuth | lsfDeployContractAuth |lsfCreateTableAuth
+                | lsfIssueCoinsAuth | lsfAdminAuth;
+            sle->setFieldU32(sfFlags, flags);
             rawInsert(sle);
 
             auto const sleFrozen = std::make_shared<SLE>(keylet::frozen());

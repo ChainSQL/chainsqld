@@ -306,7 +306,12 @@ namespace ripple {
         {
         case T_CREATE:
         {
-
+            auto const sleAccount = view.read(keylet::account(sourceID));
+            if (app.config().NEED_AUTHORIZE)
+            {
+                if (!(sleAccount->getFlags() & lsfCreateTableAuth))
+                    return tecNO_PERMISSION;
+            }
 			if (!bSleChangeEnabled &&
                 tableEntries != nullptr &&
                 (*tableEntries).size() >= ACCOUNT_OWN_TABLE_COUNT)
@@ -315,7 +320,7 @@ namespace ripple {
             if (pEntry != NULL)                
                 ret = tefTABLE_EXISTANDNOTDEL;
 
-			auto const sleAccount = view.read(keylet::account(sourceID));
+			
 			// Check reserve and funds availability
 			{
                  bool isContract = false;

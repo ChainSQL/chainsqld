@@ -700,6 +700,8 @@ JSS (running);
 
 JSS(drops_per_byte);                       // out: LogLevel
 JSS(view);
+
+JSS(Authorize);
 #undef JSS
 
 }  // namespace jss

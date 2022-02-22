@@ -227,6 +227,7 @@ public:
 
     //governance
     bool                        OPEN_ACCOUNT_DELAY = false;
+    bool                        NEED_AUTHORIZE = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}

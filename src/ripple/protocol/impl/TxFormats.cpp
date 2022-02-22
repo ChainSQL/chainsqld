@@ -334,6 +334,14 @@ TxFormats::TxFormats()
 		{ sfSchemaID,			 soeREQUIRED }
 	},
 	commonFields);
+
+     add(jss::Authorize,  ttAUTHORIZE,
+	{
+        { sfDestination,         soeREQUIRED },
+		{ sfSetFlag,             soeOPTIONAL },
+        { sfClearFlag,           soeOPTIONAL },
+	},
+	commonFields);
 }
 
 TxFormats const&

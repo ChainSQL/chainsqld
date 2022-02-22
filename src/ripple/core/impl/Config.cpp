@@ -951,6 +951,9 @@ Config::loadFromString(std::string const& fileContents)
 
     get_if_exists(
         section(SECTION_GOVERNANCE), "open_account_delay", OPEN_ACCOUNT_DELAY);
+
+    get_if_exists(
+        section(SECTION_GOVERNANCE), "need_authorize", NEED_AUTHORIZE);
     if (exists(SECTION_GOVERNANCE))
     {
         auto result = section(SECTION_GOVERNANCE).find("admin");

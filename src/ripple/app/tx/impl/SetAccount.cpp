@@ -219,6 +219,7 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 
 	std::uint32_t const uSetFlag = ctx.tx.getFieldU32(sfSetFlag);
 
+    std::uint32_t const uClearFlag = ctx.tx.getFieldU32(sfClearFlag);
 	// legacy AccountSet flags
 	bool bSetRequireAuth = (uTxFlags & tfRequireAuth) || (uSetFlag == asfRequireAuth);
 
@@ -234,6 +235,16 @@ SetAccount::preclaim(PreclaimContext const& ctx)
 			return (ctx.flags & tapRETRY) ? TER {terOWNERS} : TER {tecOWNERS};
 		}
 	}
+
+    if ((uTxFlags & asfDefaultRipple) || (uSetFlag == asfDefaultRipple) ||
+            (uClearFlag == asfDefaultRipple))
+    {
+        if (ctx.app.config().NEED_AUTHORIZE)
+		{
+			if (!(sle->getFlags() & lsfIssueCoinsAuth))
+				return tecNO_PERMISSION;
+		}
+    }
 
 	if (ctx.tx.isFieldPresent(sfTransferFeeMin) && ctx.tx.isFieldPresent(sfTransferFeeMax))
 	{
