@@ -307,11 +307,6 @@ namespace ripple {
         case T_CREATE:
         {
             auto const sleAccount = view.read(keylet::account(sourceID));
-            if (app.config().NEED_AUTHORIZE)
-            {
-                if (!(sleAccount->getFlags() & lsfCreateTableAuth))
-                    return tecNO_PERMISSION;
-            }
 			if (!bSleChangeEnabled &&
                 tableEntries != nullptr &&
                 (*tableEntries).size() >= ACCOUNT_OWN_TABLE_COUNT)
@@ -534,6 +529,13 @@ namespace ripple {
     TER
         TableListSet::preclaim(PreclaimContext const& ctx)  //just do some pre job
     {
+        if (ctx.tx.getFieldU16(sfOpType) == T_CREATE)
+        {
+            auto checkRet = checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfCreateTableAuth);
+            if (checkRet != tesSUCCESS)
+                return checkRet;
+        }
+
         auto tmpret = preclaimHandler(ctx.view, ctx.tx, ctx.app);
         if (!isTesSuccess(tmpret))
             return tmpret;

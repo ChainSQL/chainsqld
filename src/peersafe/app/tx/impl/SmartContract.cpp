@@ -59,11 +59,10 @@ namespace ripple {
 		auto const sle = ctx.view.read(k);
         if (tx.getFieldU16(sfContractOpType) == ContractCreation)
         {
-			if (ctx.app.config().NEED_AUTHORIZE)
-			{
-				if (!(sle->getFlags() & lsfDeployContractAuth))
-					return tecNO_PERMISSION;
-			}
+            auto checkRet = checkAuthority(ctx,
+                tx.getAccountID(sfAccount), lsfDeployContractAuth);
+            if (checkRet != tesSUCCESS)
+                return checkRet;
         }
 		
         if (!isContractTypeValid((ContractOpType)tx.getFieldU16(sfContractOpType)))

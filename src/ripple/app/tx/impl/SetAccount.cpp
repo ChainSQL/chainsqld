@@ -239,11 +239,9 @@ SetAccount::preclaim(PreclaimContext const& ctx)
     if ((uTxFlags & asfDefaultRipple) || (uSetFlag == asfDefaultRipple) ||
             (uClearFlag == asfDefaultRipple))
     {
-        if (ctx.app.config().NEED_AUTHORIZE)
-		{
-			if (!(sle->getFlags() & lsfIssueCoinsAuth))
-				return tecNO_PERMISSION;
-		}
+        auto checkRet = checkAuthority(ctx, id, lsfIssueCoinsAuth);
+        if (checkRet != tesSUCCESS)
+            return checkRet;
     }
 
 	if (ctx.tx.isFieldPresent(sfTransferFeeMin) && ctx.tx.isFieldPresent(sfTransferFeeMax))
