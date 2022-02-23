@@ -413,7 +413,10 @@ PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
         }
     }
 
-    checkVoting();
+    if (result_)
+    {
+        checkVoting();
+    }
 }
 
 // -------------------------------------------------------------------
