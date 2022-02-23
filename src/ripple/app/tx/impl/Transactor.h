@@ -142,6 +142,12 @@ public:
     static TER
     checkFrozen(PreclaimContext const& ctx);
 
+    static TER
+    checkAuthority(
+        PreclaimContext const& ctx_,
+        AccountID const acc,
+        LedgerSpecificFlags flag);
+
     static 
     void
     setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx);

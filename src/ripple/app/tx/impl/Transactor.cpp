@@ -376,6 +376,15 @@ Transactor::checkFrozen(PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+TER
+Transactor::checkAuthority(
+    PreclaimContext const& ctx_,
+    AccountID const acc,
+    LedgerSpecificFlags flag)
+{
+    return tesSUCCESS;
+}
+
 void Transactor::setExtraMsg(std::string msg)
 {
 	mDetailMsg = msg;
