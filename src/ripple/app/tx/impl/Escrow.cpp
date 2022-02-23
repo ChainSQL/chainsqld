@@ -162,9 +162,7 @@ EscrowCreate::preflight(PreflightContext const& ctx)
 TER
 EscrowCreate::preclaim(PreclaimContext const& ctx)
 {
-    auto checkRet = checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
-    if (checkRet != tesSUCCESS)
-        return checkRet;
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
 }
 TER
 EscrowCreate::doApply()
@@ -458,9 +456,7 @@ EscrowFinish::preflight(PreflightContext const& ctx)
 TER
 EscrowFinish::preclaim(PreclaimContext const& ctx)
 {
-    auto checkRet = checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
-    if (checkRet != tesSUCCESS)
-        return checkRet;
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);;
 }
 
 FeeUnit64

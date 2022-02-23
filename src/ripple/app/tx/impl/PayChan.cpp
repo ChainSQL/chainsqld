@@ -189,6 +189,9 @@ TER
 PayChanCreate::preclaim(PreclaimContext const& ctx)
 {
     auto const account = ctx.tx[sfAccount];
+    auto checkRet = checkAuthority(ctx, account, lsfPaymentAuth);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
     auto const sle = ctx.view.read(keylet::account(account));
     if (!sle)
         return terNO_ACCOUNT;
@@ -307,6 +310,12 @@ PayChanFund::preflight(PreflightContext const& ctx)
         return temBAD_AMOUNT;
 
     return preflight2(ctx);
+}
+
+TER
+PayChanFund::preclaim(PreclaimContext const& ctx)
+{
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
 }
 
 TER
@@ -438,6 +447,12 @@ PayChanClaim::preflight(PreflightContext const& ctx)
     }
 
     return preflight2(ctx);
+}
+
+TER
+PayChanClaim::preclaim(PreclaimContext const& ctx)
+{
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
 }
 
 TER
