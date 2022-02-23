@@ -188,6 +188,7 @@ bool TableAuditItem::isTxNeededOutput(const STTx& tx, std::vector<STTx>& vecTxs)
     }
     //Json::Value  jsonRet = getTxStore().txHistory(jsonCheck_);    
     Json::Value  jsonRet = getTxStore().txHistory(sCheckSQL_);
+    ReleaseConnectionUnit();
     if (jsonLashResult_ != jsonRet)
     {
         jsonLashResult_ = jsonRet;

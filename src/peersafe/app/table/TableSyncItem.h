@@ -29,6 +29,7 @@
 #include <ripple/protocol/STLedgerEntry.h>
 #include <ripple/protocol/SecretKey.h>
 #include <peersafe/app/table/TokenProcess.h>
+#include <peersafe/app/misc/ConnectionPool.h>
 
 namespace ripple {
 
@@ -267,6 +268,7 @@ protected:
     bool isJumpThisTx(uint256 txid);
     std::string GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedgerHash, LedgerIndex iCurLedger, std::string sCurLedgerHash, bool bStop, std::string sMsg);
 
+    void ReleaseConnectionUnit();
 private:
     bool GetIsChange();
     void PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData);
@@ -342,6 +344,7 @@ private:
     std::unique_ptr <TxStoreDBConn>                              conn_;
     std::unique_ptr <TxStore>                                    pObjTxStore_;
     std::unique_ptr <TableStatusDB>                              pObjTableStatusDB_;
+    std::shared_ptr<ConnectionUnit>                              pConnectionUnit_;
   
     cond                                                         sCond_;    
 

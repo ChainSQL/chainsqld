@@ -172,31 +172,27 @@ void TableSyncItem::SetPara(std::string sNameInDB,LedgerIndex iSeq, uint256 hash
 
 TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
 {
-    if (conn_ == NULL)
+    if (pConnectionUnit_ == NULL || !pConnectionUnit_->islocked())
     {
-        conn_ = std::make_unique<TxStoreDBConn>(cfg_);
-		if (conn_->GetDBConn() == NULL)
-		{
-			JLOG(journal_.error()) << "TableSyncItem::getTxStoreDBConn() return null";
-            SetSyncState(SYNC_STOP);
-		}
+        pConnectionUnit_ = app_.getConnectionPool().getAvailable();
     }
-    return *conn_;
+    return *pConnectionUnit_->conn_;
 }
 
 TxStore& TableSyncItem::getTxStore()
 {
     if (pObjTxStore_ == NULL)
     {
-        auto &conn = getTxStoreDBConn();
-        pObjTxStore_ = std::make_unique<TxStore>(conn.GetDBConn(),cfg_,journal_);
+        pObjTxStore_ = std::make_unique<TxStore>(
+            getTxStoreDBConn().GetDBConn(), cfg_, journal_);
     }
     return *pObjTxStore_;
 }
 
 TableStatusDB& TableSyncItem::getTableStatusDB()
 {
-    if (pObjTableStatusDB_ == NULL)
+    if (pObjTableStatusDB_ == NULL ||
+        pObjTableStatusDB_->GetDatabaseConn() != getTxStoreDBConn().GetDBConn())
     {
         DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg_);
         std::pair<std::string, bool> result = setup.sync_db.find("type");
@@ -729,7 +725,7 @@ bool TableSyncItem::UpdateStateDB(const std::string & owner, const std::string &
 bool TableSyncItem::DoUpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, bool bDel,
     const std::string &PreviousCommit)
 {
-    auto ret = getTableStatusDB().UpdateSyncDB(Owner, TableNameInDB, bDel, PreviousCommit);
+    auto ret = app_.getTableStatusDB().UpdateSyncDB(Owner, TableNameInDB, bDel, PreviousCommit);
 	if (ret == soci_exception) {
 		SetSyncState(SYNC_STOP);
 	}
@@ -1021,7 +1017,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         else if (checkRet == CHECK_REJECT)
         {
             SetSyncState(SYNC_STOP);
-            return false;
+            break;
         }
 
         if (iter->txnodes().size() <= 0)
@@ -1142,6 +1138,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 			break;
 		}
 	}
+
+    //release connection lock
+    ReleaseConnectionUnit();          
 
 	return true;
 }
@@ -1333,6 +1332,15 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
     auto sPos = jsPos.toStyledString();
 
     return sPos;
+}
+
+void TableSyncItem::ReleaseConnectionUnit()
+{
+    if (pConnectionUnit_ && pConnectionUnit_->islocked())
+    {
+        pConnectionUnit_->unlock();
+        pConnectionUnit_ = nullptr;
+    }
 }
 
 }

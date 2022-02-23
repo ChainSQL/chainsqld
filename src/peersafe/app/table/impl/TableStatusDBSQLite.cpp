@@ -595,4 +595,9 @@ namespace ripple {
         return ret;
     }
 
+    DatabaseCon*
+    TableStatusDBSQLite::GetDatabaseConn()
+    {
+        return databasecon_;
+    }
 }
