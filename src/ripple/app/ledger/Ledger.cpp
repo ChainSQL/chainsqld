@@ -212,16 +212,6 @@ Ledger::Ledger(
         if (result.second)
         {
             admin = *ripple::parseBase58<AccountID>(result.first);
-            auto const sle = std::make_shared<SLE>(keylet::admin());
-            sle->setAccountID(sfAccount, admin);
-            rawInsert(sle);
-
-            auto const sleFrozen = std::make_shared<SLE>(keylet::frozen());
-            STObject obj(sfFrozen);
-            STArray frozenAccounts;
-            obj.setFieldArray(sfFrozenAccounts, frozenAccounts);
-            sleFrozen->setFieldObject(sfFrozen, obj);
-            rawInsert(sleFrozen);
         }
     }
     std::shared_ptr<SLE> rootSle;

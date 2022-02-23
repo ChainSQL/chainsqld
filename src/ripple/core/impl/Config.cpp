@@ -954,6 +954,9 @@ Config::loadFromString(std::string const& fileContents)
 
     get_if_exists(
         section(SECTION_GOVERNANCE), "need_authorize", NEED_AUTHORIZE);
+
+    get_if_exists(
+        section(SECTION_GOVERNANCE), "admin", ADMIN);
     if (exists(SECTION_GOVERNANCE))
     {
         auto result = section(SECTION_GOVERNANCE).find("admin");

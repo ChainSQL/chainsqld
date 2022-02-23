@@ -228,6 +228,7 @@ public:
     //governance
     bool                        OPEN_ACCOUNT_DELAY = false;
     bool                        NEED_AUTHORIZE = false;
+    std::string                 ADMIN;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}
