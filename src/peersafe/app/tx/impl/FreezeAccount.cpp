@@ -39,13 +39,11 @@ FreezeAccount::preflight(PreflightContext const& ctx)
 TER
 FreezeAccount::preclaim(PreclaimContext const& ctx)
 {
-    auto admin = ctx.app.config().ADMIN;
-    if (admin == "")
+    if (!ctx.app.config().ADMIN)
         return tefNO_ADMIN_CONFIGURED;
-    auto const adminAccountID = *ripple::parseBase58<AccountID>(admin);
 
     AccountID const uSrcAccountID(ctx.tx.getAccountID(sfAccount));
-    if (uSrcAccountID != adminAccountID)
+    if (uSrcAccountID != *ctx.app.config().ADMIN)
         return tecNO_PERMISSION;
 
     AccountID const uDstAccountID(ctx.tx.getAccountID(sfDestination));

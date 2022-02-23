@@ -227,8 +227,8 @@ public:
 
     //governance
     bool                        OPEN_ACCOUNT_DELAY = false;
-    bool                        NEED_AUTHORIZE = false;
-    std::string                 ADMIN;
+    boost::optional<AccountID>  ADMIN;
+    bool                        DEFAULT_AUTHORITY_ENABLED = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}
