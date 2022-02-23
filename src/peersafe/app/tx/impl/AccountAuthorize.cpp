@@ -30,15 +30,15 @@ namespace ripple {
 NotTEC
 AccountAuthorize::preflight(PreflightContext const& ctx)
 {
-	auto const ret = preflight1(ctx);
-		if (!isTesSuccess(ret))
-			return ret;
+    auto const ret = preflight1(ctx);
+    if (!isTesSuccess(ret))
+        return ret;
 
-		if( !ctx.tx.isFieldPresent(sfSetFlag) && 
-			!ctx.tx.isFieldPresent(sfClearFlag))
-			return temMALFORMED;
+    if (!ctx.tx.isFieldPresent(sfSetFlag) &&
+        !ctx.tx.isFieldPresent(sfClearFlag))
+        return temMALFORMED;
 
-		return preflight2(ctx);
+    return preflight2(ctx);
 }
 
 TER

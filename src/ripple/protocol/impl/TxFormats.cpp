@@ -330,18 +330,18 @@ TxFormats::TxFormats()
         commonFields);
 
     add(jss::SchemaDelete,  ttSCHEMA_DELETE,
-	{
-		{ sfSchemaID,			 soeREQUIRED }
-	},
-	commonFields);
+	    {
+		    { sfSchemaID,			 soeREQUIRED }
+	    },
+	    commonFields);
 
-     add(jss::Authorize,  ttAUTHORIZE,
-	{
-        { sfDestination,         soeREQUIRED },
-		{ sfSetFlag,             soeOPTIONAL },
-        { sfClearFlag,           soeOPTIONAL },
-	},
-	commonFields);
+    add(jss::Authorize, ttAUTHORIZE,
+        {
+            {sfDestination, soeREQUIRED},
+            {sfSetFlag, soeOPTIONAL},
+            {sfClearFlag, soeOPTIONAL},
+        },
+        commonFields);
 }
 
 TxFormats const&

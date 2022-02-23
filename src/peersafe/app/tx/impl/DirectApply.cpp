@@ -103,13 +103,13 @@ namespace ripple {
 	{
 		switch (ctx.tx.getTxnType())
 		{
-		case ttPAYMENT:			{ Payment        p(ctx); return p.applyDirect(); }
-		case ttTABLELISTSET:	{ TableListSet   p(ctx); return p.applyDirect(); }
-		case ttSQLSTATEMENT:	{ SqlStatement   p(ctx); return p.applyDirect(); }
-		case ttSQLTRANSACTION:	{ SqlTransaction p(ctx); return p.applyDirect(); }
-		case ttACCOUNT_SET:     { SetAccount     p(ctx); return p.applyDirect(); }
-		case ttTRUST_SET:       { SetTrust       p(ctx); return p.applyDirect(); }
-		case ttAUTHORIZE:       { AccountAuthorize       p(ctx); return p.applyDirect(); }			
+		case ttPAYMENT:			{ Payment			p(ctx); return p.applyDirect(); }
+		case ttTABLELISTSET:	{ TableListSet		p(ctx); return p.applyDirect(); }
+		case ttSQLSTATEMENT:	{ SqlStatement		p(ctx); return p.applyDirect(); }
+		case ttSQLTRANSACTION:	{ SqlTransaction	p(ctx); return p.applyDirect(); }
+		case ttACCOUNT_SET:     { SetAccount		p(ctx); return p.applyDirect(); }
+		case ttTRUST_SET:       { SetTrust			p(ctx); return p.applyDirect(); }
+		case ttAUTHORIZE:       { AccountAuthorize  p(ctx); return p.applyDirect(); }			
 		default:
 			assert(false);
 			return temUNKNOWN;

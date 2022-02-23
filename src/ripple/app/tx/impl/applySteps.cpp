@@ -220,7 +220,7 @@ invoke_preclaim(PreclaimContext const& ctx)
         case ttFREEZE_ACCOUNT:
             return invoke_preclaim<FreezeAccount>(ctx);
         case ttAUTHORIZE:
-        return invoke_preclaim<AccountAuthorize>(ctx);
+            return invoke_preclaim<AccountAuthorize>(ctx);
         default:
             assert(false);
             return temUNKNOWN;
