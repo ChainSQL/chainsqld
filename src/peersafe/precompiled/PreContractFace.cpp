@@ -1,6 +1,7 @@
 #include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/precompiled/Define.h>
 #include <peersafe/precompiled/TableOpPrecompiled.h>
+#include <peersafe/precompiled/ToolsPrecompiled.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/precompiled/Utils.h>
 
@@ -52,10 +53,7 @@ namespace ripple {
         //-----------------------------------------------------------------------------
         precompiledDiy.insert(std::make_pair(
             TABLE_OPERATION_ADDR, std::make_shared<TableOpPrecompiled>()));
-        AccountID id(TABLE_OPERATION_ADDR);
-        auto str = to_string(id);
-        if (str != "")
-        {
-        }
+        precompiledDiy.insert(std::make_pair(
+            TOOLS_PRE_ADDR, std::make_shared<ToolsPrecompiled>()));
     }
 }
