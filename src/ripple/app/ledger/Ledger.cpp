@@ -205,38 +205,24 @@ Ledger::Ledger(
     // {
     //     keyType = KeyType::gmalg;
     // }
-    AccountID admin,id;
-    if (config.exists(SECTION_GOVERNANCE))
+    AccountID id;
+    if (config.ADMIN)
     {
-        auto result = config.section(SECTION_GOVERNANCE).find("admin");
-        if (result.second)
-        {
-            admin = *ripple::parseBase58<AccountID>(result.first);
-        }
+        id = *config.ADMIN;
     }
-    std::shared_ptr<SLE> rootSle;
-    if (admin != NULL)
-    {
-        id = admin;
-        rootSle = std::make_shared<SLE>(keylet::account(admin));
-        std::uint32_t flags = lsfPaymentAuth | lsfDeployContractAuth |lsfCreateTableAuth
-                | lsfIssueCoinsAuth | lsfAdminAuth;
-        rootSle->setFieldU32(sfFlags, flags);
-    }   
     else
     {
         id = calcAccountID(
-        generateKeyPair(CommonKey::chainAlgTypeG, generateSeed("masterpassphrase"))
-            .first);
-        rootSle = std::make_shared<SLE>(keylet::account(id));
-    } 
-        
-    {
-        rootSle->setAccountID(sfAccount, id);
-        rootSle->setFieldU32(sfSequence, 1);
-        rootSle->setFieldAmount(sfBalance, info_.drops);
-        rawInsert(rootSle);
+            generateKeyPair(
+                CommonKey::chainAlgTypeG, generateSeed("masterpassphrase"))
+                .first);
     }
+
+    std::shared_ptr<SLE> rootSle = std::make_shared<SLE>(keylet::account(id));
+    rootSle->setAccountID(sfAccount, id);
+    rootSle->setFieldU32(sfSequence, 1);
+    rootSle->setFieldAmount(sfBalance, info_.drops);
+    rawInsert(rootSle);
 
     if (!amendments.empty())
     {
