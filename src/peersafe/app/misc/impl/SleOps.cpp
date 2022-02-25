@@ -113,17 +113,25 @@ namespace ripple {
         return code.size();    
 	}
 
-	TER SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
-	{
-		if (_value == uint256(0))
-			return tesSUCCESS;
+	TER
+    SleOps::transferBalance(
+            AccountID const& _from,
+            AccountID const& _to,
+            uint256 const& _value)
+    {
+        if (_value == uint256(0))
+            return tesSUCCESS;
 
-		int64_t value = fromUint256(_value);
-		auto ret = subBalance(_from, value);
-		if(ret == tesSUCCESS)
-			addBalance(_to, value);
-		return ret;
-	}
+        if (auto res = checkAuthority(_from, lsfPaymentAuth);
+            res != tesSUCCESS)
+            return res;
+
+        int64_t value = fromUint256(_value);
+        auto ret = subBalance(_from, value);
+        if (ret == tesSUCCESS)
+            addBalance(_to, value);
+        return ret;
+    }
 
 	TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
@@ -867,5 +875,29 @@ namespace ripple {
 
 		return -1;
 	}
+
+	TER
+    SleOps::checkAuthority(AccountID const account, LedgerSpecificFlags flag)
+    {
+        auto const sle = ctx_.view().read(keylet::account(account));
+        if (!sle)
+            return tefINTERNAL;
+
+        if (ctx_.app.config().ADMIN && account == *ctx_.app.config().ADMIN)
+            return tesSUCCESS;
+
+        if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+        {
+            if (!(sle->getFlags() & flag))
+                return tecNO_PERMISSION;
+        }
+        else
+        {
+            if (sle->getFlags() & flag)
+                return tecNO_PERMISSION;
+        }
+
+		return tesSUCCESS;
+    }
 
 }

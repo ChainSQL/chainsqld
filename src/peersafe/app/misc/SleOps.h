@@ -122,6 +122,10 @@ public:
     void PubContractEvents(const AccountID& contractID, uint256 const * aTopic, int iTopicNum, const Blob& byValue);
 
     void kill(AccountID sender);
+
+    TER
+    checkAuthority(AccountID const account, LedgerSpecificFlags flag);
+
 private:
     ApplyContext &ctx_;
 	bool									  bTransaction_;
