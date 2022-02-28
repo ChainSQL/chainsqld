@@ -776,7 +776,7 @@ STTx::checkCertificate() const
     {
         auto const spk = getFieldVL(sfSigningPubKey);
         auto const certificate = getFieldVL(sfCertificate);
-        std::string sCertificate =
+        std::string sCertificate = 
             std::string(certificate.begin(), certificate.end());
         PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
 

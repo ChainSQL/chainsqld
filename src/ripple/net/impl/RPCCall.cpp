@@ -1496,10 +1496,27 @@ private:
 	{
 		if (jvParams.size() < 2)
 		{
-			return rpcError(rpcINVALID_PARAMS);
+            std::string errMsg = "at least 2 params,in format:\"seed\" \"country province city organization common\".";
+            //ret.removeMember(jss::tx_json);
+            return RPC::make_error(rpcINVALID_PARAMS, errMsg);
 		}
+        
+        Json::Value jvRequest{Json::objectValue};
+        
+        if (2 == jvParams.size ())
+        {
+            jvRequest[jss::seed] = jvParams[0u].asString ();
+            jvRequest[jss::x509_subjects]     = jvParams[1u].asString ();
+        }
+        else if (3 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::seed]     = jvParams[1u].asString ();
+            jvRequest[jss::x509_subjects] = jvParams[2u].asString ();
+        }
 
-		return TransGBKToUTF8(jvParams);
+        return jvRequest;
+//		return TransGBKToUTF8(jvParams);
 	}
 
 	Json::Value parseSchemaList(Json::Value const& jvParams)
@@ -1724,7 +1741,7 @@ public:
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
-			{   "gen_csr",             &RPCParser::parseGenCsr,                   2,  2 },
+			{   "gen_csr",             &RPCParser::parseGenCsr,                2,  3 },
 			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
             {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
             {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },
