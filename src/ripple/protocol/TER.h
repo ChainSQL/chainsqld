@@ -233,6 +233,7 @@ enum TEFcodes : TERUnderlyingType
     tefACCOUNT_NOT_FROZEN,
     tefNO_ADMIN_CONFIGURED,
     tefNO_NEED_AUTHORIZE
+    tefBAD_USERCERT,
 };
 
 //------------------------------------------------------------------------------

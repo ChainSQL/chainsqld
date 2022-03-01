@@ -23,8 +23,6 @@
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/app/misc/HashRouter.h>
-#include <peersafe/crypto/X509.h>
-#include <peersafe/app/misc/CertList.h>
 #include <peersafe/schema/Schema.h>
 
 namespace ripple {
@@ -53,20 +51,6 @@ checkValidity(
 
     if (!(flags & SF_SIGGOOD))
     {
-        auto const certVerify1 = tx.checkCertificate();
-        if (!certVerify1.first)
-        {
-            router.setFlags(id, SF_SIGBAD);
-            return {Validity::SigBad, certVerify1.second};
-        }
-
-        auto const certVerify2 =
-            schema.userCertList().verifyCred(certVerify1.second);
-        if (!certVerify2.first)
-        {
-            return {Validity::SigBad, certVerify2.second};
-        }
-
         // Don't know signature state. Check it.
         auto const requireCanonicalSig =
             rules.enabled(featureRequireFullyCanonicalSig)

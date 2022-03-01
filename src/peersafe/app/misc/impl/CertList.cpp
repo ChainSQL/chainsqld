@@ -63,12 +63,17 @@ UserCertList::verifyCred(std::string const& cred)
 {
     boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
 
-    if (rootCertList_.empty() && cred.empty())
+    std::set<std::string> setList(rootCertList_);
+    std::set<std::string> setSiteList(rootCertListFromSite_);
+    setList.merge(setSiteList);
+    std::vector<std::string> vecCerts(setList.begin(), setList.end());
+
+    if (vecCerts.empty() && cred.empty())
     {
         return {true, ""};
     }
 
-    if (rootCertList_.empty())
+    if (vecCerts.empty())
     {
         return {false, "user root certificates not configured"};
     }
@@ -83,9 +88,7 @@ UserCertList::verifyCred(std::string const& cred)
     if (revokedList_.find(serial) != revokedList_.end())
         return {false, "certificate is revoked."};
 
-    std::set<std::string> setList(rootCertList_);
-    setList.merge(rootCertListFromSite_);
-    std::vector<std::string> vecCerts(setList.begin(), setList.end());
+
     return verifyCredWithRootCerts(vecCerts, cred);
 }
 

@@ -133,6 +133,9 @@ public:
 	static NotTEC
 	checkSeq2(PreclaimContext const& ctx);
 
+    static STer
+    checkUserCert(PreclaimContext const& ctx);
+
     static TER
     checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee);
 

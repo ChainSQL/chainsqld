@@ -40,6 +40,7 @@
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/misc/CertList.h>
 
 
 namespace ripple {
@@ -352,6 +353,24 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     }
 
     return tesSUCCESS;
+}
+
+STer
+Transactor::checkUserCert(PreclaimContext const& ctx)
+{
+    auto const certVerify1 = ctx.tx.checkCertificate();
+    if (!certVerify1.first)
+    {
+        return {tefBAD_USERCERT, certVerify1.second};
+    }
+
+    auto const certVerify2 =
+        ctx.app.userCertList().verifyCred(certVerify1.second);
+    if (!certVerify2.first)
+    {
+        return {tefBAD_USERCERT, certVerify2.second};
+    }
+    return {tesSUCCESS, ""};
 }
 
 TER

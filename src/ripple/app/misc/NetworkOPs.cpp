@@ -1692,17 +1692,16 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 
     ter = Transactor::checkSign(*pcctx);
     if (ter.ter != tesSUCCESS)
-    {
         return ter;
-    }
+
+    ter = Transactor::checkUserCert(*pcctx);
+    if (ter.ter != tesSUCCESS)
+        return ter;
 
     auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
-
     ter = Transactor::checkFee(*pcctx, baseFee);
     if (ter.ter != tesSUCCESS)
-    {
         return ter;
-    }
 
     //Move to end,since terPreSeq code will heldTransaction
     ter = Transactor::checkSeq2(*pcctx);
