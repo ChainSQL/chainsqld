@@ -159,6 +159,7 @@ public:
     TableSyncItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType = SyncTarget_db);
     virtual ~TableSyncItem();
 
+    ConnectionUnit& getConnectionUnit();
     TxStoreDBConn& getTxStoreDBConn();
     TxStore& getTxStore();
 
@@ -342,7 +343,6 @@ private:
     bool                                                         bIsAutoSync_;
 
     std::unique_ptr <TxStoreDBConn>                              conn_;
-    std::unique_ptr <TxStore>                                    pObjTxStore_;
     std::unique_ptr <TableStatusDB>                              pObjTableStatusDB_;
     std::shared_ptr<ConnectionUnit>                              pConnectionUnit_;
   

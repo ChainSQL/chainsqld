@@ -67,7 +67,6 @@ TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, S
     bIsChange_            = true;
     bGetLocalData_        = false;
     conn_                 = NULL;
-    pObjTxStore_          = NULL;
     sTableNameInDB_       = "";
     sNickName_            = "";
     uCreateLedgerSequence_ = 0;
@@ -170,23 +169,25 @@ void TableSyncItem::SetPara(std::string sNameInDB,LedgerIndex iSeq, uint256 hash
     uTxDBUpdateHash_ = TxnUpdateHash;    
 }
 
-TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
+ConnectionUnit&
+TableSyncItem::getConnectionUnit()
 {
     if (pConnectionUnit_ == NULL || !pConnectionUnit_->islocked())
     {
         pConnectionUnit_ = app_.getConnectionPool().getAvailable();
     }
-    return *pConnectionUnit_->conn_;
+    return *pConnectionUnit_;
 }
 
-TxStore& TableSyncItem::getTxStore()
+TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
+{    
+    return *getConnectionUnit().conn_;
+}
+
+TxStore&
+TableSyncItem::getTxStore()
 {
-    if (pObjTxStore_ == NULL)
-    {
-        pObjTxStore_ = std::make_unique<TxStore>(
-            getTxStoreDBConn().GetDBConn(), cfg_, journal_);
-    }
-    return *pObjTxStore_;
+    return *getConnectionUnit().store_;
 }
 
 TableStatusDB& TableSyncItem::getTableStatusDB()
@@ -1337,11 +1338,7 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
 void TableSyncItem::ReleaseConnectionUnit()
 {
     if (pConnectionUnit_ && pConnectionUnit_->islocked())
-    {
         pConnectionUnit_->unlock();
-        pConnectionUnit_ = nullptr;
-        pObjTxStore_ = nullptr;
-    }
 }
 
 }
