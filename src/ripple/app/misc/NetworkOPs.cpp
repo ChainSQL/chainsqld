@@ -1696,15 +1696,16 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
         return ter;
     }
 
-    ter = Transactor::checkSeq2(*pcctx);
+    auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
+
+    ter = Transactor::checkFee(*pcctx, baseFee);
     if (ter.ter != tesSUCCESS)
     {
         return ter;
     }
 
-    auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
-
-    ter = Transactor::checkFee(*pcctx, baseFee);
+    //Move to end,since terPreSeq code will heldTransaction
+    ter = Transactor::checkSeq2(*pcctx);
     if (ter.ter != tesSUCCESS)
     {
         return ter;
