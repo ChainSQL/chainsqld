@@ -1340,6 +1340,7 @@ void TableSyncItem::ReleaseConnectionUnit()
     {
         pConnectionUnit_->unlock();
         pConnectionUnit_ = nullptr;
+        pObjTxStore_ = nullptr;
     }
 }
 

@@ -80,7 +80,7 @@ public:
         }
         auto unit = std::make_shared<ConnectionUnit>(app_);
         unit->lock();
-        if (vecPool_.size() < MAX_CONNECTION_IN_POOL)
+        if (count () < MAX_CONNECTION_IN_POOL)
         {
             vecPool_.push_back(unit);
         }
