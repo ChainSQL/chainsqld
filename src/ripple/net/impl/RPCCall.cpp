@@ -335,6 +335,31 @@ private:
         return jvRequest;
     }
 
+    // account_authorized [accountID [setFlag [limit [marker]]]]
+    Json::Value
+    parseAccountAuthorized(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+
+        if (jvParams.size() >= 1)
+        {
+            auto const account =
+                parseBase58<AccountID>(jvParams[0u].asString());
+            if (!account)
+                return rpcError(rpcACT_MALFORMED);
+
+            jvRequest[jss::Admin] = toBase58(*account);
+        }
+        if (jvParams.size() >= 2)
+            jvRequest[jss::SetFlag] = jvParams[1u].asUInt();
+        if (jvParams.size() >= 3)
+            jvRequest[jss::limit] = jvParams[2u].asUInt();
+        if (jvParams.size() >= 4)
+            jvRequest[jss::marker] = jvParams[3u].asString();
+
+        return jvRequest;
+    }
+
     // tx_account accountID [ledger_min [ledger_max [limit]]]] [binary] [count]
     // [forward]
     Json::Value
@@ -1610,6 +1635,7 @@ public:
             {"account_objects", &RPCParser::parseAccountItems, 1, 5},
             {"account_offers", &RPCParser::parseAccountItems, 1, 4},
             {"account_tx", &RPCParser::parseAccountTransactions, 1, 8},
+            {"account_authorized", &RPCParser::parseAccountAuthorized, 0, 4},
             {"book_offers", &RPCParser::parseBookOffers, 2, 7},
             {"can_delete", &RPCParser::parseCanDelete, 0, 1},
             {"channel_authorize", &RPCParser::parseChannelAuthorize, 3, 4},

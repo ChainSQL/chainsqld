@@ -761,6 +761,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/consensus/hotstuff/impl/Vote.cpp
   src/peersafe/consensus/hotstuff/impl/VoteData.cpp
   src/peersafe/rpc/handlers/AccountTables.cpp
+  src/peersafe/rpc/handlers/AccountAuthorized.cpp
   src/peersafe/rpc/handlers/CryptCheck.cpp
   src/peersafe/rpc/handlers/GenCsr.cpp
   src/peersafe/rpc/handlers/LedgerTxsHandler.cpp

@@ -121,14 +121,18 @@ TER
 AccountAuthorize::doApply()
 {
     AccountID const uDstAccountID(ctx_.tx.getAccountID(sfDestination));
-    auto const sle = view().peek(keylet::account(uDstAccountID));
-    if (!sle)
+    auto const dstSle = view().peek(keylet::account(uDstAccountID));
+    if (!dstSle)
+        return tefINTERNAL;
+
+    auto const srcSle = view().peek(keylet::account(account_));
+    if (!srcSle)
         return tefINTERNAL;
 
     std::uint32_t const uSetFlag = ctx_.tx.getFieldU32(sfSetFlag);
     std::uint32_t const uClearFlag = ctx_.tx.getFieldU32(sfClearFlag);
 
-    std::uint32_t const uFlagsIn = sle->getFieldU32(sfFlags);
+    std::uint32_t const uFlagsIn = dstSle->getFieldU32(sfFlags);
     std::uint32_t uFlagsOut = uFlagsIn;
 
     switch (uSetFlag)
@@ -181,10 +185,64 @@ AccountAuthorize::doApply()
             break;
     }
 
-    if (uFlagsIn != uFlagsOut)
-        sle->setFieldU32(sfFlags, uFlagsOut);
+    // 被授权或被撤权的账户，flags权限位被设置时，记录在当前超级管理员的目录中
+    // 若当前没有超级管理员，则记录在旧的超级管理员目录中；
+    // flag权限位被清除时，从超级管理员的目录中移除该账户。
+    if (uFlagsOut &
+        (lsfPaymentAuth | lsfDeployContractAuth | lsfCreateTableAuth |
+         lsfIssueCoinsAuth | lsfAdminAuth))
+    {
+        auto admin = ctx_.app.config().ADMIN;
+        if (!admin)
+        {
+            assert(srcSle->isFieldPresent(sfAuthorize));
+            if (!srcSle->isFieldPresent(sfAuthorize))
+                Throw<std::logic_error>("supper admin not configed.");
+            admin = srcSle->getAccountID(sfAuthorize);
+        }
 
-    ctx_.view().update(sle);
+        if (!dstSle->isFieldPresent(sfAuthorize) ||
+            dstSle->getAccountID(sfAuthorize) != admin)
+        {
+            auto page = dirAdd(
+                ctx_.view(),
+                keylet::ownerDir(*admin),
+                dstSle->key(),
+                false,
+                describeOwnerDir(*admin),
+                ctx_.app.journal("View"));
+            if (!page)
+                return tecDIR_FULL;
+            if (dstSle->isFieldPresent(sfAuthorize))
+                ctx_.view().dirRemove(
+                    keylet::ownerDir(dstSle->getAccountID(sfAuthorize)),
+                    dstSle->getFieldU64(sfOwnerNode),
+                    dstSle->key(),
+                    true);
+            (*dstSle)[sfOwnerNode] = *page;
+            (*dstSle)[sfAuthorize] = *admin;
+        }
+    }
+    else
+    {
+        if (dstSle->isFieldPresent(sfAuthorize))
+        {
+            AccountID const admin = dstSle->getAccountID(sfAuthorize);
+            auto const page = dstSle->getFieldU64(sfOwnerNode);
+            if (!ctx_.view().dirRemove(
+                    keylet::ownerDir(admin), page, dstSle->key(), true))
+            {
+                return tefBAD_LEDGER;
+            }
+            dstSle->makeFieldAbsent(sfOwnerNode);
+            dstSle->makeFieldAbsent(sfAuthorize);
+        }
+    }
+
+    if (uFlagsOut != uFlagsIn)
+        dstSle->setFieldU32(sfFlags, uFlagsOut);
+
+    ctx_.view().update(dstSle);
 
     return tesSUCCESS;
 }
