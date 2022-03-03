@@ -54,17 +54,26 @@ namespace ripple {
 
 	TER SmartContract::preclaim(PreclaimContext const& ctx)
 	{
-		auto& tx = ctx.tx;
-		auto const k = keylet::account(tx.getAccountID(sfAccount));
-		auto const sle = ctx.view.read(k);
+        auto& tx = ctx.tx;
+        AccountID srcAcc = tx.getAccountID(sfAccount);
+        auto const k = keylet::account(srcAcc);
+        auto const sle = ctx.view.read(k);
         if (tx.getFieldU16(sfContractOpType) == ContractCreation)
         {
-            auto checkRet = checkAuthority(ctx,
-                tx.getAccountID(sfAccount), lsfDeployContractAuth);
-            if (checkRet != tesSUCCESS)
-                return checkRet;
+            if (auto res =
+                    checkAuthority(ctx, srcAcc, lsfDeployContractAuth);
+                res != tesSUCCESS)
+                return res;
         }
-		
+
+        if (tx.isFieldPresent(sfContractValue) &&
+            tx.getFieldAmount(sfContractValue).zxc().drops() > 0)
+        {
+            if (auto res = checkAuthority(ctx, srcAcc, lsfPaymentAuth);
+                res != tesSUCCESS)
+                return res;
+        }
+
         if (!isContractTypeValid((ContractOpType)tx.getFieldU16(sfContractOpType)))
             return temBAD_OPTYPE;
 		if (tx.getFieldVL(sfContractData).size() == 0)

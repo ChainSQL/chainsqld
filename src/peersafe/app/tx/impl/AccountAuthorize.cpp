@@ -105,6 +105,9 @@ AccountAuthorize::preclaim(PreclaimContext const& ctx)
     }
     else
     {
+        if (ctx.app.config().ADMIN && uSrcAccountID == *ctx.app.config().ADMIN)
+            return tesSUCCESS;
+
         // Generic admin check
         auto const srcSle = ctx.view.read(keylet::account(uSrcAccountID));
         if (!(srcSle->getFlags() & lsfAdminAuth))
