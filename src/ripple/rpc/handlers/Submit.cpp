@@ -108,12 +108,33 @@ doSubmit(RPC::JsonContext& context)
 
     {
 		//check publicKey type
-		auto keyType = publicKeyType(makeSlice(stpTrans->getFieldVL(sfSigningPubKey)));
+        boost::optional<KeyType> keyType;
+        if (!stpTrans->getFieldVL(sfSigningPubKey).empty())
+        {
+            keyType = publicKeyType(makeSlice(stpTrans->getFieldVL(sfSigningPubKey)));
+        }
+        else if (stpTrans->isFieldPresent(sfSigners) && stpTrans->getFieldArray(sfSigners).size() > 0)
+        {
+            auto& signers = stpTrans->getFieldArray(sfSigners);
+            if (signers[0].isFieldPresent(sfSigningPubKey))
+            {
+                keyType = publicKeyType(
+                    makeSlice(signers[0].getFieldVL(sfSigningPubKey)));
+            }            
+        }
+
+		if (!keyType)
+        {
+            jvResult[jss::error] = "invalidTransaction";
+			jvResult[jss::error_message] = "fails local checks: get signingPublicKey type failed";
+            return jvResult;
+        }
 		if (*keyType != CommonKey::chainAlgTypeG)
 		{
 			jvResult[jss::error] = "invalidTransaction";
 			jvResult[jss::error_message] = "fails local checks: signingPublicKey type is " \
 				"not consistent with the node.";
+            return jvResult;
 		}
 
         if (!context.app.checkSigs())
