@@ -5,11 +5,14 @@
 
 namespace ripple {
 const char* const VERIFY_SIGNATURE_STR = "verify(string,string,string)";
+const char* const PUBLIC_TO_ADDRESS = "publicToAddress(string)";
 
 ToolsPrecompiled::ToolsPrecompiled()
 {
     name2Selector_[VERIFY_SIGNATURE_STR] =
         getFuncSelector(VERIFY_SIGNATURE_STR);
+    name2Selector_[PUBLIC_TO_ADDRESS] = 
+        getFuncSelector(PUBLIC_TO_ADDRESS);
 }
 
 std::string
@@ -33,28 +36,42 @@ ToolsPrecompiled::execute(
     {
         int64_t ter(0), runGas(0);;
         Blob ret;
+        uint256 retValue(0);
         if (func == name2Selector_[VERIFY_SIGNATURE_STR])
         {
             std::string payload, signature, publicKey;
-            uint256 retValue;
             abi.abiOut(data, payload, signature,publicKey);
-            auto payloadBytes = strUnHex(payload);
+            //auto payloadBytes = strUnHex(payload);
             auto sigBytes = strUnHex(signature);
             auto pubKey = PublicKey(makeSlice(
                 decodeBase58Token(publicKey, TokenType::AccountPublic)));
-            if (!payloadBytes || !sigBytes || pubKey.empty())
-                ret.push_back(0);
+            if (payload.empty() || !sigBytes || pubKey.empty())
+                retValue = uint256(0);
             else
             {
                 //Cannot use bool,will crash when evmcResult.release called
                 retValue = verify(
                     pubKey,
-                    makeSlice(*payloadBytes),
+                    makeSlice(payload),
                     makeSlice(*sigBytes),
                     true);
-                ret = Blob(retValue.begin(), retValue.end());
-            }            
+            }          
         }
+        if (func == name2Selector_[PUBLIC_TO_ADDRESS])
+        {
+            std::string publicKey;
+            abi.abiOut(data, publicKey);
+            auto pubKey = PublicKey(makeSlice(
+                decodeBase58Token(publicKey, TokenType::AccountPublic)));
+            if (pubKey.empty())
+                retValue = uint256(0);
+            else
+            {
+                auto accID = calcAccountID(pubKey);
+                std::copy(accID.begin(), accID.end(), retValue.begin() + (retValue.size() - accID.size()));
+            }
+        }
+        ret = Blob(retValue.begin(), retValue.end());
 
         return std::make_tuple(
             TER::fromInt(ter), Blob(ret.begin(), ret.end()), runGas);
