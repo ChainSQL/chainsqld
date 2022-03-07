@@ -1364,14 +1364,23 @@ private:
         return jvRequest;
     }
 
-    // tx_history <index>
+    // tx_history <index> [type1 [type2 [...]]]
     Json::Value
     parseTxHistory(Json::Value const& jvParams)
     {
         Json::Value jvRequest{Json::objectValue};
 
-        jvRequest[jss::start] = jvParams[0u].asUInt();
+        unsigned int index = 0;
+        const unsigned int size = jvParams.size();
 
+        jvRequest[jss::start] = jvParams[index++].asUInt();
+
+        if (index < size)
+        {
+            Json::Value& txTypes = (jvRequest[jss::types] = Json::arrayValue);
+            while (index < size)
+                txTypes.append(jvParams[index++].asString());
+        }
         return jvRequest;
     }
 
@@ -1665,7 +1674,7 @@ public:
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_count", &RPCParser::parseLedgerId, 0, 1},
-            {"tx_history", &RPCParser::parseTxHistory, 1, 1},
+            {"tx_history", &RPCParser::parseTxHistory, 1, -1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
             {"validation_create", &RPCParser::parseValidationCreate, 0, 2},
             // {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
