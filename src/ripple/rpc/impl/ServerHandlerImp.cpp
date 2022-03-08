@@ -394,7 +394,7 @@ ServerHandlerImp::processSession(
 		try {
 			schema_id = from_hex_text<uint256>(jv[jss::schema_id].asString());
 		}
-		catch (std::exception) {
+		catch (std::exception const&) {
 			schema_id = beast::zero;
 			JLOG(m_journal.error()) << "Exception when parse schema_id in processSession,set beast::zero";
 		}
@@ -884,7 +884,7 @@ ServerHandlerImp::processRequest(
 			try {
 				schema_id = from_hex_text<uint256>(params[jss::schema_id].asString());
 			}
-			catch (std::exception) {
+			catch (std::exception const&) {
 				schema_id = beast::zero;
 				JLOG(m_journal.error()) << "Exception when parse schema_id in processRequest,set beast::zero";
 			}
