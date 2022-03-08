@@ -733,13 +733,13 @@ doGetRecord(RPC::JsonContext& context)
             // ledgerseq
             ret[jss::diff] = getDiff(context, *pTxStore, vecNameInDB);
         }
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
     }
     catch (std::exception const& e)
     {
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecord exception" << e.what();
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
     }
 
     return ret;
@@ -813,7 +813,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
         ret = checkTableExistOnChain(context, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -822,7 +822,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
             context, sql, setOwnerID2TableName, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -830,7 +830,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -845,11 +845,11 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
         }
 
         ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
 	}
     catch (std::exception const& e)
     {
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecordBySql exception" << e.what();
 	}
@@ -881,7 +881,7 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
             context, txStore, accountID, setNameInDB, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -889,7 +889,7 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
         ret = checkAuthForSql(context, accountID, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -898,14 +898,14 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
             context, accountID, setOwnerID2TableName, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
         ret = queryBySql(txStore, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            context.app.getConnectionPool().disableConnection(unit);
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -920,11 +920,11 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
         }
 
         ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
     }
     catch (std::exception const& e)
     {
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecordBySqlUser exception" << e.what();
     }	
@@ -959,12 +959,12 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
     try
     {
         auto retVec = pTxStore->txHistory2d(context);
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
         return retVec;
     }
     catch (std::exception const& e)
     {
-        context.app.getConnectionPool().disableConnection(unit);
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecord2D exception" << e.what();
         return std::make_pair(result, "Exception occurred.");

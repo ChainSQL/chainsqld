@@ -1339,7 +1339,7 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
 void TableSyncItem::ReleaseConnectionUnit()
 {
     if (pConnectionUnit_) {
-        app_.getConnectionPool().disableConnection(pConnectionUnit_);
+        app_.getConnectionPool().releaseConnection(pConnectionUnit_);
         pConnectionUnit_.reset();
     }
 }

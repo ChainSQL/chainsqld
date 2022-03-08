@@ -95,7 +95,7 @@ public:
     }
     
     void
-    disableConnection(const std::shared_ptr<ConnectionUnit>& conn) {
+    releaseConnection(const std::shared_ptr<ConnectionUnit>& conn) {
         if (conn && conn->islocked()) {
             conn->unlock();
         }
