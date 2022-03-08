@@ -137,7 +137,7 @@ ExtVM::store(evmc_uint256be const& key)
             auto& uV = mapStore.at(uKey);
             return toEvmC(uV);
         }
-        catch (std::exception const& e)
+        catch (std::exception const&)
         {
             return toEvmC(uint256(0));
         }
