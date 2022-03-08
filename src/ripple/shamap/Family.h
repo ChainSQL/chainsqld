@@ -25,6 +25,7 @@
 #include <ripple/nodestore/Database.h>
 #include <ripple/shamap/FullBelowCache.h>
 #include <ripple/shamap/TreeNodeCache.h>
+#include <ripple/shamap/LeafNodeHashCache.h>
 #include <cstdint>
 
 namespace ripple {
@@ -32,6 +33,7 @@ namespace ripple {
 class Family
 {
 public:
+    using StateNodeHashSet = detail::LeafNodeHashCache;
     Family(Family const&) = delete;
     Family(Family&&) = delete;
 
@@ -68,6 +70,9 @@ public:
     */
     virtual std::shared_ptr<TreeNodeCache>
     getTreeNodeCache(std::uint32_t ledgerSeq) = 0;
+
+    virtual std::shared_ptr<StateNodeHashSet>
+    getStateNodeHashSet() = 0;
 
     virtual void
     sweep() = 0;

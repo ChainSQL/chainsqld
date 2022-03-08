@@ -291,6 +291,26 @@ public:
         fetchRate_.add(1, m_clock.now());
     }
 
+    void 
+    onLedgerComplete(std::uint32_t seq) override
+    {
+        ScopedLockType sl(mLock);
+        bool bHighestFinish = true;
+        for (auto const& it : mLedgers)
+        {
+            assert(it.second);
+            if (it.second->getSeq() > seq && 
+                !it.second->isComplete() &&
+                !it.second->isFailed())
+            {
+                bHighestFinish = false;
+                break;
+            }
+        }
+        if (bHighestFinish)
+            app_.getNodeFamily().getStateNodeHashSet()->clear();
+    }
+
     Json::Value
     getInfo() override
     {

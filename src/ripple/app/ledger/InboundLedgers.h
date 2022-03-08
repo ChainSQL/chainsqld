@@ -84,6 +84,9 @@ public:
 
     virtual void
     onStop() = 0;
+
+    virtual void
+    onLedgerComplete(std::uint32_t seq) = 0;
 };
 
 std::unique_ptr<InboundLedgers>
