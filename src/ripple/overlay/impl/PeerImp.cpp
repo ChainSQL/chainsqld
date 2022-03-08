@@ -2067,7 +2067,8 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMStatusChange> const& m)
         app_.getLedgerMaster(schemaId).getValidatedLedgerAge() < 2min)
     {
         checkSanity(
-            m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
+            m->ledgerseq(),
+            app_.getLedgerMaster(schemaId).getValidLedgerIndex());
     }
 
     app_.getOPs(schemaId).pubPeerStatus([=]() -> Json::Value {
