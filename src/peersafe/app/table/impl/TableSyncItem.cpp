@@ -172,7 +172,7 @@ void TableSyncItem::SetPara(std::string sNameInDB,LedgerIndex iSeq, uint256 hash
 ConnectionUnit&
 TableSyncItem::getConnectionUnit()
 {
-    if (pConnectionUnit_ == NULL || !pConnectionUnit_->islocked())
+    if (pConnectionUnit_ == NULL)
     {
         pConnectionUnit_ = app_.getConnectionPool().getAvailable();
     }
@@ -192,15 +192,16 @@ TableSyncItem::getTxStore()
 
 TableStatusDB& TableSyncItem::getTableStatusDB()
 {
+    DatabaseCon* dbConn = getTxStoreDBConn().GetDBConn();
     if (pObjTableStatusDB_ == NULL ||
-        pObjTableStatusDB_->GetDatabaseConn() != getTxStoreDBConn().GetDBConn())
+        pObjTableStatusDB_->GetDatabaseConn() != dbConn)
     {
         DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg_);
         std::pair<std::string, bool> result = setup.sync_db.find("type");
         if (result.first.compare("sqlite") == 0)
-            pObjTableStatusDB_ = std::make_unique<TableStatusDBSQLite>(getTxStoreDBConn().GetDBConn(), &app_, journal_);            
+            pObjTableStatusDB_ = std::make_unique<TableStatusDBSQLite>(dbConn, &app_, journal_);
         else
-            pObjTableStatusDB_ = std::make_unique<TableStatusDBMySQL>(getTxStoreDBConn().GetDBConn(), &app_, journal_);
+            pObjTableStatusDB_ = std::make_unique<TableStatusDBMySQL>(dbConn, &app_, journal_);
     }
 
     return *pObjTableStatusDB_;
@@ -1337,8 +1338,10 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
 
 void TableSyncItem::ReleaseConnectionUnit()
 {
-    if (pConnectionUnit_ && pConnectionUnit_->islocked())
-        pConnectionUnit_->unlock();
+    if (pConnectionUnit_) {
+        app_.getConnectionPool().disableConnection(pConnectionUnit_);
+        pConnectionUnit_.reset();
+    }
 }
 
 }

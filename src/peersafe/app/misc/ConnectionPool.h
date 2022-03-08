@@ -9,8 +9,11 @@
 
 namespace ripple {
 
+class ConnectionPool;
+
 struct ConnectionUnit
 {
+public:
     using clock_type = beast::abstract_clock<std::chrono::steady_clock>;
     ConnectionUnit(Schema& app)
     {
@@ -23,6 +26,12 @@ struct ConnectionUnit
             conn_->GetDBConn(), app.config(), app.journal("RPCHandler"));
         last_access_ = stopwatch().now();
     }
+    
+    std::shared_ptr<TxStore> store_;
+    std::shared_ptr<TxStoreDBConn> conn_;
+    
+private:
+    friend class ConnectionPool;
     void
     lock()
     {
@@ -52,8 +61,6 @@ struct ConnectionUnit
         return stopwatch().now() > whenExpire;
     }
 
-    std::shared_ptr<TxStore> store_;
-    std::shared_ptr<TxStoreDBConn> conn_;
     clock_type::time_point last_access_;
     bool locked_;
 };
@@ -85,6 +92,13 @@ public:
             vecPool_.push_back(unit);
         }
         return unit;
+    }
+    
+    void
+    disableConnection(const std::shared_ptr<ConnectionUnit>& conn) {
+        if (conn && conn->islocked()) {
+            conn->unlock();
+        }
     }
 
     void
