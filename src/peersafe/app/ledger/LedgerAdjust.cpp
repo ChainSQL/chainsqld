@@ -106,26 +106,46 @@ LedgerAdjust::getAccountCount(LockedSociSession db)
         return count;
 }
 
-
-std::shared_ptr<SLE>
+void
 LedgerAdjust::createSle(Schema& app)
 {
+    if (!app.config().USE_TX_TABLES || !app.config().USE_TRACE_TABLE)
+    {
+        auto j = app.journal("LedgerAdjust");
+        JLOG(j.error()) << "use_tx_tables or use_trace_tables is not configured ";
+        return;
+    }
+
     TxnDBCon& connection = app.getTxnDB();
-    Keylet key = keylet::statis();
-    auto countSle = std::make_shared<SLE>(ltSTATIS, key.key);
+    auto countSle = app.getPrometheusClient().getPromethSle();
     countSle->setFieldU32(sfTxSuccessCountField, getTxSucessCount(connection.checkoutDbRead()));
     countSle->setFieldU32(sfTxFailureCountField, getTxFailCount(connection.checkoutDbRead()));
     countSle->setFieldU32(sfContractCallCountField,getContractCallCount(connection.checkoutDbRead()));
     int contractCount = getContractCreateCount(connection.checkoutDbRead());
+    countSle->setFieldU32(sfContractCreateCountField, contractCount);
     int accountCount = getAccountCount(connection.checkoutDbRead());
     if(accountCount > 1)
         accountCount = accountCount - contractCount;
     countSle->setFieldU32(sfAccountCountField, accountCount);
-    countSle->setFieldU32(sfContractCreateCountField, contractCount);
-    return countSle;
+    
 }
 
-
+bool 
+LedgerAdjust::isCompleteReadData(Schema& app)
+{
+    std::shared_ptr<SLE> countSle = app.getPrometheusClient().getPromethSle();
+    if (!countSle->isFieldPresent(sfTxSuccessCountField))
+        return false;
+    if (!countSle->isFieldPresent(sfTxFailureCountField))
+        return false;
+    if (!countSle->isFieldPresent(sfContractCallCountField))
+        return false;
+    if (!countSle->isFieldPresent(sfContractCreateCountField))
+        return false;
+    if (!countSle->isFieldPresent(sfAccountCountField))
+        return false;
+    return true;
+}
 
 void
 LedgerAdjust::updateContractCount(Schema& app,ApplyView& view, ContractState state)
@@ -138,23 +158,24 @@ LedgerAdjust::updateContractCount(Schema& app,ApplyView& view, ContractState sta
         if (state == ContractState::CONTRACT_CREATE)
         {
             countSle->setFieldU32(sfContractCreateCountField, count + 1);
-            view.update(countSle);
         }
         else if (state == ContractState::CONTRACT_CALL)
         {
             countSle->setFieldU32(sfContractCallCountField, countSle->getFieldU32(sfContractCallCountField) + 1);
-            view.update(countSle);
         }
         else
         {
             if (count != 0)
                 countSle->setFieldU32(sfContractCreateCountField, count - 1);
         }
+        view.update(countSle);
         
     }
     else
     {
-        countSle = createSle(app);
+        if (!isCompleteReadData(app))
+            return;
+        countSle = app.getPrometheusClient().getPromethSle();
         if (state == ContractState::CONTRACT_CREATE)
         {
             countSle->setFieldU32(sfContractCreateCountField, countSle->getFieldU32(sfContractCreateCountField) + 1);
@@ -188,7 +209,9 @@ LedgerAdjust::updateTxCount(Schema& app, OpenView& view, int successCount, int f
     else
     {
        
-        countSle = createSle(app);
+        if (!isCompleteReadData(app))
+            return;
+        countSle = app.getPrometheusClient().getPromethSle();
         countSle->setFieldU32(sfTxSuccessCountField, countSle->getFieldU32(sfTxSuccessCountField) + successCount);
         countSle->setFieldU32(sfTxFailureCountField, countSle->getFieldU32(sfTxFailureCountField) + failCount);
         view.rawInsert(countSle);
@@ -211,7 +234,9 @@ LedgerAdjust::updateAccountCount(Schema& app, OpenView& view, int accountCount)
     }
     else
     {
-        countSle = createSle(app);
+        if (!isCompleteReadData(app))
+            return;
+        countSle = app.getPrometheusClient().getPromethSle();
         countSle->setFieldU32(sfAccountCountField, countSle->getFieldU32(sfAccountCountField) + accountCount);
         view.rawInsert(countSle);
     }

@@ -89,7 +89,8 @@ add(    jtGENERIC,       "generic",                 0,        true,  0ms,     0m
 add(    jtNS_SYNC_READ,  "SyncReadNode",            0,        true,  0ms,     0ms);
 add(    jtNS_ASYNC_READ, "AsyncReadNode",           0,        true,  0ms,     0ms);
 add(    jtNS_WRITE,      "WriteNode",               0,        true,  0ms,     0ms);
-add(    jtSTOP_SCHEMA,   "StopSchema",              maxLimit, false, 0ms,     0ms);
+add(    jtSTOP_SCHEMA,   "StopSchema",              maxLimit, false, 0ms,     15000ms);
+add(    jtCREATE_PROMETH_SLE, "CreatePromethSle",   1,        false, 250ms,   15000ms);
     }
 
 public:

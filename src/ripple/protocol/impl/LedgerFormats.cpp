@@ -299,11 +299,11 @@ LedgerFormats::LedgerFormats()
 
     add(jss::Statis,ltSTATIS,
         {
-            {sfContractCreateCountField, soeREQUIRED},
-            {sfContractCallCountField,   soeREQUIRED},
-            {sfTxSuccessCountField,      soeREQUIRED},
-            {sfTxFailureCountField,      soeREQUIRED},
-            {sfAccountCountField,        soeREQUIRED},
+            {sfContractCreateCountField, soeOPTIONAL},
+            {sfContractCallCountField,   soeOPTIONAL},
+            {sfTxSuccessCountField,      soeOPTIONAL},
+            {sfTxFailureCountField,      soeOPTIONAL},
+            {sfAccountCountField,        soeOPTIONAL},
         },
         commonFields);
 }

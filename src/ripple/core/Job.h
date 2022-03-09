@@ -57,11 +57,15 @@ enum JobType {
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
 
+    jtCREATE_PROMETH_SLE, // Build prometh's sle
+
     jtTABLESTORAGE,  // storage tables
     jtTableCheckHash,// check tx hash
     jtOPERATESQL,    // write table sync info
     jtTABLELOCALSYNC,// local synchronize tables
     jtTABLESYNC,     // synchronize tables
+
+    jtSTOP_SCHEMA,   // Stop sub-chain
 
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
@@ -99,7 +103,6 @@ enum JobType {
     jtNS_ASYNC_READ,
     jtNS_WRITE,
 
-    jtSTOP_SCHEMA, // Stop sub-chain
 };
 
 class Job

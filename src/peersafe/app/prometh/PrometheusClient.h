@@ -29,6 +29,7 @@ namespace ripple {
 		virtual ~PromethExposer();
         std::shared_ptr<prometheus::Registry>  getRegistry();
 		std::string const& getPubKey();
+		std::string getPort(Application& app);
 		prometheus::Family<prometheus::Gauge>& getSchemaGauge();
         prometheus::Family<prometheus::Gauge>& getPeerGauge();
 		prometheus::Family<prometheus::Gauge>& getTxSucessCountGauge();
@@ -44,47 +45,49 @@ namespace ripple {
 		
         std::string pubkey_node_;
 		
-		std::shared_ptr<prometheus::Exposer>  exposer;
-        std::shared_ptr<prometheus::Registry> registry;
-        prometheus::Family<prometheus::Gauge>& schema_gauge;
-		prometheus::Family<prometheus::Gauge>& peer_gauge;
-		prometheus::Family<prometheus::Gauge>& txSucessCount_gauge;
-		prometheus::Family<prometheus::Gauge>& txFailCount_gauge;
-		prometheus::Family<prometheus::Gauge>& contractCreateCount_gauge;
-		prometheus::Family<prometheus::Gauge>& contractCallCount_gauge;
-		prometheus::Family<prometheus::Gauge>& accountCount_gauge;
-		prometheus::Family<prometheus::Gauge>& blockHeight_gauge;
+		std::shared_ptr<prometheus::Exposer>  m_exposer;
+        std::shared_ptr<prometheus::Registry> m_registry;
+        prometheus::Family<prometheus::Gauge>& m_schema_gauge;
+		prometheus::Family<prometheus::Gauge>& m_peer_gauge;
+		prometheus::Family<prometheus::Gauge>& m_txSucessCount_gauge;
+		prometheus::Family<prometheus::Gauge>& m_txFailCount_gauge;
+		prometheus::Family<prometheus::Gauge>& m_contractCreateCount_gauge;
+		prometheus::Family<prometheus::Gauge>& m_contractCallCount_gauge;
+		prometheus::Family<prometheus::Gauge>& m_accountCount_gauge;
+		prometheus::Family<prometheus::Gauge>& m_blockHeight_gauge;
 		
 	};
 	class PrometheusClient {
 
 	public:
-            PrometheusClient(
-                Schema& app,
-                Config& cfg,
-                PromethExposer& exposer,
-                beast::Journal journal);
+        PrometheusClient(
+            Schema& app,
+            Config& cfg,
+            PromethExposer& exposer,
+            beast::Journal journal);
 		
 		virtual ~PrometheusClient();
+        
 		void timerEntry(NetClock::time_point const& now);
         int getSchemaCount(Schema& app);
-       
+        std::shared_ptr<SLE>& getPromethSle();
+        void setup();
 	private:
 		Schema&				app_;
 		beast::Journal      journal_;
 		Config&             cfg_;
 
-		NetClock::time_point mPromethTime;
+		NetClock::time_point m_promethTime;
 		PromethExposer&  exposer_;
-		prometheus::Gauge& schema_gauge;
-		prometheus::Gauge& peer_gauge;
-		prometheus::Gauge& txSucessCount_gauge;
-		prometheus::Gauge& txFailCount_gauge;
-		prometheus::Gauge& contractCreateCount_gauge;
-		prometheus::Gauge& contractCallCount_gauge;
-		prometheus::Gauge& accountCount_gauge;
-		prometheus::Gauge& blockHeight_gauge;
-        
+		prometheus::Gauge& m_schema_gauge;
+		prometheus::Gauge& m_peer_gauge;
+		prometheus::Gauge& m_txSucessCount_gauge;
+		prometheus::Gauge& m_txFailCount_gauge;
+		prometheus::Gauge& m_contractCreateCount_gauge;
+		prometheus::Gauge& m_contractCallCount_gauge;
+		prometheus::Gauge& m_accountCount_gauge;
+		prometheus::Gauge& m_blockHeight_gauge;
+        std::shared_ptr<SLE> m_promethSle;
 		
 	};
 	 static std::chrono::seconds const promethDataCollectionInterval(5);

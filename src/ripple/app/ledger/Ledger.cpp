@@ -243,6 +243,12 @@ Ledger::Ledger(
         rawInsert(sle);
     }
 
+    {
+        auto const sle = std::make_shared<SLE>(keylet::statis());
+        sle->setFieldU32(sfAccountCountField, 1);
+        rawInsert(sle);
+    }
+
     stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
     setImmutable(config);
 }
@@ -380,12 +386,24 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//}
 
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
-	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+	
     Keylet key = keylet::statis();
-    auto statisSle = ledger.read(key);
+    auto statisSle = ledger.peek(key);
     if (statisSle)
-        stateMap_->delItem(statisSle->key());
-
+    {
+        statisSle->setFieldU32(sfTxSuccessCountField, 0);
+        statisSle->setFieldU32(sfTxFailureCountField, 0);
+        statisSle->setFieldU32(sfContractCallCountField,0);
+        statisSle->setFieldU32(sfContractCreateCountField, 0);
+        rawReplace(statisSle);
+    }
+    else
+    {
+        auto const sle = std::make_shared<SLE>(keylet::statis());
+        sle->setFieldU32(sfAccountCountField, 1);
+        rawInsert(sle);
+    }
+        
     key = keylet::chainId();
     auto chainIdSle = ledger.read(key);
     if (chainIdSle)
@@ -396,6 +414,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
     if (schemaIndexSle)
         stateMap_->delItem(schemaIndexSle->key());
 
+    stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
     //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
 

@@ -1541,6 +1541,7 @@ SchemaImp::setup()
         }
     }
 
+    m_pPrometheusClient->setup();
     m_schemaAvailable = true;
 
     doStart();
