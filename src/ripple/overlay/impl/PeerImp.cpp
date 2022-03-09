@@ -88,8 +88,6 @@ PeerImp::PeerImp(
     , m_inbound(true)
     , protocol_(protocol)
     , state_(State::active)
-    , sanity_(Sanity::unknown)
-    , insaneTime_(clock_type::now())
     , publicKey_(publicKey)
     , publicValidate_(publicValidate)
     , creationTime_(clock_type::now())
@@ -426,7 +424,7 @@ PeerImp::json(uint256 const& schemaId)
         ret[jss::complete_ledgers] =
             std::to_string(minSeq) + " - " + std::to_string(maxSeq);
 
-    switch (sanity_.load())
+    switch (pInfo->sanity_.load())
     {
         case Sanity::insane:
             ret[jss::sanity] = "insane";
@@ -527,7 +525,7 @@ PeerImp::hasLedger(
         std::lock_guard sl(recentLock_);
         auto& info = schemaInfo_.at(schemaId);
         if ((seq != 0) && (seq >= info.minLedger_) &&
-            (seq <= info.maxLedger_) && (sanity_.load() == Sanity::sane))
+            (seq <= info.maxLedger_) && (info.sanity_.load() == Sanity::sane))
             return true;
         if (std::find(
                 info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
@@ -619,7 +617,7 @@ PeerImp::hasRange(
     }
 
     auto& info = schemaInfo_.at(schemaId);
-    return (sanity_ != Sanity::insane) && (uMin >= info.minLedger_) &&
+    return (info.sanity_ != Sanity::insane) && (uMin >= info.minLedger_) &&
         (uMax <= info.maxLedger_);
 }
 
@@ -1574,12 +1572,6 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMEndpoints> const& m)
 {
-    if (sanity_.load() != Sanity::sane)
-    {
-        // Don't allow endpoints from peer not known sane
-        return;
-    }
-
     std::vector<PeerFinder::Endpoint> endpoints;
 
     if (m->endpoints_v2().size())
@@ -1661,13 +1653,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMEndpoints> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
 {
-    if (sanity_.load() == Sanity::insane)
-        return;
-
     auto tup = getSchemaInfo("TMTransaction:", m->schemaid());
     if (!get<0>(tup))
         return;
     uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
+    if (info.sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "TMTransaction peer insane";
+        return;
+    }
 
     if (app_.getOPs(schemaId).isNeedNetworkLedger())
     {
@@ -1762,13 +1757,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 {
-    if (sanity_.load() == Sanity::insane)
-        return;
-
     auto tup = getSchemaInfo("TMTransactions:", m->schemaid());
     if (!get<0>(tup))
         return;
     uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
+    if (info.sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "TMTransactions peer insane";
+        return;
+    }
 
     try
     {
@@ -2067,7 +2065,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMStatusChange> const& m)
         app_.getLedgerMaster(schemaId).getValidatedLedgerAge() < 2min)
     {
         checkSanity(
-            m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
+            info,
+            m->ledgerseq(),
+            app_.getLedgerMaster(schemaId).getValidLedgerIndex());
     }
 
     app_.getOPs(schemaId).pubPeerStatus([=]() -> Json::Value {
@@ -2169,29 +2169,29 @@ PeerImp::checkSanity(uint256 const& schemaId, std::uint32_t validationSeq)
     {
         // Compare the peer's ledger sequence to the
         // sequence of a recently-validated ledger
-        checkSanity(serverSeq, validationSeq);
+        checkSanity(info,serverSeq, validationSeq);
     }
 }
 
 void
-PeerImp::checkSanity(std::uint32_t seq1, std::uint32_t seq2)
+PeerImp::checkSanity(SchemaInfo& info, std::uint32_t seq1, std::uint32_t seq2)
 {
     int diff = std::max(seq1, seq2) - std::min(seq1, seq2);
 
     if (diff < Tuning::saneLedgerLimit)
     {
         // The peer's ledger sequence is close to the validation's
-        sanity_ = Sanity::sane;
+        info.sanity_ = Sanity::sane;
     }
 
     if ((diff > Tuning::insaneLedgerLimit) &&
-        (sanity_.load() != Sanity::insane))
+        (info.sanity_.load() != Sanity::insane))
     {
         // The peer's ledger sequence is way off the validation's
         std::lock_guard sl(recentLock_);
 
-        sanity_ = Sanity::insane;
-        insaneTime_ = clock_type::now();
+        info.sanity_ = Sanity::insane;
+        info.insaneTime_ = clock_type::now();
     }
 }
 
@@ -2200,36 +2200,36 @@ PeerImp::checkSanity(std::uint32_t seq1, std::uint32_t seq2)
 void
 PeerImp::check()
 {
-    if (m_inbound || (sanity_.load() == Sanity::sane))
-        return;
+    //if (m_inbound || (sanity_.load() == Sanity::sane))
+    //    return;
 
-    clock_type::time_point insaneTime;
-    {
-        std::lock_guard sl(recentLock_);
+    //clock_type::time_point insaneTime;
+    //{
+    //    std::lock_guard sl(recentLock_);
 
-        insaneTime = insaneTime_;
-    }
+    //    insaneTime = insaneTime_;
+    //}
 
-    bool reject = false;
+    //bool reject = false;
 
-    if (sanity_.load() == Sanity::insane)
-        reject = (insaneTime - clock_type::now()) >
-            std::chrono::seconds(Tuning::maxInsaneTime);
+    //if (sanity_.load() == Sanity::insane)
+    //    reject = (insaneTime - clock_type::now()) >
+    //        std::chrono::seconds(Tuning::maxInsaneTime);
 
-    if (sanity_.load() == Sanity::unknown)
-        reject = (insaneTime - clock_type::now()) >
-            std::chrono::seconds(Tuning::maxUnknownTime);
+    //if (sanity_.load() == Sanity::unknown)
+    //    reject = (insaneTime - clock_type::now()) >
+    //        std::chrono::seconds(Tuning::maxUnknownTime);
 
-    if (reject)
-    {
-        overlay_.peerFinder().on_failure(slot_);
-        post(
-            strand_,
-            std::bind(
-                (void (PeerImp::*)(std::string const&)) & PeerImp::fail,
-                shared_from_this(),
-                "Not useful"));
-    }
+    //if (reject)
+    //{
+    //    overlay_.peerFinder().on_failure(slot_);
+    //    post(
+    //        strand_,
+    //        std::bind(
+    //            (void (PeerImp::*)(std::string const&)) & PeerImp::fail,
+    //            shared_from_this(),
+    //            "Not useful"));
+    //}
 }
 
 void
@@ -2609,7 +2609,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
 
     if (!isTrusted)
     {
-        if (sanity_.load() == Sanity::insane)
+        if (get<2>(tup)->sanity_.load() == Sanity::insane)
         {
             JLOG(p_journal_.info())
                 << "Consensus message mt(" << m->msgtype() << ")"

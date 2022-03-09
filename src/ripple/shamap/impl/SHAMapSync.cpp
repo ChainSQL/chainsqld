@@ -202,6 +202,9 @@ SHAMap::gmn_ProcessNodes(MissingNodes& mn, MissingNodes::StackEntry& se)
             !f_.getFullBelowCache(ledgerSeq_)
                  ->touch_if_exists(childHash.as_uint256()))
         {
+            if (f_.getStateNodeHashSet()->exist(childHash.as_uint256()))
+                continue;
+
             SHAMapNodeID childID = nodeID.getChildNodeID(branch);
             bool pending = false;
             auto d = descendAsync(node, branch, mn.filter_, pending);
@@ -289,7 +292,12 @@ SHAMap::gmn_ProcessDeferredReads(MissingNodes& mn)
             ++hits;
             if (backed_)
                 canonicalize(nodeHash, nodePtr);
-            nodePtr = parent->canonicalizeChild(branch, std::move(nodePtr));
+
+            if (nodePtr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+                nodePtr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+                f_.getStateNodeHashSet()->insert(nodePtr->getNodeHash().as_uint256());
+            else
+                nodePtr = parent->canonicalizeChild(branch, std::move(nodePtr));
 
             // When we finish this stack, we need to restart
             // with the parent of this node
@@ -678,7 +686,11 @@ SHAMap::addKnownNode(
             if (backed_)
                 canonicalize(childHash, newNode);
 
-            newNode = prevNode->canonicalizeChild(branch, std::move(newNode));
+            if (newNode->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+                newNode->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+                f_.getStateNodeHashSet()->insert(newNode->getNodeHash().as_uint256());
+            else
+                newNode = prevNode->canonicalizeChild(branch, std::move(newNode));
 
             if (filter)
             {

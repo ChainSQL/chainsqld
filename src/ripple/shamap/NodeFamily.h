@@ -76,6 +76,12 @@ public:
         return tnCache_;
     }
 
+    std::shared_ptr<StateNodeHashSet>
+    getStateNodeHashSet() override
+    {
+        return stateNodeHashSet_;
+    }
+
     void
     sweep() override;
 
@@ -98,6 +104,8 @@ private:
 
     std::shared_ptr<FullBelowCache> fbCache_;
     std::shared_ptr<TreeNodeCache> tnCache_;
+
+    std::shared_ptr<StateNodeHashSet> stateNodeHashSet_;
 
     // Missing node handler
     LedgerIndex maxSeq_{0};

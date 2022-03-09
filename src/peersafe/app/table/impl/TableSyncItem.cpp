@@ -67,7 +67,6 @@ TableSyncItem::TableSyncItem(Schema& app, beast::Journal journal, Config& cfg, S
     bIsChange_            = true;
     bGetLocalData_        = false;
     conn_                 = NULL;
-    pObjTxStore_          = NULL;
     sTableNameInDB_       = "";
     sNickName_            = "";
     uCreateLedgerSequence_ = 0;
@@ -170,36 +169,39 @@ void TableSyncItem::SetPara(std::string sNameInDB,LedgerIndex iSeq, uint256 hash
     uTxDBUpdateHash_ = TxnUpdateHash;    
 }
 
-TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
+ConnectionUnit&
+TableSyncItem::getConnectionUnit()
 {
-    if (pConnectionUnit_ == NULL || !pConnectionUnit_->islocked())
+    if (pConnectionUnit_ == NULL)
     {
         pConnectionUnit_ = app_.getConnectionPool().getAvailable();
     }
-    return *pConnectionUnit_->conn_;
+    return *pConnectionUnit_;
 }
 
-TxStore& TableSyncItem::getTxStore()
+TxStoreDBConn& TableSyncItem::getTxStoreDBConn()
+{    
+    return *getConnectionUnit().conn_;
+}
+
+TxStore&
+TableSyncItem::getTxStore()
 {
-    if (pObjTxStore_ == NULL)
-    {
-        pObjTxStore_ = std::make_unique<TxStore>(
-            getTxStoreDBConn().GetDBConn(), cfg_, journal_);
-    }
-    return *pObjTxStore_;
+    return *getConnectionUnit().store_;
 }
 
 TableStatusDB& TableSyncItem::getTableStatusDB()
 {
+    DatabaseCon* dbConn = getTxStoreDBConn().GetDBConn();
     if (pObjTableStatusDB_ == NULL ||
-        pObjTableStatusDB_->GetDatabaseConn() != getTxStoreDBConn().GetDBConn())
+        pObjTableStatusDB_->GetDatabaseConn() != dbConn)
     {
         DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg_);
         std::pair<std::string, bool> result = setup.sync_db.find("type");
         if (result.first.compare("sqlite") == 0)
-            pObjTableStatusDB_ = std::make_unique<TableStatusDBSQLite>(getTxStoreDBConn().GetDBConn(), &app_, journal_);            
+            pObjTableStatusDB_ = std::make_unique<TableStatusDBSQLite>(dbConn, &app_, journal_);
         else
-            pObjTableStatusDB_ = std::make_unique<TableStatusDBMySQL>(getTxStoreDBConn().GetDBConn(), &app_, journal_);
+            pObjTableStatusDB_ = std::make_unique<TableStatusDBMySQL>(dbConn, &app_, journal_);
     }
 
     return *pObjTableStatusDB_;
@@ -1336,10 +1338,9 @@ std::string TableSyncItem::GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedg
 
 void TableSyncItem::ReleaseConnectionUnit()
 {
-    if (pConnectionUnit_ && pConnectionUnit_->islocked())
-    {
-        pConnectionUnit_->unlock();
-        pConnectionUnit_ = nullptr;
+    if (pConnectionUnit_) {
+        app_.getConnectionPool().releaseConnection(pConnectionUnit_);
+        pConnectionUnit_.reset();
     }
 }
 

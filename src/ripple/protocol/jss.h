@@ -550,6 +550,7 @@ JSS(txs);                     // out: TxHistory
 JSS(type);                    // in: AccountObjects
                               // out: NetworkOPs
                               //      OverlayImpl, Logic
+JSS(types);
 JSS(type_hex);                // out: STPathSet
 JSS(unl);                     // out: UnlList
 JSS(unlimited);               // out: Connection.h
