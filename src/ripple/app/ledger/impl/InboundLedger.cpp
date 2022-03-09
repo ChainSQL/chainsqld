@@ -567,6 +567,7 @@ InboundLedger::done()
         jtLEDGER_DATA, "AcquisitionDone", [self = shared_from_this()](Job&) {
             if (self->mComplete && !self->mFailed)
             {
+                self->app_.getInboundLedgers().onLedgerComplete(self->getSeq());
                 if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
                 {
                     self->app().getLedgerMaster().doValid(self->getLedger());

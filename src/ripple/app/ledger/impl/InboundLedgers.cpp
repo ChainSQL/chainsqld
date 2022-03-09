@@ -308,7 +308,10 @@ public:
             }
         }
         if (bHighestFinish)
+        {
+            JLOG(j_.info()) << "Clear StateNodeHashSet.";
             app_.getNodeFamily().getStateNodeHashSet()->clear();
+        }
     }
 
     Json::Value
