@@ -81,6 +81,22 @@ public:
 
 	~BuildField() {
 	}
+    
+    static bool HaveSpecialCharacters(const std::string& name) {
+        static std::vector<char> special_characters = {
+            '~', '`', '!', '@', '#', '$', '%', '^',
+            '&', '*', '(', ')', '-', '+', '=', '{',
+            '}', '[', ']', '|', '\\', '/', ':', ';',
+            '"', ',', '<', '>', '.', '?', ' ',
+        };
+        std::size_t size = name.size();
+        for(std::size_t i = 0; i < size; i++) {
+            auto result = std::find(special_characters.begin(), special_characters.end(), name[i]);
+            if (result != special_characters.end())
+                return true;
+        }
+        return false;
+    }
 
 	void SetFieldValue(const std::string& value, int flag) {
 		value_ = FieldValue(value, flag);
@@ -1010,7 +1026,11 @@ private:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building sql"));
+			if (last_error().value().first == 0)
+			{
+				last_error(std::make_pair<int, std::string>(
+					-1, "Fields are empty when building create-sql"));
+			}
 			return sql;
 		}
 
@@ -1055,7 +1075,11 @@ private:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when executing sql"));
+			if (last_error().value().first == 0)
+			{
+				last_error(std::make_pair<int, std::string>(
+					-1, "Fields are empty when building create-sql"));
+			}
 			return -1;
 		}
 
@@ -1099,7 +1123,11 @@ private:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building update-sql"));
+			if (last_error().value().first == 0)
+			{
+				last_error(std::make_pair<int, std::string>(
+					-1, "Fields are empty when building create-sql"));
+			}
 			return sql;
 		}
 
@@ -1178,7 +1206,11 @@ private:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when executing update-sql"));
+			if (last_error().value().first == 0)
+			{
+				last_error(std::make_pair<int, std::string>(
+					-1, "Fields are empty when building create-sql"));
+			}
 			return -1;
 		}
 
@@ -1989,7 +2021,11 @@ protected:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building create-sql"));
+            if (last_error().value().first == 0)
+            {
+                last_error(std::make_pair<int, std::string>(
+                    -1, "Fields are empty when building create-sql"));
+            }
 			return 0;
 		}
 
@@ -2258,7 +2294,11 @@ protected:
 		}
 
 		if (fields_.size() == 0) {
-			last_error(std::make_pair<int, std::string>(-1, "Fields are empty when building create-sql"));
+			if (last_error().value().first == 0)
+			{
+				last_error(std::make_pair<int, std::string>(
+					-1, "Fields are empty when building create-sql"));
+			}
 			return 0;
 		}
 
@@ -3197,6 +3237,12 @@ int STTx2SQL::ParseFieldDefinitionAndAdd(const Json::Value& Raw, BuildSQL *build
 				return ret;
 			//field and type
 			std::string fieldname = v["field"].asString();
+            
+            if (BuildField::HaveSpecialCharacters(fieldname)) {
+                buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("fieldname is illegal: %s") % fieldname).str()));
+                return ret;
+            }
+            
 			std::string type = v["type"].asString();
 			BuildField buildfield(fieldname);
 			// set default value when create table
@@ -3343,6 +3389,10 @@ std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, 
 	// retrieve members in object
 	for (size_t i = 0; i < members.size(); i++) {
 		std::string field_name = members[i];
+        
+        if (BuildField::HaveSpecialCharacters(field_name)) {
+            return std::make_pair(-1, (boost::format("fieldname is illegal: %s") % field_name).str());
+        }
 		
 		BuildField insert_field(field_name);
 		std::pair<int, std::string> result = parseField(raw[field_name], insert_field);
@@ -3354,40 +3404,6 @@ std::pair<int, std::string> STTx2SQL::GenerateInsertSql(const Json::Value& raw, 
 	return std::make_pair(0,"");
 
 }
-
-//int STTx2SQL::GenerateUpdateSql(const Json::Value& raw, BuildSQL *buildsql) {
-//
-//	Json::Value conditions;
-//	// parse record
-//	for (Json::UInt idx = 0; idx < raw.size(); idx++) {
-//		auto& v = raw[idx];
-//		if (v.isObject() == false) {
-//			//JSON_ASSERT(v.isObject());
-//			return -1;
-//		}
-//
-//		if (idx == 0) {
-//			std::vector<std::string> members = v.getMemberNames();
-//			for (size_t i = 0; i < members.size(); i++) {
-//				std::string field_name = members[i];
-//				BuildField field(field_name);
-//				std::pair<int, std::string> result = parseField(v[field_name], field);
-//				if (result.first != 0) {
-//					return result.first;
-//				}
-//				buildsql->AddField(field);
-//			}
-//		}
-//		else {
-//			conditions.append(v);
-//		}
-//	}
-//
-//	if (conditions.isArray() && conditions.size() > 0)
-//		buildsql->AddCondition(conditions);
-//
-//	return 0;
-//}
 
 int STTx2SQL::GenerateDeleteSql(const Json::Value& raw, BuildSQL *buildsql) {
 
@@ -3406,6 +3422,12 @@ int STTx2SQL::GenerateDelColumnsSql(const Json::Value& raw, BuildSQL *buildsql) 
 	for (Json::UInt index = 0; index < raw.size(); index++) {
 		Json::Value v = raw[index];
 		std::string fieldname = v["field"].asString();
+        
+        if (BuildField::HaveSpecialCharacters(fieldname)) {
+            buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("fieldname is illegal: %s") % fieldname).str()));
+            return -1;
+        }
+        
 		buildsql->AddField(BuildField(fieldname));
 	}
 	return 0;
@@ -3425,6 +3447,12 @@ int STTx2SQL::GenerateOperateIndex(const Json::Value& raw, BuildSQL *buildsql) {
 		else {
 			fieldname = v["field"].asString();
 		}
+        
+        if (BuildField::HaveSpecialCharacters(fieldname)) {
+            buildsql->set_last_error(std::make_pair<int, std::string>(-1, (boost::format("fieldname is illegal: %s") % fieldname).str()));
+            return -1;
+        }
+        
 		BuildField field(fieldname);
 		if (index == 0) {
 			field.SetIndex();
@@ -3494,11 +3522,9 @@ std::pair<int, std::string> STTx2SQL::GenerateSelectSql(const Json::Value& raw, 
 			if (v.isArray()) {
 				for (Json::UInt i = 0; i < v.size(); i++) {
 					std::string field_name = v[i].asString();
-					//check blank space
-					if (field_name.find(' ') != std::string::npos) {
-						return { -1, (boost::format("Field [%s] contains blank space.")
-								 % field_name).str() };
-					}
+                    if (BuildField::HaveSpecialCharacters(field_name)) {
+                        return {-1, (boost::format("fieldname is illegal: %s") % field_name).str()};
+                    }
 					BuildField field(field_name);
 					buildsql->AddField(field);
 				}
@@ -3949,7 +3975,12 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
             {
                 if (kv.second.pairField.first)
                 {
-                    BuildField field(kv.second.pairField.second);
+                    std::string& fieldname = kv.second.pairField.second;
+                    if (BuildField::HaveSpecialCharacters(fieldname)) {
+                        return {-1, (boost::format("fieldname is illegal: %s") % fieldname).str()};
+                    }
+                    
+                    BuildField field(fieldname);
                     field.SetFieldValue(kv.second.value);
                     buildsql->AddField(field);
                 }
@@ -4020,7 +4051,12 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
            
 					if (kv.second.pairField.first)
 					{
-						BuildField field(kv.second.pairField.second);
+                        std::string& fieldname = kv.second.pairField.second;
+                        if (BuildField::HaveSpecialCharacters(fieldname)) {
+                            return {-1, (boost::format("fieldname is illegal: %s") % fieldname).str()};
+                        }
+                        
+						BuildField field(fieldname);
 						field.SetFieldValue(kv.second.value);
 						buildsql->AddField(field);
 					}
@@ -4029,11 +4065,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
 				for (size_t i = 0; i < members.size(); i++) {
 					std::string field_name = members[i];
 
-					//check blank space
-					if (field_name.find(' ') != std::string::npos) {
-						return { -1, (boost::format("Field [%s] contains blank space.")
-								 % field_name).str() };
-					}
+                    if (BuildField::HaveSpecialCharacters(field_name)) {
+                        return {-1, (boost::format("fieldname is illegal: %s") % field_name).str()};
+                    }
 
 					BuildField field(field_name);
 					std::pair<int, std::string> ret = parseField(v[field_name], field);
@@ -4052,6 +4086,11 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
         {
             auto fieldName =
                 mapFieldValue[sfTxsHashFillField.getName()].pairField.second;
+            
+            if (BuildField::HaveSpecialCharacters(fieldName)) {
+                return{-1, (boost::format("fieldname is illegal: %s") % fieldName).str()};
+            }
+            
             BuildField update_field(fieldName);
             std::string updateStr =
                         (boost::format("concat(%1%,\",%2%\")") %
