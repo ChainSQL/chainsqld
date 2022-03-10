@@ -87,11 +87,9 @@ LedgerHistory::insert(std::shared_ptr<Ledger const> ledger, bool validated)
         mLedgersByIndex[ledger->info().seq] = ledger->info().hash;
 
         // clear closed and unvalidated ledger seq -> hash
-        auto itup = mClosedLedgersByIndex.upper_bound(ledger->info().seq);
-        if (itup != mClosedLedgersByIndex.end())
-        {
-            mClosedLedgersByIndex.erase(mClosedLedgersByIndex.begin(), itup);
-        }
+        mClosedLedgersByIndex.erase(
+            mClosedLedgersByIndex.begin(),
+            mClosedLedgersByIndex.upper_bound(ledger->info().seq));
     }
     else
     {
