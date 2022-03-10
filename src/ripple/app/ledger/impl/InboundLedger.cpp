@@ -154,6 +154,8 @@ InboundLedger::init(ScopedLockType& collectionLock)
     if (mReason == Reason::HISTORY || mReason == Reason::SHARD)
         return;
 
+    app_.getInboundLedgers().onLedgerComplete(getSeq());
+
     app_.getLedgerMaster().storeLedger(mLedger);
 
     // Check if this could be a newer fully-validated ledger
