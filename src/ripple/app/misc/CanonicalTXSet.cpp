@@ -22,6 +22,8 @@
 
 namespace ripple {
 
+const uint32_t MAX_ACCOUNT_HELD_COUNT = 500;
+const uint32_t MAX_HELD_COUNT = 5000;
 bool
 CanonicalTXSet::Key::operator<(Key const& rhs) const
 {
@@ -103,14 +105,28 @@ CanonicalTXSet::accountKey(AccountID const& account)
     return ret;
 }
 
-void
-CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn)
+bool
+CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /* = false */)
 {
-    map_.insert(std::make_pair(
+    if (bJudgeLimit)
+    {
+        if (accountTxsize_[txn->getAccountID(sfAccount)] >=
+            MAX_ACCOUNT_HELD_COUNT)
+            return false;
+        if (map_.size() >= MAX_HELD_COUNT)
+            return false;
+    }
+
+    auto ret = map_.insert(std::make_pair(
         Key(accountKey(txn->getAccountID(sfAccount)),
             txn->getSequence(),
             txn->getTransactionID()),
         txn));
+
+    if (bJudgeLimit && ret.second)
+        accountTxsize_[txn->getAccountID(sfAccount)]++;
+
+    return ret.second;
 }
 
 std::vector<std::shared_ptr<STTx const>>
@@ -130,6 +146,11 @@ CanonicalTXSet::prune(AccountID const& account, std::uint32_t const seq)
         txRange.begin(), txRange.end());
 
     map_.erase(range.begin(), range.end());
+    if (!result.empty() &&
+        accountTxsize_.find(account) != accountTxsize_.end() &&
+        accountTxsize_[account] > 0)
+        accountTxsize_[account]--;
+
     return result;
 }
 

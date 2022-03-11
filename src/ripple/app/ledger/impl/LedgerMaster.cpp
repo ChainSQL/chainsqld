@@ -434,12 +434,12 @@ LedgerMaster::setPubLedger(std::shared_ptr<Ledger const> const& l)
     mPubLedgerSeq = l->info().seq;
 }
 
-void
+bool
 LedgerMaster::addHeldTransaction(
     std::shared_ptr<Transaction> const& transaction)
 {
     std::lock_guard ml(m_mutex);
-    mHeldTransactions.insert(transaction->getSTransaction());
+    return mHeldTransactions.insert(transaction->getSTransaction(),true);
 }
 
 // Validate a ledger's close time and sequence number if we're considering
