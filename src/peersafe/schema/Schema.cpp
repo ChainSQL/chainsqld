@@ -1357,7 +1357,7 @@ SchemaImp::setup()
         }
     }
 
-    m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
+    //m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
 
     if (!cluster_->load(config().section(SECTION_CLUSTER_NODES)))
     {

@@ -33,18 +33,27 @@ namespace ripple {
 
 		// This is a time-consuming process for a project that has many
 		// sles.
-		for (auto sle : ctx.view.sles)
-		{
-			if (sle->getType() != ltSCHEMA)
-				continue;
-			for (auto& validator : sle->getFieldArray(sfValidators))
-			{
-				Json::Value val(Json::objectValue);
-				auto publicKey = validator.getFieldVL(sfPublicKey);
-                if (++mapValidatorCount[publicKey] > MAX_VALIDATOR_SCHEMA_COUNT)
-					return tefSCHEMA_MAX_SCHEMAS;
-			}
-		}
+        auto sleIndex = ctx.view.read(keylet::schema_index());
+        if (sleIndex)
+        {
+            auto& schemaIndexes = sleIndex->getFieldV256(sfSchemaIndexes);
+            for (auto const& index : schemaIndexes)
+            {
+                auto key = Keylet(ltSCHEMA, index);
+                auto sle = ctx.view.read(key);
+                if (sle)
+                {
+                    for (auto& validator : sle->getFieldArray(sfValidators))
+                    {
+                        Json::Value val(Json::objectValue);
+                        auto publicKey = validator.getFieldVL(sfPublicKey);
+                        if (++mapValidatorCount[publicKey] >
+                            MAX_VALIDATOR_SCHEMA_COUNT)
+                            return tefSCHEMA_MAX_SCHEMAS;
+                    }
+                }
+            }
+        }
 		return tesSUCCESS;
 	}
 
