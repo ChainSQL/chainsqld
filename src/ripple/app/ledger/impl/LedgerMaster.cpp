@@ -946,7 +946,7 @@ LedgerMaster::onLastFullLedgerLoaded(
     if (!mPubLedger)
     {
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
 }
     
@@ -989,7 +989,7 @@ void LedgerMaster::setFullLedger(
         if (!mPubLedger)
         {
             setPubLedger(ledger);
-            app_.getOrderBookDB().setup(ledger);
+            //app_.getOrderBookDB().setup(ledger);
         }
 
         if (ledger->info().seq != 0 && haveLedger(ledger->info().seq - 1))
@@ -1506,7 +1506,7 @@ LedgerMaster::findNewLedgersToPublish(
         auto valLedger = mValidLedger.get();
         ret.push_back(valLedger);
         setPubLedger(valLedger);
-        app_.getOrderBookDB().setup(valLedger);
+        //app_.getOrderBookDB().setup(valLedger);
 
         return {valLedger};
     }
@@ -2119,7 +2119,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     {
         pendSaveValidated(app_, ledger, true, true);
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
 
     std::uint32_t const base = app_.getFeeTrack().getLoadBase();
