@@ -1063,13 +1063,13 @@ saveValidatedLedger(
         auto db = app.getTxnDB().checkoutDb();
 
         soci::transaction tr(*db);
-
+        
         *db << boost::str(deleteTrans1 % seq);
         *db << boost::str(deleteTrans2 % seq);
-
+        *db << boost::str(deleteTrans3 % seq);
         std::string const ledgerSeq(std::to_string(seq));
-
-		std::uint64_t iTxSeq = uint64_t(seq) * 100000;
+		
+        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
         for (auto const& [_, acceptedLedgerTx] : aLedger->getMap())
         {
             (void)_;
