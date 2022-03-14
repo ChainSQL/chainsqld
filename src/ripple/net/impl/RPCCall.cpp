@@ -356,10 +356,55 @@ private:
             jvRequest[jss::limit] = jvParams[2u].asUInt();
         if (jvParams.size() >= 4)
             jvRequest[jss::marker] = jvParams[3u].asString();
+        // contract_tx contractAddress [ledger_min [ledger_max [limit]]]
+    Json::Value
+    parseContractTransactions(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+        unsigned int iParams = jvParams.size();
+
+        auto const contract_address = parseBase58<AccountID>(jvParams[0u].asString());
+        if (!contract_address)
+            return rpcError(rpcACT_MALFORMED);
+
+        jvRequest[jss::contract_address] = toBase58(*contract_address);
+
+        if (1 == iParams)
+        {
+        }
+        else if (2 == iParams)
+        {
+            if (!jvParseLedger(jvRequest, jvParams[1u].asString()))
+                return jvRequest;
+        }
+        else
+        {
+            std::int64_t uLedgerMin = jvParams[1u].asInt();
+            std::int64_t uLedgerMax = jvParams[2u].asInt();
+
+            if (uLedgerMax != -1 && uLedgerMax < uLedgerMin)
+            {
+                // The command line always follows ApiMaximumSupportedVersion
+                if (RPC::ApiMaximumSupportedVersion == 1)
+                    return rpcError(rpcLGR_IDXS_INVALID);
+                return rpcError(rpcNOT_SYNCED);
+            }
+
+            jvRequest[jss::ledger_index_min] = jvParams[1u].asInt();
+            jvRequest[jss::ledger_index_max] = jvParams[2u].asInt();
+
+            if (iParams >= 4)
+                jvRequest[jss::limit] = jvParams[3u].asInt();
+
+        }
 
         return jvRequest;
     }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5c3c26476 (Add the query contract calling interface)
     // tx_account accountID [ledger_min [ledger_max [limit]]]] [binary] [count]
     // [forward]
     Json::Value
@@ -1674,6 +1719,7 @@ public:
             {"account_offers", &RPCParser::parseAccountItems, 1, 4},
             {"account_tx", &RPCParser::parseAccountTransactions, 1, 8},
             {"account_authorized", &RPCParser::parseAccountAuthorized, 0, 4},
+            {"contract_tx", &RPCParser::parseContractTransactions, 1, 6},
             {"book_offers", &RPCParser::parseBookOffers, 2, 7},
             {"can_delete", &RPCParser::parseCanDelete, 0, 1},
             {"channel_authorize", &RPCParser::parseChannelAuthorize, 3, 4},

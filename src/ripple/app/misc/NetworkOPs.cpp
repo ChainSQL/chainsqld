@@ -3196,10 +3196,9 @@ NetworkOPsImp::getTxsAccount(
 
     auto bound = [&ret, &app](
                      std::uint32_t ledger_index,
-                     std::string const& status,
                      Blob&& rawTxn,
                      Blob&& rawMeta) {
-        convertBlobsToTxResult(ret, ledger_index, status, rawTxn, rawMeta, app);
+        convertBlobsToTxResult(ret, ledger_index, rawTxn, rawMeta, app);
     };
 
     if (app_.config().SAVE_TX_RAW)
@@ -3257,7 +3256,6 @@ NetworkOPsImp::getTxsAccountB(
 
     auto bound = [&ret](
                      std::uint32_t ledgerIndex,
-                     std::string const& status,
                      Blob&& rawTxn,
                      Blob&& rawMeta) {
         ret.emplace_back(strHex(rawTxn), strHex(rawMeta), ledgerIndex);

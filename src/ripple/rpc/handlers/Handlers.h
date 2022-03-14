@@ -45,6 +45,8 @@ doAccountTxJson(RPC::JsonContext&);
 Json::Value
 doAccountAuthorized(RPC::JsonContext&);
 Json::Value
+doContractTxJson(RPC::JsonContext& context);
+Json::Value
 doBookOffers(RPC::JsonContext&);
 Json::Value
 doBlackList(RPC::JsonContext&);

@@ -34,7 +34,6 @@ void
 convertBlobsToTxResult(
     NetworkOPs::AccountTxs& to,
     std::uint32_t ledger_index,
-    std::string const& status,
     Blob const& rawTxn,
     Blob const& rawMeta,
     Schema& app);
@@ -49,7 +48,7 @@ accountTxPage(
     AccountIDCache const& idCache,
     std::function<void(std::uint32_t)> const& onUnsavedLedger,
     std::function<
-        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        void(std::uint32_t, Blob&&, Blob&&)> const&
         onTransaction,
     AccountID const& account,
     std::int32_t minLedger,
@@ -67,7 +66,7 @@ accountTxPageSQL(
     AccountIDCache const& idCache,
     std::function<void(std::uint32_t)> const& onUnsavedLedger,
     std::function<
-        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        void(std::uint32_t, Blob&&, Blob&&)> const&
         onTransaction,
     AccountID const& account,
     std::int32_t minLedger,
@@ -77,6 +76,33 @@ accountTxPageSQL(
     int limit,
     bool bAdmin,
     std::uint32_t page_length);
+
+void
+contractTxPage(
+    Schema& app,
+    DatabaseCon& connection,
+    AccountIDCache const& idCache,
+    std::function<
+        void(std::uint32_t, Blob&&, Blob&&)> const&
+        onTransaction,
+    AccountID const& account,
+    std::int32_t minLedger,
+    std::int32_t maxLedger,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
+    int limit,
+    bool bAdmin,
+    std::uint32_t page_length);
+void
+processTransRes(
+    Schema& app,
+    DatabaseCon& connection,
+    std::function<
+        void(std::uint32_t, Blob&&, Blob&&)> const&
+        onTransaction,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
+    std::string sql,
+    std::uint32_t numberOfResults);
+
 }  // namespace ripple
 
 #endif
