@@ -200,7 +200,7 @@ TableOpPrecompiled::execute(
     }
     else
     {
-        return std::make_tuple(tesSUCCESS, strCopy(""), 0);
+        return std::make_tuple(temUNKNOWN, strCopy(""),0);
     }
 }
 }  // namespace ripple
