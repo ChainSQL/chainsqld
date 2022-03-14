@@ -19,6 +19,7 @@
 
 #include <ripple/app/ledger/InboundLedgers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/ledger/LedgerToJson.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/net/RPCErr.h>
@@ -65,11 +66,15 @@ doLedgerRequest(RPC::JsonContext& context)
             return RPC::invalid_field_error(jss::ledger_index);
 
         // We need a validated ledger to get the hash from the sequence
-        if (ledgerMaster.getValidatedLedgerAge() >
+        if (context.netOps.getServerStatus() != "normal" && 
+            ledgerMaster.getValidatedLedgerAge() >
             RPC::Tuning::maxValidatedLedgerAge)
         {
             if (context.apiVersion == 1)
+            {
+                JLOG(context.j.info()) << "Server is abnormal when doLedgerRequest";
                 return rpcError(rpcNO_CURRENT);
+            }
             return rpcError(rpcNOT_SYNCED);
         }
 
