@@ -94,6 +94,7 @@ public:
     std::unique_ptr<rocksdb::DB> m_db;
     int fdRequired_ = 2048;
     rocksdb::Options m_options;
+    rocksdb::BlockBasedTableOptions m_table_options;
 
     RocksDBBackend(
         int keyBytes,
@@ -110,7 +111,7 @@ public:
         if (!get_if_exists(keyValues, "path", m_name))
             Throw<std::runtime_error>("Missing path in RocksDBFactory backend");
 
-        rocksdb::BlockBasedTableOptions table_options;
+        rocksdb::BlockBasedTableOptions& table_options = m_table_options;
         m_options.env = env;
 
         if (keyValues.exists("cache_mb"))
@@ -205,6 +206,20 @@ public:
     ~RocksDBBackend() override
     {
         close();
+    }
+
+    void
+    printUsage()const override
+    {
+        std::cout << "block_cache usage: "
+                  << m_table_options.block_cache->GetUsage()<<std::endl;
+        std::string out;
+        m_db->GetProperty("rocksdb.estimate-table-readers-mem", &out);
+        std::cout << "index and filter usage: " << out << std::endl;
+        m_db->GetProperty("rocksdb.cur-size-all-mem-tables", &out);
+        std::cout << "memtable usage: " << out << std::endl;
+        std::cout << "pinned_usage: "
+                  << m_table_options.block_cache->GetPinnedUsage() << std::endl;
     }
 
     void
