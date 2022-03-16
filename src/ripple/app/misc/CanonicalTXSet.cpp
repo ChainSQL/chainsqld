@@ -108,9 +108,10 @@ CanonicalTXSet::accountKey(AccountID const& account)
 bool
 CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /* = false */)
 {
+    auto accId = txn->getAccountID(sfAccount);
     if (bJudgeLimit)
     {
-        if (accountTxsize_[txn->getAccountID(sfAccount)] >=
+        if (accountTxsize_[accId] >=
             MAX_ACCOUNT_HELD_COUNT)
             return false;
         if (map_.size() >= MAX_HELD_COUNT)
@@ -118,13 +119,13 @@ CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /
     }
 
     auto ret = map_.insert(std::make_pair(
-        Key(accountKey(txn->getAccountID(sfAccount)),
+        Key(accountKey(accId),
             txn->getSequence(),
             txn->getTransactionID()),
         txn));
 
     if (bJudgeLimit && ret.second)
-        accountTxsize_[txn->getAccountID(sfAccount)]++;
+        accountTxsize_[accId]++;
 
     return ret.second;
 }
