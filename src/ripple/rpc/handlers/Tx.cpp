@@ -933,28 +933,34 @@ Json::Value doTxResult(RPC::JsonContext& context)
 	ret[jss::tx_hash] = txid;
 	boost::optional<std::uint32_t> LedgerSeq;
 	boost::optional<std::string> TxResult;
-	{
-		auto db = context.app.getTxnDB().checkoutDbRead();
 
-		soci::statement st = (db->prepare << sql,
-			soci::into(LedgerSeq),
-			soci::into(TxResult));
-		st.execute(); 
-		if (st.fetch())
-		{
-			ret[jss::ledger_index] = *LedgerSeq;
-			ret[jss::transaction_result] = *TxResult;
-			ret[jss::tx_status] = "validated";
-		}
-		else if(nullptr != context.app.getMasterTransaction().fetch_from_cache(txHash))
-		{
-			ret[jss::tx_status] = "pending";
-		}
-		else
-		{
-			ret[jss::tx_status] = "not_found";
-		}
+	auto db = context.app.getTxnDB().checkoutDbRead();
+
+	soci::statement st = (db->prepare << sql,
+		soci::into(LedgerSeq),
+		soci::into(TxResult));
+	st.execute(); 
+	if (st.fetch())
+	{
+		ret[jss::ledger_index] = *LedgerSeq;
+		ret[jss::transaction_result] = *TxResult;
+		ret[jss::tx_status] = "validated";
+        return ret;
 	}
+
+    auto tx = context.app.getMasterTransaction().fetch_from_cache(txHash);
+    if (nullptr != tx)
+    {
+        if (tx->getStatus() == INCLUDED || tx->getStatus() == HELD)
+            ret[jss::tx_status] = "pending";
+        else
+            ret[jss::tx_status] = "failed";
+    }
+    else
+    {
+	    ret[jss::tx_status] = "not_found";
+    }
+		
 	return ret;
 }
 
