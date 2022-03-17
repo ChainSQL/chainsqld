@@ -290,6 +290,13 @@ doAccountTxHelp(RPC::Context& context, AccountTxArgs const& args)
     result.ledgerRange = std::get<LedgerRange>(lgrRange);
 
     result.marker = args.marker;
+    if (result.marker.has_value())
+    {
+        if (result.marker->ledgerSeq > result.ledgerRange.max)
+            return {result, rpcINVALID_LGR_RANGE};
+    }
+
+
     if (args.binary)
     {
         result.transactions = context.netOps.getTxsAccountB(
@@ -648,6 +655,12 @@ doContractTxHelp(RPC::Context& context, AccountTxArgs const& args)
     result.ledgerRange = std::get<LedgerRange>(lgrRange);
 
     result.marker = args.marker;
+
+    if (result.marker.has_value())
+    {
+        if (result.marker->ledgerSeq > result.ledgerRange.max)
+            return {result, rpcINVALID_LGR_RANGE};
+    }
 
     Schema& app = context.app;
     using AccountTx =
