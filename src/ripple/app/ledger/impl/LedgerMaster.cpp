@@ -1423,13 +1423,9 @@ LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
     genesis->setValidated();
     setValidLedger(genesis);
-    // setLedgerRangePresent(
-    //	genesis->info().seq,
-    //	genesis->info().seq);
     pendSaveValidated(app_, genesis, true, true);
-    // setPubLedger(genesis);
 
-    tryAdvance();
+    //tryAdvance();
 }
 
 void
