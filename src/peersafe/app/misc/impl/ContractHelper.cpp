@@ -125,7 +125,7 @@ namespace ripple {
                 SHAMapType::STATE, app_.getNodeFamily());
             if (root && !mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
             {
-                JLOG(mJournal.warn()) << "Get storage root failed for contract"<<to_string(contract);
+                JLOG(mJournal.warn()) << "Get storage root failed for contract "<<to_string(contract);
                 return nullptr;
             }
 
@@ -148,15 +148,23 @@ namespace ripple {
         std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, root);
         if (mapPtr == nullptr)
             return boost::none;
-
-        auto realKey = sha512Half(contract, key);
-        auto const& item = mapPtr->peekItem(realKey);
-        if (!item)
+        try
+        {
+            auto realKey = sha512Half(contract, key);
+            auto const& item = mapPtr->peekItem(realKey);
+            if (!item)
+                return boost::none;
+            uint256 ret;
+            std::memcpy(&ret, item->data(), item->size());
+            return ret;
+        }
+        catch (SHAMapMissingNode const& mn)
+        {
+            JLOG(mJournal.warn())
+                << "Fetch item for key:" << to_string(key) << " of contract "
+                << to_string(contract) << " failed.";
             return boost::none;
-
-		uint256 ret;
-        std::memcpy(&ret, item->data(), item->size());
-		return ret;
+        } 
     }
 
     void
@@ -247,54 +255,64 @@ namespace ripple {
     {
         if (mStateCache.empty())
             return;
-        for (auto it = mStateCache.begin();it != mStateCache.end();it++)
+        try
         {
-            AccountID const& contract = it->first;
-            auto const k = keylet::account(contract);
-            auto pSle = open.read(k);
-            if (pSle != nullptr)
+            for (auto it = mStateCache.begin(); it != mStateCache.end(); it++)
             {
-                // For a contract SLE
-                auto newSle = std::make_shared<SLE>(*pSle);
-                auto& mapStore = newSle->peekFieldM256(sfStorageOverlay);
-                std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, mapStore.rootHash());
-                if (mapPtr == nullptr)
-                    continue;
-
-                // Modify SHAMap
-                for (auto iter = it->second.begin(); iter != it->second.end(); iter++)
+                AccountID const& contract = it->first;
+                auto const k = keylet::account(contract);
+                auto pSle = open.read(k);
+                if (pSle != nullptr)
                 {
-                    auto key = sha512Half(contract, iter->first);
-                    switch (iter->second.type)
-                    {
-                        case ValueOpType::insert: 
-                        {
-                            auto item = makeSHAMapItem(key, iter->second.value);
-                            mapPtr->addGiveItem(item,false,false);
-                            break;
-                        }                            
-                        case ValueOpType::modify: 
-                        {
-                            auto item = makeSHAMapItem(key, iter->second.value);
-                            mapPtr->updateGiveItem(item, false, false);
-                            break;
-                        }
-                        case ValueOpType::erase: 
-                            mapPtr->delItem(key);
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                //Store to disk
-                mapPtr->flushDirty(hotACCOUNT_NODE, open.seq());
-                mapStore.updateRoot(mapPtr->getHash().as_uint256());
+                    // For a contract SLE
+                    auto newSle = std::make_shared<SLE>(*pSle);
+                    auto& mapStore = newSle->peekFieldM256(sfStorageOverlay);
+                    std::shared_ptr<SHAMap> mapPtr =
+                        getSHAMap(contract, mapStore.rootHash());
+                    if (mapPtr == nullptr)
+                        continue;
 
-                //Update SLE
-                newSle->setFieldM256(sfStorageOverlay, mapStore);
-                open.rawReplace(newSle);
+                    // Modify SHAMap
+                    for (auto iter = it->second.begin();
+                         iter != it->second.end();
+                         iter++)
+                    {
+                        auto key = sha512Half(contract, iter->first);
+                        switch (iter->second.type)
+                        {
+                            case ValueOpType::insert: {
+                                auto item =
+                                    makeSHAMapItem(key, iter->second.value);
+                                mapPtr->addGiveItem(item, false, false);
+                                break;
+                            }
+                            case ValueOpType::modify: {
+                                auto item =
+                                    makeSHAMapItem(key, iter->second.value);
+                                mapPtr->updateGiveItem(item, false, false);
+                                break;
+                            }
+                            case ValueOpType::erase:
+                                mapPtr->delItem(key);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    // Store to disk
+                    mapPtr->flushDirty(hotACCOUNT_NODE, open.seq());
+                    mapStore.updateRoot(mapPtr->getHash().as_uint256());
+
+                    // Update SLE
+                    newSle->setFieldM256(sfStorageOverlay, mapStore);
+                    open.rawReplace(newSle);
+                }
             }
         }
+        catch (SHAMapMissingNode const& mn)
+        {
+            JLOG(mJournal.warn()) << "ContractHelper::apply failed.";
+        }        
     }
 }
 
