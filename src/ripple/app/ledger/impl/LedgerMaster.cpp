@@ -948,6 +948,10 @@ LedgerMaster::onLastFullLedgerLoaded(
         setPubLedger(ledger);
         //app_.getOrderBookDB().setup(ledger);
     }
+    app_.getJobQueue().addJob(
+    jtADVANCE, "tryFill", [this, ledger](Job& j) {
+        tryFill(j, ledger);
+    });
 }
     
 void LedgerMaster::setFullLedger(
