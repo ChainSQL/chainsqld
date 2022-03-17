@@ -1416,8 +1416,8 @@ LedgerMaster::checkLoadLedger()
                     catch (SHAMapMissingNode const& mn)
                     {
                         JLOG(m_journal.warn())
-                            << "Ledger " << loadLedger->info().seq
-                            << " is missing nodes SHAMapMissingNode catched.";
+                            << "walkLedger exception for " << loadLedger->info().seq << ":"
+                            << mn.what();
                         app_.getInboundLedgers().acquire(
                             loadLedger->info().hash,
                             loadLedger->info().seq,

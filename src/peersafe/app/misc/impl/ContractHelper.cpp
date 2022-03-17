@@ -162,7 +162,7 @@ namespace ripple {
         {
             JLOG(mJournal.warn())
                 << "Fetch item for key:" << to_string(key) << " of contract "
-                << to_string(contract) << " failed.";
+                << to_string(contract) << " failed :" <<mn.what();
             return boost::none;
         } 
     }
@@ -311,7 +311,7 @@ namespace ripple {
         }
         catch (SHAMapMissingNode const& mn)
         {
-            JLOG(mJournal.warn()) << "ContractHelper::apply failed.";
+            JLOG(mJournal.warn()) << "ContractHelper::apply failed:" << mn.what();
         }        
     }
 }
