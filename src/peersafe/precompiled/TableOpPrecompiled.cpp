@@ -28,10 +28,14 @@ const char* const TABLE_METHOD_INSERT_HASH_STR =
     "insertWithHash(address,string,string,string)";
 const char* const TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR =
     "insertWithHashByContract(address,string,string,string)";
-const char* const TABLE_METHOD_UPDATE_STR =
+const char* const TABLE_METHOD_UPDATE_GETRAW_STR =
     "update(address,string,string,string)";
-const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
+const char* const TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR = 
      "updateByContract(address,string,string,string)";
+const char* const TABLE_METHOD_UPDATE_STR =
+    "update(address,string,string)";
+const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
+     "updateByContract(address,string,string)";
 const char* const TABLE_METHOD_DELETE_DATA_STR =
     "deleteData(address,string,string)";
 const char* const TABLE_METHOD_DELETE_BY_CONTRACT_STR =
@@ -67,10 +71,14 @@ TableOpPrecompiled::TableOpPrecompiled()
         getFuncSelector(TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR);
     name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_GETRAW_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_GETRAW_STR);
     name2Selector_[TABLE_METHOD_UPDATE_STR] =
         getFuncSelector(TABLE_METHOD_UPDATE_STR);
     name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR] =
         getFuncSelector(TABLE_METHOD_UPDATE_BY_CONTTRACT_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR);
     name2Selector_[TABLE_METHOD_DELETE_DATA_STR] =
         getFuncSelector(TABLE_METHOD_DELETE_DATA_STR);
     name2Selector_[TABLE_METHOD_DELETE_BY_CONTRACT_STR] =
@@ -164,15 +172,25 @@ TableOpPrecompiled::execute(
             abi.abiOut(data, owner, tableName, raw);
             ret = _s.insertData(caller, owner, tableName, raw);
         }
-        if (func == name2Selector_[TABLE_METHOD_UPDATE_STR])
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_GETRAW_STR])
         {
             abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
             ret = _s.updateData(origin, owner, tableName, rawGet, rawUpdate);
         }
-        if (func == name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR])
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.updateData(origin, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR])
         {
             abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
             ret = _s.updateData(caller, owner, tableName, rawGet, rawUpdate);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.updateData(caller, owner, tableName, raw);
         }
         if (func == name2Selector_[TABLE_METHOD_DELETE_DATA_STR])
         {

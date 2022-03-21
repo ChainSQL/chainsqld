@@ -83,6 +83,8 @@ public:
 	int64_t insertData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw,std::string const& _autoFillField = "");
 	int64_t deleteData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
 	int64_t updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw);
+	int64_t updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);
+
 
 	//Select related
 	uint256 getDataHandle(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw);

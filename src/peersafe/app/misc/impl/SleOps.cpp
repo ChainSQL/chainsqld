@@ -446,7 +446,12 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, T_GRANT);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfUser, _account2);
-			std::string _sRaw = "[" + _raw + "]";
+            std::string _sRaw;
+            if (_raw[0] == '[')
+                std::string _sRaw = _raw;     
+            else
+				std::string _sRaw = "[" + _raw + "]";
+			
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
@@ -494,7 +499,12 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, R_DELETE);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
-			std::string _sRaw = "[" + _raw + "]";
+            std::string _sRaw;
+			if (_raw[0] == '[')
+                _sRaw = _raw;     
+            else
+				_sRaw = "[" + _raw + "]";
+			
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
@@ -519,6 +529,24 @@ namespace ripple {
 			else
 				_sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
+		//
+		return disposeTableTx(tx, _account, _sTableName);
+	}
+
+	int64_t SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	{
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLSTATEMENT,
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, R_UPDATE);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfOwner, _owner);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
