@@ -36,6 +36,7 @@
 #include <ripple/app/misc/NetworkOPs.h>
 #include <grpcpp/grpcpp.h>
 #include <ripple/app/misc/impl/AccountTxPaging.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -675,9 +676,9 @@ doContractTxHelp(RPC::Context& context, AccountTxArgs const& args)
     convertBlobsToTxResult(ret, ledger_index, rawTxn, rawMeta, app);
     };
 
-     contractTxPage(
+    contractTxPage(
             app,
-            app.getTxnDB(),
+            app.getTxnDB().connRead(),
             app.accountIDCache(),
             bound,
             args.account,

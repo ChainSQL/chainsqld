@@ -356,7 +356,11 @@ private:
             jvRequest[jss::limit] = jvParams[2u].asUInt();
         if (jvParams.size() >= 4)
             jvRequest[jss::marker] = jvParams[3u].asString();
-        // contract_tx contractAddress [ledger_min [ledger_max [limit]]]
+
+        return jvRequest;
+    }
+
+    // contract_tx contractAddress [ledger_min [ledger_max [limit]]]
     Json::Value
     parseContractTransactions(Json::Value const& jvParams)
     {
@@ -401,10 +405,6 @@ private:
         return jvRequest;
     }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 5c3c26476 (Add the query contract calling interface)
     // tx_account accountID [ledger_min [ledger_max [limit]]]] [binary] [count]
     // [forward]
     Json::Value
