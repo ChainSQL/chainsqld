@@ -208,6 +208,9 @@ Payment::preflight(PreflightContext const& ctx)
 TER
 Payment::preclaim(PreclaimContext const& ctx)
 {
+    auto checkRet = checkAuthority(ctx, ctx.tx[sfAccount], lsfPaymentAuth);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
     // Ripple if source or destination is non-native or if there are paths.
     std::uint32_t const uTxFlags = ctx.tx.getFlags();
     bool const partialPaymentAllowed = uTxFlags & tfPartialPayment;

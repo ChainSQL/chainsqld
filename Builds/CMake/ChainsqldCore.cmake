@@ -698,6 +698,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/tx/impl/SqlTransaction.cpp
   src/peersafe/app/tx/impl/TableListSet.cpp
   src/peersafe/app/tx/impl/FreezeAccount.cpp
+  src/peersafe/app/tx/impl/AccountAuthorize.cpp
   src/peersafe/app/util/Common.cpp
   src/peersafe/app/util/TableSyncUtil.cpp
   src/peersafe/app/prometh/impl/PrometheusClient.cpp
@@ -724,6 +725,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/precompiled/PreContractRegister.cpp
   src/peersafe/precompiled/ABI.cpp
   src/peersafe/precompiled/TableOpPrecompiled.cpp
+  src/peersafe/precompiled/ToolsPrecompiled.cpp
   src/peersafe/precompiled/Utils.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
@@ -760,6 +762,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/consensus/hotstuff/impl/Vote.cpp
   src/peersafe/consensus/hotstuff/impl/VoteData.cpp
   src/peersafe/rpc/handlers/AccountTables.cpp
+  src/peersafe/rpc/handlers/AccountAuthorized.cpp
   src/peersafe/rpc/handlers/CryptCheck.cpp
   src/peersafe/rpc/handlers/GenCsr.cpp
   src/peersafe/rpc/handlers/LedgerTxsHandler.cpp

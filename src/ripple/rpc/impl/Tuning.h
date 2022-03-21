@@ -33,6 +33,12 @@ struct LimitRange
     unsigned int rmin, rdefault, rmax;
 };
 
+/** Limits for the account_authorized command. */
+static LimitRange constexpr accountAuthorized = {
+    10,
+    std::numeric_limits<unsigned int>::max(),
+    400};
+
 /** Limits for the account_lines command. */
 static LimitRange constexpr accountLines = {10, 200, 400};
 

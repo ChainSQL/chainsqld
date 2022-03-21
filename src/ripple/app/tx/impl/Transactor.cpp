@@ -376,6 +376,33 @@ Transactor::checkFrozen(PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+TER
+Transactor::checkAuthority(
+    PreclaimContext const& ctx_,
+    AccountID const acc,
+    LedgerSpecificFlags flag)
+{
+    auto const sle = ctx_.view.read(keylet::account(acc));
+    if (!sle)
+        return tefINTERNAL;
+
+    if (ctx_.app.config().ADMIN && acc == *ctx_.app.config().ADMIN)
+        return tesSUCCESS;
+
+    if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+    {
+        if (!(sle->getFlags() & flag))
+            return tecNO_PERMISSION;
+    }
+    else
+    {
+        if (sle->getFlags() & flag)
+            return tecNO_PERMISSION;
+    }
+
+    return tesSUCCESS;
+}
+
 void Transactor::setExtraMsg(std::string msg)
 {
 	mDetailMsg = msg;

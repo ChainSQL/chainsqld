@@ -54,7 +54,25 @@ namespace ripple {
 
 	TER SmartContract::preclaim(PreclaimContext const& ctx)
 	{
-		auto& tx = ctx.tx;
+        auto& tx = ctx.tx;
+        AccountID srcAcc = tx.getAccountID(sfAccount);
+        auto const k = keylet::account(srcAcc);
+        auto const sle = ctx.view.read(k);
+        if (tx.getFieldU16(sfContractOpType) == ContractCreation)
+        {
+            if (auto res =
+                    checkAuthority(ctx, srcAcc, lsfDeployContractAuth);
+                res != tesSUCCESS)
+                return res;
+        }
+
+        if (tx.isFieldPresent(sfContractValue) &&
+            tx.getFieldAmount(sfContractValue).zxc().drops() > 0)
+        {
+            if (auto res = checkAuthority(ctx, srcAcc, lsfPaymentAuth);
+                res != tesSUCCESS)
+                return res;
+        }
 
         if (!isContractTypeValid((ContractOpType)tx.getFieldU16(sfContractOpType)))
             return temBAD_OPTYPE;
@@ -69,7 +87,7 @@ namespace ripple {
 			}
 		}			
 
-
+		
 		// Avoid unaffordable transactions.
         int64_t gas_price = ctx.view.fees().gas_price;
 		int64_t gas = tx.getFieldU32(sfGas);
@@ -82,8 +100,6 @@ namespace ripple {
 			return temMALFORMED;
 		}
 
-		auto const k = keylet::account(tx.getAccountID(sfAccount));
-		auto const sle = ctx.view.read(k);
 		auto balance = sle->getFieldAmount(sfBalance).zxc().drops();
 		if (balance < totalCost)
 		{

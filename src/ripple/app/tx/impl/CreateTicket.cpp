@@ -50,6 +50,11 @@ CreateTicket::preflight(PreflightContext const& ctx)
 
     return preflight2(ctx);
 }
+TER
+CreateTicket::preclaim(PreclaimContext const& ctx)
+{
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
+}
 
 TER
 CreateTicket::doApply()

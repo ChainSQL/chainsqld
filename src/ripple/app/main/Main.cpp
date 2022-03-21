@@ -139,6 +139,7 @@ printHelp(const po::options_description& desc)
            "[strict]\n"
            "     account_tx accountID [ledger_min [ledger_max [limit "
            "[offset]]]] [binary] [count] [descending]\n"
+           "     account_authorized [accountID [setFlag [limit [marker]]]]"
            "     book_offers <taker_pays> <taker_gets> [<taker [<ledger> "
            "[<limit> [<proof> [<marker>]]]]]\n"
            "     can_delete [<ledgerid>|<ledgerhash>|now|always|never]\n"

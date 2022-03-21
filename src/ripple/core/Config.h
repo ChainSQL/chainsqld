@@ -231,6 +231,8 @@ public:
 
     //governance
     bool                        OPEN_ACCOUNT_DELAY = false;
+    boost::optional<AccountID>  ADMIN;
+    bool                        DEFAULT_AUTHORITY_ENABLED = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}

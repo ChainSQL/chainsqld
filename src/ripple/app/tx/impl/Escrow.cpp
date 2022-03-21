@@ -159,7 +159,11 @@ EscrowCreate::preflight(PreflightContext const& ctx)
 
     return preflight2(ctx);
 }
-
+TER
+EscrowCreate::preclaim(PreclaimContext const& ctx)
+{
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);
+}
 TER
 EscrowCreate::doApply()
 {
@@ -447,6 +451,12 @@ EscrowFinish::preflight(PreflightContext const& ctx)
     }
 
     return tesSUCCESS;
+}
+
+TER
+EscrowFinish::preclaim(PreclaimContext const& ctx)
+{
+    return checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth);;
 }
 
 FeeUnit64
