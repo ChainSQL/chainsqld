@@ -36,7 +36,7 @@
 namespace ripple {
 
 std::string
-static getPort(Application& app)
+PromethExposer::getPort(Application& app)
 {
     std::string port;
     auto prometh_section = app.config().section(ConfigSection::prometheus());
@@ -61,48 +61,48 @@ PromethExposer::PromethExposer(
     , journal_(journal)
     , cfg_(cfg)
     , pubkey_node_(pubKey)
-    , exposer()
-    , registry(std::make_shared<prometheus::Registry>())
-    , schema_gauge(prometheus::BuildGauge()
+    , m_exposer()
+    , m_registry(std::make_shared<prometheus::Registry>())
+    , m_schema_gauge(prometheus::BuildGauge()
                              .Name("Chainsqld_schema_total")
                              .Help("Number of schema")
                              .Labels({{"pubkey_node", pubkey_node_}})
-                             .Register(*registry))
-    , peer_gauge(prometheus::BuildGauge()
+                             .Register(*m_registry))
+    , m_peer_gauge(prometheus::BuildGauge()
                             .Name("Chainsqld_peer_status")
                             .Help("peer status")
                             .Labels({{"pubkey_node", pubkey_node_}})
-                            .Register(*registry))
-    , txSucessCount_gauge(prometheus::BuildGauge()
+                            .Register(*m_registry))
+    , m_txSucessCount_gauge(prometheus::BuildGauge()
                                     .Name("Chainsqld_tx_success_count")
                                     .Help("tx success count")
                                     .Labels({{"pubkey_node", pubkey_node_}})
-                                    .Register(*registry))
-    , txFailCount_gauge(prometheus::BuildGauge()
+                                    .Register(*m_registry))
+    , m_txFailCount_gauge(prometheus::BuildGauge()
                                   .Name("Chainsqld_tx_fail_count")
                                   .Help("tx fail count")
                                   .Labels({{"pubkey_node", pubkey_node_}})
-                                  .Register(*registry))
-    , contractCreateCount_gauge(prometheus::BuildGauge()
+                                  .Register(*m_registry))
+    , m_contractCreateCount_gauge(prometheus::BuildGauge()
                                         .Name("Chainsqld_contract_create_count")
                                         .Help("contract create count")
                                         .Labels({{"pubkey_node", pubkey_node_}})
-                                        .Register(*registry))
-    , contractCallCount_gauge(prometheus::BuildGauge()
+                                        .Register(*m_registry))
+    , m_contractCallCount_gauge(prometheus::BuildGauge()
                                    .Name("Chainsqld_contract_call_count")
                                         .Help("contract call count")
                                         .Labels({{"pubkey_node", pubkey_node_}})
-                                        .Register(*registry))
-    , accountCount_gauge(prometheus::BuildGauge()
+                                        .Register(*m_registry))
+    , m_accountCount_gauge(prometheus::BuildGauge()
                                    .Name("Chainsqld_account_count")
                                    .Help("account count")
                                    .Labels({{"pubkey_node", pubkey_node_}})
-                                   .Register(*registry))
-    , blockHeight_gauge(prometheus::BuildGauge()
+                                   .Register(*m_registry))
+    , m_blockHeight_gauge(prometheus::BuildGauge()
                                    .Name("Chainsqld_block_height")
                                    .Help("block height")
                                    .Labels({{"pubkey_node", pubkey_node_}})
-                                   .Register(*registry))
+                                   .Register(*m_registry))
 {
      using namespace prometheus;
 
@@ -113,8 +113,8 @@ PromethExposer::PromethExposer(
         if (port.empty())
             return;
         auto address = "0.0.0.0:"+ port;
-        exposer = std::make_unique<prometheus::Exposer>(address);
-        exposer->RegisterCollectable(registry);
+        m_exposer = std::make_unique<prometheus::Exposer>(address);
+        m_exposer->RegisterCollectable(m_registry);
     }
     catch (std::exception const&)
     {
@@ -127,13 +127,13 @@ PromethExposer::PromethExposer(
 }
 PromethExposer::~PromethExposer()
 {
-    registry.reset();
+    m_registry.reset();
 
 }
 std::shared_ptr<prometheus::Registry>
 PromethExposer::getRegistry()
 {
-        return registry;
+        return m_registry;
 }
 
 std::string const&
@@ -145,49 +145,49 @@ PromethExposer::getPubKey()
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getSchemaGauge()
 {
-    return schema_gauge;
+    return m_schema_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getPeerGauge()
 {
-    return peer_gauge;
+    return m_peer_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getTxSucessCountGauge()
 {
-    return txSucessCount_gauge;
+    return m_txSucessCount_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getTxFailCountGauge()
 {
-    return txFailCount_gauge;
+    return m_txFailCount_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getContractCreateCountGauge()
 {
-    return contractCreateCount_gauge;
+    return m_contractCreateCount_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getContractCallCountGauge()
 {
-    return contractCallCount_gauge;
+    return m_contractCallCount_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getAccountCountGauge()
 {
-    return accountCount_gauge;
+    return m_accountCount_gauge;
 }
 
 prometheus::Family<prometheus::Gauge>&
 PromethExposer::getBlockHeightGauge()
 {
-    return blockHeight_gauge;
+    return m_blockHeight_gauge;
 }
 
 PrometheusClient::PrometheusClient(
@@ -198,85 +198,99 @@ PrometheusClient::PrometheusClient(
     : app_(app)
     , journal_(journal)
     , cfg_(cfg)
-    , mPromethTime(app.timeKeeper().closeTime())
+    , m_promethTime(app.timeKeeper().closeTime())
     , exposer_(exposer)
-    , schema_gauge(exposer_.getSchemaGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , peer_gauge(exposer_.getPeerGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}, {"peer_status", "peer_status"}}))
-    , txSucessCount_gauge(exposer_.getTxSucessCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , txFailCount_gauge(exposer_.getTxFailCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , contractCreateCount_gauge(exposer_.getContractCreateCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , contractCallCount_gauge(exposer_.getContractCallCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , accountCount_gauge(exposer_.getAccountCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-    , blockHeight_gauge(exposer_.getBlockHeightGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
-
+    , m_schema_gauge(exposer_.getSchemaGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_peer_gauge(exposer_.getPeerGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}, {"peer_status", "peer_status"}}))
+    , m_txSucessCount_gauge(exposer_.getTxSucessCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_txFailCount_gauge(exposer_.getTxFailCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_contractCreateCount_gauge(exposer_.getContractCreateCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_contractCallCount_gauge(exposer_.getContractCallCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_accountCount_gauge(exposer_.getAccountCountGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_blockHeight_gauge(exposer_.getBlockHeightGauge().Add({{"schemaId", to_string(app_.getSchemaParams().schemaId())}}))
+    , m_promethSle(std::make_unique<SLE>(keylet::statis()))
+    
 {
     
 }
 PrometheusClient::~PrometheusClient()
 {
-    exposer_.getSchemaGauge().Remove(&schema_gauge);
-    exposer_.getPeerGauge().Remove(&peer_gauge);
-    exposer_.getTxSucessCountGauge().Remove(&txSucessCount_gauge);
-    exposer_.getTxFailCountGauge().Remove(&txFailCount_gauge);
-    exposer_.getContractCreateCountGauge().Remove(&contractCreateCount_gauge);
-    exposer_.getContractCallCountGauge().Remove(&contractCallCount_gauge);
-    exposer_.getAccountCountGauge().Remove(&accountCount_gauge);
-    exposer_.getBlockHeightGauge().Remove(&blockHeight_gauge);
+    exposer_.getSchemaGauge().Remove(&m_schema_gauge);
+    exposer_.getPeerGauge().Remove(&m_peer_gauge);
+    exposer_.getTxSucessCountGauge().Remove(&m_txSucessCount_gauge);
+    exposer_.getTxFailCountGauge().Remove(&m_txFailCount_gauge);
+    exposer_.getContractCreateCountGauge().Remove(&m_contractCreateCount_gauge);
+    exposer_.getContractCallCountGauge().Remove(&m_contractCallCount_gauge);
+    exposer_.getAccountCountGauge().Remove(&m_accountCount_gauge);
+    exposer_.getBlockHeightGauge().Remove(&m_blockHeight_gauge);
 }
 
-
-void
-PrometheusClient::timerEntry(NetClock::time_point const& now)
+std::shared_ptr<SLE>&
+PrometheusClient::getPromethSle()
 {
-    std::string port = getPort(app_.app());
-     
-    if (port.empty() || now - mPromethTime < promethDataCollectionInterval)
-    {
+    return m_promethSle;
+}
+
+void 
+PrometheusClient::setup()
+{
+    if (exposer_.getPort(app_.app()).empty())
         return;
-    }
-    mPromethTime = now;
-    int count = getSchemaCount(app_);
-    schema_gauge.Set(count);
-
-    auto server_status = app_.getOPs().getServerStatus();
-    int status = server_status == "normal" ? 1 : 0;
-    peer_gauge.Set(status);
-
     auto ledger = app_.openLedger().current();
     if (ledger != nullptr)
     {
         auto sleStatis = ledger->read(keylet::statis());
         if (sleStatis)
         {
-            auto count = sleStatis->getFieldU32(sfTxSuccessCountField);
-            txSucessCount_gauge.Set(count);
-            count = sleStatis->getFieldU32(sfTxFailureCountField);
-            txFailCount_gauge.Set(count);
-            count = sleStatis->getFieldU32(sfContractCreateCountField);
-            contractCreateCount_gauge.Set(count);
-            count = sleStatis->getFieldU32(sfContractCallCountField);
-            contractCallCount_gauge.Set(count);
-            count = sleStatis->getFieldU32(sfAccountCountField);
-            accountCount_gauge.Set(count);
+            return;
         }
-        //else
-        //{
-        //    TxnDBCon& connection = app_.getTxnDB();
-        //    txSucessCount_gauge.Set( LedgerAdjust::getTxSucessCount(connection.checkoutDbRead()));
-        //    txFailCount_gauge.Set(LedgerAdjust::getTxFailCount(connection.checkoutDbRead()));
-        //    contractCallCount_gauge.Set(LedgerAdjust::getContractCallCount(connection.checkoutDbRead()));
-        //   
-        //    int contractCount = LedgerAdjust::getContractCreateCount(connection.checkoutDbRead());
-        //    contractCreateCount_gauge.Set(contractCount);
-        //    int accountCount = LedgerAdjust::getAccountCount(connection.checkoutDbRead());
-        //    if (accountCount > 1)
-        //        accountCount = accountCount - contractCount;
-        //    accountCount_gauge.Set(accountCount);
-        //}
-        blockHeight_gauge.Set(ledger->info().seq -1);
+    }
+    app_.getJobQueue().addJob(jtCREATE_PROMETH_SLE, "CreatePromethSle", [this](Job&) { LedgerAdjust::createSle(app_); },app_.doJobCounter());
+}
+
+void
+PrometheusClient::timerEntry(NetClock::time_point const& now)
+{
+    std::string port = app_.app().getPromethExposer().getPort(app_.app());
+     
+    if (port.empty() || now - m_promethTime < promethDataCollectionInterval)
+    {
+        return;
+    }
+    m_promethTime = now;
+    int count = getSchemaCount(app_);
+    m_schema_gauge.Set(count);
+
+    auto server_status = app_.getOPs().getServerStatus();
+    int status = server_status == "normal" ? 1 : 0;
+    m_peer_gauge.Set(status);
+
+    auto ledger = app_.openLedger().current();
+    if (ledger != nullptr)
+    {
+        auto sleStatis = ledger->read(keylet::statis());
+        if (!sleStatis)
+        {
+            if (LedgerAdjust::isCompleteReadData(app_))
+                sleStatis = getPromethSle();
+            else
+                return;
+        }
+       
+        auto count = sleStatis->getFieldU32(sfTxSuccessCountField);
+        m_txSucessCount_gauge.Set(count);
+        count = sleStatis->getFieldU32(sfTxFailureCountField);
+        m_txFailCount_gauge.Set(count);
+        count = sleStatis->getFieldU32(sfContractCreateCountField);
+        m_contractCreateCount_gauge.Set(count);
+        count = sleStatis->getFieldU32(sfContractCallCountField);
+        m_contractCallCount_gauge.Set(count);
+        count = sleStatis->getFieldU32(sfAccountCountField);
+        m_accountCount_gauge.Set(count);
+        m_blockHeight_gauge.Set(ledger->info().seq -1);
     }
     else
-        blockHeight_gauge.Set(-1);
+        m_blockHeight_gauge.Set(-1);
 }
 
 int

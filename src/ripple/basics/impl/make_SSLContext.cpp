@@ -287,11 +287,26 @@ initAuthenticated(
     boost::asio::ssl::context& context,
     std::string const& key_file,
     std::string const& cert_file,
-    std::string const& chain_file)
+    std::string const& chain_file,
+    std::vector<std::string> const& ca_list)
 {
     SSL_CTX* const ssl = context.native_handle();
 
     bool cert_set = false;
+
+    if(!ca_list.empty())
+    {
+        boost::system::error_code ec;
+
+        for(auto it = ca_list.begin(); it != ca_list.end(); it++)
+        {
+            context.load_verify_file(*it, ec);
+            if (ec)
+            {
+                LogicError(error_message("Problem with SSL ca file.", ec).c_str());
+            }
+        }
+    }
 
     if (!cert_file.empty())
     {
@@ -304,6 +319,14 @@ initAuthenticated(
         {
             LogicError(error_message("Problem with SSL certificate file.", ec)
                            .c_str());
+        }
+        
+        X509* cert = ripple::readCertFromFile(cert_file.c_str());
+        auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
+        if(EVP_PKEY_EC == pkID)
+        {
+            static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
+            SSL_CTX_set1_curves(context.native_handle(), my_pref_list, 2);
         }
 
         cert_set = true;
@@ -462,10 +485,11 @@ make_SSLContextAuthed(
     std::string const& keyFile,
     std::string const& certFile,
     std::string const& chainFile,
-    std::string const& cipherList)
+    std::string const& cipherList,
+    std::vector<std::string> const& vecCaList)
 {
     auto context = openssl::detail::get_context(cipherList);
-    openssl::detail::initAuthenticated(*context, keyFile, certFile, chainFile);
+    openssl::detail::initAuthenticated(*context, keyFile, certFile, chainFile, vecCaList);
     return context;
 }
 

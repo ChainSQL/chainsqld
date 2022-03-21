@@ -154,6 +154,8 @@ InboundLedger::init(ScopedLockType& collectionLock)
     if (mReason == Reason::HISTORY || mReason == Reason::SHARD)
         return;
 
+    app_.getInboundLedgers().onLedgerComplete(getSeq());
+
     app_.getLedgerMaster().storeLedger(mLedger);
 
     // Check if this could be a newer fully-validated ledger
@@ -567,6 +569,7 @@ InboundLedger::done()
         jtLEDGER_DATA, "AcquisitionDone", [self = shared_from_this()](Job&) {
             if (self->mComplete && !self->mFailed)
             {
+                self->app_.getInboundLedgers().onLedgerComplete(self->getSeq());
                 if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
                 {
                     self->app().getLedgerMaster().doValid(self->getLedger());

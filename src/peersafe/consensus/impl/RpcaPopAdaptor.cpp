@@ -199,6 +199,8 @@ RpcaPopAdaptor::validate(
             }
         });
 
+    v->sign(valSecret_);
+
     handleNewValidation(v, "local");
 
     Blob validation = v->getSerialized();
@@ -441,6 +443,14 @@ RpcaPopAdaptor::handleNewValidation(
           << " from " << id << " via " << source << ": " << msg << "\n"
           << " [" << val->getSerializer().slice() << "]";
     };
+
+    if (source != "local" && !verifyDigest(
+            signingKey, hash, makeSlice(val->getFieldVL(sfSignature)), false))
+    {
+        if (j.warn())
+            dmp(j.warn(), "signature verify failed");
+        return false;
+    }
 
     if (!val->isFieldPresent(sfLedgerSequence))
     {

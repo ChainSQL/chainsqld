@@ -251,6 +251,7 @@ parse_Port(ParsedPort& port, Section const& section, std::ostream& log)
     set(port.ssl_cert, "ssl_cert", section);
     set(port.ssl_chain, "ssl_chain", section);
     set(port.ssl_ciphers, "ssl_ciphers", section);
+    set(port.ssl_verify, "ssl_verify", section);
 
     port.pmd_options.server_enable =
         section.value_or("permessage_deflate", true);

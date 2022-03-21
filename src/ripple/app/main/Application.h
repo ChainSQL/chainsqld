@@ -84,7 +84,8 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
-class CertList;
+class UserCertList;
+class PeerCertList;
 class Cluster;
 class PreContractFace;
 class TxStoreDBConn;
@@ -109,10 +110,11 @@ class PeerReservationTable;
 
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations;
+class RCLValidationsPolicy;
 class RCLValidationsAdaptor;
-using RCLValidations = Validations<RCLValidationsAdaptor>;
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 
 namespace RPC {
 class ShardArchiveHandler;
@@ -177,6 +179,8 @@ public:
     getLoadManager() = 0;
     virtual Overlay&
     overlay() = 0;
+    virtual PeerCertList&
+    peerCertList() = 0;
     virtual perf::PerfLog&
     getPerfLog() = 0;
     virtual Resource::Manager&
@@ -224,8 +228,8 @@ public:
     validators(SchemaID const& id = beast::zero) = 0;
     virtual ValidatorSite&
     validatorSites(SchemaID const& id = beast::zero) = 0;
-    virtual CertList&
-    certList(SchemaID const& id = beast::zero) = 0;
+    virtual UserCertList&
+    userCertList(SchemaID const& id = beast::zero) = 0;
     virtual ManifestCache&
     validatorManifests(SchemaID const& id = beast::zero) = 0;
     virtual ManifestCache&

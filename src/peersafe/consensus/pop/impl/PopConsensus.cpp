@@ -413,7 +413,10 @@ PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
         }
     }
 
-    checkVoting();
+    if (result_)
+    {
+        checkVoting();
+    }
 }
 
 // -------------------------------------------------------------------
@@ -1189,9 +1192,6 @@ PopConsensus::peerViewChange(
 bool
 PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
 {
-    if (waitingForInit())
-        return false;
-
     JLOG(j_.info()) << "Processing peer ViewChange toView="
                     << viewChange->toView() << ", PublicKey index="
                     << adaptor_.getPubIndex(viewChange->nodePublic())
@@ -1199,37 +1199,14 @@ PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
                     << ",PrevHash=" << viewChange->prevHash();
 
     viewChangeManager_.recvViewChange(viewChange);
-    //bool saved = viewChangeManager_.recvViewChange(viewChange);
-    //if (saved)
-    {
-        JLOG(j_.info()) << "ViewChange saved, current count of this view is "
-                        << viewChangeManager_.viewCount(viewChange->toView());
 
-        checkChangeView(viewChange->toView());
-        
-    //    if (waitingForInit() && mode_.get() != ConsensusMode::wrongLedger)
-    //    {
-    //        if (viewChange->prevSeq() > prevLedgerSeq_)
-    //        {
-    //            JLOG(j_.warn())
-    //                << "Init time switch to netLedger " << viewChange->prevSeq()
-    //                << ":" << viewChange->prevHash();
-    //            prevLedgerID_ = viewChange->prevHash();
-    //            prevLedgerSeq_ = viewChange->prevSeq();
-    //            //view_ = viewChange->toView() - 1;
-    //            //checkLedger();
-    //        }
-    //        else if (
-    //            viewChange->prevSeq() == previousLedger_.seq() &&
-    //            viewChange->toView() > view_ + 1)
-    //        {
-    //            JLOG(j_.warn())
-    //                << "Init time switch to view " << viewChange->toView() - 1;
-    //            view_ = viewChange->toView() - 1;
-    //        }
-    //    }
-    }
+    JLOG(j_.info()) << "ViewChange saved, current count of this view is "
+                    << viewChangeManager_.viewCount(viewChange->toView());
 
+    if (waitingForInit())
+        return false;
+
+    checkChangeView(viewChange->toView());
     adaptor_.touchAcquringLedger(viewChange->prevHash());
 
     return true;

@@ -109,7 +109,7 @@ private:
 
     TimeKeeper&    timeKeeper_;
     ManifestCache& publisherManifests_;
-    CertList&      certList_;
+    UserCertList&  userCertList_;
 
     // Currently supported version of publisher list format
     static constexpr std::uint32_t requiredListVersion = 1;

@@ -17,18 +17,30 @@ Json::Value doGenCsr(RPC::JsonContext& context)
 {
 
 	Json::Value ret(context.params);
+    
+    auto params = context.params;
+#ifdef HARD_GM
+    KeyType keyType = KeyType::gmalg;
+#else
+    KeyType keyType = CommonKey::chainAlgTypeG;
+#endif
 
-	if (ret[jss::tx_json].size() != 2)
-	{
-		std::string errMsg = "must follow 2 params,in format:\"seed\" \"country province city organization common\".";
-		ret.removeMember(jss::tx_json);
-		return RPC::make_error(rpcINVALID_PARAMS, errMsg);
-	}
+    if (params.isMember (jss::key_type))
+    {
+        if (!params[jss::key_type].isString())
+        {
+            return RPC::expected_field_error(jss::key_type, "string");
+        }
 
-	//1. sSeed
-	std::string sSeed = ret[jss::tx_json][uint32_t(0)].asString();
-	//2.x509_subject
-	std::string sX509_subject = ret[jss::tx_json][uint32_t(1)].asString();
+        auto oKeyType = keyTypeFromString(params[jss::key_type].asString());
+
+        if (!oKeyType || *(oKeyType) == KeyType::invalid)
+            return rpcError(rpcINVALID_PARAMS);
+        keyType = *(oKeyType);
+    }
+
+	//x509_subject
+    std::string sX509_subject = params[jss::x509_subjects].asString();
 
 	std::vector<std::string> vecX509Subject;
 	boost::split(vecX509Subject, sX509_subject, boost::is_any_of(" "), boost::token_compress_on);
@@ -40,15 +52,9 @@ Json::Value doGenCsr(RPC::JsonContext& context)
 		return RPC::make_error(rpcINVALID_PARAMS, errMsg);
 	}
 
-	auto const seed = parseBase58<Seed>(sSeed);
-	if (!seed) {
-		return  rpcError(rpcBAD_SEED);
-	}
-		
-
-	std::string country         = vecX509Subject[0];
-	std::string province       = vecX509Subject[1];
-	std::string city                = vecX509Subject[2];
+	std::string country      = vecX509Subject[0];
+	std::string province     = vecX509Subject[1];
+	std::string city         = vecX509Subject[2];
 	std::string organization = vecX509Subject[3];
 	std::string common       = vecX509Subject[4];
 
@@ -59,8 +65,11 @@ Json::Value doGenCsr(RPC::JsonContext& context)
 		organization,
 		common
 	};
-	std::string strExcept;
-	bool bOK = genCsr(*seed, sub, "x509Req.csr", strExcept);
+    
+    boost::optional<Seed> seed;
+    std::string strExcept;
+    std::string seedStr = params[jss::seed].asString();
+    bool bOK = genCsr(keyType, seedStr, sub, "x509Req.csr", strExcept);
 
 	if (bOK) {
 		ret[jss::status] = "success";

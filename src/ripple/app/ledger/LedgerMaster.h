@@ -240,7 +240,7 @@ public:
     void
     failedSave(std::uint32_t seq, uint256 const& hash);
 
-    void
+    bool
     addHeldTransaction(std::shared_ptr<Transaction> const& trans);
 
     /** Apply held transactions to the open ledger

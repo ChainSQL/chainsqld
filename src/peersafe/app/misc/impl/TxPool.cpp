@@ -411,7 +411,9 @@ TxPool::removeExpired()
             it++;
     }
     if (txCnt > 0)
+    {
         JLOG(j_.warn()) << "TxPool sweep removed " << txCnt << " txs.";
+    }
 }
 
 }  // namespace ripple

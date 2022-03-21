@@ -222,7 +222,7 @@ public:
 
     // certificate sign
     std::pair<bool, std::string>
-    checkCertSign() const;
+    checkCertificate() const;
 
     // SQL Functions with metadata.
     static std::string const&

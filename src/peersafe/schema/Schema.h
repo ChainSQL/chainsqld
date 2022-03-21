@@ -52,7 +52,7 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
-class CertList;
+class UserCertList;
 class Cluster;
 class NodeStoreScheduler;
 class TxStoreDBConn;
@@ -79,10 +79,11 @@ class ConnectionPool;
 class PrometheusClient;
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations;
+class RCLValidationsPolicy;
 class RCLValidationsAdaptor;
-using RCLValidations = Validations<RCLValidationsAdaptor>;
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 
 namespace RPC {
 class ShardArchiveHandler;
@@ -164,8 +165,8 @@ public:
     validators() = 0;
     virtual ValidatorSite&
     validatorSites() = 0;
-    virtual CertList&
-    certList() = 0;
+    virtual UserCertList&
+    userCertList() = 0;
     virtual ManifestCache&
     validatorManifests() = 0;
     virtual ManifestCache&

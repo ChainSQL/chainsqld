@@ -46,6 +46,7 @@
 #include <ripple/basics/ByteUtilities.h>
 #include <ripple/basics/PerfLog.h>
 #include <ripple/basics/ResolverAsio.h>
+#include <ripple/basics/Sustain.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/beast/asio/io_latency_probe.h>
 #include <ripple/beast/core/LexicalCast.h>
@@ -67,6 +68,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/optional.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <cstring>
@@ -80,18 +82,17 @@
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/SchemaManager.h>
-#include <peersafe/precompiled/PreContractFace.h>
-#include <peersafe/app/sql/TxnDBConn.h>
-#include <boost/optional.hpp>
 #include <sstream>
 #include <ripple/basics/Sustain.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
@@ -186,6 +187,7 @@ public:
     std::unique_ptr<PromethExposer> m_promethExposer;
     std::unique_ptr<SchemaManager> m_schemaManager;
     std::unique_ptr<Overlay> m_overlay;
+    std::unique_ptr<PeerCertList> m_peerCertList;
 
     Application::MutexType m_masterMutex;
 
@@ -202,8 +204,7 @@ public:
     std::unique_ptr<ResolverAsio> m_resolver;
     io_latency_sampler m_io_latency_sampler;
     std::unique_ptr<GRPCServer> grpcServer_;
-    std::unique_ptr <PreContractFace> m_preContractFace;
-    
+    std::unique_ptr<PreContractFace> m_preContractFace;
     //--------------------------------------------------------------------------
 
     static std::size_t
@@ -288,6 +289,11 @@ public:
         , m_schemaManager(std::make_unique<SchemaManager>(
               *this,
               logs_->journal("SchemaManager")))
+
+        , m_peerCertList(std::make_unique<PeerCertList>(
+              config_->PEER_ROOT_CERTIFICATES,
+              config_->PEER_X509_CRED,
+              logs_->journal("PeerCertList")))
 
         , sweepTimer_(get_io_service())
 
@@ -441,6 +447,12 @@ public:
         return *m_overlay;
     }
 
+    PeerCertList&
+    peerCertList() override
+    {
+        return *m_peerCertList;
+    }
+
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity() override
     {
@@ -454,10 +466,11 @@ public:
         return m_schemaManager->getSchema(id)->getTxStoreDBConn();
     }
 
-    PreContractFace& getPreContractFace() override
-	{
-		return *m_preContractFace;
-	}
+    PreContractFace&
+    getPreContractFace() override
+    {
+        return *m_preContractFace;
+    }
 
     PromethExposer& getPromethExposer() override
 	{
@@ -734,12 +747,11 @@ public:
         return m_schemaManager->getSchema(id)->validatorSites();
     }
 
-    CertList&
-    certList(SchemaID const& id) override
+    UserCertList&
+    userCertList(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));
-        return m_schemaManager->getSchema(id)->certList();
-        ;
+        return m_schemaManager->getSchema(id)->userCertList();
     }
 
     ManifestCache&
@@ -1061,6 +1073,10 @@ public:
 bool
 ApplicationImp::setup()
 {
+    if (config_->checkCertificates())
+    {
+        OpenSSL_add_all_algorithms();
+    }
     if (!config_->standalone())
         timeKeeper_->run(config_->SNTP_SERVERS);
 
@@ -1093,7 +1109,7 @@ ApplicationImp::setup()
 
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount(config_->WORKERS, config_->standalone());
-	grpcServer_->run();
+    grpcServer_->run();
     // We want to intercept CTRL-C and the standard termination signal SIGTERM
     // and terminate the process. This handler will NEVER be invoked twice.
     //
@@ -1133,8 +1149,9 @@ ApplicationImp::setup()
 
     /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
     {
-        auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
-        if (encryptCardType == std::string("sjkCard"))
+        auto encryptCardType =
+    config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front(); if
+    (encryptCardType == std::string("sjkCard"))
         {
             GmEncryptObj::hEType_ = GmEncryptObj::sjkCardType;
         }

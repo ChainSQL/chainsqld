@@ -550,6 +550,7 @@ JSS(txs);                     // out: TxHistory
 JSS(type);                    // in: AccountObjects
                               // out: NetworkOPs
                               //      OverlayImpl, Logic
+JSS(types);
 JSS(type_hex);                // out: STPathSet
 JSS(unl);                     // out: UnlList
 JSS(unlimited);               // out: Connection.h
@@ -700,8 +701,8 @@ JSS (running);
 
 JSS(drops_per_byte);                       // out: LogLevel
 JSS(view);
-
 JSS(Authorize);
+JSS (x509_subjects);
 #undef JSS
 
 }  // namespace jss

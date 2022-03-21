@@ -529,7 +529,28 @@ Config::loadFromString(std::string const& fileContents)
     if (auto s = getIniFileSection(secConfig, SECTION_SNTP))
         SNTP_SERVERS = *s;
 
-    if (auto s = getIniFileSection(secConfig, SECTION_PATH_X509)) {
+    if (auto s = getIniFileSection(secConfig, SECTOIN_TRUSTED_CA_LIST))
+    {
+        auto const vecCaList = *s;
+		std::set<std::string> setCaList;
+		for (auto caItem : vecCaList) {
+
+//			std::string cafile;
+//			std::ifstream ifsPath(caItem.c_str());
+//			cafile.assign(
+//				std::istreambuf_iterator<char>(ifsPath),
+//				std::istreambuf_iterator<char>());
+//
+//			if (cafile.empty() || setCaList.count(cafile) !=0 )
+//				continue;
+//
+//			setCaList.insert(cafile);
+			TRUSTED_CA_LIST.push_back(caItem);
+		}
+    }
+
+    if (auto s = getIniFileSection(secConfig, SECTION_USER_X509_ROOT_PATH))
+    {
 
 		auto const vecCrtPath = *s;
 		std::set<std::string> setRootCert;
@@ -545,14 +566,47 @@ Config::loadFromString(std::string const& fileContents)
 				continue;
 
 			setRootCert.insert(rootCert);
-			ROOT_CERTIFICATES.push_back(rootCert);
+			USER_ROOT_CERTIFICATES.push_back(rootCert);
 		}
 
 	}
 
 	if (auto s = getIniFileSection(secConfig, SECTION_SCHEMAS)) 
 		SCHEMA_IDS = *s;
-		
+
+    if (auto peerRootCertPath =
+                getIniFileSection(secConfig, SECTION_PEER_X509_ROOT_PATH))
+        {
+            std::map<std::string, bool> duplicateCheck;
+            for (auto path : *peerRootCertPath)
+            {
+                std::string peerRootCert;
+                std::ifstream ifsPath(path.c_str());
+                peerRootCert.assign(
+                    std::istreambuf_iterator<char>(ifsPath),
+                    std::istreambuf_iterator<char>());
+                if (peerRootCert.empty() ||
+                    duplicateCheck.count(peerRootCert) > 0)
+                {
+                    continue;
+                }
+                duplicateCheck.emplace(std::make_pair(peerRootCert, true));
+                PEER_ROOT_CERTIFICATES.push_back(peerRootCert);
+            }
+        }
+
+    {
+        std::string strTemp;
+        if (getSingleSection(
+                secConfig, SECTION_PEER_X509_CRED_PATH, strTemp, j_))
+        {
+            std::ifstream ifsPath(strTemp.c_str());
+            PEER_X509_CRED.assign(
+                std::istreambuf_iterator<char>(ifsPath),
+                std::istreambuf_iterator<char>());
+        }
+    }
+
     auto cryptoAlgSection = section( ConfigSection::cryptoAlg() );
     if (!cryptoAlgSection.empty ())
     {
@@ -1010,6 +1064,48 @@ Config::getValueFor(SizedItem item, boost::optional<std::size_t> node) const
     assert(index < sizedItems.size());
     assert(!node || *node <= 4);
     return sizedItems.at(index).second.at(node.value_or(NODE_SIZE));
+}
+
+bool
+Config::checkCertificates() const
+{
+    bool flag = false;
+
+    if (!section(SECTION_USER_X509_ROOT_PATH).values().empty())
+    {
+        if (USER_ROOT_CERTIFICATES.empty())
+        {
+            Throw<std::runtime_error>("The user root certificate config is incorrectly");
+        }
+        flag = true;
+    }
+
+    if (!section(SECTION_PEER_X509_ROOT_PATH).values().empty())
+    {
+        if (PEER_ROOT_CERTIFICATES.empty())
+        {
+            Throw<std::runtime_error>("The peer credential config is incorrectly");
+        }
+        flag = true;
+    }
+
+    if (!section(SECTION_PEER_X509_CRED_PATH).values().empty())
+    {
+        if (PEER_X509_CRED.empty())
+        {
+            Throw<std::runtime_error>("The peer root certificate config is incorrectly");
+        }
+        flag = true;
+    }
+
+    if (PEER_ROOT_CERTIFICATES.empty() !=
+        PEER_X509_CRED.empty())
+    {
+        Throw<std::runtime_error>("The peer root certificate config and peer "
+                                   "credential config is inconformity");
+    }
+
+    return flag;
 }
 
 }  // namespace ripple

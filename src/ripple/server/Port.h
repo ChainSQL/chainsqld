@@ -59,6 +59,8 @@ struct Port
     std::string ssl_cert;
     std::string ssl_chain;
     std::string ssl_ciphers;
+    bool ssl_verify;
+    std::vector<std::string> ssl_calist;
     boost::beast::websocket::permessage_deflate pmd_options;
     std::shared_ptr<boost::asio::ssl::context> context;
 
@@ -101,6 +103,7 @@ struct ParsedPort
     std::string ssl_cert;
     std::string ssl_chain;
     std::string ssl_ciphers;
+    bool ssl_verify = false;
     boost::beast::websocket::permessage_deflate pmd_options;
     int limit = 0;
     std::uint16_t ws_queue_limit;

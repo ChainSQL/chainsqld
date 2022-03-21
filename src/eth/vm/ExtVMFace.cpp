@@ -528,23 +528,33 @@ namespace eth {
 			bytesConstRef{ _pSendMax, _sendMaxLen }, bytesConstRef{ _pCurrency, _currencyLen }, gateWay);
 	}
 
-	ExtVMFace::ExtVMFace(EnvInfo const& envInfo, evmc_address _myAddress, evmc_address _caller, evmc_address _origin,
-		evmc_uint256be _value, evmc_uint256be _gasPrice,
-		bytesConstRef _data, bytes _code, evmc_uint256be _codeHash, int32_t _depth,
-		bool _isCreate, bool _staticCall)
-		: myAddress(_myAddress)
-		, caller(_caller)
-		, origin(_origin)
-		, value(_value)
-		, gasPrice(_gasPrice)
-		, data(_data)
-		, code(_code)
-		, codeHash(_codeHash)
-		, depth(_depth)
-		, isCreate(_isCreate)
-		, staticCall(_staticCall)
-		, envInfo_(envInfo) 
-		, dropsPerByte(1000){
+	ExtVMFace::ExtVMFace(
+        EnvInfo const& envInfo,
+        evmc_address _myAddress,
+        evmc_address _caller,
+        evmc_address _origin,
+        evmc_uint256be _value,
+        evmc_uint256be _gasPrice,
+        bytesConstRef _data,
+        bytes _code,
+        evmc_uint256be _codeHash,
+        int32_t _depth,
+        bool _isCreate,
+        bool _staticCall)
+        : myAddress(_myAddress)
+        , caller(_caller)
+        , origin(_origin)
+        , value(_value)
+        , gasPrice(_gasPrice)
+        , data(_data)
+        , code(_code)
+        , codeHash(_codeHash)
+        , depth(_depth)
+        , isCreate(_isCreate)
+        , staticCall(_staticCall)
+        , dropsPerByte(1000)
+        , envInfo_(envInfo)
+    {
+    }
 
-	}
 } // namespace eth

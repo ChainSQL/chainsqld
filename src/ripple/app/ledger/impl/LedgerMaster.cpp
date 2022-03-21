@@ -434,12 +434,12 @@ LedgerMaster::setPubLedger(std::shared_ptr<Ledger const> const& l)
     mPubLedgerSeq = l->info().seq;
 }
 
-void
+bool
 LedgerMaster::addHeldTransaction(
     std::shared_ptr<Transaction> const& transaction)
 {
     std::lock_guard ml(m_mutex);
-    mHeldTransactions.insert(transaction->getSTransaction());
+    return mHeldTransactions.insert(transaction->getSTransaction(),true);
 }
 
 // Validate a ledger's close time and sequence number if we're considering
@@ -946,7 +946,7 @@ LedgerMaster::onLastFullLedgerLoaded(
     if (!mPubLedger)
     {
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
 }
     
@@ -989,7 +989,7 @@ void LedgerMaster::setFullLedger(
         if (!mPubLedger)
         {
             setPubLedger(ledger);
-            app_.getOrderBookDB().setup(ledger);
+            //app_.getOrderBookDB().setup(ledger);
         }
 
         if (ledger->info().seq != 0 && haveLedger(ledger->info().seq - 1))
@@ -1400,13 +1400,29 @@ LedgerMaster::checkLoadLedger()
                 if (load_ledger_index_ > 1)
                 {
                     auto loadLedger = getLedgerBySeq(load_ledger_index_);
-                    if (loadLedger && !loadLedger->walkLedger(m_journal))
+                    try
                     {
-                        JLOG(m_journal.fatal()) << "Ledger "<<loadLedger->info().seq << " is missing nodes.";
-                        app_.getInboundLedgers().acquire(loadLedger->info().hash,
+                        if (loadLedger && !loadLedger->walkLedger(m_journal))
+                        {
+                            JLOG(m_journal.fatal())
+                                << "Ledger " << loadLedger->info().seq
+                                << " is missing nodes.";
+                            app_.getInboundLedgers().acquire(
+                                loadLedger->info().hash,
+                                loadLedger->info().seq,
+                                InboundLedger::Reason::GENERIC);
+                        }
+                    }
+                    catch (SHAMapMissingNode const& mn)
+                    {
+                        JLOG(m_journal.warn())
+                            << "walkLedger exception for " << loadLedger->info().seq << ":"
+                            << mn.what();
+                        app_.getInboundLedgers().acquire(
+                            loadLedger->info().hash,
                             loadLedger->info().seq,
                             InboundLedger::Reason::GENERIC);
-                    }
+                    }                    
                 }
             });
     }
@@ -1423,13 +1439,9 @@ LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
     genesis->setValidated();
     setValidLedger(genesis);
-    // setLedgerRangePresent(
-    //	genesis->info().seq,
-    //	genesis->info().seq);
     pendSaveValidated(app_, genesis, true, true);
-    // setPubLedger(genesis);
 
-    tryAdvance();
+    //tryAdvance();
 }
 
 void
@@ -1506,7 +1518,7 @@ LedgerMaster::findNewLedgersToPublish(
         auto valLedger = mValidLedger.get();
         ret.push_back(valLedger);
         setPubLedger(valLedger);
-        app_.getOrderBookDB().setup(valLedger);
+        //app_.getOrderBookDB().setup(valLedger);
 
         return {valLedger};
     }
@@ -2119,7 +2131,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     {
         pendSaveValidated(app_, ledger, true, true);
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
 
     std::uint32_t const base = app_.getFeeTrack().getLoadBase();

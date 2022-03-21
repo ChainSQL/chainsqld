@@ -21,6 +21,9 @@
 #define RIPPLE_BASICS_MAKE_SSLCONTEXT_H_INCLUDED
 
 #include <boost/asio/ssl/context.hpp>
+#include <openssl/x509_vfy.h>
+#include <openssl/x509.h>
+#include <peersafe/crypto/X509.h>
 #include <string>
 
 namespace ripple {
@@ -35,7 +38,8 @@ make_SSLContextAuthed(
     std::string const& keyFile,
     std::string const& certFile,
     std::string const& chainFile,
-    std::string const& cipherList);
+    std::string const& cipherList,
+    std::vector<std::string> const& vecCaList);
 
 }  // namespace ripple
 

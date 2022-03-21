@@ -426,13 +426,16 @@ TER Executive::finalize() {
 
 	// Suicides...
     if (m_ext)
+    {
         for (auto a : m_ext->sub.selfdestruct)
         {
-				m_s.kill(a);
-				LedgerAdjust::updateContractCount(m_s.ctx().app, m_s.ctx().view(),CONTRACT_DESTORY);
+            m_s.kill(a);
+            LedgerAdjust::updateContractCount(
+                m_s.ctx().app, m_s.ctx().view(), CONTRACT_DESTORY);
         }
-       
-	return m_excepted;
+    }
+
+    return m_excepted;
 }
 
 void Executive::accrueSubState(eth::SubState& _parentContext)

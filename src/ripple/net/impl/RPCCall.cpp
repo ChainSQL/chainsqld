@@ -1373,7 +1373,7 @@ private:
         return jvRequest;
     }
 
-    // tx <transaction_id> [binary]
+    // tx_merkle_proof <transaction_id> [binary]
     Json::Value
     parseTxMerkleProof(Json::Value const& jvParams)
     {
@@ -1389,14 +1389,35 @@ private:
         return jvRequest;
     }
 
-    // tx_history <index>
+    // tx_merkle_verify <transaction_id> <proof>
+    Json::Value
+    parseTxMerkleVerify(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest{Json::objectValue};
+
+        jvRequest[jss::transaction_hash] = jvParams[0u].asString();
+        jvRequest[jss::proof] = jvParams[1u].asString();
+
+        return jvRequest;
+    }
+
+    // tx_history <index> [type1 [type2 [...]]]
     Json::Value
     parseTxHistory(Json::Value const& jvParams)
     {
         Json::Value jvRequest{Json::objectValue};
 
-        jvRequest[jss::start] = jvParams[0u].asUInt();
+        unsigned int index = 0;
+        const unsigned int size = jvParams.size();
 
+        jvRequest[jss::start] = jvParams[index++].asUInt();
+
+        if (index < size)
+        {
+            Json::Value& txTypes = (jvRequest[jss::types] = Json::arrayValue);
+            while (index < size)
+                txTypes.append(jvParams[index++].asString());
+        }
         return jvRequest;
     }
 
@@ -1500,10 +1521,27 @@ private:
 	{
 		if (jvParams.size() < 2)
 		{
-			return rpcError(rpcINVALID_PARAMS);
+            std::string errMsg = "at least 2 params,in format:\"seed\" \"country province city organization common\".";
+            //ret.removeMember(jss::tx_json);
+            return RPC::make_error(rpcINVALID_PARAMS, errMsg);
 		}
+        
+        Json::Value jvRequest{Json::objectValue};
+        
+        if (2 == jvParams.size ())
+        {
+            jvRequest[jss::seed] = jvParams[0u].asString ();
+            jvRequest[jss::x509_subjects]     = jvParams[1u].asString ();
+        }
+        else if (3 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::seed]     = jvParams[1u].asString ();
+            jvRequest[jss::x509_subjects] = jvParams[2u].asString ();
+        }
 
-		return TransGBKToUTF8(jvParams);
+        return jvRequest;
+//		return TransGBKToUTF8(jvParams);
 	}
 
 	Json::Value parseSchemaList(Json::Value const& jvParams)
@@ -1659,6 +1697,7 @@ public:
             {"ledger_header", &RPCParser::parseLedgerId, 1, 1},
             {"ledger_request", &RPCParser::parseLedgerId, 1, 1},
             {"ledger_txs",     &RPCParser::parseLedgerTxs, 1, 3},
+            {"ledger_proof", &RPCParser::parseLedger, 0, 2},
             {"log_level", &RPCParser::parseLogLevel, 0, 2},
             {"logrotate", &RPCParser::parseAsIs, 0, 0},
             {"manifest", &RPCParser::parseManifest, 1, 1},
@@ -1689,9 +1728,10 @@ public:
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
+            {"tx_merkle_verify", &RPCParser::parseTxMerkleVerify, 2, 2},
             {"tx_account", &RPCParser::parseTxAccount, 1, 7},
             {"tx_count", &RPCParser::parseLedgerId, 0, 1},
-            {"tx_history", &RPCParser::parseTxHistory, 1, 1},
+            {"tx_history", &RPCParser::parseTxHistory, 1, -1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
             {"validation_create", &RPCParser::parseValidationCreate, 0, 2},
             // {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
@@ -1727,7 +1767,7 @@ public:
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
-			{   "gen_csr",             &RPCParser::parseGenCsr,                   2,  2 },
+			{   "gen_csr",             &RPCParser::parseGenCsr,                2,  3 },
 			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
             {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
             {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },

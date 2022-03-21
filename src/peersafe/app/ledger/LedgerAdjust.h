@@ -29,9 +29,9 @@ namespace ripple {
 	class LedgerAdjust {
 
 	public:
-		LedgerAdjust();
+		//LedgerAdjust();
 		
-		virtual ~LedgerAdjust();
+		//virtual ~LedgerAdjust();
         static int getTxSucessCount(LockedSociSession db);
         static int getTxFailCount(LockedSociSession db);
         static int getContractCreateCount(LockedSociSession db);
@@ -40,8 +40,8 @@ namespace ripple {
         static void updateContractCount(Schema& app, ApplyView& view, ContractState state);
 		static void updateTxCount(Schema& app, OpenView& view, int successCount, int failCount);
 		static void updateAccountCount(Schema& app, OpenView& view,int accountCount);
-        static std::shared_ptr<SLE> createSle(Schema& app);
-        
+        static void createSle(Schema& app);
+        static bool isCompleteReadData(Schema& app);
 	};
 }
 

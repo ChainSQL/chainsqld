@@ -115,7 +115,7 @@ conditionMet(Condition condition_required, T& context)
 
             if (cID + 10 < vID)
             {
-                JLOG(context.j.debug())
+                JLOG(context.j.info())
                     << "Current ledger ID(" << cID
                     << ") is less than validated ledger ID(" << vID << ")";
                 if (context.apiVersion == 1)

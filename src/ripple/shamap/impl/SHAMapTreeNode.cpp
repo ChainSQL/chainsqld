@@ -804,8 +804,10 @@ SHAMapInnerNode::canonicalizeChild(
     }
     else
     {
-        // Hook this node up
-        mChildren[branch] = node;
+        if (node->getType() != SHAMapAbstractNode::tnACCOUNT_STATE &&
+            node->getType() != SHAMapAbstractNode::tnCONTRACT_STATE)
+            // Hook this node up
+            mChildren[branch] = node;
     }
     return node;
 }

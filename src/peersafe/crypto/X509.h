@@ -37,7 +37,7 @@ namespace ripple {
 	PublicKey getPublicKeyFromX509(std::string const& certificate);
 
 	bool verifyCert(std::vector<std::string> const& vecRootCert, std::string const& certStr, std::string & exception);
-	bool genCsr(Seed const& seed, x509_subject const& sub, std::string const& reqPath, std::string & exception);
+    bool genCsr(KeyType keyType,std::string const& seedStr, x509_subject const& sub, std::string const& reqPath, std::string & exception);
 	X509* readCertFromFile(const char* filename);
 }
 

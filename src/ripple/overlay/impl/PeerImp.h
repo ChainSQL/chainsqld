@@ -96,6 +96,8 @@ public:
 			this->recentLedgers_ = info.recentLedgers_;
 			this->recentTxSets_ = info.recentTxSets_;
 			this->shardInfo_ = info.shardInfo_;
+            this->sanity_ = Sanity::unknown;
+            this->insaneTime_ = std::chrono::steady_clock::now();
 		}
 		LedgerIndex minLedger_ = 0;
 		LedgerIndex maxLedger_ = 0;
@@ -105,6 +107,8 @@ public:
         boost::circular_buffer<uint256> recentTxSets_{128};
 		std::mutex mutable shardInfoMutex_;
 		hash_map<PublicKey, ShardInfo> shardInfo_;
+        std::atomic<Sanity> sanity_;
+        std::chrono::steady_clock::time_point insaneTime_;
 	};
 private:
     using clock_type = std::chrono::steady_clock;
@@ -145,8 +149,6 @@ private:
     ProtocolVersion protocol_;
 
     State state_;  // Current state
-    std::atomic<Sanity> sanity_;
-    clock_type::time_point insaneTime_;
     bool detaching_ = false;
     // Node public key of peer.
     PublicKey const publicKey_;
@@ -372,7 +374,7 @@ public:
     checkSanity (uint256 const& schemaId,std::uint32_t validationSeq);
 
     void
-    checkSanity(std::uint32_t seq1, std::uint32_t seq2);
+    checkSanity(SchemaInfo& info, std::uint32_t seq1, std::uint32_t seq2);
 
     PublicKey const&
     getNodePublic() const override
@@ -684,8 +686,6 @@ PeerImp::PeerImp(
     , m_inbound(false)
     , protocol_(protocol)
     , state_(State::active)
-    , sanity_(Sanity::unknown)
-    , insaneTime_(clock_type::now())
     , publicKey_(publicKey)
 	, publicValidate_(publicValidate)
     , creationTime_(clock_type::now())

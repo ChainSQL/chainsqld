@@ -45,7 +45,7 @@ inline constexpr auto LgrDBName{"ledger.db"};
 inline constexpr std::array<char const*, 1> LgrDBPragma{
     {"PRAGMA journal_size_limit=1582080;"}};
 
-inline constexpr std::array<char const*, 5> LgrDBInit{
+inline constexpr std::array<char const*, 9> LgrDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Ledgers (           \
@@ -62,8 +62,22 @@ inline constexpr std::array<char const*, 5> LgrDBInit{
     );",
      "CREATE INDEX IF NOT EXISTS SeqLedger ON Ledgers(LedgerSeq);",
 
-     // Old table and indexes no longer needed
-     "DROP TABLE IF EXISTS Validations;",
+    "CREATE TABLE IF NOT EXISTS Validations   (         \
+        LedgerSeq   BIGINT UNSIGNED,                    \
+        InitialSeq  BIGINT UNSIGNED,                    \
+        LedgerHash  CHARACTER(64),                      \
+        NodePubKey  CHARACTER(56),                      \
+        SignTime    BIGINT UNSIGNED,                    \
+        RawData     BLOB                                \
+    );",
+     "CREATE INDEX IF NOT EXISTS ValidationsByHash ON          \
+        Validations(LedgerHash);",
+     "CREATE INDEX IF NOT EXISTS ValidationsBySeq ON           \
+        Validations(LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS ValidationsByInitialSeq ON    \
+        Validations(InitialSeq, LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS ValidationsByTime ON          \
+        Validations(SignTime);",
 
      "END TRANSACTION;"}};
 

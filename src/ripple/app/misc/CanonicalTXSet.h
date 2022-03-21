@@ -89,8 +89,8 @@ public:
     {
     }
 
-    void
-    insert(std::shared_ptr<STTx const> const& txn);
+    bool
+    insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit = false);
 
     std::vector<std::shared_ptr<STTx const>>
     prune(AccountID const& account, std::uint32_t const seq);
@@ -140,6 +140,7 @@ public:
 
 private:
     std::map<Key, std::shared_ptr<STTx const>> map_;
+    std::map<AccountID, uint32_t> accountTxsize_;
 
     // Used to salt the accounts so people can't mine for low account numbers
     uint256 salt_;

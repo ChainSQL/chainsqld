@@ -630,4 +630,10 @@ namespace ripple {
 
         return ret;
     }
+
+    DatabaseCon*
+    TableStatusDBMySQL::GetDatabaseConn()
+    {
+        return databasecon_;
+    }
 }
