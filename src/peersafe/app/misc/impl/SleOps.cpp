@@ -457,9 +457,9 @@ namespace ripple {
 			obj.setAccountID(sfUser, _account2);
             std::string _sRaw;
             if (_raw[0] == '[')
-                std::string _sRaw = _raw;     
+                _sRaw = _raw;     
             else
-				std::string _sRaw = "[" + _raw + "]";
+				_sRaw = "[" + _raw + "]";
 			
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
