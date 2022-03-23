@@ -444,14 +444,6 @@ RpcaPopAdaptor::handleNewValidation(
           << " [" << val->getSerializer().slice() << "]";
     };
 
-    if (source != "local" && !verifyDigest(
-            signingKey, hash, makeSlice(val->getFieldVL(sfSignature)), false))
-    {
-        if (j.warn())
-            dmp(j.warn(), "signature verify failed");
-        return false;
-    }
-
     if (!val->isFieldPresent(sfLedgerSequence))
     {
         if (j.error())
