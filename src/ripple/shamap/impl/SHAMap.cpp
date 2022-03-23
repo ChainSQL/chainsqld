@@ -1008,6 +1008,10 @@ SHAMap::fetchRoot(SHAMapHash const& hash, SHAMapSyncFilter* filter)
         {
             stream << "Fetch root STATE node " << hash;
         }
+        else if (type_ == SHAMapType::CONTRACT)
+        {
+            stream << "Fetch root CONTRACT node " << hash;
+        }
         else
         {
             stream << "Fetch root SHAMap node " << hash;
@@ -1365,7 +1369,7 @@ SHAMap::getContractRootNode(boost::optional<uint256> root) const
 {
     if (root)
     {
-        auto mapPtr = std::make_shared<SHAMap>(SHAMapType::STATE, *root, f_);
+        auto mapPtr = std::make_shared<SHAMap>(SHAMapType::CONTRACT, *root, f_);
         if (mapPtr && mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
         {
             return std::static_pointer_cast<SHAMapInnerNode>(mapPtr->root_);
