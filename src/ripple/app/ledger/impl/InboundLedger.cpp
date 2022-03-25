@@ -427,13 +427,13 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
                 SHAMapHash{mLedger->info().accountHash}, &filter))
         {
             auto ret = neededStateHashes(1, &filter);
+            // Try insert contract storage tree root
+            insertContractRoots(ret.second);
             if (ret.first.empty())
             {
                 JLOG(m_journal.trace()) << "Had full AS map locally";
                 mHaveState = true;
             }
-            // Try insert contract storage tree root
-            insertContractRoots(ret.second);
         }
     }
 
@@ -988,7 +988,7 @@ InboundLedger::insertContractRoots(std::set<uint256>& setHashes)
         if (mContractMapInfo.find(item) == mContractMapInfo.end())
         {
             auto map = std::make_shared<SHAMap>(
-                SHAMapType::STATE, item, app_.getNodeFamily());
+                SHAMapType::CONTRACT, item, app_.getNodeFamily());
             map->fetchRoot(SHAMapHash(item), nullptr);
             mContractMapInfo.emplace(item, std::make_pair(map, false));
         }

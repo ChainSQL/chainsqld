@@ -3286,7 +3286,9 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 
     if (!map || (packet.nodeids_size() == 0))
     {
-        JLOG(p_journal_.warn()) << "GetLedger: Can't find map or empty request";
+        JLOG(p_journal_.warn())
+            << "GetLedger: Can't find map or empty request, packet.type="
+            << packet.itype();
         charge(Resource::feeInvalidRequest);
         return;
     }

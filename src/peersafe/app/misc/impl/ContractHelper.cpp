@@ -122,10 +122,11 @@ namespace ripple {
         if (mShaMapCache.find(contract) == mShaMapCache.end())
         {
             mapPtr = std::make_shared<SHAMap>(
-                SHAMapType::STATE, app_.getNodeFamily());
+                SHAMapType::CONTRACT, app_.getNodeFamily());
             if (root && !mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
             {
-                JLOG(mJournal.warn()) << "Get storage root failed for contract "<<to_string(contract);
+                JLOG(mJournal.warn()) << "Get storage root failed for contract: "
+                                      << to_string(contract) << ",root hash: "<<*root;
                 return nullptr;
             }
 

@@ -32,7 +32,8 @@ namespace ripple {
 enum class SHAMapType {
     TRANSACTION = 1,  // A tree of transactions
     STATE = 2,        // A tree of state nodes
-    FREE = 3,         // A tree not part of a ledger
+    CONTRACT = 3,
+    FREE = 4         // A tree not part of a ledger
 };
 
 inline std::string
@@ -44,6 +45,8 @@ to_string(SHAMapType t)
             return "Transaction Tree";
         case SHAMapType::STATE:
             return "State Tree";
+        case SHAMapType::CONTRACT:
+            return "Contract Tree";
         case SHAMapType::FREE:
             return "Free Tree";
         default:
