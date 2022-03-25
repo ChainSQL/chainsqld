@@ -78,6 +78,8 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
         findSeq = marker->txnSeq;
     }
 
+    // marker is also an output parameter, so need to reset
+    marker.reset();
 
     auto db(connection.checkoutDb());
 
@@ -180,7 +182,7 @@ accountTxPage(
     }
 
     // marker is also an output parameter, so need to reset
-    marker.reset();
+    //marker.reset();
 
     static std::string const prefix(
         R"(SELECT AccountTransactions.LedgerSeq,AccountTransactions.TxnSeq,
@@ -487,7 +489,7 @@ contractTxPage(
     }
 
     // marker is also an output parameter, so need to reset
-    marker.reset();
+    //marker.reset();
 
     static std::string const prefix(
         R"(SELECT LedgerSeq,TxSeq,TransID FROM TraceTransactions WHERE (Owner = '%s'
