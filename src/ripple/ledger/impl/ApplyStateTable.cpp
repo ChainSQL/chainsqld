@@ -149,6 +149,8 @@ ApplyStateTable::apply(
             auto curNode = item.second.second;
             if ((type == &sfModifiedNode) && (*curNode == *origNode))
                 continue;
+            if (curNode->isHideInMeta())
+                continue;
             std::uint16_t nodeType = curNode
                 ? curNode->getFieldU16(sfLedgerEntryType)
                 : origNode->getFieldU16(sfLedgerEntryType);
