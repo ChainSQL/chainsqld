@@ -106,11 +106,11 @@ doAccountInfo(RPC::JsonContext& context)
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
 
-		if (ledger->open())
-		{
-            jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq(accountID, sleAccepted);
-		}
+        auto seq = std::max(
+                    context.app.getStateManager().getAccountSeq(accountID, sleAccepted),
+                    jvAccepted[jss::Sequence].asUInt());
 
+        jvAccepted[jss::Sequence] = seq;
         result[jss::account_data] = jvAccepted;
 
         // Return SignerList(s) if that is requested.
