@@ -118,7 +118,7 @@ namespace ripple {
                         return std::make_tuple(sleNode, pEntry, tableEntries);
                     }
                 }
-                else
+                else if (sleNode->getType() == ltTABLELIST)
                 {
                     auto tableNameBlob = strCopy(sTableNameInDB);
                     tableEntries = (STArray*)&(sleNode->getFieldArray(sfTableEntries));
