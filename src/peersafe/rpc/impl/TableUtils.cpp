@@ -114,9 +114,16 @@ namespace ripple {
                     auto nameInDB = table.getFieldH160(sfNameInDB);
                     if (sTableNameInDB == to_string(nameInDB))
                     {
-                       pEntry = (STObject*)&(table);
+                        pEntry = (STObject*)&(table);
                         return std::make_tuple(sleNode, pEntry, tableEntries);
                     }
+                }
+                else
+                {
+                    auto tableNameBlob = strCopy(sTableNameInDB);
+                    tableEntries = (STArray*)&(sleNode->getFieldArray(sfTableEntries));
+                    pEntry = getTableEntry(*tableEntries, tableNameBlob,true);
+                    return std::make_tuple(sleNode, pEntry, tableEntries);
                 }
             }
             auto const nodeIndex = dir->getFieldU64(sfIndexNext);
@@ -165,15 +172,26 @@ namespace ripple {
         return std::make_tuple(nullptr, pEntry, tableEntries);
     }
     STEntry*
-    getTableEntry(const STArray& aTables, Blob& vCheckName)
+    getTableEntry(
+        const STArray& aTables,
+        Blob& vCheckName,
+        bool bNameInDB /* = false*/)
     {
         auto iter(aTables.end());
         iter = std::find_if(
-            aTables.begin(), aTables.end(), [vCheckName](STObject const& item) {
-                if (!item.isFieldPresent(sfTableName))
-                    return false;
-
-                return item.getFieldVL(sfTableName) == vCheckName;
+            aTables.begin(), aTables.end(), [vCheckName,bNameInDB](STObject const& item) {
+                if (!bNameInDB)
+                {
+                    if (!item.isFieldPresent(sfTableName))
+                        return false;
+                    return item.getFieldVL(sfTableName) == vCheckName;
+                }
+                else
+                {
+                    if (!item.isFieldPresent(sfNameInDB))
+                        return false;
+                    return to_string(item.getFieldH160(sfNameInDB)) == strCopy(vCheckName);
+                }
             });
 
         if (iter == aTables.end())
