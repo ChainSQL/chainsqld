@@ -170,19 +170,10 @@ SSLHTTPPeer<Handler>::do_handshake(yield_context do_yield)
         stream_.set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert, ec);
         if(!ec)
         {
-//            std::string host = this->remote_address_.address().to_string();
-//            stream_.set_verify_callback(
-//                        std::bind(
-//                        &HTTPClientSSLContext::rfc2818_verify,
-//                        host,
-//                        std::placeholders::_1,
-//                        std::placeholders::_2,
-//                        this->journal_),
-//                        ec);
             stream_.set_verify_callback(
                         std::bind(
                         &SSLHTTPPeer::verifyCertificate,
-                        this,
+                        this->shared_from_this(),
                         std::placeholders::_1,
                         std::placeholders::_2),
                         ec);

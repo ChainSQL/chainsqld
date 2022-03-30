@@ -40,12 +40,12 @@ if(enableTest)
           conditions
           consensus
           core
-		  crypto
+		      crypto
           csf
           json
           jtx
           ledger
-		  net
+		      net
           nodestore
           overlay
           peerfinder
@@ -1115,7 +1115,6 @@ target_include_directories (chainsqld
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/ripple>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe>
-    # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/eth/evmc/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/intx/include>
     # this one is for beast/legacy files:
