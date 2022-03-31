@@ -819,7 +819,7 @@ SHAMap::delItem(uint256 const& id)
                         }
                     }
                     prevNode = std::make_shared<SHAMapTreeNode>(
-                        item, type, node->getSeq());
+                        item, type, node->getSeq(),leaf->getStorageRoot());
                 }
                 else
                 {
