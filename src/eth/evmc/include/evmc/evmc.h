@@ -427,7 +427,7 @@ struct evmc_result
      */
     uint8_t padding[4];
 
-    int exception = 0;
+    int exception;
 };
 
 
