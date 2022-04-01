@@ -112,7 +112,6 @@ PopAdaptor::onCollectFinish(
 
     auto const& prevLedger = ledger.ledger_;
 
-    // ledgerMaster_.applyHeldTransactions();
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger->info().seq + 1);
     // auto initialLedger = app_.openLedger().current();

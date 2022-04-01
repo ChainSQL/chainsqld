@@ -1920,12 +1920,12 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                          txCur->getAccountID(sfAccount),
                          txCur->getSequence() + 1))
                 {
-                    std::string reason;
-                    auto const trans = sterilize(*tx);
-                    auto t = std::make_shared<Transaction>(trans, reason, app_);
-                    submit_held.emplace_back(t, false, false, FailHard::no);
-                    app_.getMasterTransaction().canonicalize(&t, true);
-                    t->setApplying();
+                    //std::string reason;
+                    //auto const trans = sterilize(*tx);
+                    //auto t = std::make_shared<Transaction>(trans, reason, app_);
+                    submit_held.emplace_back(tx, false, false, FailHard::no);
+                    //app_.getMasterTransaction().canonicalize(&t, true);
+                    tx->setApplying();
                 }
             }
             else if (e.result.ter == tefPAST_SEQ)

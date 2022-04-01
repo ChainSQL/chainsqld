@@ -24,8 +24,18 @@ namespace ripple {
 
 const uint32_t MAX_ACCOUNT_HELD_COUNT = 500;
 const uint32_t MAX_HELD_COUNT = 5000;
+
+uint256
+CanonicalTXSetBase::accountKey(AccountID const& account)
+{
+    uint256 ret = beast::zero;
+    memcpy(ret.begin(), account.begin(), account.size());
+    ret ^= salt_;
+    return ret;
+}
+
 bool
-CanonicalTXSet::Key::operator<(Key const& rhs) const
+CanonicalTXSetBase::Key::operator<(Key const& rhs) const
 {
     if (mAccount < rhs.mAccount)
         return true;
@@ -43,7 +53,7 @@ CanonicalTXSet::Key::operator<(Key const& rhs) const
 }
 
 bool
-CanonicalTXSet::Key::operator>(Key const& rhs) const
+CanonicalTXSetBase::Key::operator>(Key const& rhs) const
 {
     if (mAccount > rhs.mAccount)
         return true;
@@ -61,7 +71,7 @@ CanonicalTXSet::Key::operator>(Key const& rhs) const
 }
 
 bool
-CanonicalTXSet::Key::operator<=(Key const& rhs) const
+CanonicalTXSetBase::Key::operator<=(Key const& rhs) const
 {
     if (mAccount < rhs.mAccount)
         return true;
@@ -79,7 +89,7 @@ CanonicalTXSet::Key::operator<=(Key const& rhs) const
 }
 
 bool
-CanonicalTXSet::Key::operator>=(Key const& rhs) const
+CanonicalTXSetBase::Key::operator>=(Key const& rhs) const
 {
     if (mAccount > rhs.mAccount)
         return true;
@@ -95,37 +105,16 @@ CanonicalTXSet::Key::operator>=(Key const& rhs) const
 
     return mTXid >= rhs.mTXid;
 }
-
-uint256
-CanonicalTXSet::accountKey(AccountID const& account)
-{
-    uint256 ret = beast::zero;
-    memcpy(ret.begin(), account.begin(), account.size());
-    ret ^= salt_;
-    return ret;
-}
-
+//-------------------------------------------------------------------------------------------
 bool
 CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /* = false */)
 {
     auto accId = txn->getAccountID(sfAccount);
-    if (bJudgeLimit)
-    {
-        if (accountTxsize_[accId] >=
-            MAX_ACCOUNT_HELD_COUNT)
-            return false;
-        if (map_.size() >= MAX_HELD_COUNT)
-            return false;
-    }
-
     auto ret = map_.insert(std::make_pair(
         Key(accountKey(accId),
             txn->getSequence(),
             txn->getTransactionID()),
         txn));
-
-    if (bJudgeLimit && ret.second)
-        accountTxsize_[accId]++;
 
     return ret.second;
 }
@@ -144,6 +133,51 @@ CanonicalTXSet::prune(AccountID const& account, std::uint32_t const seq)
         range, [](auto const& p) { return p.second; });
 
     std::vector<std::shared_ptr<STTx const>> result(
+        txRange.begin(), txRange.end());
+
+    map_.erase(range.begin(), range.end());
+
+    return result;
+}
+
+//-------------------------------------------------------------------------------------------
+bool
+CanonicalTXSetHeld::insert(
+    std::shared_ptr<Transaction> const& tx)
+{
+    auto txn = tx->getSTransaction();
+    auto accId = txn->getAccountID(sfAccount);
+
+    if (accountTxsize_[accId] >= MAX_ACCOUNT_HELD_COUNT)
+        return false;
+    if (map_.size() >= MAX_HELD_COUNT)
+        return false;
+
+
+    auto ret = map_.insert(std::make_pair(
+        Key(accountKey(accId), txn->getSequence(), txn->getTransactionID()),
+        tx));
+
+    if (ret.second)
+        accountTxsize_[accId]++;
+
+    return ret.second;
+}
+
+std::vector<std::shared_ptr<Transaction>>
+CanonicalTXSetHeld::prune(AccountID const& account, std::uint32_t const seq)
+{
+    auto effectiveAccount = accountKey(account);
+
+    Key keyLow(effectiveAccount, seq, beast::zero);
+    Key keyHigh(effectiveAccount, seq + 1, beast::zero);
+
+    auto range = boost::make_iterator_range(
+        map_.lower_bound(keyLow), map_.lower_bound(keyHigh));
+    auto txRange = boost::adaptors::transform(
+        range, [](auto const& p) { return p.second; });
+
+    std::vector<std::shared_ptr<Transaction>> result(
         txRange.begin(), txRange.end());
 
     map_.erase(range.begin(), range.end());

@@ -22,6 +22,7 @@
 
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STTx.h>
+#include <ripple/app/misc/Transaction.h>
 
 namespace ripple {
 
@@ -33,9 +34,9 @@ namespace ripple {
 
 */
 // VFALCO TODO rename to SortedTxSet
-class CanonicalTXSet
+class CanonicalTXSetBase
 {
-private:
+protected:
     class Key
     {
     public:
@@ -81,16 +82,35 @@ private:
     accountKey(AccountID const& account);
 
 public:
+    CanonicalTXSetBase(LedgerHash const& saltHash) : salt_(saltHash)
+    {
+    }
+    uint256 const&
+    key() const
+    {
+        return salt_;
+    }
+
+ protected:
+    // Used to salt the accounts so people can't mine for low account numbers
+    uint256 salt_;
+};
+
+class CanonicalTXSet : public CanonicalTXSetBase
+{
+
+public:
     using const_iterator =
         std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
 
 public:
-    explicit CanonicalTXSet(LedgerHash const& saltHash) : salt_(saltHash)
+    explicit CanonicalTXSet(LedgerHash const& saltHash)
+        : CanonicalTXSetBase(saltHash)
     {
     }
 
     bool
-    insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit = false);
+    insert(std::shared_ptr<STTx const> const& txn, bool bJudgeLimit = false);
 
     std::vector<std::shared_ptr<STTx const>>
     prune(AccountID const& account, std::uint32_t const seq);
@@ -132,20 +152,40 @@ public:
         return map_.empty();
     }
 
-    uint256 const&
-    key() const
-    {
-        return salt_;
-    }
 
 private:
     std::map<Key, std::shared_ptr<STTx const>> map_;
-    std::map<AccountID, uint32_t> accountTxsize_;
 
-    // Used to salt the accounts so people can't mine for low account numbers
-    uint256 salt_;
 };
 
+class CanonicalTXSetHeld : public CanonicalTXSetBase
+{
+public:
+    using const_iterator =
+        std::map<Key, std::shared_ptr<Transaction>>::const_iterator;
+
+public:
+    explicit CanonicalTXSetHeld(LedgerHash const& saltHash)
+        : CanonicalTXSetBase(saltHash)
+    {
+    }
+
+    bool
+    insert(std::shared_ptr<Transaction> const& txn);
+
+    std::vector<std::shared_ptr<Transaction>>
+    prune(AccountID const& account, std::uint32_t const seq);
+
+    size_t
+    size() const
+    {
+        return map_.size();
+    }
+
+private:
+    std::map<Key, std::shared_ptr<Transaction>> map_;
+    std::map<AccountID, uint32_t> accountTxsize_;
+};
 }  // namespace ripple
 
 #endif

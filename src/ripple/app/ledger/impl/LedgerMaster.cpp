@@ -439,7 +439,7 @@ LedgerMaster::addHeldTransaction(
     std::shared_ptr<Transaction> const& transaction)
 {
     std::lock_guard ml(m_mutex);
-    return mHeldTransactions.insert(transaction->getSTransaction(),true);
+    return mHeldTransactions.insert(transaction);
 }
 
 // Validate a ledger's close time and sequence number if we're considering
@@ -572,37 +572,7 @@ LedgerMaster::storeLedger(std::shared_ptr<Ledger const> ledger)
     return mLedgerHistory.insert(std::move(ledger), false);
 }
 
-/** Apply held transactions to the open ledger
-    This is normally called as we close the ledger.
-    The open ledger remains open to handle new transactions
-    until a new open ledger is built.
-*/
-void
-LedgerMaster::applyHeldTransactions()
-{
-    std::lock_guard sl(m_mutex);
-
-    app_.openLedger().modify([&](OpenView& view, beast::Journal j) {
-        bool any = false;
-        for (auto const& it : mHeldTransactions)
-        {
-            ApplyFlags flags = tapNONE;
-            auto const result =
-                app_.getTxQ().apply(app_, view, it.second, flags, j);
-            if (result.second)
-                any = true;
-        }
-        return any;
-    });
-
-    // VFALCO TODO recreate the CanonicalTxSet object instead of resetting
-    // it.
-    // VFALCO NOTE The hash for an open ledger is undefined so we use
-    // something that is a reasonable substitute.
-    mHeldTransactions.reset(app_.openLedger().current()->info().parentHash);
-}
-
-std::vector<std::shared_ptr<STTx const>>
+std::vector<std::shared_ptr<Transaction>>
 LedgerMaster::pruneHeldTransactions(
     AccountID const& account,
     std::uint32_t const seq)
