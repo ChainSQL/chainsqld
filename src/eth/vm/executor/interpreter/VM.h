@@ -62,6 +62,7 @@ public:
         evmc_revision _rev, const evmc_message* _msg, uint8_t const* _code, size_t _codeSize);
 
     uint64_t m_io_gas = 0;
+    int m_exception = 0;
 private:
     const evmc_host_interface* m_host = nullptr;
     evmc_host_context* m_context = nullptr;
@@ -74,7 +75,6 @@ private:
     typedef void (VM::*MemFnPtr)();
     MemFnPtr m_bounce = nullptr;
     uint64_t m_nSteps = 0;
-
     // return bytes
     owning_bytes_ref m_output;
 

@@ -119,9 +119,9 @@ struct CallResult
 {
 	evmc_status_code status;
 	owning_bytes_ref output;
-
-	CallResult(evmc_status_code status, owning_bytes_ref&& output)
-		: status{ status }, output{ std::move(output) }
+	int exception;
+	CallResult(evmc_status_code status, owning_bytes_ref&& output, int exception)
+            : status{status}, output{std::move(output)}, exception{exception}
 	{}
 };
 

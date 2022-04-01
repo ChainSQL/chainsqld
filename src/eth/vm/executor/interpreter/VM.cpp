@@ -365,7 +365,22 @@ void VM::interpretCases()
             uint64_t b = (uint64_t)m_SP[0];
             uint64_t s = (uint64_t)m_SP[1];
             owning_bytes_ref output{std::move(m_mem), b, s};
-            m_OP == Instruction::REVERT ? throwRevertInstruction(std::move(output)) : throwRevertDiyInstruction(std::move(output));
+
+            if (m_OP == Instruction::REVERT && m_exception == 0)
+            {
+                throwRevertInstruction(std::move(output));
+            }
+            else
+            {
+                if (m_exception > 0)
+                {
+                    auto terStr = std::to_string(m_exception);
+                    eth::bytes data;
+                    data.assign(terStr.c_str(), terStr.c_str() + terStr.size());
+                    output = eth::owning_bytes_ref(std::move(data), 0, data.size());
+                }
+                throwRevertDiyInstruction(std::move(output));
+            }
         }
         BREAK;
 

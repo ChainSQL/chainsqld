@@ -254,7 +254,7 @@ namespace eth {
 		evmcResult.status_code = result.status;
 		evmcResult.gas_left = params.gas;
 		evmcResult.release = nullptr;
-
+        evmcResult.exception = result.exception;
 		// Pass the output to the EVM without a copy. The EVM will delete it
 		// when finished with it.
 

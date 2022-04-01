@@ -271,7 +271,8 @@ ExtVM::call(eth::CallParameters& oPara)
     }
     oPara.gas = e.gas();
 
-    return {terToEvmcStatusCode(e.getException()), e.takeOutput()};
+
+    return {terToEvmcStatusCode(e.getException()), e.takeOutput(), TERtoInt(e.getException())};
 }
 
 void

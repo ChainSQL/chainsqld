@@ -39,7 +39,7 @@ owning_bytes_ref VMC::exec(int64_t& gas, ExtVMFace& ext) {
 	auto r = execute(host, EVMC_ISTANBUL, msg, ext.code.data(), ext.code.size());
 	// FIXME: Copy the output for now, but copyless version possible.
 	auto output = owning_bytes_ref{ {&r.output_data[0], &r.output_data[r.output_size]}, 0, r.output_size };
-
+	
 	/*VM::Result r = execute(ext, gas);*/
 	switch (r.status_code)
 	{
