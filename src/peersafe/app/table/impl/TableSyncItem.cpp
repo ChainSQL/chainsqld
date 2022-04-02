@@ -1046,7 +1046,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 		try
 		{
 			// start transaction
-			TxStoreTransaction stTran(&getTxStoreDBConn());
+            std::shared_ptr<TxStoreTransaction> stTran = nullptr;
+            bool earlyCommitTxs = false;
 
 			int count = 0;
 			std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
@@ -1059,6 +1060,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 				Blob blob;
 				blob.assign(str.begin(), str.end());
 				STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
+                bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
 
 				try
 				{
@@ -1067,6 +1069,34 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					{
 						count++;
 						continue;
+					}
+
+					if (stTran == nullptr)
+                    {
+						stTran = std::make_shared<TxStoreTransaction>(&getTxStoreDBConn());
+					}
+
+                    // if the current tx is a transaction,
+                    // all previous txs are committed firstly
+					if (isSQLTransaction)
+					{
+                        if(earlyCommitTxs)
+                        {
+							stTran->commit();
+							// Re-create transaction object for SQLTransaction Tx
+							stTran.reset(new TxStoreTransaction(&getTxStoreDBConn()));
+                        }
+                        earlyCommitTxs = false;
+                    }
+                    else
+                    {
+                        earlyCommitTxs = true;
+                    }
+
+					if (stTran == nullptr)
+					{
+						JLOG(journal_.error()) << "Out of memory while dealing with ledger data.";
+						return false;
 					}
 
 					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_, nullptr, iter->ledgerseq());
@@ -1085,7 +1115,6 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
 					auto ret = DealWithTx(vecTxs, seq,closeTime);
-					//uTxDBUpdateHash_ = tx.getTransactionID();
 
 					if (app_.getOPs().hasChainSQLTxListener())
 						tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
@@ -1098,10 +1127,22 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 					std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
+
+                    if (isSQLTransaction) {
+                        stTran->rollback();
+                        stTran.reset();
+                        continue;
+                    }
 				}
+
+                if (isSQLTransaction) {
+                    stTran->commit();
+                    stTran.reset();
+                }
 			}
 
-			stTran.commit();
+            if (stTran)
+				stTran->commit();
 
 			//deal with subscribe
 			if (app_.getOPs().hasChainSQLTxListener())
