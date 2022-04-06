@@ -1005,192 +1005,192 @@ TableSyncItem::DealTranCommonTx(
 
 bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData>& aData)
 {
-	for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
-	{
-		std::string LedgerHash = iter->ledgerhash();
-		std::string LedgerCheckHash = iter->ledgercheckhash();
-		std::string PreviousCommit;
-		std::uint32_t closeTime = iter->closetime();
-		std::uint32_t seq = iter->ledgerseq();
-		std::string LedgerSeq = std::to_string(seq);
-		//check for jump one seq, check for deadline time and deadline seq
-		CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
-		if (checkRet == CHECK_JUMP)     continue;
-		else if (checkRet == CHECK_REJECT)
-		{
-			SetSyncState(SYNC_STOP);
-			break;
-		}
+    for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
+    {
+        std::string LedgerHash = iter->ledgerhash();
+        std::string LedgerCheckHash = iter->ledgercheckhash();
+        std::string PreviousCommit;
+        std::uint32_t closeTime = iter->closetime();
+        std::uint32_t seq = iter->ledgerseq();
+        std::string LedgerSeq = std::to_string(seq);
+        //check for jump one seq, check for deadline time and deadline seq
+        CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
+        if (checkRet == CHECK_JUMP)     continue;
+        else if (checkRet == CHECK_REJECT)
+        {
+            SetSyncState(SYNC_STOP);
+            break;
+        }
 
-		if (iter->txnodes().size() <= 0)
-		{
-			soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
-			if (ret == soci_exception) {
-				SetSyncState(SYNC_STOP);
-				break;
-			}
-			//JLOG(journal_.info()) <<
-			//    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
+        if (iter->txnodes().size() <= 0)
+        {
+            soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
+            if (ret == soci_exception) {
+                SetSyncState(SYNC_STOP);
+                break;
+            }
+            //JLOG(journal_.info()) <<
+            //    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
 
-			continue;
-		}
+            continue;
+        }
 
-		if (!getTxStoreDBConn().GetDBConn())
-		{
-			JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
+        if (!getTxStoreDBConn().GetDBConn())
+        {
+            JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
 
-			SetSyncState(SYNC_STOP);
-			break;
-		}
+            SetSyncState(SYNC_STOP);
+            break;
+        }
 
-		try
-		{
-			// start transaction
-			std::shared_ptr<TxStoreTransaction> stTran = nullptr;
-			bool earlyCommitTxs = false;
+        try
+        {
+            // start transaction
+            std::shared_ptr<TxStoreTransaction> stTran = nullptr;
+            bool earlyCommitTxs = false;
 
-			int count = 0;
-			std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
+            int count = 0;
+            std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
 
-			for (int i = 0; i < iter->txnodes().size(); i++)
-			{
-				const protocol::TMLedgerNode& node = iter->txnodes().Get(i);
+            for (int i = 0; i < iter->txnodes().size(); i++)
+            {
+                const protocol::TMLedgerNode& node = iter->txnodes().Get(i);
 
-				auto str = node.nodedata();
-				Blob blob;
-				blob.assign(str.begin(), str.end());
-				STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
-				bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
+                auto str = node.nodedata();
+                Blob blob;
+                blob.assign(str.begin(), str.end());
+                STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
+                bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
 
-				try
-				{
-					//check for jump one tx.
-					if (isJumpThisTx(tx.getTransactionID()))
-					{
-						count++;
-						continue;
-					}
+                try
+                {
+                    //check for jump one tx.
+                    if (isJumpThisTx(tx.getTransactionID()))
+                    {
+                        count++;
+                        continue;
+                    }
 
-					if (stTran == nullptr)
-					{
-						stTran = std::make_shared<TxStoreTransaction>(&getTxStoreDBConn());
-					}
+                    if (stTran == nullptr)
+                    {
+                        stTran = std::make_shared<TxStoreTransaction>(&getTxStoreDBConn());
+                    }
 
-					// if the current tx is a transaction,
-					// all previous txs are committed firstly
-					if (isSQLTransaction)
-					{
-						if (earlyCommitTxs)
-						{
-							stTran->commit();
-							// Re-create transaction object for SQLTransaction Tx
-							stTran.reset(new TxStoreTransaction(&getTxStoreDBConn()));
-						}
-						earlyCommitTxs = false;
-					}
-					else
-					{
-						earlyCommitTxs = true;
-					}
+                    // if the current tx is a transaction,
+                    // all previous txs are committed firstly
+                    if (isSQLTransaction)
+                    {
+                        if (earlyCommitTxs)
+                        {
+                            stTran->commit();
+                            // Re-create transaction object for SQLTransaction Tx
+                            stTran.reset(new TxStoreTransaction(&getTxStoreDBConn()));
+                        }
+                        earlyCommitTxs = false;
+                    }
+                    else
+                    {
+                        earlyCommitTxs = true;
+                    }
 
-					if (stTran == nullptr)
-					{
-						JLOG(journal_.error()) << "Out of memory while dealing with ledger data.";
-						return false;
-					}
+                    if (stTran == nullptr)
+                    {
+                        JLOG(journal_.error()) << "Out of memory while dealing with ledger data.";
+                        return false;
+                    }
 
-					std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_, nullptr, iter->ledgerseq());
+                    std::vector<STTx> vecTxs = app_.getMasterTransaction().getTxs(tx, sTableNameInDB_, nullptr, iter->ledgerseq());
 
-					if (vecTxs.size() > 0)
-					{
-						TryDecryptRaw(vecTxs);
-						for (auto& tx : vecTxs)
-						{
-							if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
-							{
-								DeleteTable(sTableNameInDB_);
-							}
-						}
-					}
-					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
+                    if (vecTxs.size() > 0)
+                    {
+                        TryDecryptRaw(vecTxs);
+                        for (auto& tx : vecTxs)
+                        {
+                            if (tx.isFieldPresent(sfOpType) && T_CREATE == tx.getFieldU16(sfOpType))
+                            {
+                                DeleteTable(sTableNameInDB_);
+                            }
+                        }
+                    }
+                    JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
-					auto ret = DealWithTx(vecTxs, seq, closeTime);
+                    auto ret = DealWithTx(vecTxs, seq, closeTime);
 
                     if (isSQLTransaction && ret.first == false) {
                         stTran->rollback();
                         stTran.reset();
                     }
 
-					if (app_.getOPs().hasChainSQLTxListener())
-						tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
+                    if (app_.getOPs().hasChainSQLTxListener())
+                        tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
 
-					count++;
-				}
-				catch (std::exception const& e)
-				{
-					JLOG(journal_.error()) << "Dispose exception: " << e.what();
+                    count++;
+                }
+                catch (std::exception const& e)
+                {
+                    JLOG(journal_.error()) << "Dispose exception: " << e.what();
 
-					std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
-					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
+                    std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
+                    app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
 
-					if (isSQLTransaction) {
-						stTran->rollback();
-						stTran.reset();
-						continue;
-					}
-				}
+                    if (isSQLTransaction) {
+                        stTran->rollback();
+                        stTran.reset();
+                        continue;
+                    }
+                }
 
-				if (isSQLTransaction) {
-					stTran->commit();
-					stTran.reset();
-				}
-			}
+                if (isSQLTransaction) {
+                    stTran->commit();
+                    stTran.reset();
+                }
+            }
 
-			if (stTran)
-				stTran->commit();
+            if (stTran)
+                stTran->commit();
 
-			//deal with subscribe
-			if (app_.getOPs().hasChainSQLTxListener())
-			{
-				for (auto iter : tmpPubVec)
-				{
-					app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
-				}
-			}
+            //deal with subscribe
+            if (app_.getOPs().hasChainSQLTxListener())
+            {
+                for (auto iter : tmpPubVec)
+                {
+                    app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
+                }
+            }
 
-			JLOG(journal_.info()) <<
-				"find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
-			uTxDBUpdateHash_.zero();
-			// write tx time into db,so next start chainsqld can get
-			// last txntime and compare it to time condition
-			auto ret = getTableStatusDB().UpdateSyncDB(
-				to_string(accountID_),
-				sTableNameInDB_,
-				LedgerCheckHash,
-				LedgerSeq,
-				LedgerHash,
-				LedgerSeq,
-				to_string(uTxDBUpdateHash_),
-				std::to_string(iter->closetime()),
-				PreviousCommit);
-			if (ret == soci_exception)
-			{
-				SetSyncState(SYNC_STOP);
-				break;
-			}
-		}
-		catch (soci::soci_error& e) {
+            JLOG(journal_.info()) <<
+                "find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
+            uTxDBUpdateHash_.zero();
+            // write tx time into db,so next start chainsqld can get
+            // last txntime and compare it to time condition
+            auto ret = getTableStatusDB().UpdateSyncDB(
+                to_string(accountID_),
+                sTableNameInDB_,
+                LedgerCheckHash,
+                LedgerSeq,
+                LedgerHash,
+                LedgerSeq,
+                to_string(uTxDBUpdateHash_),
+                std::to_string(iter->closetime()),
+                PreviousCommit);
+            if (ret == soci_exception)
+            {
+                SetSyncState(SYNC_STOP);
+                break;
+            }
+        }
+        catch (soci::soci_error& e) {
 
-			JLOG(journal_.error()) << "soci::soci_error : " << std::string(e.what());
-			SetSyncState(SYNC_STOP);
-			break;
-		}
-	}
+            JLOG(journal_.error()) << "soci::soci_error : " << std::string(e.what());
+            SetSyncState(SYNC_STOP);
+            break;
+        }
+    }
 
-	//release connection lock
-	ReleaseConnectionUnit();
+    //release connection lock
+    ReleaseConnectionUnit();
 
-	return true;
+    return true;
 }
 
 int TableSyncItem::GetWholeDataSize()
