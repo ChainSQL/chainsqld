@@ -189,6 +189,19 @@ cmake --build . -- -jobs 4
 This will invoke the `xcodebuild` utility to compile the project. See `xcodebuild
 --help` for details about build options.
 
+
+
+#### Issues
+
+*When build the project in Xcode, environment variables can not be read from terminal shell,
+so you will encount compiling erros with soci sub-project. You need to reconfigure the soci project in terminal shell.*
+
+```
+cd <chainsqld source path>/.nih_c/xcode/AppleClang_13.1.6.13160021/src/soci-build
+cmake .
+```
+
+
 #### Optional installation
 
 If you'd like to install the artifacts of the build, we have preliminary
