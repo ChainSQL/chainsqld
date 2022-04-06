@@ -934,7 +934,7 @@ void TableSync::CreateTableItems()
         else
 		{
 			std::shared_ptr<TableSyncItem> pAutoSynItem = std::make_shared<TableSyncItem>(app_, journal_, cfg_);
-			pAutoSynItem->Init(accountID, tablename, time, true);
+			pAutoSynItem->Init(accountID, tablename, "", true);
 			listTableInfo_.push_back(pAutoSynItem);
         }
     }
