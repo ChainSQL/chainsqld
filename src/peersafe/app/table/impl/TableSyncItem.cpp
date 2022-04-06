@@ -1003,64 +1003,64 @@ TableSyncItem::DealTranCommonTx(
 	return ret;
 }
 
-bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData)
+bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData>& aData)
 {
-    for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
-    {
-        std::string LedgerHash = iter->ledgerhash();
-        std::string LedgerCheckHash = iter->ledgercheckhash();
-        std::string PreviousCommit;
-        std::uint32_t closeTime = iter->closetime();
-        std::uint32_t seq = iter->ledgerseq();
-        std::string LedgerSeq = std::to_string(seq);
-        //check for jump one seq, check for deadline time and deadline seq
-        CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
-        if (checkRet == CHECK_JUMP)     continue;
-        else if (checkRet == CHECK_REJECT)
-        {
-            SetSyncState(SYNC_STOP);
-            break;
-        }
+	for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
+	{
+		std::string LedgerHash = iter->ledgerhash();
+		std::string LedgerCheckHash = iter->ledgercheckhash();
+		std::string PreviousCommit;
+		std::uint32_t closeTime = iter->closetime();
+		std::uint32_t seq = iter->ledgerseq();
+		std::string LedgerSeq = std::to_string(seq);
+		//check for jump one seq, check for deadline time and deadline seq
+		CheckConditionState  checkRet = CondFilter(closeTime, seq, uint256(0));
+		if (checkRet == CHECK_JUMP)     continue;
+		else if (checkRet == CHECK_REJECT)
+		{
+			SetSyncState(SYNC_STOP);
+			break;
+		}
 
-        if (iter->txnodes().size() <= 0)
-        {
-            soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
-            if (ret == soci_exception) {
-                SetSyncState(SYNC_STOP);
-                break;
-            }
-            //JLOG(journal_.info()) <<
-            //    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
+		if (iter->txnodes().size() <= 0)
+		{
+			soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
+			if (ret == soci_exception) {
+				SetSyncState(SYNC_STOP);
+				break;
+			}
+			//JLOG(journal_.info()) <<
+			//    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
 
-            continue;
-        }
+			continue;
+		}
 
-        if (!getTxStoreDBConn().GetDBConn())
-        {
-            JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
+		if (!getTxStoreDBConn().GetDBConn())
+		{
+			JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
 
-            SetSyncState(SYNC_STOP);
-            break;
-        }
+			SetSyncState(SYNC_STOP);
+			break;
+		}
 
 		try
 		{
 			// start transaction
-            std::shared_ptr<TxStoreTransaction> stTran = nullptr;
-            bool earlyCommitTxs = false;
+			std::shared_ptr<TxStoreTransaction> stTran = nullptr;
+			bool earlyCommitTxs = false;
 
 			int count = 0;
 			std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
 
 			for (int i = 0; i < iter->txnodes().size(); i++)
 			{
-				const protocol::TMLedgerNode &node = iter->txnodes().Get(i);
+				const protocol::TMLedgerNode& node = iter->txnodes().Get(i);
 
 				auto str = node.nodedata();
 				Blob blob;
 				blob.assign(str.begin(), str.end());
 				STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
-                bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
+				bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
 
 				try
 				{
@@ -1072,26 +1072,26 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					}
 
 					if (stTran == nullptr)
-                    {
+					{
 						stTran = std::make_shared<TxStoreTransaction>(&getTxStoreDBConn());
 					}
 
-                    // if the current tx is a transaction,
-                    // all previous txs are committed firstly
+					// if the current tx is a transaction,
+					// all previous txs are committed firstly
 					if (isSQLTransaction)
 					{
-                        if(earlyCommitTxs)
-                        {
+						if (earlyCommitTxs)
+						{
 							stTran->commit();
 							// Re-create transaction object for SQLTransaction Tx
 							stTran.reset(new TxStoreTransaction(&getTxStoreDBConn()));
-                        }
-                        earlyCommitTxs = false;
-                    }
-                    else
-                    {
-                        earlyCommitTxs = true;
-                    }
+						}
+						earlyCommitTxs = false;
+					}
+					else
+					{
+						earlyCommitTxs = true;
+					}
 
 					if (stTran == nullptr)
 					{
@@ -1114,7 +1114,12 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					}
 					JLOG(journal_.debug()) << "got sync tx" << tx.getFullText();
 
-					auto ret = DealWithTx(vecTxs, seq,closeTime);
+					auto ret = DealWithTx(vecTxs, seq, closeTime);
+
+                    if (isSQLTransaction && ret.first == false) {
+                        stTran->rollback();
+                        stTran.reset();
+                    }
 
 					if (app_.getOPs().hasChainSQLTxListener())
 						tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
@@ -1128,20 +1133,20 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 					std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
 					app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
 
-                    if (isSQLTransaction) {
-                        stTran->rollback();
-                        stTran.reset();
-                        continue;
-                    }
+					if (isSQLTransaction) {
+						stTran->rollback();
+						stTran.reset();
+						continue;
+					}
 				}
 
-                if (isSQLTransaction) {
-                    stTran->commit();
-                    stTran.reset();
-                }
+				if (isSQLTransaction) {
+					stTran->commit();
+					stTran.reset();
+				}
 			}
 
-            if (stTran)
+			if (stTran)
 				stTran->commit();
 
 			//deal with subscribe
@@ -1155,35 +1160,35 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
 			JLOG(journal_.info()) <<
 				"find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
-            uTxDBUpdateHash_.zero();
-            // write tx time into db,so next start chainsqld can get
-            // last txntime and compare it to time condition
-            auto ret = getTableStatusDB().UpdateSyncDB(
-                to_string(accountID_),
-                sTableNameInDB_,
-                LedgerCheckHash,
-                LedgerSeq,
-                LedgerHash,
-                LedgerSeq,
-                to_string(uTxDBUpdateHash_),
-                std::to_string(iter->closetime()),
-                PreviousCommit);
-            if (ret == soci_exception)
-            {
-                SetSyncState(SYNC_STOP);
-                break;
-            }
+			uTxDBUpdateHash_.zero();
+			// write tx time into db,so next start chainsqld can get
+			// last txntime and compare it to time condition
+			auto ret = getTableStatusDB().UpdateSyncDB(
+				to_string(accountID_),
+				sTableNameInDB_,
+				LedgerCheckHash,
+				LedgerSeq,
+				LedgerHash,
+				LedgerSeq,
+				to_string(uTxDBUpdateHash_),
+				std::to_string(iter->closetime()),
+				PreviousCommit);
+			if (ret == soci_exception)
+			{
+				SetSyncState(SYNC_STOP);
+				break;
+			}
 		}
 		catch (soci::soci_error& e) {
-			
+
 			JLOG(journal_.error()) << "soci::soci_error : " << std::string(e.what());
 			SetSyncState(SYNC_STOP);
 			break;
 		}
 	}
 
-    //release connection lock
-    ReleaseConnectionUnit();          
+	//release connection lock
+	ReleaseConnectionUnit();
 
 	return true;
 }
