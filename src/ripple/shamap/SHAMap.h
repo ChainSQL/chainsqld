@@ -324,6 +324,12 @@ private:
     canonicalize(SHAMapHash const& hash, std::shared_ptr<SHAMapAbstractNode>&)
         const;
 
+    std::shared_ptr<SHAMapAbstractNode>
+    canonicalizeChild(
+        std::shared_ptr<SHAMapAbstractNode>,
+        SHAMapInnerNode* parent, 
+        int branch)const;
+
     // database operations
     std::shared_ptr<SHAMapAbstractNode>
     fetchNodeFromDB(SHAMapHash const& hash) const;

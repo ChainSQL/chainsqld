@@ -293,11 +293,7 @@ SHAMap::gmn_ProcessDeferredReads(MissingNodes& mn)
             if (backed_)
                 canonicalize(nodeHash, nodePtr);
 
-            if (nodePtr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-                nodePtr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
-                f_.getStateNodeHashSet()->insert(nodePtr->getNodeHash().as_uint256());
-            else
-                nodePtr = parent->canonicalizeChild(branch, std::move(nodePtr));
+            nodePtr = canonicalizeChild(nodePtr, parent, branch);
 
             // When we finish this stack, we need to restart
             // with the parent of this node
@@ -686,11 +682,7 @@ SHAMap::addKnownNode(
             if (backed_)
                 canonicalize(childHash, newNode);
 
-            if (newNode->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-                newNode->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
-                f_.getStateNodeHashSet()->insert(newNode->getNodeHash().as_uint256());
-            else
-                newNode = prevNode->canonicalizeChild(branch, std::move(newNode));
+            newNode = canonicalizeChild(newNode, prevNode, branch);
 
             if (filter)
             {

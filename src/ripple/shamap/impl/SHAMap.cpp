@@ -524,11 +524,7 @@ SHAMap::descendAsync(
 
     if (ptr)
     {
-        if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-            ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
-            f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
-        else
-            ptr = parent->canonicalizeChild(branch, std::move(ptr));
+        ptr = canonicalizeChild(ptr, parent, branch);
     }
 
     return ptr.get();
@@ -1283,6 +1279,20 @@ SHAMap::canonicalize(
 
     f_.getTreeNodeCache(ledgerSeq_)
         ->canonicalize_replace_client(hash.as_uint256(), node);
+}
+
+std::shared_ptr<SHAMapAbstractNode>
+SHAMap::canonicalizeChild(
+    std::shared_ptr<SHAMapAbstractNode> ptr,
+    SHAMapInnerNode* parent,
+    int branch) const
+{
+    //if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+    //    ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+    //    f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
+    //else
+        ptr = parent->canonicalizeChild(branch, std::move(ptr));
+    return ptr;
 }
 
 void
