@@ -262,6 +262,7 @@ JSS(hash_type);             // out: ServerInfo
 JSS(have_header);           // out: InboundLedger
 JSS(have_state);            // out: InboundLedger
 JSS(have_transactions);     // out: InboundLedger
+JSS(have_contracts);        // out: InboundLedger
 JSS(highest_sequence);      // out: AccountInfo
 JSS(historical_perminute);  // historical_perminute.
 JSS(hostid);                // out: NetworkOPs

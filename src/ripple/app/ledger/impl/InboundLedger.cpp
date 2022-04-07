@@ -1528,6 +1528,9 @@ InboundLedger::getJson(int)
         ret[jss::have_transactions] = mHaveTransactions;
     }
 
+    if (mHaveState)
+        ret[jss::have_contracts] = haveContractNodes();
+
     ret[jss::timeouts] = mTimeouts;
 
     if (mHaveHeader && !mHaveState)
