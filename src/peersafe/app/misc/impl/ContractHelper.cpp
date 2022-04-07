@@ -116,10 +116,14 @@ namespace ripple {
     }
 
     std::shared_ptr<SHAMap>
-    ContractHelper::getSHAMap(AccountID const& contract,boost::optional<uint256> const& root)
+    ContractHelper::getSHAMap(
+        AccountID const& contract,
+        boost::optional<uint256> const& root,
+        bool bQuery /*=false*/
+    )
     {
         std::shared_ptr<SHAMap> mapPtr = nullptr;
-        if (mShaMapCache.find(contract) == mShaMapCache.end())
+        if (mShaMapCache.find(contract) == mShaMapCache.end() || bQuery)
         {
             mapPtr = std::make_shared<SHAMap>(
                 SHAMapType::CONTRACT, app_.getNodeFamily());
@@ -129,8 +133,8 @@ namespace ripple {
                                       << to_string(contract) << ",root hash: "<<*root;
                 return nullptr;
             }
-
-            mShaMapCache[contract] = mapPtr;
+            if (!bQuery)
+                mShaMapCache[contract] = mapPtr;
         }
         else
             mapPtr = mShaMapCache[contract];
@@ -142,11 +146,12 @@ namespace ripple {
     ContractHelper::fetchValue(
         AccountID const& contract,
         uint256 const& root,
-        uint256 const& key)
+        uint256 const& key,
+        bool bQuery/*=false*/)
     {
         if (root == uint256(0))
             return boost::none;
-        std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, root);
+        std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, root, bQuery);
         if (mapPtr == nullptr)
             return boost::none;
         try

@@ -31,6 +31,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/ContractDefines.h>
 #include <iostream> 
 
 namespace ripple {
@@ -173,6 +174,7 @@ Json::Value doContractCall(RPC::JsonContext& context)
 		obj.setAccountID(sfAccount, accountID);
 		obj.setAccountID(sfContractAddress, contractAddrID);
 		obj.setFieldVL(sfContractData, contractDataBlob);
+        obj.setFieldU16(sfContractOpType, QueryCall);
 		//obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
 	});
 	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(ledger.get());

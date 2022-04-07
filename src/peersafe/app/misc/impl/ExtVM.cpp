@@ -5,6 +5,7 @@
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/protocol/ContractDefines.h>
 #include <ripple/protocol/Feature.h>
 
 #include <boost/thread.hpp>
@@ -126,7 +127,8 @@ ExtVM::store(evmc_uint256be const& key)
         auto root = mapStore.rootHash();
         if (root)
         {
-            if (auto value = helper.fetchValue(contract,*root, uKey))
+            bool bQuery = (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
+            if (auto value = helper.fetchValue(contract, *root, uKey, bQuery))
                 return toEvmC(*value);
         }
     }

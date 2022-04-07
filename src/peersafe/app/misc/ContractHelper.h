@@ -51,9 +51,15 @@ public:
     fetchValue(
         AccountID const& contract,
         uint256 const& root,
-        uint256 const& key);
+        uint256 const& key,
+        bool bQuery = false);
+
     std::shared_ptr<SHAMap>
-    getSHAMap(AccountID const& contract, boost::optional<uint256> const& root);
+    getSHAMap(
+        AccountID const& contract, 
+        boost::optional<uint256> const& root,
+        bool bQuery = false
+    );
 
 	//erase from dirty
 	void

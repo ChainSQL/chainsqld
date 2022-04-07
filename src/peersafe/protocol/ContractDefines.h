@@ -23,7 +23,8 @@
 
 enum ContractOpType {
     ContractCreation = 1,			///< Transaction to create contracts - receiveAddress() is ignored.
-    MessageCall = 2,			///< Transaction to invoke a message call - receiveAddress() is used.
+    MessageCall = 2,				///< Transaction to invoke a message call - receiveAddress() is used.
+	QueryCall	= 3,				///< Query to invoke a message call - receiveAddress() is used.
 
     typeMax
 };
