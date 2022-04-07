@@ -119,15 +119,16 @@ ExtVM::store(evmc_uint256be const& key)
     uint256 uKey = fromEvmC(key);
     if (mapStore.rootHash() || helper.hasStorage(contract))
     {
+        bool bQuery =
+            (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
         //check cache first
-        if (auto value = helper.fetchFromCache(contract,uKey))
+        if (auto value = helper.fetchFromCache(contract,uKey,bQuery))
             return toEvmC(*value);
 
         //fetch from SHAMap
         auto root = mapStore.rootHash();
         if (root)
         {
-            bool bQuery = (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
             if (auto value = helper.fetchValue(contract, *root, uKey, bQuery))
                 return toEvmC(*value);
         }

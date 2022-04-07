@@ -96,8 +96,12 @@ namespace ripple {
     boost::optional<uint256>
     ContractHelper::fetchFromCache(
         AccountID const& contract,
-        uint256 const& key)
+        uint256 const& key,
+        bool bQuery /*=false*/)
     {
+        if (bQuery)
+            return boost::none;
+
         if (!hasStorage(contract))
             return boost::none;
         if (mStateCache[contract].find(key) == mStateCache[contract].end() && 

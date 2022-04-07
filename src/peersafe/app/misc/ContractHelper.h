@@ -46,7 +46,11 @@ public:
 	//Contract state storage related
 	bool hasStorage(AccountID const& contract);
     boost::optional<uint256>
-    fetchFromCache(AccountID const& contract, uint256 const& key);
+    fetchFromCache(
+            AccountID const& contract,
+            uint256 const& key,
+            bool bQuery = false);
+
     boost::optional<uint256>
     fetchValue(
         AccountID const& contract,
