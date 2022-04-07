@@ -243,21 +243,13 @@ public:
     bool
     addHeldTransaction(std::shared_ptr<Transaction> const& trans);
 
-    /** Apply held transactions to the open ledger
-        This is normally called as we close the ledger.
-        The open ledger remains open to handle new transactions
-        until a new open ledger is built.
-    */
-    void
-    applyHeldTransactions();
-
     /** Get all the transactions held for a particular account.
         This is normally called when a transaction for that
         account is successfully applied to the open
         ledger so those transactions can be resubmitted without
         waiting for ledger close.
     */
-    std::vector<std::shared_ptr<STTx const>>
+    std::vector<std::shared_ptr<Transaction>>
     pruneHeldTransactions(AccountID const& account, std::uint32_t const seq);
 
     /** Walk to a ledger's hash using the skip list */
@@ -442,7 +434,7 @@ private:
 
     LedgerHistory mLedgerHistory;
 
-    CanonicalTXSet mHeldTransactions{uint256()};
+    CanonicalTXSetHeld mHeldTransactions{uint256()};
 
     // A set of transactions to replay during the next close
     std::unique_ptr<LedgerReplay> replayData;

@@ -481,7 +481,7 @@ populateJsonResponse(
                 }
             }
         }
-        
+        response[jss::tx_status] = to_string(result.txn->getStatus());
         response[jss::validated] = result.validated;
     }
 
@@ -1028,10 +1028,19 @@ Json::Value doTxResult(RPC::JsonContext& context)
     auto tx = context.app.getMasterTransaction().fetch_from_cache(txHash);
     if (nullptr != tx)
     {
-        if (tx->getStatus() == INCLUDED || tx->getStatus() == HELD)
-            ret[jss::tx_status] = "pending";
-        else
+        auto txn = tx->getSTransaction();
+        if (txn->isFieldPresent(sfLastLedgerSequence) && 
+            txn->getFieldU32(sfLastLedgerSequence) <= context.app.getLedgerMaster().getValidLedgerIndex())
+        {
             ret[jss::tx_status] = "failed";
+        }
+        else
+        {
+            if (tx->getStatus() == INCLUDED || tx->getStatus() == HELD)
+                ret[jss::tx_status] = "pending";
+            else
+                ret[jss::tx_status] = "failed";
+        }
     }
     else
     {
