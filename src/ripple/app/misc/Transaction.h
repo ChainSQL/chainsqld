@@ -52,6 +52,28 @@ enum TransStatus {
     INCOMPLETE = 8   // needs more signatures
 };
 
+inline std::string
+to_string(TransStatus status)
+{
+    switch (status)
+    {
+        case NEW:
+            return "NEW";
+        case INVALID:
+            return "INVALID";
+        case INCLUDED:
+            return "INCLUDED";
+        case COMMITTED:
+            return "COMMITTED";
+        case HELD:
+            return "HELD";
+        case OBSOLETE:
+            return "OBSOLETE";
+        default:
+            return std::to_string(status);
+    }
+}
+
 // This class is for constructing and examining transactions.
 // Transactions are static so manipulation functions are unnecessary.
 class Transaction : public std::enable_shared_from_this<Transaction>,

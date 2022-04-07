@@ -481,7 +481,7 @@ populateJsonResponse(
                 }
             }
         }
-        
+        response[jss::tx_status] = to_string(result.txn->getStatus());
         response[jss::validated] = result.validated;
     }
 
