@@ -1747,8 +1747,8 @@ std::shared_ptr <TableSyncItem> TableSync::GetRightItem(AccountID accountID, std
 
 // check and sync table
 void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
-{    
-	if (ledger == NULL)
+{
+    if (ledger == NULL)
         return;
 
     if (!InitTableItems())
@@ -1764,85 +1764,113 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
             ledger->info().hash, alpAccepted);
     }
 
-	std::map<uint160, bool> mapTxDBNam2Exist;
+    std::map<uint160, bool> mapTxDBNam2Exist;
     std::map<uint160, bool> mapTxDBNam2Sync;
 
-	for (auto const &item : alpAccepted->getMap())
-	{
+    for (auto const& item : alpAccepted->getMap())
+    {
         if (item.second->getResult() != tesSUCCESS)
         {
             continue;
         }
 
-		try
-		{
+        try
+        {
             std::shared_ptr<const STTx> pSTTX = item.second->getTxn();
-			auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
-			auto time = ledger->info().closeTime.time_since_epoch().count();
-			//read chainId
-			uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
+            auto vec = app_.getMasterTransaction().getTxs(*pSTTX, "", ledger, 0);
+            auto time = ledger->info().closeTime.time_since_epoch().count();
+            //read chainId
+            uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
 
-			for (auto& tx : vec)
-			{
-				if (tx.isFieldPresent(sfOpType))
-				{
-					AccountID accountID = tx.getAccountID(sfAccount);
-					auto tables         = tx.getFieldArray(sfTables);
-					uint160 uTxDBName   = tables[0].getFieldH160(sfNameInDB);
-					auto tableBlob      = tables[0].getFieldVL(sfTableName);
-					std::string tableName;
-					tableName.assign(tableBlob.begin(), tableBlob.end());
+            for (auto& tx : vec)
+            {
+                if (tx.isFieldPresent(sfOpType))
+                {
+                    AccountID accountID = tx.getAccountID(sfAccount);
+                    auto tables = tx.getFieldArray(sfTables);
+                    uint160 uTxDBName = tables[0].getFieldH160(sfNameInDB);
+                    auto tableBlob = tables[0].getFieldVL(sfTableName);
+                    std::string tableName;
+                    tableName.assign(tableBlob.begin(), tableBlob.end());
 
-					if (!bIsHaveSync_)
-					{
-						app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noDbConfig", "", ""), false);
-						break;
-					}
+                    if (!bIsHaveSync_)
+                    {
+                        app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noDbConfig", "", ""), false);
+                        break;
+                    }
 
-					auto opType = tx.getFieldU16(sfOpType);
+                    auto opType = tx.getFieldU16(sfOpType);
                     if (opType == T_CREATE)
-					{
-						std::string temKey = to_string(accountID) + tableName;
-						bool bInSyncTables = true;
-                        if (setTableInCfg_.count(temKey) <= 0 && 
-                            mapOwnerInCfg_.count(accountID) <= 0) 
+                    {
+                        std::string temKey = to_string(accountID) + tableName;
+                        bool bConfidential = false;
+                        auto tup = getTableEntry(*ledger, accountID, tableName);
+                        auto pEntry = std::get<1>(tup);
+                        if (pEntry != nullptr)
                         {
-							bInSyncTables = false;
-						}
+                            auto& table = *pEntry;
+                            auto& users = table.getFieldArray(sfUsers);
+                            assert(users.size() > 0);
+                            bConfidential = users[0].isFieldPresent(sfToken);
+                        }
 
-						// not in [auto_sync] && [sync_tables]
-						if (!bAutoLoadTable_ && !bInSyncTables) {
+                        bool bInSyncTables = true;
+                        if (setTableInCfg_.count(temKey) <= 0 &&
+                            mapOwnerInCfg_.count(accountID) <= 0)
+                        {
+                            bInSyncTables = false;
+                        }
 
-							app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noAutoSync", "", ""), false);
-							break;
-						}
+                        // Confidential table must sync via set sync_tables
+                        if (bConfidential && !bInSyncTables)
+                        {
+                            app_.getOPs().pubTableTxs(
+                                accountID,
+                                tableName,
+                                *pSTTX,
+                                std::make_tuple("db_noSyncTable", "", ""),
+                                false);
+                            break;
+                        }
+
+                        // not in [auto_sync] && [sync_tables]
+                        if (!bAutoLoadTable_ && !bInSyncTables) {
+
+                            app_.getOPs().pubTableTxs(
+                                accountID,
+                                tableName,
+                                *pSTTX,
+                                std::make_tuple("db_noAutoSync", "", ""),
+                                false);
+                            break;
+                        }
 
                         if (OnCreateTableTx(tx, ledger, time, chainId, true))
                         {
                             mapTxDBNam2Exist[uTxDBName] = true;
                         }
-					}
-					else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
-						|| opType == R_DELETE ||opType == T_GRANT)
-					{
+                    }
+                    else if (opType == T_DROP || opType == R_INSERT || opType == R_UPDATE
+                        || opType == R_DELETE || opType == T_GRANT)
+                    {
 
-						bool bDBTableExist = false;
-						if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end()) 
-						{
-							bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
-							mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
-						}
-						else 
-						{
-							bDBTableExist = mapTxDBNam2Exist[uTxDBName];
-						}
+                        bool bDBTableExist = false;
+                        if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end())
+                        {
+                            bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+                            mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
+                        }
+                        else
+                        {
+                            bDBTableExist = mapTxDBNam2Exist[uTxDBName];
+                        }
                         if (opType != T_GRANT)
                         {
                             if (!bDBTableExist)
-						    {
-							    app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
-							    break;
-						    }
+                            {
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
+                                break;
+                            }
 
                             bool bDBTableSync = false;
                             if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())
@@ -1857,31 +1885,31 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                             if (!bDBTableSync)
                             {
                                 app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_notInSync", "", ""), false);
-							    break;
+                                break;
                             }
                         }
                         else
                         {   //T_GRANT, if the entity table does not exist, 
                             //if the private key of the authorized account is in the configuration file, set the status of the table to init 
-                             if (!bDBTableExist)
+                            if (!bDBTableExist)
                             {
                                 app_.getTableStatusDB().DeleteRecord(accountID, tableName);
                             }
                             if (!bDBTableExist && OnCreateTableTx(tx, ledger, time, chainId, false))
                             {
-                               ;
-                            }              
+                                ;
+                            }
                         }
-						
-					}
-				}
-			}
-		}
-		catch (std::exception const&)
-		{
-			JLOG(journal_.warn()) << "Txn " << item.second->getTransactionID() << " throws";
-		}
-	}
+
+                    }
+                }
+            }
+        }
+        catch (std::exception const&)
+        {
+            JLOG(journal_.warn()) << "Txn " << item.second->getTransactionID() << " throws";
+        }
+    }
 }
 
 bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> const& ledger, uint32_t time,uint256 const& chainId,bool isPubErrInfo)
