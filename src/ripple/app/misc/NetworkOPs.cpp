@@ -3365,8 +3365,6 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 
     info[jss::server_state] = strOperatingMode(admin);
 
-    info[jss::server_state] = strOperatingMode(admin);
-
     info[jss::time] = to_string(date::floor<std::chrono::microseconds>(
         std::chrono::system_clock::now()));
 
