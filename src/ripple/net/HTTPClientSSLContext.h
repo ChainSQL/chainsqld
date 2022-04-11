@@ -28,6 +28,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl.hpp>
 #include <boost/format.hpp>
+#include <peersafe/crypto/X509.h>
 
 namespace ripple {
 
@@ -65,6 +66,22 @@ public:
                 Throw<std::runtime_error>(boost::str(
                     boost::format("Failed to add verify path: %s") %
                     ec.message()));
+        }
+
+        if(!config.CMD_SSL_CERT.empty())
+        {
+            ssl_context_.use_certificate_file(config.CMD_SSL_CERT, boost::asio::ssl::context::pem, ec);
+            X509* cert = ripple::readCertFromFile(config.CMD_SSL_CERT.c_str());
+            auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
+            if (EVP_PKEY_EC == pkID)
+            {
+                static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
+                SSL_CTX_set1_curves(ssl_context_.native_handle(), my_pref_list, 2);
+            }
+        }
+        if(!config.CMD_SSL_KEY.empty())
+        {
+            ssl_context_.use_private_key_file(config.CMD_SSL_KEY, boost::asio::ssl::context::pem, ec);
         }
     }
 

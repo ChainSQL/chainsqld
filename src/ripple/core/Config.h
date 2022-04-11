@@ -203,6 +203,8 @@ public:
     bool SSL_VERIFY = true;
     std::string SSL_VERIFY_FILE;
     std::string SSL_VERIFY_DIR;
+    std::string CMD_SSL_KEY;
+    std::string CMD_SSL_CERT;
 
     // Compression
     bool COMPRESSION = false;

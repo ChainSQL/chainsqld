@@ -140,6 +140,7 @@ struct ConfigSection
 #define SECTION_PEER_X509_CRED_PATH     "peer_x509_cred_path"
 
 #define SECTOIN_TRUSTED_CA_LIST         "trusted_ca_list"
+#define SECTION_CMD_SSL_CERT            "cmd_ssl_cert"
 
 }  // namespace ripple
 

@@ -685,6 +685,25 @@ Config::loadFromString(std::string const& fileContents)
     if (getSingleSection(secConfig, SECTION_SSL_VERIFY, strTemp, j_))
         SSL_VERIFY = beast::lexicalCastThrow<bool>(strTemp);
 
+    auto cmdSSLCertSection = section( SECTION_CMD_SSL_CERT );
+    if (!cmdSSLCertSection.empty ())
+    {
+        if(cmdSSLCertSection.exists("ssl_key") && cmdSSLCertSection.exists("ssl_cert"))
+        {
+            CMD_SSL_KEY = *(cmdSSLCertSection.get<std::string>("ssl_key"));
+            CMD_SSL_CERT = *(cmdSSLCertSection.get<std::string>("ssl_cert"));
+        }
+        else if(!cmdSSLCertSection.exists("ssl_key") && !cmdSSLCertSection.exists("ssl_cert"))
+        {
+            CMD_SSL_KEY = "";
+            CMD_SSL_CERT = "";
+        }
+        else
+            Throw<std::runtime_error>(
+                "ssl_key and ssl_cert  in [" SECTION_CMD_SSL_CERT
+                "] section must both config or both not config");
+    }
+
     if (getSingleSection(secConfig, SECTION_RELAY_VALIDATIONS, strTemp, j_))
     {
         if (boost::iequals(strTemp, "all"))
