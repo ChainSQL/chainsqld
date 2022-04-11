@@ -83,14 +83,30 @@ SHAMap::genesisSnapShot(Family& f) const
     newMap.root_ = root_->clone(1);
     newMap.backed_ = backed_;
 
+    int flushed = 0;
+
+    if (!root_ || (root_->getSeq() != 0))
+        return ret;
+
+    if (root_->isLeaf())
+    {  // special case -- root_ is leaf
+        if (backed_)
+        {
+            newMap.root_ = newMap.writeNode(hotACCOUNT_NODE, 1, std::move(newMap.root_));
+        }            
+        return ret;
+    }
+
+    auto node = std::static_pointer_cast<SHAMapInnerNode>(root_);
+
     // Stack of {parent,index,child} pointers representing
+    // inner nodes we are in the process of flushing
     using StackEntry = std::pair<std::shared_ptr<SHAMapInnerNode>, int>;
     std::stack<StackEntry, std::vector<StackEntry>> stack;
 
-    auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
-
-    // set seq of all nodes equal to 1
     int pos = 0;
+
+    // We can't flush an inner node until we flush its children
     while (1)
     {
         while (pos < 16)
@@ -101,9 +117,13 @@ SHAMap::genesisSnapShot(Family& f) const
             }
             else
             {
+                // No need to do I/O. If the node isn't linked,
+                // it can't need to be flushed
                 int branch = pos;
                 auto child = node->getChild(pos++);
-                if (child)
+                if (!child)
+                    child = descendNoStore(node, branch);
+                if (child && (child->getSeq() == 0))
                 {
                     if (child->isInner())
                     {
@@ -118,13 +138,33 @@ SHAMap::genesisSnapShot(Family& f) const
                     }
                     else
                     {
-                        child->setSeq(1);
+                        // flush this leaf
+                        ++flushed;
+
+                        assert(node->getSeq() == 0);
+                        
+                        if (backed_)
+                        {
+                            auto childCy = std::static_pointer_cast<SHAMapAbstractNode>(child->clone(1));
+                            child = newMap.writeNode(hotACCOUNT_NODE, 1, childCy);
+                        }
                     }
-                }
+                    
+                } 
             }
         }
 
-        node->setSeq(1);
+ 
+        
+        if (backed_)
+        {
+            auto nodeCy = std::static_pointer_cast<SHAMapAbstractNode>(node->clone(1));
+            node = std::static_pointer_cast<SHAMapInnerNode>(
+                    newMap.writeNode(hotACCOUNT_NODE, 1, nodeCy));
+        }
+
+        ++flushed;
+
         if (stack.empty())
             break;
 
@@ -132,10 +172,19 @@ SHAMap::genesisSnapShot(Family& f) const
         pos = stack.top().second;
         stack.pop();
 
+        // Hook this inner node to its parent
+        assert(parent->getSeq() == 0);
+        // parent->shareChild(pos, node);
+
+        // Continue with parent's next child, if any
         node = std::move(parent);
         ++pos;
     }
 
+    assert(flushed > 0);
+    ret = std::make_shared<SHAMap>(type_,root_->getNodeHash().as_uint256(), f);
+    ret->fetchRoot(root_->getNodeHash(), nullptr);
+    ret->clearSynching();
     return ret;
 }
 //
