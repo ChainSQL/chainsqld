@@ -1036,7 +1036,8 @@ Json::Value doTxResult(RPC::JsonContext& context)
         }
         else
         {
-            if (tx->getStatus() == INCLUDED || tx->getStatus() == HELD)
+            if (tx->getStatus() == INCLUDED || tx->getStatus() == HELD ||
+                tx->getStatus() == COMMITTED)
                 ret[jss::tx_status] = "pending";
             else
                 ret[jss::tx_status] = "failed";
