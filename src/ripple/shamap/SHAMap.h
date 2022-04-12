@@ -304,7 +304,7 @@ public:
     void
     invariants() const;
 
-    Blob
+    std::pair<uint256, Blob>
     genNodeProof(uint256 key) const;
 
     std::shared_ptr<SHAMapInnerNode>

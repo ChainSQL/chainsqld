@@ -71,23 +71,6 @@ storePeersafeSql(
     std::uint32_t inLedger,
     Schema& app);
 
-uint256
-calculateLedgerHash(LedgerInfo const& info)
-{
-    // VFALCO This has to match addRaw in View.h.
-    return sha512Half(
-        HashPrefix::ledgerMaster,
-        std::uint32_t(info.seq),
-        std::uint64_t(info.drops.drops()),
-        info.parentHash,
-        info.txHash,
-        info.accountHash,
-        std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
-        std::uint32_t(info.closeTime.time_since_epoch().count()),
-        std::uint8_t(info.closeTimeResolution.count()),
-        std::uint8_t(info.closeFlags));
-}
-
 //------------------------------------------------------------------------------
 
 class Ledger::sles_iter_impl : public sles_type::iter_base
