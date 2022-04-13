@@ -218,7 +218,8 @@ accountTxPage(
             AccountTransactions.TxnSeq ASC
             LIMIT %u;
             )")) %
-            b58acct % (findLedger + 1) % maxLedger % findLedger % findSeq %
+            b58acct % (findLedger + 1) % maxLedger %
+            b58acct % findLedger % findSeq %
             queryLimit);
     }
     else if (!forward && (findLedger == 0))
@@ -246,7 +247,8 @@ accountTxPage(
             AccountTransactions.TxnSeq DESC
             LIMIT %u;
             )")) %
-            b58acct % minLedger % (findLedger - 1) % findLedger % findSeq %
+            b58acct % minLedger % (findLedger - 1) %
+            b58acct % findLedger % findSeq %
             queryLimit);
     }
     else
