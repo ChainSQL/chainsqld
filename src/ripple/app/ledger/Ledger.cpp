@@ -361,7 +361,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	, rules_(ledger.rules_)
 {
 	info_.seq = 1;
-	info_.drops = ledger.info().drops;
+	info_.drops = ledger.info().drops;  
 	info_.closeTimeResolution = ledger.info_.closeTimeResolution;
 	info_.closeTimeResolution = getNextLedgerTimeResolution(
 		ledger.info_.closeTimeResolution,
@@ -373,9 +373,8 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//	info_.closeFlags |= sLCF_SHAMapV2;
 	//}
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
-	
     Keylet key = keylet::statis();
-    auto statisSle = ledger.peek(key);
+    auto statisSle = peek(key);
     if (statisSle)
     {
         statisSle->setFieldU32(sfTxSuccessCountField, 0);
@@ -392,17 +391,17 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
     }
         
     key = keylet::chainId();
-    auto chainIdSle = ledger.read(key);
+    auto chainIdSle = read(key);
     if (chainIdSle)
         stateMap_->delItem(chainIdSle->key());
 
     key = keylet::schema_index();
-    auto schemaIndexSle = ledger.read(key);
+    auto schemaIndexSle = read(key);
     if (schemaIndexSle)
         stateMap_->delItem(schemaIndexSle->key());
 
     stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
-    //stateMap_->dump(true);
+   //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
 
 
