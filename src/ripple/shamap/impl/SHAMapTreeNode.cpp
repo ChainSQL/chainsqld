@@ -59,11 +59,12 @@ SHAMapTreeNode::clone(std::uint32_t seq) const
 SHAMapTreeNode::SHAMapTreeNode(
     std::shared_ptr<SHAMapItem const> item,
     TNType type,
-    std::uint32_t seq)
+    std::uint32_t seq,
+    CommonKey::HashType hashType)
     : SHAMapAbstractNode(type, seq), mItem(std::move(item))
 {
     assert(mItem->peekData().size() >= 12);
-    updateHash();
+    updateHash(hashType);
 }
 
 SHAMapTreeNode::SHAMapTreeNode(
@@ -374,12 +375,12 @@ SHAMapAbstractNode::makeFromPrefix(Slice rawNode, SHAMapHash const& hash)
 }
 
 bool
-SHAMapInnerNode::updateHash()
+SHAMapInnerNode::updateHash(CommonKey::HashType hashType)
 {
     uint256 nh;
     if (mIsBranch != 0)
     {
-        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashType);
         using beast::hash_append;
         hash_append(*hasher, HashPrefix::innerNode);
         for(auto const& hh : mHashes)
@@ -404,7 +405,7 @@ SHAMapInnerNode::updateHashDeep()
 }
 
 bool
-SHAMapTreeNode::updateHash()
+SHAMapTreeNode::updateHash(CommonKey::HashType hashType)
 {
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
@@ -427,8 +428,13 @@ SHAMapTreeNode::updateHash()
     }
     else if (mType == tnTRANSACTION_MD)
     {
-        nh = sha512Half(
-            HashPrefix::txNode, makeSlice(mItem->peekData()), mItem->key());
+        // cross algorithm verification transation proof
+        if (hashType == CommonKey::sha)
+            nh = sha512Half<CommonKey::sha>(
+                HashPrefix::txNode, makeSlice(mItem->peekData()), mItem->key());
+        else
+            nh = sha512Half<CommonKey::sm3>(
+                HashPrefix::txNode, makeSlice(mItem->peekData()), mItem->key());
     }
     else
         assert(false);
@@ -441,7 +447,11 @@ SHAMapTreeNode::updateHash()
 }
 
 bool
-SHAMapTreeNode::verifyProof(Blob const& proofBlob, uint256 const& rootHash)
+SHAMapTreeNode::verifyProof(
+    uint256 const& mHash,
+    Blob const& proofBlob,
+    uint256 const& rootHash,
+    CommonKey::HashType hashType)
 {
     std::string s;
     s.assign(proofBlob.begin(), proofBlob.end());
@@ -459,7 +469,7 @@ SHAMapTreeNode::verifyProof(Blob const& proofBlob, uint256 const& rootHash)
     if (rootID != rootHash)
         return false;
 
-    uint256 child = mHash.as_uint256();
+    uint256 child = mHash;
 
     if (proof.level_size() == 0)
         return child == rootID;
@@ -504,7 +514,7 @@ SHAMapTreeNode::verifyProof(Blob const& proofBlob, uint256 const& rootHash)
         if (!found)
             return false;
 
-        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher();
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashType);
         using beast::hash_append;
         hash_append(*hasher, HashPrefix::innerNode);
         for (auto const& hh : mHashes)

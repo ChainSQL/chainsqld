@@ -401,7 +401,7 @@ public:
     getFlags() const;
 
     uint256
-    getHash(HashPrefix prefix) const;
+    getHash(HashPrefix prefix, CommonKey::HashType hashType = CommonKey::chainHashTypeG) const;
     uint256
     getSigningHash(HashPrefix prefix) const;
 
