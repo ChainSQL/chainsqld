@@ -340,13 +340,6 @@ public:  // public only to SHAMap
 
     boost::optional<uint256>
     getStorageRoot();
-
-    static bool
-    verifyProof(
-        uint256 const& mHash,
-        Blob const& proofBlob,
-        uint256 const& rootHash,
-        CommonKey::HashType hashType);
 };
 
 // SHAMapAbstractNode

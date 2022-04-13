@@ -35,6 +35,7 @@
 #include <boost/optional/optional_io.hpp>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
@@ -675,6 +676,85 @@ jsonToTxMeta(Json::Value& params, uint256 txHash, std::uint32_t ledgerSeq)
     return std::make_pair(meta, Json::objectValue);
 }
 
+bool
+verifyProof(
+    uint256 const& nodeHash,
+    Blob const& proofBlob,
+    uint256 const& rootHash,
+    CommonKey::HashType hashType)
+{
+    std::string s;
+    s.assign(proofBlob.begin(), proofBlob.end());
+
+    protocol::TMSHAMapProof proof;
+
+    if (!proof.ParseFromString(s))
+        return false;
+
+    if (proof.rootid().size() != uint256::size())
+        return false;
+
+    uint256 rootID;
+    memcpy(rootID.begin(), proof.rootid().data(), 32);
+    if (rootID != rootHash)
+        return false;
+
+    uint256 child = nodeHash;
+
+    if (proof.level_size() == 0)
+        return child == rootID;
+
+    for (int rdepth = 0; rdepth < proof.level_size(); ++rdepth)
+    {
+        auto level = proof.level(rdepth);
+
+        auto branchCount = [&]() {
+            int count = 0;
+            for (int i = 0; i < 16; ++i)
+            {
+                if (level.branch() & (1 << i))
+                    count++;
+            }
+            return count;
+        }();
+        if (!branchCount || branchCount != level.nodeid_size())
+            return false;
+
+        bool found = false;
+        std::array<uint256, 16> hashes = {beast::zero};
+
+        for (int branch = 0, index = 0; branch < 16; ++branch)
+        {
+            if (level.branch() & (1 << branch))
+            {
+                if (level.nodeid(index).size() != 32)
+                    return false;
+
+                uint256 nodeID = beast::zero;
+                memcpy(nodeID.begin(), level.nodeid(index).data(), 32);
+
+                if (nodeID == child)
+                    found = true;
+
+                hashes[branch] = nodeID;
+                index++;
+            }
+        }
+
+        if (!found)
+            return false;
+
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashType);
+        using beast::hash_append;
+        hash_append(*hasher, HashPrefix::innerNode);
+        for (auto const& hh : hashes)
+            hash_append(*hasher, hh);
+        child = static_cast<typename sha512_half_hasher::result_type>(*hasher);
+    }
+
+    return child == rootID;
+}
+
 Json::Value
 doTxMerkleProof(RPC::JsonContext& context)
 {
@@ -818,7 +898,7 @@ doTxMerkleVerifyFromCommandline(RPC::JsonContext& context)
         return RPC::make_param_error(
             "Element proof is malformed, must be a hex string.");
 
-    if (!SHAMapTreeNode::verifyProof(
+    if (!verifyProof(
             node->getNodeHash().as_uint256(),
             *proof,
             result.ledger->info().txHash,
@@ -899,7 +979,7 @@ doTxMerkleVerifyWithTx(
     }
 
     // Verify step-4: verify node merkle proof
-    if (!SHAMapTreeNode::verifyProof(
+    if (!verifyProof(
             node->getNodeHash().as_uint256(), proof, info.txHash, hashType))
     {
         return RPC::make_error(
@@ -924,7 +1004,7 @@ doTxMerkleVerifyWithNodeHash(
         return rpcError(rpcNOT_IMPL);
 
     // Verify step-2: verify node merkle proof
-    if (!SHAMapTreeNode::verifyProof(
+    if (!verifyProof(
             from_hex_text<uint256>(hash), proof, info.txHash, hashType))
     {
         return RPC::make_error(
