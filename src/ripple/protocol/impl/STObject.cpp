@@ -316,12 +316,12 @@ STObject::isEquivalent(const STBase& t) const
 }
 
 uint256
-STObject::getHash(HashPrefix prefix) const
+STObject::getHash(HashPrefix prefix, CommonKey::HashType hashType) const
 {
     Serializer s;
     s.add32(prefix);
     add(s, withAllFields);
-    return s.getSHA512Half();
+    return s.getSHA512Half(hashType);
 }
 
 uint256

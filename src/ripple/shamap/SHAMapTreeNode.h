@@ -166,7 +166,7 @@ public:
     isInBounds(SHAMapNodeID const& id) const;
 
     virtual bool
-    updateHash() = 0;
+    updateHash(CommonKey::HashType hashType = CommonKey::chainHashTypeG) = 0;
     virtual void
     addRaw(Serializer&, SHANodeFormat format) const = 0;
     virtual std::string
@@ -256,7 +256,8 @@ public:
     setFullBelowGen(std::uint32_t gen);
 
     bool
-    updateHash() override;
+    updateHash(
+        CommonKey::HashType hashType = CommonKey::chainHashTypeG) override;
     void
     updateHashDeep();
     void
@@ -295,7 +296,8 @@ public:
     SHAMapTreeNode(
         std::shared_ptr<SHAMapItem const> item,
         TNType type,
-        std::uint32_t seq);
+        std::uint32_t seq,
+        CommonKey::HashType hashType = CommonKey::chainHashTypeG);
     SHAMapTreeNode(
         std::shared_ptr<SHAMapItem const> item,
         TNType type,
@@ -334,10 +336,7 @@ public:  // public only to SHAMap
     std::string
     getString(SHAMapNodeID const&) const override;
     bool
-    updateHash() override;
-
-    bool
-    verifyProof(Blob const& proofBlob, uint256 const& rootHash);
+    updateHash(CommonKey::HashType hashType = CommonKey::chainHashTypeG) override;
 
     boost::optional<uint256>
     getStorageRoot();

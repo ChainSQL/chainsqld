@@ -27,6 +27,7 @@
 #include <ripple/ledger/TxMeta.h>
 #include <ripple/ledger/View.h>
 #include <ripple/protocol/Book.h>
+#include <ripple/protocol/digest.h>
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/STLedgerEntry.h>
 #include <ripple/protocol/Serializer.h>
@@ -493,6 +494,24 @@ deserializeTx(SHAMapItem const& item);
 */
 std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
 deserializeTxPlusMeta(SHAMapItem const& item);
+
+template <CommonKey::HashType hashType = CommonKey::unknown>
+uint256
+calculateLedgerHash(LedgerInfo const& info)
+{
+    // VFALCO This has to match addRaw in View.h.
+    return sha512Half<hashType>(
+        HashPrefix::ledgerMaster,
+        std::uint32_t(info.seq),
+        std::uint64_t(info.drops.drops()),
+        info.parentHash,
+        info.txHash,
+        info.accountHash,
+        std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
+        std::uint32_t(info.closeTime.time_since_epoch().count()),
+        std::uint8_t(info.closeTimeResolution.count()),
+        std::uint8_t(info.closeFlags));
+}
 
 }  // namespace ripple
 

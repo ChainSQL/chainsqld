@@ -26,9 +26,6 @@
 
 namespace ripple {
 
-extern uint256
-calculateLedgerHash(LedgerInfo const& info);
-
 HotstuffConsensus::HotstuffConsensus(
     Adaptor& adaptor,
     clock_type const& clock,

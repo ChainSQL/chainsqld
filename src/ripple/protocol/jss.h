@@ -178,6 +178,7 @@ JSS(converge_time);          // out: NetworkOPs
 JSS(converge_time_s);        // out: NetworkOPs
 JSS(count);                  // in: AccountTx*, ValidatorList
 JSS(counters);               // in/out: retrieve counters
+JSS(crypto_alg);
 JSS(currency);               // in: paths/PathRequest, STAmount
                              // out: STPathSet, STAmount,
                              //      AccountLines
@@ -543,6 +544,7 @@ JSS(tx_blob);                 // in/out: Submit,
 JSS(tx_hash);                 // in: TransactionEntry
 JSS(tx_json);                 // in/out: TransactionSign
                               // out: TransactionEntry
+JSS(tx_node_hash);
 JSS(tx_signing_hash);         // out: TransactionSign
 JSS(tx_unsigned);             // out: TransactionSign
 JSS(txn_count);               // out: NetworkOPs

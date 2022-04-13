@@ -35,15 +35,13 @@
 #include <boost/optional/optional_io.hpp>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/crypto/hashBaseObj.h>
 #include <peersafe/rpc/TableUtils.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/misc/TxPool.h>
 
 namespace ripple {
-
-extern uint256
-calculateLedgerHash(LedgerInfo const& info);
 
 // {
 //   transaction: <hex>
@@ -544,7 +542,7 @@ doTxJson(RPC::JsonContext& context)
 }
 
 std::pair<std::shared_ptr<STTx const>, Json::Value>
-jsonToSTTx(Json::Value& params)
+jsonToSTTx(Json::Value& params, CommonKey::HashType hashType = CommonKey::chainHashTypeG)
 {
     std::shared_ptr<STTx const> sttx;
 
@@ -572,7 +570,8 @@ jsonToSTTx(Json::Value& params)
                 return std::make_pair(nullptr, err);
             }
 
-            sttx = std::make_shared<STTx>(std::move(parsed.object.get()));
+            sttx = std::make_shared<STTx>(
+                std::move(parsed.object.get()), hashType);
         }
         catch (STObject::FieldErr& err)
         {
@@ -601,7 +600,7 @@ jsonToSTTx(Json::Value& params)
 
         try
         {
-            sttx = std::make_shared<STTx const>(std::ref(sitTrans));
+            sttx = std::make_shared<STTx const>(std::ref(sitTrans), hashType);
         }
         catch (std::exception& e)
         {
@@ -677,6 +676,85 @@ jsonToTxMeta(Json::Value& params, uint256 txHash, std::uint32_t ledgerSeq)
     return std::make_pair(meta, Json::objectValue);
 }
 
+bool
+verifyProof(
+    uint256 const& nodeHash,
+    Blob const& proofBlob,
+    uint256 const& rootHash,
+    CommonKey::HashType hashType)
+{
+    std::string s;
+    s.assign(proofBlob.begin(), proofBlob.end());
+
+    protocol::TMSHAMapProof proof;
+
+    if (!proof.ParseFromString(s))
+        return false;
+
+    if (proof.rootid().size() != uint256::size())
+        return false;
+
+    uint256 rootID;
+    memcpy(rootID.begin(), proof.rootid().data(), 32);
+    if (rootID != rootHash)
+        return false;
+
+    uint256 child = nodeHash;
+
+    if (proof.level_size() == 0)
+        return child == rootID;
+
+    for (int rdepth = 0; rdepth < proof.level_size(); ++rdepth)
+    {
+        auto level = proof.level(rdepth);
+
+        auto branchCount = [&]() {
+            int count = 0;
+            for (int i = 0; i < 16; ++i)
+            {
+                if (level.branch() & (1 << i))
+                    count++;
+            }
+            return count;
+        }();
+        if (!branchCount || branchCount != level.nodeid_size())
+            return false;
+
+        bool found = false;
+        std::array<uint256, 16> hashes = {beast::zero};
+
+        for (int branch = 0, index = 0; branch < 16; ++branch)
+        {
+            if (level.branch() & (1 << branch))
+            {
+                if (level.nodeid(index).size() != 32)
+                    return false;
+
+                uint256 nodeID = beast::zero;
+                memcpy(nodeID.begin(), level.nodeid(index).data(), 32);
+
+                if (nodeID == child)
+                    found = true;
+
+                hashes[branch] = nodeID;
+                index++;
+            }
+        }
+
+        if (!found)
+            return false;
+
+        std::unique_ptr<hashBase> hasher = hashBaseObj::getHasher(hashType);
+        using beast::hash_append;
+        hash_append(*hasher, HashPrefix::innerNode);
+        for (auto const& hh : hashes)
+            hash_append(*hasher, hh);
+        child = static_cast<typename sha512_half_hasher::result_type>(*hasher);
+    }
+
+    return child == rootID;
+}
+
 Json::Value
 doTxMerkleProof(RPC::JsonContext& context)
 {
@@ -742,12 +820,13 @@ doTxMerkleProof(RPC::JsonContext& context)
     try
     {
         auto const proof = result.ledger->txMap().genNodeProof(args.hash);
-        if (proof.size() <= 0)
+        if (proof.first == beast::zero || proof.second.size() <= 0)
         {
             return rpcError(rpcTXN_NOT_FOUND);
         }
 
-        response[jss::proof] = strHex(proof);
+        response[jss::tx_node_hash] = to_string(proof.first);
+        response[jss::proof] = strHex(proof.second);
     }
     catch (...)
     {
@@ -757,6 +836,8 @@ doTxMerkleProof(RPC::JsonContext& context)
     response[jss::ledger_hash] = to_string(result.ledger->info().hash);
 
     response[jss::schema_id] = to_string(context.app.schemaId());
+
+    response[jss::crypto_alg] = CommonKey::getHashTypeStr();
 
     return response;
 }
@@ -817,7 +898,114 @@ doTxMerkleVerifyFromCommandline(RPC::JsonContext& context)
         return RPC::make_param_error(
             "Element proof is malformed, must be a hex string.");
 
-    if (!node->verifyProof(*proof, result.ledger->info().txHash))
+    if (!verifyProof(
+            node->getNodeHash().as_uint256(),
+            *proof,
+            result.ledger->info().txHash,
+            CommonKey::chainHashTypeG))
+    {
+        return RPC::make_error(
+            rpcBAD_PROOF, "Tx node merkle proof verify failed.");
+    }
+
+    return Json::objectValue;
+}
+
+Json::Value
+doTxMerkleVerifyWithTx(
+    RPC::JsonContext& context,
+    LedgerInfo const& info,
+    Blob const& proof,
+    CommonKey::HashType hashType)
+{
+    // Prase params.tx_json or params.tx to STTx
+    auto sttx = jsonToSTTx(context.params, hashType);
+    if (!sttx.first)
+        return sttx.second;
+
+    // Verify step-2: optional verify tx hash
+    if ((context.params.isMember(jss::tx_json) &&
+         context.params[jss::tx_json].isMember(jss::hash)) ||
+        context.params.isMember(jss::hash))
+    {
+        std::string hash = context.params.isMember(jss::hash)
+            ? context.params[jss::hash].asString()
+            : context.params[jss::tx_json][jss::hash].asString();
+        if (!isHexID(hash))
+            return rpcError(rpcNOT_IMPL);
+
+        if (sttx.first->getTransactionID() != from_hex_text<uint256>(hash))
+        {
+            return RPC::make_error(
+                rpcBAD_PROOF, "Tx json does not match tx hash.");
+        }
+    }
+
+    // Prase params.meta to TxMeta
+    auto meta =
+        jsonToTxMeta(context.params, sttx.first->getTransactionID(), info.seq);
+    if (!meta.first)
+        return meta.second;
+
+    // Make SHAMapItem
+    auto const sTx = std::make_shared<Serializer>();
+    sttx.first->add(*sTx);
+    auto sMeta = std::make_shared<Serializer>();
+    meta.first->addRaw(
+        *sMeta, meta.first->getResultTER(), meta.first->getIndex());
+
+    Serializer s(sTx->getDataLength() + sMeta->getDataLength() + 16);
+    s.addVL(sTx->peekData());
+    s.addVL(sMeta->peekData());
+    auto item = std::make_shared<SHAMapItem const>(
+        sttx.first->getTransactionID(), std::move(s));
+
+    // Make SHAMapTreeNode
+    std::shared_ptr<SHAMapTreeNode> node = std::make_shared<SHAMapTreeNode>(
+        std::move(item), SHAMapTreeNode::tnTRANSACTION_MD, 0, hashType);
+
+    // Verify step-3: optional verify tx node hash
+    if (context.params.isMember(jss::tx_node_hash))
+    {
+        std::string hash = context.params[jss::tx_node_hash].asString();
+        if (!isHexID(hash))
+            return rpcError(rpcNOT_IMPL);
+
+        if (from_hex_text<uint256>(hash) != node->getNodeHash().as_uint256())
+        {
+            return RPC::make_error(
+                rpcBAD_PROOF, "Tx with meta does not match tx node hash.");
+        }
+    }
+
+    // Verify step-4: verify node merkle proof
+    if (!verifyProof(
+            node->getNodeHash().as_uint256(), proof, info.txHash, hashType))
+    {
+        return RPC::make_error(
+            rpcBAD_PROOF, "Tx node merkle proof verify failed.");
+    }
+
+    return Json::objectValue;
+}
+
+Json::Value
+doTxMerkleVerifyWithNodeHash(
+    RPC::JsonContext& context,
+    LedgerInfo const& info,
+    Blob const& proof,
+    CommonKey::HashType hashType)
+{
+    if (!context.params.isMember(jss::tx_node_hash))
+        return RPC::missing_field_error(jss::tx_node_hash);
+
+    std::string hash = context.params[jss::tx_node_hash].asString();
+    if (!isHexID(hash))
+        return rpcError(rpcNOT_IMPL);
+
+    // Verify step-2: verify node merkle proof
+    if (!verifyProof(
+            from_hex_text<uint256>(hash), proof, info.txHash, hashType))
     {
         return RPC::make_error(
             rpcBAD_PROOF, "Tx node merkle proof verify failed.");
@@ -832,15 +1020,21 @@ doTxMerkleVerifyFromRPC(RPC::JsonContext& context)
     if (!context.params.isMember(jss::ledger))
         return RPC::missing_field_error(jss::ledger);
 
-    if (!context.params.isMember(jss::tx_json) &&
-        !context.params.isMember(jss::tx))
-        return RPC::missing_field_error(jss::tx_json);
-
-    if (!context.params.isMember(jss::meta))
-        return RPC::missing_field_error(jss::meta);
-
     if (!context.params.isMember(jss::proof))
         return RPC::missing_field_error(jss::proof);
+
+    // Get hash type
+    CommonKey::HashType hashType = CommonKey::chainHashTypeG;
+    if (context.params.isMember(jss::crypto_alg))
+    {
+        if (!context.params[jss::crypto_alg].isString())
+            return RPC::make_param_error(
+                "Element crypto_alg is malformed, must be a string.");
+        hashType = CommonKey::hashTypeFromString(
+            context.params[jss::crypto_alg].asString());
+        if (hashType == CommonKey::unknown)
+            return RPC::make_param_error("Element crypto_alg is invalid.");
+    }
 
     // Prase params.ledger to LedgerInfo
     LedgerInfo info;
@@ -864,72 +1058,33 @@ doTxMerkleVerifyFromRPC(RPC::JsonContext& context)
             return rpcError(rpcNOT_IMPL);
         info.hash = from_hex_text<uint256>(hash);
 
-        if (calculateLedgerHash(info) != info.hash)
+        uint256 ledgerHash;
+        if (hashType == CommonKey::sha)
+            ledgerHash = calculateLedgerHash<CommonKey::sha>(info);
+        else
+            ledgerHash = calculateLedgerHash<CommonKey::sm3>(info);
+
+        if (ledgerHash != info.hash)
         {
             return RPC::make_error(
                 rpcBAD_PROOF, "Ledger info and ledger hash not match.");
         }
     }
 
-    // Prase params.tx_json or params.tx to STTx
-    auto sttx = jsonToSTTx(context.params);
-    if (!sttx.first)
-        return sttx.second;
-
-    // Verify step-2: verify tx hash
-    if ((context.params.isMember(jss::tx_json) &&
-         context.params[jss::tx_json].isMember(jss::hash)) ||
-        context.params.isMember(jss::hash))
-    {
-        std::string hash = context.params.isMember(jss::hash)
-            ? context.params[jss::hash].asString()
-            : context.params[jss::tx_json][jss::hash].asString();
-        if (!isHexID(hash))
-            return rpcError(rpcNOT_IMPL);
-
-        if (sttx.first->getTransactionID() != from_hex_text<uint256>(hash))
-        {
-            return RPC::make_error(
-                rpcBAD_PROOF, "Tx json and tx hash not match.");
-        }
-    }
-
-    // Prase params.meta to TxMeta
-    auto meta =
-        jsonToTxMeta(context.params, sttx.first->getTransactionID(), info.seq);
-    if (!meta.first)
-        return meta.second;
-
-    // Make SHAMapItem
-    auto const sTx = std::make_shared<Serializer>();
-    sttx.first->add(*sTx);
-    auto sMeta = std::make_shared<Serializer>();
-    meta.first->addRaw(*sMeta, meta.first->getResultTER(), meta.first->getIndex());
-
-    Serializer s(sTx->getDataLength() + sMeta->getDataLength() + 16);
-    s.addVL(sTx->peekData());
-    s.addVL(sMeta->peekData());
-    auto item = std::make_shared<SHAMapItem const>(
-        sttx.first->getTransactionID(), std::move(s));
-
-    // Make SHAMapTreeNode
-    std::shared_ptr<SHAMapTreeNode> node = std::make_shared<SHAMapTreeNode>(
-        std::move(item), SHAMapTreeNode::tnTRANSACTION_MD, 0);
-
-    // Verify step-3: verify node merkle proof
     if (!context.params[jss::proof].isString())
-        return RPC::make_param_error("Element proof is malformed, must be a string.");
+        return RPC::make_param_error(
+            "Element proof is malformed, must be a string.");
     auto proof = strUnHex(context.params[jss::proof].asString());
     if (!proof || !proof->size())
-        return RPC::make_param_error("Element proof is malformed, must be a hex string.");
+        return RPC::make_param_error(
+            "Element proof is malformed, must be a hex string.");
 
-    if (!node->verifyProof(*proof, info.txHash))
-    {
-        return RPC::make_error(
-            rpcBAD_PROOF, "Tx node merkle proof verify failed.");
-    }
-
-    return Json::objectValue;
+    if ((context.params.isMember(jss::tx_json) ||
+         context.params.isMember(jss::tx)) &&
+        context.params.isMember(jss::meta))
+        return doTxMerkleVerifyWithTx(context, info, *proof, hashType);
+    else
+        return doTxMerkleVerifyWithNodeHash(context, info, *proof, hashType);
 }
 
 Json::Value

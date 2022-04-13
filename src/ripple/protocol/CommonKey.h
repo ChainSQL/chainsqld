@@ -58,17 +58,11 @@ namespace ripple {
         
         static bool setHashType(std::string& hashTypeStr)
         {
-            if (hashTypeStr == "sha")
-            {
-                chainHashTypeG = HashType::sha;
-                return true;
-            }
-            else if (hashTypeStr == "sm3")
-            {
-                chainHashTypeG = HashType::sm3;
-                return true;
-            }
-            else return false;
+            auto hashType = hashTypeFromString(hashTypeStr);
+            if (hashType == HashType::unknown)
+                return false;
+            chainHashTypeG = hashType;
+            return true;
         }
         static std::string getHashTypeStr()
         {
@@ -81,6 +75,16 @@ namespace ripple {
                 default:
                     return "invalid";
             }
+        }
+        static HashType
+        hashTypeFromString(std::string const& hashTypeStr)
+        {
+            if (hashTypeStr == "sha")
+                return HashType::sha;
+            else if (hashTypeStr == "sm3")
+                return HashType::sm3;
+            else
+                return HashType::unknown;
         }
 	};
 }

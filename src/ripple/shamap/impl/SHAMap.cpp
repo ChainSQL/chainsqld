@@ -1358,7 +1358,7 @@ SHAMap::invariants() const
     node->invariants(true);
 }
 
-Blob
+std::pair<uint256, Blob>
 SHAMap::genNodeProof(uint256 key) const
 {
     SharedPtrNodeStack stack;
@@ -1420,7 +1420,7 @@ SHAMap::genNodeProof(uint256 key) const
     Blob b;
     b.assign(s.begin(), s.end());
 
-    return b;
+    return std::make_pair(leaf->getNodeHash().as_uint256(), b);
 }
 
 std::shared_ptr<SHAMapInnerNode>
