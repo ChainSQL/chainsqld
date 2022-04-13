@@ -322,7 +322,7 @@ initAuthenticated(
         }
         
         X509* cert = ripple::readCertFromFile(cert_file.c_str());
-        auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
+        auto pkID = EVP_PKEY_id(X509_get0_pubkey(cert));
         if(EVP_PKEY_EC == pkID)
         {
             static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
