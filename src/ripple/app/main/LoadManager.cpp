@@ -28,6 +28,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <signal.h>
 
 namespace ripple {
 
@@ -160,6 +161,8 @@ LoadManager::run()
                             JLOG(journal_.fatal())
                                 << app_.getJobQueue().getJson(0);
                         }
+
+                        raise(6);
                     }
                 }
 
