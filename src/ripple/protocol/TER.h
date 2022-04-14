@@ -62,6 +62,7 @@ enum TELcodes : TERUnderlyingType
     telCAN_NOT_QUEUE_FULL,
     telTX_POOL_FULL,
     telTX_HELD_FAIL,
+    telSEQ_TOOLARGE,
 
 	terMAX = 65535
 };

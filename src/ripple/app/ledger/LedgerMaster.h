@@ -241,7 +241,7 @@ public:
     failedSave(std::uint32_t seq, uint256 const& hash);
 
     bool
-    addHeldTransaction(std::shared_ptr<Transaction> const& trans);
+    addHeldTransaction(std::shared_ptr<Transaction> const& trans,bool bForceAdd);
 
     /** Get all the transactions held for a particular account.
         This is normally called when a transaction for that
