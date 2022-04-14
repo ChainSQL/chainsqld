@@ -688,6 +688,7 @@ JSS ( meta_chain);                    // out: table tx chain and contract
 JSS ( TableChain );                  // out: 
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
+JSS (PreviousSeq);                  // out:
 JSS ( NextHash );                   // out: 
 JSS ( log );
 
