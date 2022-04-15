@@ -256,7 +256,7 @@ ViewChangeManager::getJson() const
 
         for (auto const& [_, v] : mapPK2View)
         {
-            Json::Value& e = v->getJson(false);
+            Json::Value const& e = v->getJson(false);
             view.append(e);
         }
         views.append(elem);

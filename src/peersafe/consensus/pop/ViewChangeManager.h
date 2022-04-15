@@ -88,7 +88,7 @@ public:
     clearCache();
 
     Json::Value
-    ViewChangeManager::getJson() const;
+    getJson() const;
 };
 
 }  // namespace ripple
