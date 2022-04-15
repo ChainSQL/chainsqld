@@ -18,6 +18,8 @@
 //==============================================================================
 
 
+#include <ripple/basics/base_uint.h>
+#include <ripple/protocol/jss.h>
 #include <peersafe/protocol/STViewChange.h>
 
 
@@ -62,6 +64,21 @@ Blob STViewChange::getSerialized() const
     Serializer s;
     add(s);
     return s.peekData();
+}
+
+Json::Value
+STViewChange::getJson(bool withView) const
+{
+    Json::Value ret(Json::objectValue);
+
+    if (withView)
+        ret[jss::view] = (Json::UInt)toView_;
+
+    ret[jss::PreviousHash] = to_string(prevHash_);
+    ret[jss::PreviousSeq] = prevSeq_;
+    ret[jss::public_key] = toBase58(TokenType::NodePublic, nodePublic_);
+
+    return ret;
 }
 
 SOTemplate const& STViewChange::getFormat()
