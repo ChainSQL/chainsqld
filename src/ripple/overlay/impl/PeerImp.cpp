@@ -206,12 +206,12 @@ PeerImp::dispatch()
 {
     if (publicValidate_)
     {
-        for (auto item : app_.getSchemaManager())
-        {
-            auto vecKeys = item.second->validators().validators();
-            auto vecPendingKeys = item.second->validators().pendingValidators();
+
+        app_.getSchemaManager().foreatch([this](std::shared_ptr<Schema> schema) {
+            auto vecKeys = schema->validators().validators();
+            auto vecPendingKeys = schema->validators().pendingValidators();
             bool bShoundAdd = false;
-            if (item.first ==
+            if (schema->schemaId() ==
                 beast::zero)  // add to main chain with no validators check.
             {
                 bShoundAdd = true;
@@ -231,10 +231,10 @@ PeerImp::dispatch()
             if (bShoundAdd)
             {
                 std::lock_guard sl(schemaInfoMutex_);
-                schemaInfo_.emplace(item.first, SchemaInfo());
-                item.second->peerManager().add(shared_from_this());
+                schemaInfo_.emplace(schema->schemaId(), SchemaInfo());
+                schema->peerManager().add(shared_from_this());
             }
-        }
+        });
     }
     else
     {
