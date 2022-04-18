@@ -562,11 +562,10 @@ TableSync::ParseSyncAccount(std::string line)
             {
                 userAccount = std::get<0>(tup);
                 secret_key = std::get<1>(tup);
+                return std::make_tuple(*oAccountID, userAccount,secret_key, true);
             }
-            return std::make_tuple(*oAccountID, userAccount,secret_key, true);
         }
         return std::make_tuple(*oAccountID, beast::zero, SecretKey(), false);
-       
     }
     else
     {
@@ -609,6 +608,9 @@ TableSync::ParseSecret(std::string secret, std::string user)
         {
             std::string privateKeyStrDe58 =
                 decodeBase58Token(secret, TokenType::AccountSecret);
+            if(privateKeyStrDe58.empty())
+                return std::make_tuple(beast::zero, SecretKey(), false);
+            
             SecretKey tempSecKey(
                 Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
             tempSecKey.keyTypeInt_ = KeyType::gmalg;
@@ -629,6 +631,10 @@ TableSync::ParseSecret(std::string secret, std::string user)
             public_key = key_pair.first;
             secret_key = key_pair.second;
             userAccountId = calcAccountID(public_key);
+        }
+        else
+        {
+            return std::make_tuple(beast::zero, SecretKey(), false);
         }
     }
     return std::make_tuple(userAccountId, secret_key, true);

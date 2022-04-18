@@ -172,7 +172,7 @@ ViewChangeManager::shouldTriggerViewChange(
         // Check if the prevSeq is consistent between view_change messages.
         for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
         {
-            auto prevHashTmp = iter->second->prevHash();
+            auto const& prevHashTmp = iter->second->prevHash();
             if (mapSeqCount.find(prevHashTmp) != mapSeqCount.end())
             {
                 mapSeqCount[prevHashTmp]++;
@@ -202,6 +202,67 @@ void
 ViewChangeManager::clearCache()
 {
     viewChangeReq_.clear();
+}
+
+//  {
+//      "views" : [
+//          {
+//              "toView" : 100,
+//              "count" : 2
+//              "view" : [
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  },
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  }
+//              ]
+//          }, 
+//          {
+//              "toView" : 101,
+//              "count" : 2
+//              "view" : [
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  },
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  }
+//              ]
+//          }
+//      ]
+//  }
+Json::Value
+ViewChangeManager::getJson() const
+{
+    Json::Value ret(Json::objectValue);
+    Json::Value& views = (ret["views"] = Json::arrayValue);
+
+    for (auto const& [toView, mapPK2View] : viewChangeReq_)
+    {
+        Json::Value elem(Json::objectValue);
+        elem["toView"] = (Json::UInt)toView;
+        elem[jss::count] = (Json::UInt)mapPK2View.size();
+
+        Json::Value& view = (elem[jss::view] = Json::arrayValue);
+
+        for (auto const& [_, v] : mapPK2View)
+        {
+            Json::Value const& e = v->getJson(false);
+            view.append(e);
+        }
+        views.append(elem);
+    }
+
+    return ret;
 }
 
 }  // namespace ripple

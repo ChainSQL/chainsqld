@@ -790,8 +790,8 @@ public:
         {
             checkedOpenLedger_.reset();
             checkedOpenLedger_.emplace(
-                app_.getLedgerMaster().getValidatedLedger(),
-                app_.cachedSLEs(),
+                getLedgerMaster().getValidatedLedger(),
+                cachedSLEs(),
                 m_journal);
             return *checkedOpenLedger_;
         }

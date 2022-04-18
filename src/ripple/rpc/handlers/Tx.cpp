@@ -937,7 +937,7 @@ doTxMerkleVerifyWithTx(
         if (sttx.first->getTransactionID() != from_hex_text<uint256>(hash))
         {
             return RPC::make_error(
-                rpcBAD_PROOF, "Tx json does not match tx hash.");
+                rpcTX_HASH_NOT_MATCH, "Tx json does not match tx hash.");
         }
     }
 
@@ -974,7 +974,8 @@ doTxMerkleVerifyWithTx(
         if (from_hex_text<uint256>(hash) != node->getNodeHash().as_uint256())
         {
             return RPC::make_error(
-                rpcBAD_PROOF, "Tx with meta does not match tx node hash.");
+                rpcTX_NODEHASH_NOT_MATCH,
+                "Tx with meta does not match tx node hash.");
         }
     }
 
@@ -1067,7 +1068,8 @@ doTxMerkleVerifyFromRPC(RPC::JsonContext& context)
         if (ledgerHash != info.hash)
         {
             return RPC::make_error(
-                rpcBAD_PROOF, "Ledger info and ledger hash not match.");
+                rpcUNRELIABLE_LEDGER_HEADER,
+                "Ledger info and ledger hash not match.");
         }
     }
 

@@ -822,8 +822,13 @@ namespace ripple {
             view.update(tableSleExist);
             break;
         }
-        case T_ADD_FIELDS:
         case T_DELETE_FIELDS:
+        {
+            updateOperationRules(pEntry, tx);
+            view.update(tableSleExist);
+            break;
+        }
+        case T_ADD_FIELDS:
         case T_MODIFY_FIELDS:
         case T_CREATE_INDEX:
         case T_DELETE_INDEX:
@@ -834,6 +839,216 @@ namespace ripple {
         }
 
         return terResult;
+    }
+
+    void TableListSet::updateOperationRules(STObject* pEntry, const STTx& tx)
+    {
+        auto opType = tx.getFieldU16(sfOpType);
+        if (opType != (int)T_DELETE_FIELDS)
+            return;
+
+        auto sRaw = strCopy(tx.getFieldVL(sfRaw));
+        Json::Value jsonRaw;
+        if (Json::Reader().parse(sRaw, jsonRaw) == false)
+            return;
+        assert(jsonRaw.isArray());
+
+        STObject operationRuleObject(sfRules);
+        for (Json::UInt i = 0; i < jsonRaw.size(); i++) 
+        {
+            Json::Value& item = jsonRaw[i];
+            if (item.isMember(jss::field) == false)
+                continue;
+            Json::Value& field = item[jss::field];
+            assert(field.isString());
+            auto fieldName = field.toStyledString();
+            if (fieldName.empty())
+                continue;
+
+            Json::Value insertionRule;
+            if (updateOperationRuleForInserting(
+                fieldName,
+                pEntry,
+                insertionRule))
+            {
+                std::string rule = insertionRule.toStyledString();
+                operationRuleObject.setFieldVL(sfInsertRule, strCopy(rule));
+            }
+
+            Json::Value updateRule;
+            if (updateOperationRuleForUpdating(
+                fieldName,
+                pEntry,
+                updateRule))
+            {
+                std::string rule = updateRule.toStyledString();
+                operationRuleObject.setFieldVL(sfUpdateRule, strCopy(rule));
+            }
+
+            Json::Value deleteRule;
+            if (updateOperationRuleForDeletingOrGet(
+                fieldName,
+                pEntry,
+                (TableOpType)R_DELETE,
+                deleteRule))
+            {
+                std::string rule = deleteRule.toStyledString();
+                operationRuleObject.setFieldVL(sfDeleteRule, strCopy(rule));
+            }
+
+            Json::Value getRule;
+            if (updateOperationRuleForDeletingOrGet(
+                fieldName,
+                pEntry,
+                (TableOpType)R_GET,
+                getRule))
+            {
+                std::string rule = getRule.toStyledString();
+                operationRuleObject.setFieldVL(sfGetRule, strCopy(rule));
+            }
+        }
+        pEntry->setFieldObject(sfRules, operationRuleObject);
+    }
+
+    bool TableListSet::updateOperationRuleForInserting(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& jsonRule)
+    {
+        bool ret = false;
+        auto insertOperationRule = STEntry::getOperationRule(*pEntry, (TableOpType)R_INSERT);
+        if (insertOperationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(insertOperationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            auto members = condition.getMemberNames();
+            auto found = std::find_if(members.begin(), members.end(), [&](const std::string& key) {
+                return key == fieldName;
+            });
+
+            if (found != members.end())
+            {
+                condition.removeMember(fieldName);
+                ret = true;
+            }
+
+            if (condition.getMemberNames().size() == 0)
+            {
+                jsonRule.removeMember(jss::Condition);
+            }
+        }
+
+        if (jsonRule.isMember(jss::Count))
+        {
+            Json::Value& count = jsonRule[jss::Count];
+            if (count[jss::AccountField].toStyledString() != fieldName)
+                return ret;
+            jsonRule.removeMember(jss::Count);
+            ret = true;
+        }
+
+        return ret;
+    }
+
+    bool updateCondtion(Json::Value& condition, const std::string& fieldName)
+    {
+        if (condition.isMember("$or") || condition.isMember("$and"))
+        {
+            assert(condition.isArray());
+            Json::Value::UInt size = condition.size();
+            for (auto i = 0; i < size; i++) {
+                if (updateCondtion(condition[i], fieldName))
+                    return true;
+                else
+                    continue;
+            }
+        }
+        else
+        {
+            auto members = condition.getMemberNames();
+            auto found = std::find_if(members.begin(), members.end(), [&](const std::string& key) {
+                return key == fieldName;
+            });
+
+            if (found != members.end())
+            {
+                condition.removeMember(fieldName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool TableListSet::updateOperationRuleForUpdating(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& jsonRule) {
+
+        bool ret = false;
+        auto updateOperationRule = STEntry::getOperationRule(*pEntry, (TableOpType)R_UPDATE);
+        if (updateOperationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(updateOperationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            if (updateCondtion(condition, fieldName))
+                ret = true;
+        }
+
+        if (jsonRule.isMember(jss::Fields))
+        {
+            Json::Value& fields = jsonRule[jss::Fields];
+            Json::Value newFields(Json::arrayValue);
+            assert(fields.isArray());
+            Json::Value::UInt size = fields.size();
+            for (auto i = 0; i < size; i++)
+            {
+                Json::Value& value = fields[i];
+                assert(value.isString());
+                if (value.asString() != fieldName) {
+                    newFields.append(value);
+                }
+                else {
+                    ret = true;
+                }
+            }
+            jsonRule[jss::Fields] = newFields;
+        }
+
+        return ret;
+    }
+
+    bool TableListSet::updateOperationRuleForDeletingOrGet(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        const int opType, 
+        Json::Value& jsonRule) {
+
+        bool ret = false;
+        auto operationRule = STEntry::getOperationRule(*pEntry, (TableOpType)opType);
+        if (operationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(operationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            if (updateCondtion(condition, fieldName))
+                ret = true;
+        }
+
+        return ret;
     }
 
 	std::pair<TER, std::string> TableListSet::dispose(TxStore& txStore, const STTx& tx)

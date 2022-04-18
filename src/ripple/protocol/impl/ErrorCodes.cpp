@@ -145,7 +145,10 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
 	{ rpcSCHEMA_CREATED,	    "schemaCreated",		"Schema have already been created,will not create again." },
     { rpcSCHEMA_NOTMEMBER,	    "cannotJoinSchema",		"You are not a member of this schema." },
     { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." },
-    { rpcBAD_PROOF,             "badProof",            "verify proof failed."}
+    { rpcUNRELIABLE_LEDGER_HEADER, "unreliableLedgerHeader",    "Verify ledger hash failed."},
+    { rpcTX_HASH_NOT_MATCH,        "txHashNotMatch",            "Verify tx hash failed."},
+    { rpcTX_NODEHASH_NOT_MATCH,    "txNodeHashNotMatch",        "Verify tx node hash failed."},
+    { rpcBAD_PROOF,                "badProof",                  "Verify proof failed."}
 
     // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
     // add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");

@@ -842,6 +842,13 @@ PopConsensus::checkTimeout()
     if (timeSinceConsensus() < timeOut)
         return;
 
+    // really timeouted
+    if (consensusTime_ > 0)
+        JLOG(j_.warn()) << "Really timeouted, PrevSeq=" << previousLedger_.seq()
+                        << " PrevHash=" << previousLedger_.id()
+                        << " Current view=" << view_
+                        << viewChangeManager_.getJson();
+
     if (adaptor_.validating())
         launchViewChange();
 
