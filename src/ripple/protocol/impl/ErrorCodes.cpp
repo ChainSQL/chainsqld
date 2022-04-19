@@ -147,7 +147,7 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
     { rpcNODB,				   "NoDbConfig",	    "Get db connection error,maybe db not configured." },
     { rpcUNRELIABLE_LEDGER_HEADER, "unreliableLedgerHeader",    "Verify ledger hash failed."},
     { rpcTX_HASH_NOT_MATCH,        "txHashNotMatch",            "Verify tx hash failed."},
-    { rpcTX_NODEHASH_NOT_MATCH,    "txHashNotMatch",            "Verify tx node hash failed."},
+    { rpcTX_NODEHASH_NOT_MATCH,    "txNodeHashNotMatch",        "Verify tx node hash failed."},
     { rpcBAD_PROOF,                "badProof",                  "Verify proof failed."}
 
     // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");

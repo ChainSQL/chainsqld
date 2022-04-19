@@ -187,27 +187,25 @@ LoadManager::run()
         bool change = false;
 		bool bOverloaded = app_.getJobQueue().isOverloaded();
 
-		for (auto item : app_.getSchemaManager())
-		{
-			auto& schema = *item.second;
-			if (bOverloaded)
+        app_.getSchemaManager().foreach([this, &bOverloaded, &change](std::shared_ptr<Schema> schema) {
+            if (bOverloaded)
 			{
-				JLOG(journal_.info()) << schema.getJobQueue().getJson(0);
+				JLOG(journal_.info()) << schema->getJobQueue().getJson(0);
 
-				change = schema.getFeeTrack().raiseLocalFee();
+				change = schema->getFeeTrack().raiseLocalFee();
 			}
 			else
 			{
-				change = schema.getFeeTrack().lowerLocalFee();
+				change = schema->getFeeTrack().lowerLocalFee();
 			}
 
 			if (change)
 			{
 				// VFALCO TODO replace this with a Listener / observer and
 				// subscribe in NetworkOPs or Application.
-				schema.getOPs().reportFeeChange();
+				schema->getOPs().reportFeeChange();
 			}
-		}
+        });
  
 
         t += 1s;

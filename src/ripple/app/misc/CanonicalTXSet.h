@@ -34,7 +34,8 @@ namespace ripple {
 
 */
 // VFALCO TODO rename to SortedTxSet
-class CanonicalTXSetBase
+
+class CanonicalTXSet
 {
 protected:
     class Key
@@ -77,35 +78,22 @@ protected:
         std::uint32_t mSeq;
     };
 
+public:
+    using const_iterator =
+        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
     // Calculate the salted key for the given account
     uint256
     accountKey(AccountID const& account);
 
-public:
-    CanonicalTXSetBase(LedgerHash const& saltHash) : salt_(saltHash)
-    {
-    }
     uint256 const&
     key() const
     {
         return salt_;
     }
 
- protected:
-    // Used to salt the accounts so people can't mine for low account numbers
-    uint256 salt_;
-};
-
-class CanonicalTXSet : public CanonicalTXSetBase
-{
-
-public:
-    using const_iterator =
-        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
-
 public:
     explicit CanonicalTXSet(LedgerHash const& saltHash)
-        : CanonicalTXSetBase(saltHash)
+        : salt_(saltHash)
     {
     }
 
@@ -155,23 +143,49 @@ public:
 
 private:
     std::map<Key, std::shared_ptr<STTx const>> map_;
-
+    // Used to salt the accounts so people can't mine for low account numbers
+    uint256 salt_;
 };
 
-class CanonicalTXSetHeld : public CanonicalTXSetBase
+class CanonicalTXSetHeld
 {
+protected:
+    class Key
+    {
+    public:
+        Key(uint256 const& account, std::uint32_t seq)
+            : mAccount(account),  mSeq(seq)
+        {
+        }
+
+        bool
+        operator<(Key const& rhs) const;
+        bool
+        operator>(Key const& rhs) const;
+        bool
+        operator<=(Key const& rhs) const;
+        bool
+        operator>=(Key const& rhs) const;
+
+    private:
+        uint256 mAccount;
+        std::uint32_t mSeq;
+    };
+
 public:
     using const_iterator =
-        std::map<Key, std::shared_ptr<Transaction>>::const_iterator;
+        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
+    // Calculate the salted key for the given account
+    uint256
+    accountKey(AccountID const& account);
 
 public:
     explicit CanonicalTXSetHeld(LedgerHash const& saltHash)
-        : CanonicalTXSetBase(saltHash)
     {
     }
 
     bool
-    insert(std::shared_ptr<Transaction> const& txn);
+    insert(std::shared_ptr<Transaction> const& txn,bool bForceAdd);
 
     std::vector<std::shared_ptr<Transaction>>
     prune(AccountID const& account, std::uint32_t const seq);

@@ -1938,18 +1938,32 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             {
                 if (e.failType != FailHard::yes)
                 {
-                    // transaction should be held
-                    bool ret = m_ledgerMaster.addHeldTransaction(e.transaction);
-                    if (ret)
+                    auto txCur = e.transaction->getSTransaction();
+                    auto seq = app_.getStateManager().getAccountSeq(
+                        txCur->getAccountID(sfAccount),
+                        *app_.checkedOpenLedger().current());
+
+                    if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
-                        JLOG(m_journal.info())
-                            << "Transaction should be held: " << e.result;
-                        e.transaction->setStatus(HELD);
-                        e.transaction->setKept();
+                        e.transaction->setResult(telSEQ_TOOLARGE);
                     }
                     else
                     {
-                        e.transaction->setResult(telTX_HELD_FAIL);
+                        bool bForceAdd = (txCur->getSequence() <
+                            seq + MAX_ACCOUNT_HELD_COUNT);
+                        // transaction should be held
+                        bool ret = m_ledgerMaster.addHeldTransaction(e.transaction,bForceAdd);
+                        if (ret)
+                        {
+                            JLOG(m_journal.info())
+                                << "Transaction should be held: " << e.result;
+                            e.transaction->setStatus(HELD);
+                            e.transaction->setKept();
+                        }
+                        else
+                        {
+                            e.transaction->setResult(telTX_HELD_FAIL);
+                        }
                     }
                 }
             }
