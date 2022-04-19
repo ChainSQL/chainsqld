@@ -931,7 +931,7 @@ public:
         logs_->resetCallBack();
 
         // foreach schema
-        m_schemaManager->foreatch([](std::shared_ptr<Schema> schema) {
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
               schema->doStop();
         });
 
@@ -1049,7 +1049,7 @@ public:
     doSweep()
     {
         // by ljl: foreach schema do sweep
-        m_schemaManager->foreatch([](std::shared_ptr<Schema> schema) {
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
               schema->doSweep();
         });
         // Set timer to do another sweep later.
@@ -1279,7 +1279,7 @@ ApplicationImp::fdRequired() const
     // 2x the configured peer limit for peer connections:
     needed += 2 * m_overlay->limit();
 
-    m_schemaManager->foreatch([&needed](std::shared_ptr<Schema> schema) {
+    m_schemaManager->foreach([&needed](std::shared_ptr<Schema> schema) {
         if (schema->getShardStore())
             needed += std::max(5, schema->getSHAMapStore().fdRequired());
     });

@@ -207,7 +207,7 @@ PeerImp::dispatch()
     if (publicValidate_)
     {
 
-        app_.getSchemaManager().foreatch([this](std::shared_ptr<Schema> schema) {
+        app_.getSchemaManager().foreach([this](std::shared_ptr<Schema> schema) {
             auto vecKeys = schema->validators().validators();
             auto vecPendingKeys = schema->validators().pendingValidators();
             bool bShoundAdd = false;

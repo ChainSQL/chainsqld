@@ -82,7 +82,7 @@ SchemaManager::contains(uint256 const& id)
 }
 
 void
-SchemaManager::foreatch(std::function<void(std::shared_ptr<Schema>)> fun)
+SchemaManager::foreach(std::function<void(std::shared_ptr<Schema>)> fun)
 {
     std::map<uint256, std::shared_ptr<Schema>> schemasCopy;
     {

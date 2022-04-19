@@ -184,7 +184,7 @@ LoadManager::run()
         bool change = false;
 		bool bOverloaded = app_.getJobQueue().isOverloaded();
 
-        app_.getSchemaManager().foreatch([this, &bOverloaded, &change](std::shared_ptr<Schema> schema) {
+        app_.getSchemaManager().foreach([this, &bOverloaded, &change](std::shared_ptr<Schema> schema) {
             if (bOverloaded)
 			{
 				JLOG(journal_.info()) << schema->getJobQueue().getJson(0);
