@@ -931,13 +931,10 @@ public:
         logs_->resetCallBack();
 
         // foreach schema
-        for (auto iter = m_schemaManager->begin();
-             iter != m_schemaManager->end();
-             iter++)
-        {
-            auto schema = (*iter).second;
-            schema->doStop();
-        }
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
+              schema->doStop();
+        });
+
         stopped();
     }
 
@@ -1052,13 +1049,9 @@ public:
     doSweep()
     {
         // by ljl: foreach schema do sweep
-        for (auto iter = m_schemaManager->begin();
-             iter != m_schemaManager->end();
-             iter++)
-        {
-            auto schema = (*iter).second;
-            schema->doSweep();
-        }
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
+              schema->doSweep();
+        });
         // Set timer to do another sweep later.
         setSweepTimer();
     }
@@ -1286,14 +1279,11 @@ ApplicationImp::fdRequired() const
     // 2x the configured peer limit for peer connections:
     needed += 2 * m_overlay->limit();
 
-    for (auto item : *m_schemaManager)
-    {
-        auto schema = item.second;
-        // the number of fds needed by the backend (internally
-        // doubled if online_delete is enabled).
+    m_schemaManager->foreach([&needed](std::shared_ptr<Schema> schema) {
         if (schema->getShardStore())
             needed += std::max(5, schema->getSHAMapStore().fdRequired());
-    }
+    });
+
 
     // One fd per incoming connection a port can accept, or
     // if no limit is set, assume it'll handle 256 clients.

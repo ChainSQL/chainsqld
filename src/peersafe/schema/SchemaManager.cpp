@@ -58,6 +58,7 @@ SchemaManager::createSchemaMain(std::shared_ptr<Config> config)
 std::shared_ptr<Schema>
 SchemaManager::getSchema(uint256 const& schemaId)
 {
+    std::lock_guard lock(mutex_);
     if (schemas_.find(schemaId) != schemas_.end())
         return schemas_[schemaId];
     else
@@ -67,6 +68,7 @@ SchemaManager::getSchema(uint256 const& schemaId)
 void
 SchemaManager::removeSchema(uint256 const& schemaId)
 {
+    std::lock_guard lock(mutex_);
     if (!contains(schemaId))
         return;
     schemas_.erase(schemaId);
@@ -75,20 +77,23 @@ SchemaManager::removeSchema(uint256 const& schemaId)
 bool
 SchemaManager::contains(uint256 const& id)
 {
+    std::lock_guard lock(mutex_);
     return schemas_.find(id) != schemas_.end();
 }
 
-SchemaManager::schema_iterator
-SchemaManager::begin()
+void
+SchemaManager::foreach(std::function<void(std::shared_ptr<Schema>)> fun)
 {
-    return SchemaManager::schema_iterator(this, true);
+    std::map<uint256, std::shared_ptr<Schema>> schemasCopy;
+    {
+        std::lock_guard lock(mutex_);
+        copy(schemas_.begin(),schemas_.end(),inserter(schemasCopy,schemasCopy.begin()));
+    }
+    
+    for (auto schema: schemasCopy)
+    {
+        fun(schema.second);
+    }
 }
-
-SchemaManager::schema_iterator
-SchemaManager::end()
-{
-    return SchemaManager::schema_iterator(this, false);
-}
-
 
 }  // namespace ripple
