@@ -788,6 +788,7 @@ public:
         if ((*openLedger_).current()->seq() <=
             getLedgerMaster().getValidLedgerIndex())
         {
+            JLOG(m_journal.warn()) << "checkedOpenLedger openLedger is stale.";
             checkedOpenLedger_.reset();
             checkedOpenLedger_.emplace(
                 getLedgerMaster().getValidatedLedger(),
