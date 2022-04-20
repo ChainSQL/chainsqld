@@ -45,6 +45,6 @@ private:
     Application& app_;
     beast::Journal j_;
 
-    std::mutex mutex_;
+    std::recursive_mutex mutex_;
 };
 }  // namespace ripple
