@@ -1410,6 +1410,31 @@ LedgerMaster::heldTransactionSize()
 }
 
 void
+LedgerMaster::checkUpdateOpenLedger()
+{
+    if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
+    {
+        auto const lastVal = getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            lastVal,
+            OrderedTxs({}),
+            false,
+            CanonicalTXSet({}),
+            tapNONE,
+            "checkUpdate",
+            nullptr);
+    }
+}
+
+void
 LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
     genesis->setValidated();
