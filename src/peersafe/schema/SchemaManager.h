@@ -34,7 +34,7 @@ public:
     contains(uint256 const& id);
 
     void
-    SchemaManager::foreach(
+    foreach(
         std::function<void(std::shared_ptr<Schema>)> fun);
 
 
