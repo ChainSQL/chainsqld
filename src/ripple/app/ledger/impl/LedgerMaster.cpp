@@ -1421,13 +1421,14 @@ LedgerMaster::checkUpdateOpenLedger()
         else
             rules.emplace(app_.config().features);
 
+        auto retries = CanonicalTXSet({});
         app_.openLedger().accept(
             app_,
             *rules,
             lastVal,
             OrderedTxs({}),
             false,
-            CanonicalTXSet({}),
+            retries,
             tapNONE,
             "checkUpdate",
             nullptr);
