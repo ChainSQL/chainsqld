@@ -34,7 +34,7 @@ public:
     contains(uint256 const& id);
 
     void
-    SchemaManager::foreach(
+    foreach(
         std::function<void(std::shared_ptr<Schema>)> fun);
 
 
@@ -45,6 +45,6 @@ private:
     Application& app_;
     beast::Journal j_;
 
-    std::mutex mutex_;
+    std::recursive_mutex mutex_;
 };
 }  // namespace ripple
