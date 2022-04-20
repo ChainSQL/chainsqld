@@ -847,7 +847,7 @@ PopConsensus::checkTimeout()
         JLOG(j_.warn()) << "Really timeouted, PrevSeq=" << previousLedger_.seq()
                         << " PrevHash=" << previousLedger_.id()
                         << " Current view=" << view_
-                        << viewChangeManager_.getJson();
+                        << viewChangeManager_.getJson().toStyledString();
 
     if (adaptor_.validating())
         launchViewChange();
