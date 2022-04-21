@@ -1946,6 +1946,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
                         e.transaction->setResult(telSEQ_TOOLARGE);
+                        e.transaction->setStatus(REMOVED);
                     }
                     else
                     {
@@ -1963,16 +1964,13 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                         else
                         {
                             e.transaction->setResult(telTX_HELD_FAIL);
+                            e.transaction->setStatus(REMOVED);
                         }
                     }
                 }
             }
             else
             {
-                if (e.transaction->getSTransaction()->isChainSqlTableType())
-                {
-                    addLocal = false;
-                }
                 JLOG(m_journal.info())
                     << "Status other than success " << e.result;
                 e.transaction->setStatus(INVALID);
