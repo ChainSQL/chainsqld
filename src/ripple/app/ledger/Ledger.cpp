@@ -339,7 +339,7 @@ Ledger::Ledger(
 Ledger::Ledger(Ledger const& ledger, Family& f)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
-	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
+	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
 	, fees_(ledger.fees_)
 	, rules_(ledger.rules_)
 {
@@ -356,39 +356,97 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//	info_.closeFlags |= sLCF_SHAMapV2;
 	//}
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
-    Keylet key = keylet::statis();
-    auto statisSle = peek(key);
-    if (statisSle)
-    {
-        statisSle->setFieldU32(sfTxSuccessCountField, 0);
-        statisSle->setFieldU32(sfTxFailureCountField, 0);
-        statisSle->setFieldU32(sfContractCallCountField,0);
-        statisSle->setFieldU32(sfContractCreateCountField, 0);
-        rawReplace(statisSle);
-    }
-    else
-    {
-        auto const sle = std::make_shared<SLE>(keylet::statis());
-        sle->setFieldU32(sfAccountCountField, 1);
-        rawInsert(sle);
-    }
-        
-    key = keylet::chainId();
-    auto chainIdSle = read(key);
-    if (chainIdSle)
-        stateMap_->delItem(chainIdSle->key());
 
-    key = keylet::schema_index();
-    auto schemaIndexSle = read(key);
-    if (schemaIndexSle)
-        stateMap_->delItem(schemaIndexSle->key());
+    for (auto sle : ledger.sles)
+    {
+        if (sle->getType() == ltACCOUNT_ROOT)
+        {
+            auto id = sle->getAccountID(sfAccount);
+            std::shared_ptr<SLE> sleNew = std::make_unique<SLE>(keylet::account(id));
+            (*sleNew)[sfLedgerEntryType] = (*sle)[sfLedgerEntryType];
+            (*sleNew)[sfFlags] = 0;
+            (*sleNew)[sfSequence] = (*sle)[sfSequence];
+            (*sleNew)[sfBalance] = (*sle)[sfBalance];
+            (*sleNew)[sfOwnerCount] = 0;
+            (*sleNew)[sfPreviousTxnID] = (*sle)[sfPreviousTxnID];
+            (*sleNew)[sfPreviousTxnLgrSeq] = (*sle)[sfPreviousTxnLgrSeq];
+            if (sle->getFieldU32(sfTransferRate))
+                (*sleNew)[sfTransferRate] = (*sle)[sfTransferRate];
+            if (sle->getFieldU32(sfTransferFeeMin))
+                (*sleNew)[sfTransferFeeMin] = (*sle)[sfTransferFeeMin];
+            if (sle->getFieldU32(sfTransferFeeMax))
+                (*sleNew)[sfTransferFeeMax] = (*sle)[sfTransferFeeMax];
+            rawInsert(sleNew);
+        }
+    }
+
+    Keylet key = keylet::statis();
+    auto statisSle = ledger.peek(key);
+    auto const sle = std::make_shared<SLE>(keylet::statis());
+    if (statisSle)
+        sle->setFieldU32(sfAccountCountField, (*statisSle)[sfAccountCountField]);
+    else
+        sle->setFieldU32(sfAccountCountField, 1);
+    rawInsert(sle);
 
     stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
    //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
-
-
 }
+
+//Ledger::Ledger(Ledger const& ledger, Family& f)
+//	: mImmutable(false)
+//	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
+//	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
+//	, fees_(ledger.fees_)
+//	, rules_(ledger.rules_)
+//{
+//	info_.seq = 1;
+//	info_.drops = ledger.info().drops;  
+//	info_.closeTimeResolution = ledger.info_.closeTimeResolution;
+//	info_.closeTimeResolution = getNextLedgerTimeResolution(
+//		ledger.info_.closeTimeResolution,
+//		getCloseAgree(ledger.info()), info_.seq);
+//	info_.parentHash = ledger.info().hash;
+//
+//	//if (stateMap_->is_v2())
+//	//{
+//	//	info_.closeFlags |= sLCF_SHAMapV2;
+//	//}
+//	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
+//    Keylet key = keylet::statis();
+//    auto statisSle = peek(key);
+//    if (statisSle)
+//    {
+//        statisSle->setFieldU32(sfTxSuccessCountField, 0);
+//        statisSle->setFieldU32(sfTxFailureCountField, 0);
+//        statisSle->setFieldU32(sfContractCallCountField,0);
+//        statisSle->setFieldU32(sfContractCreateCountField, 0);
+//        rawReplace(statisSle);
+//    }
+//    else
+//    {
+//        auto const sle = std::make_shared<SLE>(keylet::statis());
+//        sle->setFieldU32(sfAccountCountField, 1);
+//        rawInsert(sle);
+//    }
+//        
+//    key = keylet::chainId();
+//    auto chainIdSle = read(key);
+//    if (chainIdSle)
+//        stateMap_->delItem(chainIdSle->key());
+//
+//    key = keylet::schema_index();
+//    auto schemaIndexSle = read(key);
+//    if (schemaIndexSle)
+//        stateMap_->delItem(schemaIndexSle->key());
+//
+//    stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+//   //stateMap_->dump(true);
+//   // ledger.stateMap_->dump(true);
+//
+//
+//}
 
 void Ledger::setImmutable (Config const& config)
 {
