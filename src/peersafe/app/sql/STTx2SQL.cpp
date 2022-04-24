@@ -549,6 +549,9 @@ public:
 
 	virtual std::pair<int, std::string> last_error()     = 0;
     virtual void set_last_error(const std::pair<int, std::string> &error) = 0;
+    
+    virtual void batch_insert(const uint32_t batch) = 0;
+    virtual uint32_t batch_insert() const = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -606,7 +609,8 @@ public:
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_() {
+	, last_error_()
+    , batch_insert_(0) {
 	}
 
 	virtual ~DisposeSQL() {
@@ -945,6 +949,14 @@ public:
 	const DisposeError& last_error() const {
 		return last_error_;
 	}
+    
+    void batch_insert(const uint32_t batch) {
+        batch_insert_ = batch;
+    }
+    
+    uint32_t batch_insert() const {
+        return batch_insert_;
+    }
 
 protected:
 	DisposeSQL() {};
@@ -961,6 +973,7 @@ protected:
 	Json::Value group_;
 	Json::Value having_;
 	soci::indicator indi_null;
+    uint32_t batch_insert_;
 
 	int execute_droptable_sql() {
 		if (tables_.size() == 0)
@@ -1033,34 +1046,58 @@ private:
 			}
 			return sql;
 		}
+        
+        uint32_t inserting_counts = batch_insert();
+        if(inserting_counts == 0) {
+            last_error(std::make_pair<int,std::string>(-1, "batch_insert is invalid"));
+            return sql;
+        }
 
 		std::string& tablename = tables_[0];
+        uint32_t fields = fields_.size() / inserting_counts;
 		std::string fields_str;
 		std::string values_str;
-		for (size_t idx = 0; idx < fields_.size(); idx++) {
+		for (uint32_t idx = 0; idx < fields; idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			if (field.isString() || field.isVarchar()
-				|| field.isBlob() || field.isText()
-				|| field.isLongText())
-				values_str += (boost::format("\"%1%\"") % field.asString()).str();
-			else if (field.isInt())
-				values_str += (boost::format("%d") % field.asInt()).str();
-			else if (field.isFloat())
-				values_str += (boost::format("%f") % field.asFloat()).str();
-			else if (field.isDouble() || field.isDecimal())
-				values_str += (boost::format("%f") % field.asDouble()).str();
-			else if (field.isInt64() || field.isDateTime())
-				values_str += (boost::format("%1%") % field.asInt64()).str();
-			else if (field.isNull())
-				values_str += "NULL";
-
-			if (idx != fields_.size() - 1) {
+			if (idx != fields - 1) {
 				fields_str += ",";
-				values_str += ",";
 			}
 		}
-		sql = (boost::format("insert into %s (%s) values (%s)")
+        for(uint32_t r = 0; r < inserting_counts; r++) {
+            values_str += "(";
+            for (uint32_t idx = 0; idx < fields; idx++) {
+                BuildField& field = fields_[idx];
+                if (field.isString() || field.isVarchar()
+                    || field.isBlob() || field.isText()
+                    || field.isLongText())
+                    values_str += (boost::format("\"%1%\"") % field.asString()).str();
+                else if (field.isInt())
+                    values_str += (boost::format("%d") % field.asInt()).str();
+                else if (field.isFloat())
+                    values_str += (boost::format("%f") % field.asFloat()).str();
+                else if (field.isDouble() || field.isDecimal())
+                    values_str += (boost::format("%f") % field.asDouble()).str();
+                else if (field.isInt64() || field.isDateTime())
+                    values_str += (boost::format("%1%") % field.asInt64()).str();
+                else if (field.isNull())
+                    values_str += "NULL";
+                
+                if (idx != fields - 1) {
+                    values_str += ",";
+                }
+            }
+            
+            values_str += ")";
+            
+            if (r == inserting_counts - 1) {
+                values_str += ";";
+            } else {
+                values_str += ",";
+            }
+            
+        }
+		sql = (boost::format("insert into %s (%s) values %s")
 			%tablename
 			%fields_str
 			%values_str).str();
@@ -1082,20 +1119,45 @@ private:
 			}
 			return -1;
 		}
+        
+        uint32_t inserting_records = batch_insert();
+        if (inserting_records == 0) {
+            last_error(std::make_pair<int, std::string>(-1, "batch_insert is invalid"));
+            return -1;
+        }
 
 		std::string& tablename = tables_[0];
+        uint32_t field_counts = fields_.size() / inserting_records;
 		std::string fields_str;
 		std::string values_str;
-		for (size_t idx = 0; idx < fields_.size(); idx++) {
+		for (uint32_t idx = 0; idx < field_counts; idx++) {
 			BuildField& field = fields_[idx];
 			fields_str += field.Name();
-			values_str += ":" + std::to_string(idx + 1);
-			if (idx != fields_.size() - 1) {
+			if (idx != field_counts - 1) {
 				fields_str += ",";
-				values_str += ",";
 			}
 		}
-		sql_str = (boost::format("insert into %s (%s) values (%s)")
+        
+        for(uint32_t r = 0; r < inserting_records; r++) {
+            uint32_t base = r * field_counts;
+            values_str += "(";
+            for (uint32_t idx = 0; idx < field_counts; idx++) {
+                values_str += ":" + std::to_string(base + idx + 1);
+                
+                if (idx != field_counts - 1) {
+                    values_str += ",";
+                }
+            }
+            values_str += ")";
+            
+            if (r == inserting_records - 1) {
+                values_str += ";";
+            } else {
+                values_str += ",";
+            }
+        }
+        
+		sql_str = (boost::format("insert into %s (%s) values %s")
 			% tablename
 			%fields_str
 			%values_str).str();
@@ -2600,6 +2662,14 @@ public:
         if (disposesql_)
             return disposesql_->last_error(error);        
     }
+    
+    void batch_insert(const uint32_t batch) {
+        disposesql_->batch_insert(batch);
+    }
+    
+    uint32_t batch_insert() const {
+        return disposesql_->batch_insert();
+    }
  
 private:
 	explicit BuildMySQL() {};
@@ -2739,6 +2809,14 @@ public:
     void set_last_error(const std::pair<int, std::string> &error) override {
         if (disposesql_)
             return disposesql_->last_error(error);
+    }
+    
+    void batch_insert(const uint32_t batch) {
+        disposesql_->batch_insert(batch);
+    }
+    
+    uint32_t batch_insert() const {
+        return disposesql_->batch_insert();
     }
 
 private:
@@ -3966,8 +4044,9 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
 
 	if (build_type == BuildSQL::BUILD_INSERT_SQL) {
 		std::string sql;
-
 		int affected_rows = 0;
+        buildsql->batch_insert((uint32_t)raw_json.size());
+        
 		for (Json::UInt idx = 0; idx < raw_json.size(); idx++) {
 			auto& v = raw_json[idx];
 			if (v.isObject() == false) {
@@ -3996,33 +4075,27 @@ std::pair<int /*retcode*/, std::string /*sql*/> STTx2SQL::ExecuteSQL(
                     buildsql->AddField(field);
                 }
             }
-
-			sql += buildsql->asString();
-			if (buildsql->execSQL() != 0) {
-				//ret = { -1, std::string("Executing SQL was failure.") + sql };
-				if(sql.size() < 1024)
-				{
-					ret = { -1, (boost::format("Executing `%1%` was failure. %2%")
-						% sql
-						%buildsql->last_error().second).str() };
-				}
-				else
-				{
-					ret = { -1, (boost::format("Executing was failure. %1%")
-						%buildsql->last_error().second).str() };
-				}
-
-				return ret;
-			}
-			affected_rows += db_conn_->getSession().get_affected_row_count();
-			db_conn_->getSession().set_affected_row_count(0);
-
-			buildsql->clear();
-			buildsql->AddTable(txt_tablename);
-
-			if (idx != raw_json.size() - 1)
-				sql += ";";
 		}
+        
+        sql = buildsql->asString();
+        if (buildsql->execSQL() != 0) {
+            //ret = { -1, std::string("Executing SQL was failure.") + sql };
+            if(sql.size() < 1024)
+            {
+                ret = { -1, (boost::format("Executing `%1%` was failure. %2%")
+                    % sql
+                    %buildsql->last_error().second).str() };
+            }
+            else
+            {
+                ret = { -1, (boost::format("Executing was failure. %1%")
+                    %buildsql->last_error().second).str() };
+            }
+
+            return ret;
+        }
+        affected_rows += db_conn_->getSession().get_affected_row_count();
+        db_conn_->getSession().set_affected_row_count(0);
 
 		if (bVerifyAffectedRows && affected_rows == 0)
 			return{ -1, "insert operation affect 0 rows." };
