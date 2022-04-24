@@ -3499,26 +3499,27 @@ STTx2SQL::ParseFieldVL(const ripple::STTx& tx, const SF_Blob& field,std::string 
     bool bHasField = false;
     if (tx.isFieldPresent(field))
     {
+        bHasField = true;
         auto blob = tx.getFieldVL(field);
         fieldName.assign(blob.begin(), blob.end());
-        auto sql_str =
-            (boost::format("select * from information_schema.columns WHERE "
-                           "table_name ='%s'AND column_name ='%s'") %
-             tableName % fieldName).str();
-        LockedSociSession sql = db_conn_->checkoutDb();
-        soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
-        bHasField = records.end() != records.begin();
-        if(!bHasField)
-        {
-            std::string tableNameNew = tableName;
-            transform(tableName.begin(),tableName.end(),tableNameNew.begin(),::tolower);
-            auto sql_str_again =
-                (boost::format("select * from information_schema.columns WHERE "
-                               "table_name ='%s'AND column_name ='%s'") %
-                 tableNameNew % fieldName).str();
-            soci::rowset<soci::row> records = ((*sql).prepare << sql_str_again);
-            bHasField = records.end() != records.begin();
-        }
+        //auto sql_str =
+        //    (boost::format("select * from information_schema.columns WHERE "
+        //                   "table_name ='%s'AND column_name ='%s'") %
+        //     tableName % fieldName).str();
+        //LockedSociSession sql = db_conn_->checkoutDb();
+        //soci::rowset<soci::row> records = ((*sql).prepare << sql_str);
+        //bHasField = records.end() != records.begin();
+        //if(!bHasField)
+        //{
+        //    std::string tableNameNew = tableName;
+        //    transform(tableName.begin(),tableName.end(),tableNameNew.begin(),::tolower);
+        //    auto sql_str_again =
+        //        (boost::format("select * from information_schema.columns WHERE "
+        //                       "table_name ='%s'AND column_name ='%s'") %
+        //         tableNameNew % fieldName).str();
+        //    soci::rowset<soci::row> records = ((*sql).prepare << sql_str_again);
+        //    bHasField = records.end() != records.begin();
+        //}
     }
     return std::make_pair(bHasField, fieldName);
 }
