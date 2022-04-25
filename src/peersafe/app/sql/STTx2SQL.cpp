@@ -603,14 +603,14 @@ public:
 	, group_()
 	, having_()
     , indi_null(soci::i_null)
+    , batch_insert_(0)
 	, build_type_(type)
 	, index_(0)	
 	, conditions_()
 	, db_conn_(dbconn)
 	, condition_(Json::ValueType::nullValue)
 	, join_on_condition_(Json::ValueType::nullValue)
-	, last_error_()
-    , batch_insert_(0) {
+	, last_error_() {
 	}
 
 	virtual ~DisposeSQL() {
@@ -2663,11 +2663,11 @@ public:
             return disposesql_->last_error(error);        
     }
     
-    void batch_insert(const uint32_t batch) {
+    void batch_insert(const uint32_t batch) override {
         disposesql_->batch_insert(batch);
     }
     
-    uint32_t batch_insert() const {
+    uint32_t batch_insert() const override {
         return disposesql_->batch_insert();
     }
  
@@ -2811,11 +2811,11 @@ public:
             return disposesql_->last_error(error);
     }
     
-    void batch_insert(const uint32_t batch) {
+    void batch_insert(const uint32_t batch) override {
         disposesql_->batch_insert(batch);
     }
     
-    uint32_t batch_insert() const {
+    uint32_t batch_insert() const override {
         return disposesql_->batch_insert();
     }
 

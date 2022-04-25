@@ -752,8 +752,8 @@ void SoftEncrypt::cipherReEncode(unsigned char* pCipher, unsigned long cipherLen
     
     memcpy(pCipher + 64, pC3, 32);
     memcpy(pCipher + 96, pRealCipher, realCipherLen);
-    delete pRealCipher;
-    delete pC3;
+    delete []pRealCipher;
+    delete []pC3;
 }
 void SoftEncrypt::cipherReDecode(unsigned char* pCipher, unsigned long cipherLen)
 {
@@ -765,8 +765,8 @@ void SoftEncrypt::cipherReDecode(unsigned char* pCipher, unsigned long cipherLen
     
     memcpy(pCipher + 64, pRealCipher, realCipherLen);
     memcpy(pCipher + 64 + realCipherLen, pC3, 32);
-    delete pRealCipher;
-    delete pC3;
+    delete []pRealCipher;
+    delete []pC3;
 }
 
 #endif
