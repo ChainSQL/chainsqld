@@ -3784,8 +3784,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             jvObj[jss::fee_base] = lpAccepted->fees().base.jsonClipped();
             jvObj[jss::drops_per_byte] =
                 Json::UInt(lpAccepted->fees().drops_per_byte);
-            jvObj[jss::gas_price] =
-                Json::UInt(lpAccepted->fees().gas_price);
+            jvObj[jss::gas_price] = Json::UInt(lpAccepted->fees().gas_price);
             jvObj[jss::reserve_base] =
                 lpAccepted->fees().accountReserve(0).jsonClipped();
             jvObj[jss::reserve_inc] =
@@ -3793,7 +3792,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
             jvObj[jss::schema_id] = to_string(app_.schemaId());
-             
+
             int iSuccess = 0;
             int iFailure = 0;
             std::map<AccountID, int> mapFailureCount;
@@ -3807,7 +3806,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 {
                     iFailure++;
                     if (app_.config().OPEN_ACCOUNT_DELAY)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(sfAccount)]++;
+                        mapFailureCount[vt.second->getTxn()->getAccountID(
+                            sfAccount)]++;
                 }
             }
 
@@ -3833,7 +3833,11 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                     ++it;
                 }
                 else
+                {
+                    auto id = std::string("#") + std::to_string(it->first) + " ";
+                    JLOG(m_journal.info()) << "InfoSub" << id << "destructed, unsubLegder";
                     it = mStreamMaps[sLedger].erase(it);
+                }
             }
         }
         else if (app_.config().OPEN_ACCOUNT_DELAY)
@@ -3842,8 +3846,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             for (auto const& vt : alpAccepted->getMap())
             {
                 if (vt.second->getResult() != tesSUCCESS)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(
-                            sfAccount)]++;
+                    mapFailureCount[vt.second->getTxn()->getAccountID(
+                        sfAccount)]++;
             }
             processAccountDelay(mapFailureCount);
         }
@@ -4788,6 +4792,10 @@ bool
 NetworkOPsImp::unsubLedger(std::uint64_t uSeq)
 {
     std::lock_guard sl(mSubLock);
+
+    auto id = std::string("#") + std::to_string(uSeq) + " ";
+    JLOG(m_journal.info()) << id << "unsubLedger";
+
     return mStreamMaps[sLedger].erase(uSeq);
 }
 

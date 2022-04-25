@@ -74,6 +74,8 @@ public:
         boost::beast::http::request<Body, Headers>&& request,
         beast::Journal journal);
 
+    ~BaseWSPeer() override;
+
     void
     run() override;
 
@@ -178,6 +180,16 @@ BaseWSPeer<Handler, Impl>::BaseWSPeer(
     , timer_(std::move(timer))
     , payload_("12345678")  // ensures size is 8 bytes
 {
+}
+
+template <class Handler, class Impl>
+BaseWSPeer<Handler, Impl>::~BaseWSPeer()
+{
+    auto is = std::static_pointer_cast<WSInfoSub>(this->appDefined);
+    auto id = std::string("#") + std::to_string(is->getSeq()) + " ";
+    JLOG(this->j_.info()) << "InfoSub " << id << "disconnected: "
+                          << beast::IPAddressConversion::from_asio(
+                                 remote_endpoint());
 }
 
 template <class Handler, class Impl>
