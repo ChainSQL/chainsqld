@@ -903,7 +903,8 @@ void TableSync::CreateTableItems()
         AccountID accountID;
         try
         {
-            if (auto pOwner = ripple::parseBase58<AccountID>(owner); pOwner)
+            if (auto pOwner = ripple::parseBase58<AccountID>(trim_whitespace(owner));
+                pOwner)
             {
                 accountID = *pOwner;
             }
