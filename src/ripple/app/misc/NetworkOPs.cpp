@@ -1907,7 +1907,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             }
 #endif
 
-            bool addLocal = e.local;
+            //bool addLocal = e.local;
 
             if (e.result.ter == tesSUCCESS)
             {
