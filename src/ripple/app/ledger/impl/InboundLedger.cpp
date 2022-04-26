@@ -164,6 +164,7 @@ InboundLedger::init(ScopedLockType& collectionLock)
         if (app_.getOPs().checkLedgerAccept(mLedger))
         {
             app_.getLedgerMaster().doValid(mLedger);
+            app_.getLedgerMaster().checkUpdateOpenLedger();
         }
     }
 }
@@ -573,6 +574,7 @@ InboundLedger::done()
                 if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
                 {
                     self->app().getLedgerMaster().doValid(self->getLedger());
+                    self->app().getLedgerMaster().checkUpdateOpenLedger();
                 }
                 self->app().getLedgerMaster().tryAdvance();
             }

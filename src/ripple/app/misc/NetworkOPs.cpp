@@ -1907,7 +1907,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             }
 #endif
 
-            bool addLocal = e.local;
+            //bool addLocal = e.local;
 
             if (e.result.ter == tesSUCCESS)
             {
@@ -1938,27 +1938,39 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             {
                 if (e.failType != FailHard::yes)
                 {
-                    // transaction should be held
-                    bool ret = m_ledgerMaster.addHeldTransaction(e.transaction);
-                    if (ret)
+                    auto txCur = e.transaction->getSTransaction();
+                    auto seq = app_.getStateManager().getAccountSeq(
+                        txCur->getAccountID(sfAccount),
+                        *app_.checkedOpenLedger().current());
+
+                    if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
-                        JLOG(m_journal.info())
-                            << "Transaction should be held: " << e.result;
-                        e.transaction->setStatus(HELD);
-                        e.transaction->setKept();
+                        e.transaction->setResult(telSEQ_TOOLARGE);
+                        e.transaction->setStatus(REMOVED);
                     }
                     else
                     {
-                        e.transaction->setResult(telTX_HELD_FAIL);
+                        bool bForceAdd = (txCur->getSequence() <
+                            seq + MAX_ACCOUNT_HELD_COUNT);
+                        // transaction should be held
+                        bool ret = m_ledgerMaster.addHeldTransaction(e.transaction,bForceAdd);
+                        if (ret)
+                        {
+                            JLOG(m_journal.info())
+                                << "Transaction should be held: " << e.result;
+                            e.transaction->setStatus(HELD);
+                            e.transaction->setKept();
+                        }
+                        else
+                        {
+                            e.transaction->setResult(telTX_HELD_FAIL);
+                            e.transaction->setStatus(REMOVED);
+                        }
                     }
                 }
             }
             else
             {
-                if (e.transaction->getSTransaction()->isChainSqlTableType())
-                {
-                    addLocal = false;
-                }
                 JLOG(m_journal.info())
                     << "Status other than success " << e.result;
                 e.transaction->setStatus(INVALID);
@@ -3772,8 +3784,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             jvObj[jss::fee_base] = lpAccepted->fees().base.jsonClipped();
             jvObj[jss::drops_per_byte] =
                 Json::UInt(lpAccepted->fees().drops_per_byte);
-            jvObj[jss::gas_price] =
-                Json::UInt(lpAccepted->fees().gas_price);
+            jvObj[jss::gas_price] = Json::UInt(lpAccepted->fees().gas_price);
             jvObj[jss::reserve_base] =
                 lpAccepted->fees().accountReserve(0).jsonClipped();
             jvObj[jss::reserve_inc] =
@@ -3781,7 +3792,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
             jvObj[jss::schema_id] = to_string(app_.schemaId());
-             
+
             int iSuccess = 0;
             int iFailure = 0;
             std::map<AccountID, int> mapFailureCount;
@@ -3795,7 +3806,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 {
                     iFailure++;
                     if (app_.config().OPEN_ACCOUNT_DELAY)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(sfAccount)]++;
+                        mapFailureCount[vt.second->getTxn()->getAccountID(
+                            sfAccount)]++;
                 }
             }
 
@@ -3821,7 +3833,11 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                     ++it;
                 }
                 else
+                {
+                    auto id = std::string("#") + std::to_string(it->first) + " ";
+                    JLOG(m_journal.info()) << "InfoSub" << id << "destructed, unsubLegder";
                     it = mStreamMaps[sLedger].erase(it);
+                }
             }
         }
         else if (app_.config().OPEN_ACCOUNT_DELAY)
@@ -3830,8 +3846,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             for (auto const& vt : alpAccepted->getMap())
             {
                 if (vt.second->getResult() != tesSUCCESS)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(
-                            sfAccount)]++;
+                    mapFailureCount[vt.second->getTxn()->getAccountID(
+                        sfAccount)]++;
             }
             processAccountDelay(mapFailureCount);
         }
@@ -4776,6 +4792,10 @@ bool
 NetworkOPsImp::unsubLedger(std::uint64_t uSeq)
 {
     std::lock_guard sl(mSubLock);
+
+    auto id = std::string("#") + std::to_string(uSeq) + " ";
+    JLOG(m_journal.info()) << id << "unsubLedger";
+
     return mStreamMaps[sLedger].erase(uSeq);
 }
 

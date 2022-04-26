@@ -206,12 +206,12 @@ PeerImp::dispatch()
 {
     if (publicValidate_)
     {
-        for (auto item : app_.getSchemaManager())
-        {
-            auto vecKeys = item.second->validators().validators();
-            auto vecPendingKeys = item.second->validators().pendingValidators();
+
+        app_.getSchemaManager().foreach([this](std::shared_ptr<Schema> schema) {
+            auto vecKeys = schema->validators().validators();
+            auto vecPendingKeys = schema->validators().pendingValidators();
             bool bShoundAdd = false;
-            if (item.first ==
+            if (schema->schemaId() ==
                 beast::zero)  // add to main chain with no validators check.
             {
                 bShoundAdd = true;
@@ -231,10 +231,10 @@ PeerImp::dispatch()
             if (bShoundAdd)
             {
                 std::lock_guard sl(schemaInfoMutex_);
-                schemaInfo_.emplace(item.first, SchemaInfo());
-                item.second->peerManager().add(shared_from_this());
+                schemaInfo_.emplace(schema->schemaId(), SchemaInfo());
+                schema->peerManager().add(shared_from_this());
             }
-        }
+        });
     }
     else
     {
@@ -2583,7 +2583,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
     if (!app_.getValidationPublicKey().empty() &&
         publicKey == app_.getValidationPublicKey())
     {
-        JLOG(p_journal_.info())
+        JLOG(p_journal_.debug())
             << "Consensus message mt(" << m->msgtype() << ")"
             << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
             << ": self";
@@ -2592,16 +2592,28 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
 
     auto tup = getSchemaInfo("TMConsensus:", m->schemaid());
     if (!get<0>(tup))
+    {
+        JLOG(p_journal_.info())
+            << "Consensus message mt(" << m->msgtype() << ")"
+            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+            << ": unknown schema";
         return;
+    }
+
     uint256 schemaId = get<1>(tup);
 
     if (!app_.getHashRouter(schemaId).addSuppressionPeer(
             consensusMessageUniqueId(*m), id_))
     {
-        JLOG(p_journal_.info())
-            << "Consensus message mt(" << m->msgtype() << ")"
-            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
-            << ": duplicate";
+        auto dmp = [&](beast::Journal::Stream s, std::uint32_t type) {
+            s << "Consensus message mt(" << type << ")"
+              << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)type)
+              << ": duplicate";
+        };
+        if (m->msgtype() == mtVALIDATION)
+            dmp(p_journal_.info(), m->msgtype());
+        else
+            dmp(p_journal_.debug(), m->msgtype());
         return;
     }
 

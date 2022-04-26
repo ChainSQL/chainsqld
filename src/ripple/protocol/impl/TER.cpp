@@ -136,6 +136,7 @@ transResults()
         MAKE_ERROR(telCAN_NOT_QUEUE_FULL,      "Can not queue at this time: queue is full."                                    ),
         MAKE_ERROR(telTX_POOL_FULL,            "Can not queue at this time: tx pool is full."                                  ),
 		MAKE_ERROR(telTX_HELD_FAIL,            "Tx cannot be held: Held size reach limit or same sequence for the account have been held."                                  ),
+		MAKE_ERROR(telSEQ_TOOLARGE,			   "Account sequence too large."												   ),
 
 		MAKE_ERROR(temMALFORMED,               "Malformed transaction."                                                        ),
 		MAKE_ERROR(temBAD_AMOUNT,              "Can only send positive amounts."                                               ),

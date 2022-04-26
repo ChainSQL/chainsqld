@@ -436,10 +436,11 @@ LedgerMaster::setPubLedger(std::shared_ptr<Ledger const> const& l)
 
 bool
 LedgerMaster::addHeldTransaction(
-    std::shared_ptr<Transaction> const& transaction)
+    std::shared_ptr<Transaction> const& transaction,
+    bool bForceAdd)
 {
     std::lock_guard ml(m_mutex);
-    return mHeldTransactions.insert(transaction);
+    return mHeldTransactions.insert(transaction,bForceAdd);
 }
 
 // Validate a ledger's close time and sequence number if we're considering
@@ -1406,6 +1407,32 @@ int
 LedgerMaster::heldTransactionSize()
 {
     return mHeldTransactions.size();
+}
+
+void
+LedgerMaster::checkUpdateOpenLedger()
+{
+    if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
+    {
+        auto const lastVal = getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+
+        auto retries = CanonicalTXSet({});
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            lastVal,
+            OrderedTxs({}),
+            false,
+            retries,
+            tapNONE,
+            "checkUpdate",
+            nullptr);
+    }
 }
 
 void

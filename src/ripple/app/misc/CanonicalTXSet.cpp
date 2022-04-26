@@ -19,14 +19,13 @@
 
 #include <ripple/app/misc/CanonicalTXSet.h>
 #include <boost/range/adaptor/transformed.hpp>
+#include <peersafe/app/tx/impl/Tuning.h>
 
 namespace ripple {
 
-const uint32_t MAX_ACCOUNT_HELD_COUNT = 500;
-const uint32_t MAX_HELD_COUNT = 5000;
 
 uint256
-CanonicalTXSetBase::accountKey(AccountID const& account)
+CanonicalTXSet::accountKey(AccountID const& account)
 {
     uint256 ret = beast::zero;
     memcpy(ret.begin(), account.begin(), account.size());
@@ -35,7 +34,7 @@ CanonicalTXSetBase::accountKey(AccountID const& account)
 }
 
 bool
-CanonicalTXSetBase::Key::operator<(Key const& rhs) const
+CanonicalTXSet::Key::operator<(Key const& rhs) const
 {
     if (mAccount < rhs.mAccount)
         return true;
@@ -53,7 +52,7 @@ CanonicalTXSetBase::Key::operator<(Key const& rhs) const
 }
 
 bool
-CanonicalTXSetBase::Key::operator>(Key const& rhs) const
+CanonicalTXSet::Key::operator>(Key const& rhs) const
 {
     if (mAccount > rhs.mAccount)
         return true;
@@ -71,7 +70,7 @@ CanonicalTXSetBase::Key::operator>(Key const& rhs) const
 }
 
 bool
-CanonicalTXSetBase::Key::operator<=(Key const& rhs) const
+CanonicalTXSet::Key::operator<=(Key const& rhs) const
 {
     if (mAccount < rhs.mAccount)
         return true;
@@ -89,7 +88,7 @@ CanonicalTXSetBase::Key::operator<=(Key const& rhs) const
 }
 
 bool
-CanonicalTXSetBase::Key::operator>=(Key const& rhs) const
+CanonicalTXSet::Key::operator>=(Key const& rhs) const
 {
     if (mAccount > rhs.mAccount)
         return true;
@@ -105,7 +104,7 @@ CanonicalTXSetBase::Key::operator>=(Key const& rhs) const
 
     return mTXid >= rhs.mTXid;
 }
-//-------------------------------------------------------------------------------------------
+
 bool
 CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /* = false */)
 {
@@ -141,21 +140,76 @@ CanonicalTXSet::prune(AccountID const& account, std::uint32_t const seq)
 }
 
 //-------------------------------------------------------------------------------------------
+uint256
+CanonicalTXSetHeld::accountKey(AccountID const& account)
+{
+    uint256 ret = beast::zero;
+    memcpy(ret.begin(), account.begin(), account.size());
+    return ret;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator<(Key const& rhs) const
+{
+    if (mAccount < rhs.mAccount)
+        return true;
+
+    if (mAccount > rhs.mAccount)
+        return false;
+
+    return mSeq < rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator>(Key const& rhs) const
+{
+    if (mAccount > rhs.mAccount)
+        return true;
+
+    if (mAccount < rhs.mAccount)
+        return false;
+
+    return mSeq > rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator<=(Key const& rhs) const
+{
+    if (mAccount < rhs.mAccount)
+        return true;
+
+    if (mAccount > rhs.mAccount)
+        return false;
+
+    return mSeq <= rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator>=(Key const& rhs) const
+{
+    if (mAccount > rhs.mAccount)
+        return true;
+
+    if (mAccount < rhs.mAccount)
+        return false;
+
+    return mSeq >= rhs.mSeq;
+}
+
 bool
 CanonicalTXSetHeld::insert(
-    std::shared_ptr<Transaction> const& tx)
+    std::shared_ptr<Transaction> const& tx,bool bForceAdd)
 {
     auto txn = tx->getSTransaction();
     auto accId = txn->getAccountID(sfAccount);
 
-    if (accountTxsize_[accId] >= MAX_ACCOUNT_HELD_COUNT)
+    if (!bForceAdd && accountTxsize_[accId] >= MAX_ACCOUNT_HELD_COUNT)
         return false;
     if (map_.size() >= MAX_HELD_COUNT)
         return false;
 
-
     auto ret = map_.insert(std::make_pair(
-        Key(accountKey(accId), txn->getSequence(), txn->getTransactionID()),
+        Key(accountKey(accId), txn->getSequence()),
         tx));
 
     if (ret.second)
@@ -169,8 +223,8 @@ CanonicalTXSetHeld::prune(AccountID const& account, std::uint32_t const seq)
 {
     auto effectiveAccount = accountKey(account);
 
-    Key keyLow(effectiveAccount, seq, beast::zero);
-    Key keyHigh(effectiveAccount, seq + 1, beast::zero);
+    Key keyLow(effectiveAccount, seq);
+    Key keyHigh(effectiveAccount, seq + 1);
 
     auto range = boost::make_iterator_range(
         map_.lower_bound(keyLow), map_.lower_bound(keyHigh));

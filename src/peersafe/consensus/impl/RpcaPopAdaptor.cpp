@@ -239,7 +239,7 @@ RpcaPopAdaptor::peerValidation(
         }
 
         JLOG(j_.info()) << "recvValidation " << val->getLedgerHash() << " from "
-                        << getPubIndex(peer->getValPublic());
+                        << getPubIndex(val->getSignerPublic());
 
         app_.getOPs().pubValidation(val);
 

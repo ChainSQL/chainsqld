@@ -407,6 +407,8 @@ ServerHandlerImp::processSession(
         jr[jss::request] = jv;
         jr[jss::type]    = jss::response;
         jr[jss::status]  = jss::error;
+        if (jv.isMember(jss::id))
+            jr[jss::id] = jv[jss::id];
         return jr;
 	}
 
