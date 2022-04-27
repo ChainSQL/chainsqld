@@ -120,7 +120,7 @@ namespace ripple {
 		ret = X509_STORE_CTX_init(ctx, certChain, x509Client, NULL);
 		if (1 != ret)
 		{
-			exception = "X509_STORE_CTX_init fail, ret = " + ret;
+			exception = (boost::format("X509_STORE_CTX_init fail, ret = %d") % ret).str();
 			goto EXIT;
 		}
 
@@ -410,7 +410,7 @@ namespace ripple {
 		x509_req = X509_REQ_new();
 		ret = X509_REQ_set_version(x509_req, nVersion);
 		if (ret != 1) {
-			exception = "X509_REQ_set_version faild ret = " + ret;
+            exception = (boost::format("X509_REQ_set_version faild ret = %d") % ret).str();
 			goto free_all;
 		}
 
@@ -419,7 +419,7 @@ namespace ripple {
 
 		ret = X509_NAME_add_entry_by_txt(x509_name, "C", MBSTRING_ASC, (const unsigned char*)sub.country.c_str(), -1, -1, 0);
 		if (ret != 1) {
-			exception = "X509_NAME_add_entry_by_txt failed,ret=" + ret;
+			exception = (boost::format("X509_NAME_add_entry_by_txt failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
@@ -430,32 +430,32 @@ namespace ripple {
 
 		ret = X509_NAME_add_entry_by_txt(x509_name, "L", MBSTRING_ASC, (const unsigned char*)sub.city.c_str(), -1, -1, 0);
 		if (ret != 1) {
-			exception = "X509_NAME_add_entry_by_txt failed,ret=" + ret;
+			exception = (boost::format("X509_NAME_add_entry_by_txt failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
 		ret = X509_NAME_add_entry_by_txt(x509_name, "O", MBSTRING_ASC, (const unsigned char*)sub.organization.c_str(), -1, -1, 0);
 		if (ret != 1) {
-			exception = "X509_NAME_add_entry_by_txt failed,ret=" + ret;
+			exception = (boost::format("X509_NAME_add_entry_by_txt failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
 		ret = X509_NAME_add_entry_by_txt(x509_name, "CN", MBSTRING_ASC, (const unsigned char*)sub.common.c_str(), -1, -1, 0);
 		if (ret != 1) {
-			exception = "X509_NAME_add_entry_by_txt failed,ret=" + ret;
+			exception = (boost::format("X509_NAME_add_entry_by_txt failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
 		ret = X509_REQ_set_pubkey(x509_req, pkey);
 		if (ret != 1) {
-			exception = "X509_REQ_set_pubkey failed,ret=" + ret;
+			exception = (boost::format("X509_REQ_set_pubkey failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
 		// 5. set sign key of x509 req
 		ret = X509_REQ_sign(x509_req, pkey, EVP_sha256());    // return x509_req->signature->length
 		if (ret <= 0) {
-			exception = "X509_REQ_sign failed,ret=" + ret;
+			exception = (boost::format("X509_REQ_sign failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 
@@ -468,7 +468,7 @@ namespace ripple {
 		ret = PEM_write_bio_X509_REQ(out, x509_req);
 		if (ret != 1)
 		{
-			exception = "PEM_write_bio_X509_REQ failed,ret=" + ret;
+			exception = (boost::format("PEM_write_bio_X509_REQ failed,ret = %d") % ret).str();
 			goto free_all;
 		}
 		/* ---------------------------------------------------------- *
