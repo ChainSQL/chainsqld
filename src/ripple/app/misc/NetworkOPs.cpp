@@ -1945,6 +1945,11 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
                     if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
+                        JLOG(m_journal.warn())
+                            << "Account sequence too large,accountId="
+                            << txCur->getAccountID(sfAccount)
+                            << ", curSeq = " << seq
+                            << ",tx.Sequence=" << txCur->getSequence() << ",tx.hash="<<txCur->getTransactionID();
                         e.transaction->setResult(telSEQ_TOOLARGE);
                         e.transaction->setStatus(REMOVED);
                     }
