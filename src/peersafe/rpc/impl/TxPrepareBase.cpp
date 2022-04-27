@@ -152,7 +152,11 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 					strValue = value.toStyledString();
 				else
 					strValue = value.asString();
-				json[fieldName] = strHex(strValue);
+                
+                if(fieldName != "Certificate")
+                {
+                    json[fieldName] = strHex(strValue);
+                }
 			}
 			catch (std::exception const& e)
 			{
