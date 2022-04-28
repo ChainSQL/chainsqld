@@ -150,3 +150,4 @@ compile_commands.json
 
 # VScode config files
 .vscode/
+*.diff
