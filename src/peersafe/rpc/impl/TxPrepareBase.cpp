@@ -566,7 +566,9 @@ std::pair<Blob, Json::Value> TxPrepareBase::getPassBlobBase(AccountID& ownerId, 
 
 	bool bRet = false;
 	error_code_i errCode;
-	std::tie(bRet, passBlob, errCode) = app_.getLedgerMaster().getUserToken(userId, ownerId, sTableName_);
+    auto openLedger = app_.getLedgerMaster().getCurrentLedger();
+    std::tie(bRet, passBlob, errCode) = app_.getLedgerMaster().getUserToken(
+            openLedger, userId, ownerId, sTableName_);
 
 	if (!bRet)
 	{
@@ -822,9 +824,7 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	if (ledger == NULL)  return false;
 
-	auto tup = getTableEntry(*ledger,owner,tableName);
-	auto pEntry = std::get<1>(tup);
-	return pEntry ? STEntry::isConfidential(*pEntry):false;
+	return ripple::isConfidential(*ledger,owner,tableName);
 }
 
 Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app, bool bWs)

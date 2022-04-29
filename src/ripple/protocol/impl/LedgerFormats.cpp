@@ -308,6 +308,14 @@ LedgerFormats::LedgerFormats()
             {sfAccountCountField,        soeOPTIONAL},
         },
         commonFields);
+
+    add(jss::TableGrant,ltTABLEGRANT,
+        {
+            {sfUser,    soeREQUIRED}, 
+            {sfFlags,   soeREQUIRED}, 
+            {sfToken,   soeOPTIONAL},
+            {sfNameInDB,soeREQUIRED}
+        },commonFields);
 }
 
 LedgerFormats const&

@@ -1810,17 +1810,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                     if (opType == T_CREATE)
                     {
                         std::string temKey = to_string(accountID) + tableName;
-                        bool bConfidential = false;
-                        auto tup = getTableEntry(*ledger, accountID, tableName);
-                        auto pEntry = std::get<1>(tup);
-                        if (pEntry != nullptr)
-                        {
-                            auto& table = *pEntry;
-                            auto& users = table.getFieldArray(sfUsers);
-                            assert(users.size() > 0);
-                            bConfidential = users[0].isFieldPresent(sfToken);
-                        }
-
+                        bool bConfidential = isConfidential(*ledger,accountID,tableName);
                         bool bInSyncTables = true;
                         if (setTableInCfg_.count(temKey) <= 0 &&
                             mapOwnerInCfg_.count(accountID) <= 0)

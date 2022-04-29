@@ -392,6 +392,7 @@ extern uint256 const fixAmendmentMajorityCalc;
 extern uint256 const featureNegativeUNL;
 extern uint256 const featureTableSleChange;
 extern uint256 const featureContractStorage;
+extern uint256 const featureTableGrant;
 
 }  // namespace ripple
 

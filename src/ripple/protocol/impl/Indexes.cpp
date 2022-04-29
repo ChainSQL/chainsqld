@@ -70,6 +70,7 @@ enum class LedgerNameSpace : std::uint16_t {
     SCHEMA_INDEX = 'k',
     TABLE = 't',
     STATIS = 'I',
+    GRANT = 'g',
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
     CONTRACT [[deprecated]] = 'c',
@@ -373,6 +374,15 @@ Keylet
 statis() noexcept
 {
     return {ltSTATIS, indexHash(LedgerNameSpace::STATIS)};
+}
+
+Keylet
+tablegrant(
+    AccountID const& owner,
+    std::string const& tableName,
+    AccountID const& user) noexcept
+{
+    return {ltTABLEGRANT, indexHash(LedgerNameSpace::GRANT, owner, tableName, user)};
 }
 
 }  // namespace keylet

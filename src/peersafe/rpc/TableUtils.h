@@ -46,6 +46,27 @@ namespace ripple {
     getTableEntryByNameInDB(ReadView const& view,AccountID const& accountId,std::string const& sTableNameInDB);
 
 	bool isTableSLEChanged(STObject* pEntry, LedgerIndex iLastSeq, bool bStrictEqual);
+
+	bool
+    isConfidential(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName);
+
+	std::tuple<bool,uint32_t,Blob>
+    getUserAuthAndToken(
+		ReadView const& view, 
+		const AccountID& owner,
+        const std::string& tableName,
+		const AccountID& user);
+ 
+	bool
+    hasAuthority(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName,
+        const AccountID& user,
+        TableRoleFlags flag);
 }
 
 #endif

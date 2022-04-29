@@ -619,6 +619,7 @@ JSS ( Admin );
 JSS ( FrozenAccounts );
 JSS ( SchemaIndex );
 JSS ( Statis );
+JSS ( TableGrant );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);
