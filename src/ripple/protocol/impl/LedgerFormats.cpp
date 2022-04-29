@@ -311,10 +311,10 @@ LedgerFormats::LedgerFormats()
 
     add(jss::TableGrant,ltTABLEGRANT,
         {
-            {sfUser,    soeREQUIRED}, 
-            {sfFlags,   soeREQUIRED}, 
-            {sfToken,   soeOPTIONAL},
-            {sfNameInDB,soeREQUIRED}
+            {sfUser,        soeREQUIRED},
+            {sfToken,       soeOPTIONAL},
+            {sfNameInDB,    soeREQUIRED},
+            {sfOwnerNode,   soeREQUIRED},
         },commonFields);
 }
 

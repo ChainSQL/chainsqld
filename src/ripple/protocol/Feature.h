@@ -119,7 +119,8 @@ class FeatureCollections
         "fixAmendmentMajorityCalc",  // Fix Amendment majority calculation
         "NegativeUNL",
         "TableSLEChange",
-        "ContractStorage"
+        "ContractStorage",
+        "TableGrant"
     };
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;

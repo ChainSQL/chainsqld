@@ -265,10 +265,10 @@ namespace ripple {
 	}
 
     bool
-        isConfidential(
-            ReadView const& view,
-            const AccountID& owner,
-            const std::string& tableName)
+    isConfidential(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName)
     {
         auto tup = getTableEntry(view, owner, tableName);
         auto pEntry = std::get<1>(tup);
@@ -282,7 +282,6 @@ namespace ripple {
         }
         else
         {
-            auto ownerId = pEntry->getAccountID(sfAccount);
             auto key = keylet::tablegrant(owner, tableName, owner);
             auto sleGrantOwner = view.read(key);
             if (sleGrantOwner)
@@ -324,7 +323,6 @@ namespace ripple {
         }
         else
         {
-            auto ownerId = pEntry->getAccountID(sfAccount);
             auto key = keylet::tablegrant(owner, tableName, userId);
             auto sleGrantOwner = view.read(key);
             if (sleGrantOwner)

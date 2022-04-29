@@ -385,8 +385,6 @@ namespace ripple {
 
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
-        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
-
 
         auto tup = getTableEntry(view, tx);
         auto pEntry = std::get<1>(tup);
@@ -401,6 +399,7 @@ namespace ripple {
         {
         case T_CREATE:
         {
+            bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
             auto const sleAccount = view.read(keylet::account(sourceID));
 			if (!bSleChangeEnabled &&
                 tableEntries != nullptr &&
@@ -601,7 +600,7 @@ namespace ripple {
             {
                 auto keylet = keylet::tablegrant(
                     sourceID,
-                    strCopy(tables[0].getFieldVL(sfTableNewName)),
+                    strCopy(tables[0].getFieldVL(sfTableName)),
                     sourceID);
                 auto pSle = view.read(keylet);
                 if (pSle && pSle->isFieldPresent(sfToken) &&
@@ -670,8 +669,6 @@ namespace ripple {
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
         auto sTableName = strCopy(vTableNameStr);
-        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
-        bool bTableGrantEnabled = view.rules().enabled(featureTableGrant);
 
         STObject* pEntry = nullptr;
         STArray* tableEntries = nullptr;
@@ -695,6 +692,8 @@ namespace ripple {
         {
         case T_CREATE:
 		{
+            bool bTableGrantEnabled = view.rules().enabled(featureTableGrant);
+            bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
             std::shared_ptr<SLE> tableSle = nullptr;
             std::shared_ptr<SLE> tableGrantSle = nullptr;
             if (!bSleChangeEnabled)
@@ -731,12 +730,12 @@ namespace ripple {
                 Keylet key = keylet::tablegrant(accountId, sTableName, accountId);
                 tableGrantSle = std::make_shared<SLE>(ltTABLEGRANT, key.key);
                 setTableGrant(tx,*tableGrantSle,0,true);
+                terResult = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                if (terResult != tesSUCCESS)
+                    return terResult;
             }
 
             terResult = addSleToDir(accountId, view, tableSle, viewJ);
-            if (terResult != tesSUCCESS)
-                return terResult;
-            terResult = addSleToDir(accountId, view, tableGrantSle, viewJ);
             if (terResult != tesSUCCESS)
                 return terResult;
 
@@ -873,8 +872,8 @@ namespace ripple {
             {
                 auto keylet = keylet::tablegrant(
                     accountId,
-                    strCopy(tables[0].getFieldVL(sfTableNewName)),
-                    accountId);
+                    strCopy(tables[0].getFieldVL(sfTableName)),
+                    addUserID);
                 auto pSle = view.peek(keylet);
                 if (pSle)
                 {
@@ -884,12 +883,15 @@ namespace ripple {
                 }
                 else
                 {
-                    auto keylet =
-                        keylet::tablegrant(accountId, sTableName, addUserID);
                     auto tableGrantSle = std::make_shared<SLE>(ltTABLEGRANT, keylet.key);
                     finalFlag = getFinalFlag(tx, false, *tableGrantSle);
                     setTableGrant(tx, *tableGrantSle, finalFlag, true);
-                    view.insert(tableGrantSle);
+
+                    terResult = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                    if (terResult != tesSUCCESS)
+                        return terResult;
+                    auto const sleAccount = view.peek(keylet::account(accountId));
+                    adjustOwnerCount(view, sleAccount, 1, viewJ);
                 }
             }
             break;
