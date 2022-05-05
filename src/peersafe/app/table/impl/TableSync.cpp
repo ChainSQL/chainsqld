@@ -668,19 +668,11 @@ TableSync::CreateItemsWithOwner(
     if (!ledger)
         return vec;
 
-    auto const root = keylet::ownerDir(owner);
-    auto dirIndex = root.key;
-    auto dir = ledger->read({ltDIR_NODE, dirIndex});
-    if (!dir)
-        return vec;
-    for (;;)
-    {
-        auto const& entries = dir->getFieldV256(sfIndexes);
-        auto iter = entries.begin();
-
-        for (; iter != entries.end(); ++iter)
-        {
-            auto const sleNode = ledger->read(keylet::child(*iter));
+    forEachItem(
+        *ledger,
+        owner,
+        [this,&owner,&user,&vec](
+            std::shared_ptr<SLE const> const& sleNode) {
             if (sleNode->getType() == ltTABLE)
             {
                 CreateItemWithOwner(
@@ -694,16 +686,8 @@ TableSync::CreateItemsWithOwner(
                     CreateItemWithOwner(owner, user, table, vec);
                 }
             }
-        }
-        auto const nodeIndex = dir->getFieldU64(sfIndexNext);
-        if (nodeIndex == 0)
-            break;
+        });
 
-        dirIndex = keylet::page(root, nodeIndex).key;
-        dir = ledger->read({ltDIR_NODE, dirIndex});
-        if (!dir)
-            break;
-    }
     return vec;
 }
 
