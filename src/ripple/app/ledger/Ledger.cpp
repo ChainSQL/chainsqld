@@ -356,7 +356,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//	info_.closeFlags |= sLCF_SHAMapV2;
 	//}
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
-
+    int count = 0;
     for (auto sle : ledger.sles)
     {
         if (sle->getType() == ltACCOUNT_ROOT)
@@ -377,16 +377,12 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
             if (sle->getFieldU32(sfTransferFeeMax))
                 (*sleNew)[sfTransferFeeMax] = (*sle)[sfTransferFeeMax];
             rawInsert(sleNew);
+            count++;
         }
     }
 
-    Keylet key = keylet::statis();
-    auto statisSle = ledger.peek(key);
     auto const sle = std::make_shared<SLE>(keylet::statis());
-    if (statisSle)
-        sle->setFieldU32(sfAccountCountField, (*statisSle)[sfAccountCountField]);
-    else
-        sle->setFieldU32(sfAccountCountField, 1);
+    sle->setFieldU32(sfAccountCountField, count);
     rawInsert(sle);
 
     stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
