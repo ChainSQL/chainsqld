@@ -787,6 +787,43 @@ namespace ripple {
             {
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				adjustOwnerCount(view, sleAccount, -1, viewJ);
+
+                auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+                std::vector<std::shared_ptr<SLE>> vecDel;
+                auto ownerDir = keylet::ownerDir(accountId);
+                auto pos = ownerDir;
+                for (;;)
+                {
+                    auto sle = view.read(pos);
+                    if (!sle)
+                        return tefBAD_LEDGER;
+
+                    for (auto const& key : sle->getFieldV256(sfIndexes))
+                    {
+                        auto sleNode = view.peek(keylet::child(key));
+                        if (!sle)
+                            return tefBAD_LEDGER;
+                        vecDel.push_back(sleNode);
+                    }
+                    auto const next = sle->getFieldU64(sfIndexNext);
+                    if (!next)
+                        break;
+                    pos = keylet::page(ownerDir, next);
+                }
+
+                for (auto sleNode : vecDel)
+                {
+                    if (!view.dirRemove(
+                            ownerDir,
+                            (*sleNode)[sfOwnerNode],
+                            sleNode->key(),
+                            true))
+                    {
+                        return tefBAD_LEDGER;
+                    }
+                    view.erase(sleNode);
+                }
+                adjustOwnerCount(view, sleAccount, -1 * vecDel.size(), viewJ);
 			}
 
             break;
