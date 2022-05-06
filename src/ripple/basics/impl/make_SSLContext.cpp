@@ -321,6 +321,7 @@ initAuthenticated(
                            .c_str());
         }
         
+#ifdef SOFTENCRYPT
         X509* cert = ripple::readCertFromFile(cert_file.c_str());
         auto pkID = EVP_PKEY_id(X509_get0_pubkey(cert));
         if(EVP_PKEY_EC == pkID)
@@ -328,6 +329,7 @@ initAuthenticated(
             static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
             SSL_CTX_set1_curves(context.native_handle(), my_pref_list, 2);
         }
+#endif
 
         cert_set = true;
     }

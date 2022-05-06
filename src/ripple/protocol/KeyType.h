@@ -40,9 +40,13 @@ keyTypeFromString(std::string const& s)
 {
 	if (s == "secp256k1")  return KeyType::secp256k1;
 	if (s == "ed25519")  return KeyType::ed25519;
+    
+#ifdef SOFTENCRYPT
 	if (s == "gmalg")      return KeyType::gmalg;
+#endif
+    
     if (s == "gmInCard")   return KeyType::gmInCard;
-
+    
 	return KeyType::invalid;
 }
 

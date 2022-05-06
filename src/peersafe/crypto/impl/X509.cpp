@@ -152,6 +152,7 @@ namespace ripple {
 	{
         if(CommonKey::chainAlgTypeG == KeyType::gmalg)
         {
+#ifdef SOFTENCRYPT
             EC_KEY* ecKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
             EC_KEY_set_conv_form(ecKey, POINT_CONVERSION_UNCOMPRESSED);
             if (EC_KEY_set_public_key(ecKey, ecPoint) <= 0)
@@ -166,6 +167,7 @@ namespace ripple {
                 result[0] = GM_ALG_MARK;
                 return result;
             }
+#endif
             return Blob();
         }
         else
@@ -283,6 +285,7 @@ namespace ripple {
 
         if (keyType == KeyType::gmalg)
         {
+#ifdef SOFTENCRYPT
             std::string priKeyStrDe58 = decodeBase58Token(seedStr, TokenType::AccountSecret);
             if (priKeyStrDe58.empty())
             {
@@ -328,6 +331,9 @@ namespace ripple {
                 exception = "Error assigning ECC key to EVP_PKEY structure.";
                 return false;
             }
+#else
+            return false;
+#endif
 //            EC_KEY_free(pEcKey);
         }
         else
