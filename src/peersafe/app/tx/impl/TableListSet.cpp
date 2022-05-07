@@ -332,6 +332,42 @@ namespace ripple {
     }
 
     void
+    getRelatedGrantSles(
+        AccountID const& accountId,
+        ApplyView& view,
+        STObject* pEntry,
+        std::vector<std::shared_ptr<SLE>>& vecDel)
+    {
+        auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+
+        // Need non-const sle-pointer,so not use foreachItem
+        auto ownerDir = keylet::ownerDir(accountId);
+        auto pos = ownerDir;
+        for (;;)
+        {
+            auto sle = view.read(pos);
+            if (!sle)
+                return;
+
+            for (auto const& key : sle->getFieldV256(sfIndexes))
+            {
+                auto sleNode = view.peek(keylet::child(key));
+                if (!sle)
+                    return;
+                if (sleNode->getType() == ltTABLEGRANT &&
+                    sleNode->getFieldH160(sfNameInDB) == nameInDB)
+                {
+                    vecDel.push_back(sleNode);
+                }
+            }
+            auto const next = sle->getFieldU64(sfIndexNext);
+            if (!next)
+                break;
+            pos = keylet::page(ownerDir, next);
+        }
+    }
+
+    void
         TableListSet::prepareTableEntry(const STTx &tx, ApplyView& view,STObject * pEntry)  //preflight assure sfTables must exist
     {
         STEntry obj_tableEntry;
@@ -788,42 +824,33 @@ namespace ripple {
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				adjustOwnerCount(view, sleAccount, -1, viewJ);
 
-                auto nameInDB = pEntry->getFieldH160(sfNameInDB);
-                std::vector<std::shared_ptr<SLE>> vecDel;
-                auto ownerDir = keylet::ownerDir(accountId);
-                auto pos = ownerDir;
-                for (;;)
+                //Remove related TableGrant sles and directory node
+                if (!pEntry->isFieldPresent(sfUsers))
                 {
-                    auto sle = view.read(pos);
-                    if (!sle)
-                        return tefBAD_LEDGER;
+                    auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+                    std::vector<std::shared_ptr<SLE>> vecDel;
 
-                    for (auto const& key : sle->getFieldV256(sfIndexes))
+                    //Need non-const sle-pointer,so not use foreachItem
+                    getRelatedGrantSles(accountId, view, pEntry, vecDel);
+                    if (!vecDel.empty())
                     {
-                        auto sleNode = view.peek(keylet::child(key));
-                        if (!sle)
-                            return tefBAD_LEDGER;
-                        vecDel.push_back(sleNode);
+                        auto ownerDir = keylet::ownerDir(accountId);
+                        for (auto sleNode : vecDel)
+                        {
+                            if (!view.dirRemove(
+                                    ownerDir,
+                                    (*sleNode)[sfOwnerNode],
+                                    sleNode->key(),
+                                    true))
+                            {
+                                return tefBAD_LEDGER;
+                            }
+                            view.erase(sleNode);
+                        }
+                        adjustOwnerCount(
+                            view, sleAccount, -1 * vecDel.size(), viewJ);
                     }
-                    auto const next = sle->getFieldU64(sfIndexNext);
-                    if (!next)
-                        break;
-                    pos = keylet::page(ownerDir, next);
-                }
-
-                for (auto sleNode : vecDel)
-                {
-                    if (!view.dirRemove(
-                            ownerDir,
-                            (*sleNode)[sfOwnerNode],
-                            sleNode->key(),
-                            true))
-                    {
-                        return tefBAD_LEDGER;
-                    }
-                    view.erase(sleNode);
-                }
-                adjustOwnerCount(view, sleAccount, -1 * vecDel.size(), viewJ);
+                }                
 			}
 
             break;
@@ -864,6 +891,47 @@ namespace ripple {
                         return tefBAD_LEDGER;
                     }
                     view.erase(tableSleExist);
+                }
+
+                if (pEntry->isFieldPresent(sfUsers))
+                    break;
+                //Delete and re-add TableGrant sles
+                auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+                std::vector<std::shared_ptr<SLE>> vecDel;
+
+                // Need non-const sle-pointer,so not use foreachItem
+                getRelatedGrantSles(accountId, view, pEntry, vecDel);
+                if (!vecDel.empty())
+                {
+                    auto sTableNewName = strCopy(tableNewName);
+                    auto ownerDir = keylet::ownerDir(accountId);
+                    for (auto sleNode : vecDel)
+                    {
+                        Keylet key = keylet::tablegrant(
+                            accountId,
+                            sTableNewName,
+                            sleNode->getAccountID(sfUser));
+                        auto tableGrantSle =
+                            std::make_shared<SLE>(ltTABLEGRANT, key.key);
+                        tableGrantSle->setAccountID(sfUser, sleNode->getAccountID(sfUser));
+                        tableGrantSle->setFieldU32(sfFlags, sleNode->getFieldU32(sfFlags));
+                        tableGrantSle->setFieldH160(sfNameInDB, nameInDB);
+                        if (sleNode->isFieldPresent(sfToken))
+                            tableGrantSle->setFieldVL(sfToken, sleNode->getFieldVL(sfToken));
+                        auto ret = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                        if (ret != tesSUCCESS)
+                            return ret;
+
+                        if (!view.dirRemove(
+                                ownerDir,
+                                (*sleNode)[sfOwnerNode],
+                                sleNode->key(),
+                                true))
+                        {
+                            return tefBAD_LEDGER;
+                        }
+                        view.erase(sleNode);
+                    }
                 }
             }
             
