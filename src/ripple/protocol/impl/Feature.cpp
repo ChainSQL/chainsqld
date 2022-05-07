@@ -140,6 +140,7 @@ detail::supportedAmendments()
         "HardenedValidations",
         "fixAmendmentMajorityCalc",
         //"NegativeUNL"      // Commented out to prevent automatic enablement
+        "PromethSLEHideInMeta"
     };
     return supported;
 }
@@ -198,7 +199,8 @@ featureNegativeUNL = *getRegisteredFeature("NegativeUNL"),
 featureDisableV2 = *getRegisteredFeature("DisableV2"),
 featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage"),
 featureTableSleChange = *getRegisteredFeature("TableSLEChange"),
-featureContractStorage = *getRegisteredFeature("ContractStorage");
+featureContractStorage = *getRegisteredFeature("ContractStorage"),
+featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta");
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
 // uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");

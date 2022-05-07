@@ -465,7 +465,7 @@ namespace ripple {
 		}
 		else
 		{
-			if (sleSchema->getAccountID(sfAccount) != ctx_.tx.getAccountID(sfAccount))
+			if (sleSchema->getAccountID(sfAccount) != account)
 			{
 				return tefBAD_SCHEMAACCOUNT;
 			}
@@ -473,7 +473,14 @@ namespace ripple {
 			if (!isTesSuccess(ret))
 				return ret;
 		}
-
+		if (!ctx_.view().dirRemove(
+                keylet::ownerDir(account),
+                (*sleSchema)[sfOwnerNode],
+                sleSchema->key(),
+                true))
+        {
+            return tefBAD_LEDGER;
+        }
 
 		ctx_.view().erase(sleSchema);
 		return tesSUCCESS;
