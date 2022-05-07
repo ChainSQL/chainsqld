@@ -24,7 +24,7 @@
 #include <peersafe/gmencrypt/GmEncrypt.h>
 #include <ripple/basics/StringUtilities.h>
 
-#define SOFTENCRYPT
+// #define SOFTENCRYPT
 #ifdef SOFTENCRYPT
 #include <openssl/ec.h>
 #include <openssl/pem.h>

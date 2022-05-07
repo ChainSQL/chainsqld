@@ -75,11 +75,13 @@ GmEncrypt* GmEncryptObj::getInstance(gmAlgType gmAlgType)
         }
     }
 #endif
+#ifdef SOFTENCRYPT
     case gmAlgType::soft:
     {
         static SoftEncrypt objSoftEncrypt;
         return &objSoftEncrypt;
     }
+#endif
     default:
         std::cout << "GmEncryptType error!" << std::endl;
     }
