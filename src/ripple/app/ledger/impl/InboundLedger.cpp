@@ -34,7 +34,9 @@
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/resource/Fees.h>
+#include <ripple/protocol/Indexes.h>
 #include <ripple/shamap/SHAMapNodeID.h>
+#include <peersafe/protocol/STMap256.h>
 
 #include <algorithm>
 
@@ -90,6 +92,7 @@ InboundLedger::InboundLedger(
     , mSeq(seq)
     , mReason(reason)
     , mReceiveDispatched(false)
+    , mContractRootLoaded(false)
 {
     JLOG(m_journal.trace()) << "Acquiring ledger " << mHash;
     touch();
@@ -257,7 +260,7 @@ InboundLedger::neededTxHashes(int max, SHAMapSyncFilter* filter) const
         if (mLedger->txMap().getHash().isZero())
             ret.push_back(mLedger->info().txHash);
         else
-            ret = mLedger->txMap().getNeededHashes(max, filter).first;
+            ret = mLedger->txMap().getNeededHashes(max, filter);
     }
 
     return ret;
@@ -277,21 +280,21 @@ InboundLedger::neededCTNodeHashes(
         return vec;
     }
     else
-        return map.getNeededHashes(max, filter).first;
+        return map.getNeededHashes(max, filter);
 }
 
-std::pair<std::vector<uint256>, std::set<uint256>>
+std::vector<uint256>
 InboundLedger::neededStateHashes(int max, SHAMapSyncFilter* filter) const
 {
-    std::vector<uint256> vec;
+    std::vector<uint256> ret;
     if (mLedger->info().accountHash.isNonZero())
     {
         if (mLedger->stateMap().getHash().isZero())
-            vec.push_back(mLedger->info().accountHash);
+            ret.push_back(mLedger->info().accountHash);
         else
-            return mLedger->stateMap().getNeededHashes(max, filter);
+            ret = mLedger->stateMap().getNeededHashes(max, filter);
     }
-    return std::make_pair(vec, std::set<uint256>());
+    return ret;
 }
 
 LedgerInfo
@@ -428,9 +431,9 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
                 SHAMapHash{mLedger->info().accountHash}, &filter))
         {
             auto ret = neededStateHashes(1, &filter);
-            // Try insert contract storage tree root
-            insertContractRoots(ret.second);
-            if (ret.first.empty())
+            //// Try insert contract storage tree root
+            //insertContractRoots(ret.second);
+            if (ret.empty())
             {
                 JLOG(m_journal.trace()) << "Had full AS map locally";
                 mHaveState = true;
@@ -438,6 +441,7 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
         }
     }
 
+    checkLoadContractRoots();
     for (auto const& item : mContractRoots)
     {
         AccountStateSF filter(
@@ -750,13 +754,13 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 mLedger->stateMap().getMissingNodes(missingNodesFind, &filter);
             sl.lock();
 
-            // Try insert contract storage tree root
-            insertContractRoots(nodes.second);
+            //// Try insert contract storage tree root
+            //insertContractRoots(nodes.second);
 
             // Make sure nothing happened while we released the lock
             if (!mFailed && !mComplete && !mHaveState)
             {
-                if (nodes.first.empty())
+                if (nodes.empty())
                 {
                     if (!mLedger->stateMap().isValid())
                         mFailed = true;
@@ -770,18 +774,18 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 }
                 else
                 {
-                    filterNodes(nodes.first, reason);
+                    filterNodes(nodes, reason);
 
-                    if (!nodes.first.empty())
+                    if (!nodes.empty())
                     {
                         tmGL.set_itype(protocol::liAS_NODE);
-                        for (auto const& id : nodes.first)
+                        for (auto const& id : nodes)
                         {
                             *(tmGL.add_nodeids()) = id.first.getRawString();
                         }
 
                         JLOG(m_journal.trace())
-                            << "Sending AS node request (" << nodes.first.size()
+                            << "Sending AS node request (" << nodes.size()
                             << ") to "
                             << (peer ? "selected peer" : "all peers");
                         sendRequest(tmGL, peer);
@@ -822,7 +826,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             auto nodes =
                 mLedger->txMap().getMissingNodes(missingNodesFind, &filter);
 
-            if (nodes.first.empty())
+            if (nodes.empty())
             {
                 if (!mLedger->txMap().isValid())
                     mFailed = true;
@@ -836,17 +840,17 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             }
             else
             {
-                filterNodes(nodes.first, reason);
+                filterNodes(nodes, reason);
 
-                if (!nodes.first.empty())
+                if (!nodes.empty())
                 {
                     tmGL.set_itype(protocol::liTX_NODE);
-                    for (auto const& n : nodes.first)
+                    for (auto const& n : nodes)
                     {
                         *(tmGL.add_nodeids()) = n.first.getRawString();
                     }
                     JLOG(m_journal.trace())
-                        << "Sending TX node request (" << nodes.first.size()
+                        << "Sending TX node request (" << nodes.size()
                         << ") to " << (peer ? "selected peer" : "all peers");
                     sendRequest(tmGL, peer);
                     return;
@@ -859,6 +863,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
         }
     }
 
+    checkLoadContractRoots();
     // Get the state data first because it's the most likely to be useful
     // if we wind up abandoning this fetch.
     if (mHaveHeader && !haveContractNodes() && !mFailed)
@@ -905,7 +910,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             // Make sure nothing happened while we released the lock
             if (!mFailed && !mComplete && !haveContractNodes())
             {
-                if (nodes.first.empty())
+                if (nodes.empty())
                 {
                     if (!pMap->isValid())
                         mFailed = true;
@@ -919,18 +924,18 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 }
                 else
                 {
-                    filterNodes(nodes.first, reason);
+                    filterNodes(nodes, reason);
 
-                    if (!nodes.first.empty())
+                    if (!nodes.empty())
                     {
                         tmGL.set_itype(protocol::liCONTRACT_NODE);
-                        for (auto const& id : nodes.first)
+                        for (auto const& id : nodes)
                         {
                             *(tmGL.add_nodeids()) = id.first.getRawString();
                         }
 
                         JLOG(m_journal.debug())
-                            << "Sending CONTRACT node request (" << nodes.first.size()
+                            << "Sending CONTRACT node request (" << nodes.size()
                             << ") to "
                             << (peer ? "selected peer" : "all peers");
                         sendRequest(tmGL, peer);
@@ -970,6 +975,8 @@ InboundLedger::checkComplete()
 bool
 InboundLedger::haveContractNodes()
 {
+    if (!mContractRootLoaded)
+        return false;
     for (auto const& item : mContractRoots)
     {
         if (mContractMapInfo.find(item) == mContractMapInfo.end() ||
@@ -979,6 +986,36 @@ InboundLedger::haveContractNodes()
         }
     }
     return true;
+}
+
+void
+InboundLedger::checkLoadContractRoots()
+{
+    if (!mHaveState || mContractRootLoaded)
+        return;
+    forEachItem(
+        *mLedger,
+        keylet::contract_index(),
+        [this](std::shared_ptr<SLE const> const& sleNode) 
+        { 
+            assert(sleNode->getType() == ltACCOUNT_ROOT);
+            auto const& mapStore = sleNode->getFieldM256(sfStorageOverlay);
+            if (mapStore.rootHash())
+            {
+                mContractRoots.insert(*mapStore.rootHash());
+            }
+        });
+    for (auto const& item : mContractRoots)
+    {
+        if (mContractMapInfo.find(item) == mContractMapInfo.end())
+        {
+            auto map = std::make_shared<SHAMap>(
+                SHAMapType::CONTRACT, item, app_.getNodeFamily());
+            map->fetchRoot(SHAMapHash(item), nullptr);
+            mContractMapInfo.emplace(item, std::make_pair(map, false));
+        }
+    }
+    mContractRootLoaded = true;
 }
 
 void
@@ -1267,17 +1304,14 @@ InboundLedger::getNeededHashes()
     {
         AccountStateSF filter(
             mLedger->stateMap().family().db(), app_.getLedgerMaster());
-        auto retPair = neededStateHashes(1, &filter);
-        // Try insert contract storage tree root
-        insertContractRoots(retPair.second);
+        //// Try insert contract storage tree root
+        //insertContractRoots(retPair.second);
 
-        for (auto const& h : retPair.first)
+        for (auto const& h : neededStateHashes(4, &filter))
         {
             ret.push_back(
                 std::make_pair(protocol::TMGetObjectByHash::otSTATE_NODE, h));
         }
-        if (!ret.empty())
-            return ret;
     }
 
     if (!mHaveTransactions)
@@ -1289,10 +1323,9 @@ InboundLedger::getNeededHashes()
             ret.push_back(std::make_pair(
                 protocol::TMGetObjectByHash::otTRANSACTION_NODE, h));
         }
-        if (!ret.empty())
-            return ret;
     }
 
+    checkLoadContractRoots();
     if (!haveContractNodes())
     {
         for (auto const& item : mContractRoots)
@@ -1538,7 +1571,7 @@ InboundLedger::getJson(int)
     if (mHaveHeader && !mHaveState)
     {
         Json::Value hv(Json::arrayValue);
-        for (auto const& h : neededStateHashes(16, nullptr).first)
+        for (auto const& h : neededStateHashes(16, nullptr))
         {
             hv.append(to_string(h));
         }

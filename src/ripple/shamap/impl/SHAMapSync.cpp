@@ -225,12 +225,6 @@ SHAMap::gmn_ProcessNodes(MissingNodes& mn, MissingNodes::StackEntry& se)
                 else
                     mn.deferredReads_.emplace_back(node, nodeID, branch);
             }
-            else if (d->isContract())
-            {
-                auto treeNode = static_cast<SHAMapTreeNode*>(d);
-                if (treeNode->getStorageRoot())
-                    mn.contractRoots_.insert(*treeNode->getStorageRoot());
-            }
             else if (
                 d->isInner() &&
                 !static_cast<SHAMapInnerNode*>(d)->isFullBelow(mn.generation_))
@@ -298,14 +292,6 @@ SHAMap::gmn_ProcessDeferredReads(MissingNodes& mn)
             // When we finish this stack, we need to restart
             // with the parent of this node
             mn.resumes_[parent] = parentID;
-
-            //Deal with contract node
-            if (nodePtr->isContract())
-            {
-                auto treeNode = std::static_pointer_cast<SHAMapTreeNode>(nodePtr);
-                if (treeNode->getStorageRoot())
-                    mn.contractRoots_.insert(*treeNode->getStorageRoot());
-            }
         }
         else if ((mn.max_ > 0) && (mn.missingHashes_.insert(nodeHash).second))
         {
@@ -335,7 +321,7 @@ SHAMap::gmn_ProcessDeferredReads(MissingNodes& mn)
     but not available locally.  The filter can hold alternate sources of
     nodes that are not permanently stored locally
 */
-std::pair<std::vector<std::pair<SHAMapNodeID, uint256>>, std::set<uint256>>
+std::vector<std::pair<SHAMapNodeID, uint256>>
 SHAMap::getMissingNodes(int max, SHAMapSyncFilter* filter)
 {
     assert(root_->isValid());
@@ -353,7 +339,7 @@ SHAMap::getMissingNodes(int max, SHAMapSyncFilter* filter)
             mn.generation_))
     {
         clearSynching();
-        return std::make_pair(std::move(mn.missingNodes_),std::move(mn.contractRoots_));
+        return std::move(mn.missingNodes_);
     }
 
     // Start at the root.
@@ -380,8 +366,7 @@ SHAMap::getMissingNodes(int max, SHAMapSyncFilter* filter)
             gmn_ProcessNodes(mn, pos);
 
             if (mn.max_ <= 0)
-                return std::make_pair(
-                    std::move(mn.missingNodes_), std::move(mn.contractRoots_));
+                return std::move(mn.missingNodes_);
 
             if ((node == nullptr) && !mn.stack_.empty())
             {
@@ -411,8 +396,7 @@ SHAMap::getMissingNodes(int max, SHAMapSyncFilter* filter)
             gmn_ProcessDeferredReads(mn);
 
         if (mn.max_ <= 0)
-            return std::make_pair(
-                std::move(mn.missingNodes_), std::move(mn.contractRoots_));
+            return std::move(mn.missingNodes_);
 
         if (node == nullptr)
         {  // We weren't in the middle of processing a node
@@ -446,22 +430,21 @@ SHAMap::getMissingNodes(int max, SHAMapSyncFilter* filter)
     if (mn.missingNodes_.empty())
         clearSynching();
 
-    return std::make_pair(
-        std::move(mn.missingNodes_), std::move(mn.contractRoots_));
+    return std::move(mn.missingNodes_);
 }
 
-std::pair<std::vector<uint256>, std::set<uint256>>
+std::vector<uint256>
 SHAMap::getNeededHashes(int max, SHAMapSyncFilter* filter)
 {
     auto ret = getMissingNodes(max, filter);
 
     std::vector<uint256> hashes;
-    hashes.reserve(ret.first.size());
+    hashes.reserve(ret.size());
 
-    for (auto const& n : ret.first)
+    for (auto const& n : ret)
         hashes.push_back(n.second);
 
-    return std::make_pair(std::move(hashes),std::move(ret.second));
+    return hashes;
 }
 
 bool

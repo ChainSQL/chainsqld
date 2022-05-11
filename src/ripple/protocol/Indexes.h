@@ -248,6 +248,10 @@ schema(
 
 Keylet
 statis() noexcept;
+
+Keylet
+contract_index() noexcept;
+
 }  // namespace keylet
 
 

@@ -205,6 +205,20 @@ namespace ripple {
 				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
 			sleDst->setFieldU32(sfSequence, seqno);
 			ctx_.view().insert(sleDst);
+
+			//Add to directory
+            auto viewJ = ctx_.app.journal("Executive");
+            auto result = dirAdd(
+                ctx_.view(),
+                keylet::contract_index(),
+                k.key,
+                false,
+                [](std::shared_ptr<SLE> const& sle) {},
+                viewJ);
+
+            if (!result)
+                return tecDIR_FULL;
+
 		}
 
 		if (_value != uint256(0))

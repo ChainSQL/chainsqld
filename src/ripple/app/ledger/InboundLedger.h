@@ -191,7 +191,7 @@ private:
     std::vector<uint256>
     neededTxHashes(int max, SHAMapSyncFilter* filter) const;
 
-    std::pair<std::vector<uint256>, std::set<uint256>>
+    std::vector<uint256>
     neededStateHashes(int max, SHAMapSyncFilter* filter) const;
 
     std::vector<uint256>
@@ -209,6 +209,9 @@ private:
     void
     insertContractRoots(std::set<uint256>& setHashes);
 
+    void
+    checkLoadContractRoots();
+
     clock_type& m_clock;
     clock_type::time_point mLastAction;
 
@@ -218,6 +221,7 @@ private:
     bool mHaveTransactions;
     bool mSignaled;
     bool mByHash;
+    bool mContractRootLoaded;
     std::uint32_t mSeq;
     Reason const mReason;
 

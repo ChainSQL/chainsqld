@@ -70,6 +70,8 @@ enum class LedgerNameSpace : std::uint16_t {
     SCHEMA_INDEX = 'k',
     TABLE = 't',
     STATIS = 'I',
+    CONTRACT_INDEX = 'H',
+
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
     CONTRACT [[deprecated]] = 'c',
@@ -373,6 +375,12 @@ Keylet
 statis() noexcept
 {
     return {ltSTATIS, indexHash(LedgerNameSpace::STATIS)};
+}
+
+Keylet
+contract_index() noexcept
+{
+    return {ltDIR_NODE, indexHash(LedgerNameSpace::CONTRACT_INDEX)};
 }
 
 }  // namespace keylet
