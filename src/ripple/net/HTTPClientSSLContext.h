@@ -43,7 +43,12 @@ public:
         : ssl_context_{method}, j_(j), verify_{config.SSL_VERIFY}
     {
         boost::system::error_code ec;
-
+        
+#ifdef SOFTENCRYPT
+        static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
+        SSL_CTX_set1_curves(ssl_context_.native_handle(), my_pref_list, 2);
+#endif
+        
         if (config.SSL_VERIFY_FILE.empty())
         {
             registerSSLCerts(ssl_context_, ec, j_);
@@ -71,13 +76,6 @@ public:
         if(!config.CMD_SSL_CERT.empty())
         {
             ssl_context_.use_certificate_file(config.CMD_SSL_CERT, boost::asio::ssl::context::pem, ec);
-            X509* cert = ripple::readCertFromFile(config.CMD_SSL_CERT.c_str());
-            auto pkID = EVP_PKEY_id(X509_get_pubkey(cert));
-            if (EVP_PKEY_EC == pkID)
-            {
-                static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
-                SSL_CTX_set1_curves(ssl_context_.native_handle(), my_pref_list, 2);
-            }
         }
         if(!config.CMD_SSL_KEY.empty())
         {

@@ -1174,7 +1174,7 @@ Json::Value doTxResult(RPC::JsonContext& context)
 		soci::into(LedgerSeq),
 		soci::into(TxResult));
 	st.execute(); 
-	if (st.fetch())
+	if (st.fetch() && context.app.getLedgerMaster().haveLedger(*LedgerSeq))
 	{
 		ret[jss::ledger_index] = *LedgerSeq;
 		ret[jss::transaction_result] = *TxResult;
@@ -1182,11 +1182,12 @@ Json::Value doTxResult(RPC::JsonContext& context)
         return ret;
 	}
 
-    auto tx = context.app.getMasterTransaction().fetch_from_cache(txHash);
+    auto tx = context.app.getMasterTransaction().fetch(txHash);
     if (nullptr != tx)
     {
         auto txn = tx->getSTransaction();
-        if (txn->isFieldPresent(sfLastLedgerSequence) && 
+        if (tx->getStatus() != COMMITTED && 
+            txn->isFieldPresent(sfLastLedgerSequence) && 
             txn->getFieldU32(sfLastLedgerSequence) <= context.app.getLedgerMaster().getValidLedgerIndex())
         {
             ret[jss::tx_status] = "failed";

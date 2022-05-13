@@ -218,7 +218,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
     std::vector<unsigned char>& signedDataV)
 {
     int ret = 1;
-    if (SeckeyType::gmOutCard != pri4SignInfo.first)
+    if (SeckeyType::gmOutCard != pri4SignInfo.first && pInData == nullptr)
 	{
         return ret;
 	}
@@ -300,6 +300,10 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     unsigned long ulSignValueLen)
 {
     int ret = 1;
+    if(pInData == nullptr || pSignValue == nullptr)
+    {
+        return ret;
+    }
 	EC_KEY* pubkey = standPubToSM2Pub(pub4Verify.first, pub4Verify.second);
 	if (pubkey == nullptr)
     {
@@ -345,10 +349,16 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     unsigned long ulPlainDataLen,
     std::vector<unsigned char>& cipherDataV)
 {
+    unsigned long ret = 1;
+    if(pPlainData == nullptr)
+    {
+        return ret;
+    }
+    
     EC_KEY* pubkey = standPubToSM2Pub(pub4Encrypt.first, pub4Encrypt.second);
 	if (pubkey == nullptr)
     {
-        return 1;
+        return ret;
 	}
 
     size_t cipherDataTempLen;
@@ -357,7 +367,7 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         EC_KEY_free(pubkey);
-		return 1;
+		return ret;
 	}
     unsigned char* pCipherDataTemp = new unsigned char[cipherDataTempLen];
 	if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
@@ -366,17 +376,18 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         delete [] pCipherDataTemp;
         EC_KEY_free(pubkey);
-		return 1;
+		return ret;
 	}
     else
     {
         std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp, (pCipherDataTemp + cipherDataTempLen));
         cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         // cipherReEncode(pCipherData, *pulCipherDataLen);
+        ret = 0;
         delete [] pCipherDataTemp;
         DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended successfully");
         EC_KEY_free(pubkey);
-		return 0;
+		return ret;
     }
 }
 unsigned long SoftEncrypt::SM2ECCDecrypt(
@@ -388,9 +399,10 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     bool isSymmertryKey,
     void* sm4Handle)
 {
-    if (SeckeyType::gmOutCard != pri4DecryptInfo.first)
+    unsigned long ret = 1;
+    if (SeckeyType::gmOutCard != pri4DecryptInfo.first && pCipherData == nullptr)
     {
-        return 1;
+        return ret;
     }
 
 	BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Decrypt.first), (pri4Decrypt.second), nullptr);
