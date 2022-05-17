@@ -41,6 +41,7 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/misc/CertList.h>
+#include <peersafe/protocol/ContractDefines.h>
 
 
 namespace ripple {
@@ -381,12 +382,20 @@ Transactor::checkFrozen(PreclaimContext const& ctx)
     auto const sle = ctx.view.read(keylet::frozen());
     if (!sle)
         return tesSUCCESS;
+
+    boost::optional<AccountID> contractAddress;
+    if (STTx::checkChainsqlContractType(ctx.tx.getTxnType()) &&
+        ctx.tx.getFieldU16(sfContractOpType) >= MessageCall)
+    {
+        contractAddress = ctx.tx.getAccountID(sfContractAddress);
+    }
+
     auto obj = sle->getFieldObject(sfFrozen);
     auto frozens = obj.getFieldArray(sfFrozenAccounts);
-    for (auto& account : frozens)
+    for (auto const& account : frozens)
     {
         auto userID = account.getAccountID(sfAccount);
-        if (userID == id)
+        if (userID == id || userID == contractAddress)
         {
             return tefACCOUNT_FROZEN;
         }
@@ -399,13 +408,19 @@ TER
 Transactor::checkAuthority(
     PreclaimContext const& ctx_,
     AccountID const acc,
-    LedgerSpecificFlags flag)
+    LedgerSpecificFlags flag,
+    boost::optional<AccountID> dst)
 {
     auto const sle = ctx_.view.read(keylet::account(acc));
     if (!sle)
         return tefINTERNAL;
 
     if (ctx_.app.config().ADMIN && acc == *ctx_.app.config().ADMIN)
+        return tesSUCCESS;
+
+    // allow payment with super admin
+    if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
+        dst == ctx_.app.config().ADMIN)
         return tesSUCCESS;
 
     if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
