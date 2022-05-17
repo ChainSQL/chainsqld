@@ -23,6 +23,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
@@ -120,70 +121,94 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
-Json::Value doContractCall(RPC::JsonContext& context)
+Json::Value
+doContractCall(RPC::JsonContext& context)
 {
-	Schema& appTemp = context.app;
-	std::string errMsgStr("");
+    Schema& appTemp = context.app;
+    std::string errMsgStr("");
 
-	//Json::Value jsonRpcObj = context.params[jss::tx_json];
-	Json::Value jsonParams = context.params;
+    // Json::Value jsonRpcObj = context.params[jss::tx_json];
+    Json::Value jsonParams = context.params;
 
-	auto checkResult = checkJsonFields(jsonParams);
-	if (isRpcError(checkResult))
-		return checkResult;
+    auto checkResult = checkJsonFields(jsonParams);
+    if (isRpcError(checkResult))
+        return checkResult;
 
-	std::string accountStr = jsonParams[jss::account].asString();
-	AccountID accountID;
-	auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
-	if (jvAccepted)
-	{
-		return jvAccepted;
-	}
-	std::shared_ptr<ReadView const> ledger;
-	auto result = RPC::lookupLedger(ledger, context);
-	if (!ledger)
-		return result;
-	if (!ledger->exists(keylet::account(accountID)))
-		return rpcError(rpcACT_NOT_FOUND);
+    std::string accountStr = jsonParams[jss::account].asString();
+    AccountID accountID;
+    auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+    if (jvAccepted)
+    {
+        return jvAccepted;
+    }
+    std::shared_ptr<ReadView const> ledger;
+    auto result = RPC::lookupLedger(ledger, context);
+    if (!ledger)
+        return result;
+    if (!ledger->exists(keylet::account(accountID)))
+        return rpcError(rpcACT_NOT_FOUND);
 
-	std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
-	AccountID contractAddrID;
-	auto jvAcceptedCtrAddr = RPC::accountFromString(contractAddrID, ctrAddrStr, true);
-	if (jvAcceptedCtrAddr)
-	{
-		return jvAcceptedCtrAddr;
-	}
-	if (!ledger->exists(keylet::account(contractAddrID)))
-		return rpcError(rpcACT_NOT_FOUND);
-	
-	auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
-	if (!strUnHexRes)
-	{
-		errMsgStr = "contract_data is not in hex";
-		return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
-	}
-	Blob contractDataBlob = *strUnHexRes;
-	if (contractDataBlob.size() == 0)
-	{
-		return RPC::invalid_field_error(jss::contract_data);
-	}
-	//int64_t txValue = 0;
-	STTx contractTx(ttCONTRACT,
-		[&accountID, &contractAddrID, /*&txValue,*/ &contractDataBlob](auto& obj)
-	{
-		obj.setAccountID(sfAccount, accountID);
-		obj.setAccountID(sfContractAddress, contractAddrID);
-		obj.setFieldVL(sfContractData, contractDataBlob);
-        obj.setFieldU16(sfContractOpType, QueryCall);
-		//obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
-	});
-	std::shared_ptr<OpenView> openViewTemp = std::make_shared<OpenView>(ledger.get());
-	ApplyContext applyContext(appTemp, *openViewTemp, contractTx, tesSUCCESS, FeeUnit64{ (std::uint64_t)openViewTemp->fees().base.drops() },
-		tapNO_CHECK_SIGN, appTemp.journal("ContractLocalCall"));
+    std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+    AccountID contractAddrID;
+    auto jvAcceptedCtrAddr =
+        RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+    if (jvAcceptedCtrAddr)
+    {
+        return jvAcceptedCtrAddr;
+    }
+    if (!ledger->exists(keylet::account(contractAddrID)))
+        return rpcError(rpcACT_NOT_FOUND);
 
-	auto localCallRet = doEVMCall(applyContext);
+    auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
+    if (!strUnHexRes)
+    {
+        errMsgStr = "contract_data is not in hex";
+        return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+    }
+    Blob contractDataBlob = *strUnHexRes;
+    if (contractDataBlob.size() == 0)
+    {
+        return RPC::invalid_field_error(jss::contract_data);
+    }
+    // int64_t txValue = 0;
+    STTx contractTx(
+        ttCONTRACT,
+        [&accountID, &contractAddrID, /*&txValue,*/ &contractDataBlob](
+            auto& obj) {
+            obj.setAccountID(sfAccount, accountID);
+            obj.setAccountID(sfContractAddress, contractAddrID);
+            obj.setFieldVL(sfContractData, contractDataBlob);
+            obj.setFieldU16(sfContractOpType, QueryCall);
+            // obj.setFieldAmount(sfAmount, ZXCAmount(txValue));
+        });
 
-	return ContractLocalCallResultImpl(jsonParams, localCallRet.first, localCallRet.second);
+    std::shared_ptr<OpenView> openViewTemp =
+        std::make_shared<OpenView>(ledger.get());
+
+    boost::optional<PreclaimContext const> pcctx;
+    pcctx.emplace(
+        appTemp,
+        *openViewTemp,
+        tesSUCCESS,
+        contractTx,
+        tapNONE,
+        appTemp.journal("ContractLocalCall"));
+    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
+        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
+
+    ApplyContext applyContext(
+        appTemp,
+        *openViewTemp,
+        contractTx,
+        tesSUCCESS,
+        FeeUnit64{(std::uint64_t)openViewTemp->fees().base.drops()},
+        tapNO_CHECK_SIGN,
+        appTemp.journal("ContractLocalCall"));
+
+    auto localCallRet = doEVMCall(applyContext);
+
+    return ContractLocalCallResultImpl(
+        jsonParams, localCallRet.first, localCallRet.second);
 }
 
 } // ripple

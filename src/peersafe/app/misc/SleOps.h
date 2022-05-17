@@ -44,7 +44,11 @@ public:
 
 	size_t codeSize(AccountID const& _contract);
 
-	TER transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value);
+    TER
+    transferBalance(
+        AccountID const& _from,
+        AccountID const& _to,
+        uint256 const& _value);
 
 	TER doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value);
 
@@ -64,9 +68,13 @@ public:
 	void addBalance(AccountID const& _id, int64_t const& _amount);
 
 	/// Subtract the @p _value amount from the balance of @p _addr account.
-	/// @throws NotEnoughCash if the balance of the account is less than the
-	/// amount to be subtrackted (also in case the account does not exist).
-	TER subBalance(AccountID const& _addr, int64_t const& _value);
+    /// @throws NotEnoughCash if the balance of the account is less than the
+    /// amount to be subtrackted (also in case the account does not exist).
+    TER
+    subBalance(
+        AccountID const& _addr,
+        int64_t const& _value,
+        bool isContract = false);
 
 	int64_t disposeTableTx(STTx tx, AccountID const& _account, std::string _sTableName, std::string _tableNewName = "", bool bNewNameInDB = false);
 
@@ -127,7 +135,10 @@ public:
     void kill(AccountID sender);
 
     TER
-    checkAuthority(AccountID const account, LedgerSpecificFlags flag);
+    checkAuthority(
+        AccountID const account,
+        LedgerSpecificFlags flag,
+        boost::optional<AccountID> dst = {});
 
 private:
     ApplyContext &ctx_;

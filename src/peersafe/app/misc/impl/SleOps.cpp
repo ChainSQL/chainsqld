@@ -115,16 +115,16 @@ namespace ripple {
         return code.size();    
 	}
 
-	TER
+    TER
     SleOps::transferBalance(
-            AccountID const& _from,
-            AccountID const& _to,
-            uint256 const& _value)
+        AccountID const& _from,
+        AccountID const& _to,
+        uint256 const& _value)
     {
         if (_value == uint256(0))
             return tesSUCCESS;
 
-        if (auto res = checkAuthority(_from, lsfPaymentAuth);
+        if (auto res = checkAuthority(_from, lsfPaymentAuth, _to);
             res != tesSUCCESS)
             return res;
 
@@ -246,28 +246,34 @@ namespace ripple {
 		}
 	}
 
-	TER SleOps::subBalance(AccountID const& addr, int64_t const& amount)
-	{
-		SLE::pointer pSle = getSle(addr);
-		if (pSle)
-		{
-			// This is the total reserve in drops.
-			auto const uOwnerCount = pSle->getFieldU32(sfOwnerCount);
-			auto const reserve = ctx_.view().fees().accountReserve(uOwnerCount);
+    TER
+    SleOps::subBalance(
+        AccountID const& addr,
+        int64_t const& amount,
+        bool isContract)
+    {
+        SLE::pointer pSle = getSle(addr);
+        if (pSle)
+        {
+            // This is the total reserve in drops.
+            auto const uOwnerCount = pSle->getFieldU32(sfOwnerCount);
+            auto const reserve =
+                ctx_.view().fees().accountReserve(uOwnerCount, isContract);
 
-			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
-			int64_t finalBanance = balance - amount;
-			//no reserve demand for contract
-			if (finalBanance >= reserve.drops() || (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
-			{
-				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
-				ctx_.view().update(pSle);
-			}
-			else
-				return tecUNFUNDED_PAYMENT;
-		}
-		return tesSUCCESS;
-	}
+            auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
+            int64_t finalBanance = balance - amount;
+            // no reserve demand for contract
+            if (finalBanance >= reserve.drops() ||
+                (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
+            {
+                pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+                ctx_.view().update(pSle);
+            }
+            else
+                return tecUNFUNDED_PAYMENT;
+        }
+        return tesSUCCESS;
+    }
 
 	int64_t SleOps::balance(AccountID const& address)
 	{
@@ -937,14 +943,22 @@ namespace ripple {
 		return -1;
 	}
 
-	TER
-    SleOps::checkAuthority(AccountID const account, LedgerSpecificFlags flag)
+    TER
+    SleOps::checkAuthority(
+        AccountID const account,
+        LedgerSpecificFlags flag,
+        boost::optional<AccountID> dst)
     {
         auto const sle = ctx_.view().read(keylet::account(account));
         if (!sle)
             return tefINTERNAL;
 
         if (ctx_.app.config().ADMIN && account == *ctx_.app.config().ADMIN)
+            return tesSUCCESS;
+
+		// allow payment with super admin
+		if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
+            dst == ctx_.app.config().ADMIN)
             return tesSUCCESS;
 
         if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
@@ -958,7 +972,7 @@ namespace ripple {
                 return tecNO_PERMISSION;
         }
 
-		return tesSUCCESS;
+        return tesSUCCESS;
     }
 
 }

@@ -208,7 +208,9 @@ Payment::preflight(PreflightContext const& ctx)
 TER
 Payment::preclaim(PreclaimContext const& ctx)
 {
-    auto checkRet = checkAuthority(ctx, ctx.tx[sfAccount], lsfPaymentAuth);
+    AccountID const uDstAccountID(ctx.tx[sfDestination]);
+    auto checkRet =
+        checkAuthority(ctx, ctx.tx[sfAccount], lsfPaymentAuth, uDstAccountID);
     if (checkRet != tesSUCCESS)
         return checkRet;
     // Ripple if source or destination is non-native or if there are paths.
@@ -217,7 +219,6 @@ Payment::preclaim(PreclaimContext const& ctx)
     auto const paths = ctx.tx.isFieldPresent(sfPaths);
     auto const sendMax = ctx.tx[~sfSendMax];
 
-    AccountID const uDstAccountID(ctx.tx[sfDestination]);
     STAmount const saDstAmount(ctx.tx[sfAmount]);
 
     auto const k = keylet::account(uDstAccountID);

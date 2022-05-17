@@ -116,7 +116,7 @@ CreateCheck::preclaim(PreclaimContext const& ctx)
             // Note that we DO allow create check for a currency that the
             // account does not yet have a trustline to.
             AccountID const srcId{ctx.tx.getAccountID(sfAccount)};
-            auto checkRet = checkAuthority(ctx, srcId, lsfPaymentAuth);
+            auto checkRet = checkAuthority(ctx, srcId, lsfPaymentAuth, dstId);
             if (checkRet != tesSUCCESS)
                 return checkRet;
             if (issuerId != srcId)

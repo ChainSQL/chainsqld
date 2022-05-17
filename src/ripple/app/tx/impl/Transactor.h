@@ -149,7 +149,8 @@ public:
     checkAuthority(
         PreclaimContext const& ctx_,
         AccountID const acc,
-        LedgerSpecificFlags flag);
+        LedgerSpecificFlags flag,
+        boost::optional<AccountID> dst = {});
 
     static 
     void
