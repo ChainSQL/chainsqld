@@ -1336,10 +1336,10 @@ SHAMap::canonicalizeChild(
     SHAMapInnerNode* parent,
     int branch) const
 {
-    //if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-    //    ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
-    //    f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
-    //else
+    if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+        ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+        f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
+    else
         ptr = parent->canonicalizeChild(branch, std::move(ptr));
     return ptr;
 }
