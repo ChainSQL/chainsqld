@@ -866,7 +866,8 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
     checkLoadContractRoots();
     // Get the state data first because it's the most likely to be useful
     // if we wind up abandoning this fetch.
-    if (mHaveHeader && !haveContractNodes() && !mFailed)
+    bool bHaveContractNodes = haveContractNodes();
+    if (mHaveHeader && !bHaveContractNodes && !mFailed)
     {
         assert(mLedger);
 
@@ -948,6 +949,10 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 }
             }
         }
+    }
+    else if (bHaveContractNodes)
+    {
+        mComplete = true;
     }
 
     if (checkComplete() || mFailed)
