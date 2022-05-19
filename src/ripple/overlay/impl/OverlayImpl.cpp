@@ -340,7 +340,7 @@ OverlayImpl::onHandoff(
     }
     catch (std::exception const& e)
     {
-        JLOG(journal.debug()) << "Peer " << remote_endpoint
+        JLOG(journal.warn()) << "Peer " << remote_endpoint
                               << " fails handshake (" << e.what() << ")";
 
         m_peerFinder->on_closed(slot);
