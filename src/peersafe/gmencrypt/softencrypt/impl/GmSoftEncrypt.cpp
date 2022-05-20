@@ -209,11 +209,11 @@ bool SoftEncrypt::generatePubFromPri(
     }
     
 end:
-    if(pub_key) EC_POINT_clear_free(pub_key);
-    if(bn) BN_clear_free(bn);
-    if(pEcKey) EC_KEY_free(pEcKey);
-    if(bnCtx) BN_CTX_free(bnCtx);
-    return false;
+    EC_POINT_clear_free(pub_key);
+    BN_clear_free(bn);
+    EC_KEY_free(pEcKey);
+    BN_CTX_free(bnCtx);
+    return ret;
 }
 //SM2 Sign&Verify
 /*
