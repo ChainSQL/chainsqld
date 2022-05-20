@@ -1184,7 +1184,7 @@ bool TableSync::ClearNotSyncItem()
 {
 	std::lock_guard lock(mutexlistTable_);	
 
-	listTableInfo_.remove_if([this](std::shared_ptr <TableSyncItem> pItem) {
+	listTableInfo_.remove_if([](std::shared_ptr <TableSyncItem> pItem) {
 		return pItem->GetSyncState() == TableSyncItem::SYNC_REMOVE || 
 			   pItem->GetSyncState() == TableSyncItem::SYNC_STOP;
 	});

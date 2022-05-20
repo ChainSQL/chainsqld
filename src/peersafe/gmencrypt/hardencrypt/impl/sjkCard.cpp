@@ -675,7 +675,7 @@ unsigned long SJKCard::SM4SymEncrypt(unsigned int uiAlgMode, unsigned char * pSe
 		}
 	}
 	
-	return 0;
+	return rv;
 }
 
 unsigned long SJKCard::SM4SymDecrypt(unsigned int uiAlgMode, unsigned char * pSessionKey, unsigned long pSessionKeyLen, unsigned char * pCipherData, unsigned long ulCipherDataLen, unsigned char * pPlainData, unsigned long * pulPlainDataLen, int secKeyType)
@@ -704,7 +704,7 @@ unsigned long SJKCard::SM4SymDecrypt(unsigned int uiAlgMode, unsigned char * pSe
 			rv = SM4ExternalSymDecrypt(SGD_SMS4_CBC, pSessionKey, pSessionKeyLen, pCipherData, ulCipherDataLen, pPlainData, pulPlainDataLen);
 		}
 	}
-	return 0;
+	return rv;
 }
 
 //SM4 Symetry Encrypt&Decrypt

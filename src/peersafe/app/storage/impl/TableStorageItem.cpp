@@ -265,7 +265,7 @@ namespace ripple {
                 {   
                     iter->bCommit = true;
                     auto initIter = std::find_if(txList_.begin(), txList_.end(),
-                        [tx](txInfo &item) {
+                        [](txInfo &item) {
                         return !item.bCommit;
                     });
 
