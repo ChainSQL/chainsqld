@@ -71,6 +71,10 @@ enum {
     // Number of nodes to request blindly
     ,
     reqNodes = 8
+
+    //Number of contract maps request one time
+    ,
+    reqMapCount = 5
 };
 
 // millisecond for each ledger timeout
@@ -442,19 +446,16 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
     }
 
     checkLoadContractRoots();
-    for (auto const& item : mContractRoots)
+    auto it = mContractMapInfo.begin();
+    while (it != mContractMapInfo.end())
     {
         AccountStateSF filter(
             mLedger->stateMap().family().db(), app_.getLedgerMaster());
-        auto& mapInfo = mContractMapInfo[item];
-        if (mapInfo.first && !mapInfo.second)
-        {
-            auto ret = neededCTNodeHashes(*mapInfo.first, item, 1, &filter);
-            if (ret.empty())
-            {
-                mapInfo.second = true;
-            }
-        }
+        auto ret = neededCTNodeHashes(*it->second, it->first, 1, &filter);
+        if (ret.empty())
+            it = mContractMapInfo.erase(it);
+        else
+            break;
     }
 
     if (checkComplete())
@@ -871,80 +872,87 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
     {
         assert(mLedger);
 
+        int requstedCount = 0;
         std::shared_ptr<SHAMap> pMap = nullptr;
         uint256 rootHash = beast::zero;
-        for (auto& it : mContractRoots)
+        auto it = mContractMapInfo.begin();
+        while (it != mContractMapInfo.end())
         {
-            if (!mContractMapInfo[it].second)
+            pMap = it->second;
+            rootHash = it->first;
+            assert(pMap != nullptr);
+
+            tmGL.set_roothash(rootHash.begin(), rootHash.size());
+            if (!pMap->isValid())
             {
-                pMap = mContractMapInfo[it].first;
-                rootHash = it;
+                mFailed = true;
                 break;
             }
-        }
-        assert(pMap != nullptr);
-
-        tmGL.set_roothash(rootHash.begin(),rootHash.size());
-        if (!pMap->isValid())
-        {
-            mFailed = true;
-        }
-        else if (pMap->getHash().isZero())
-        {
-            // we need the root node
-            tmGL.set_itype(protocol::liCONTRACT_NODE);
-            *tmGL.add_nodeids() = SHAMapNodeID().getRawString();
-            JLOG(m_journal.debug()) << "Sending CONTRACT root request to "
-                                    << (peer ? "selected peer" : "all peers");
-            sendRequest(tmGL, peer);
-            return;
-        }
-        else
-        {
-            AccountStateSF filter(pMap->family().db(), app_.getLedgerMaster());
-
-            // Release the lock while we process the large state map
-            sl.unlock();
-            auto nodes = pMap->getMissingNodes(missingNodesFind, &filter);
-            sl.lock();
-
-            // Make sure nothing happened while we released the lock
-            if (!mFailed && !mComplete && !haveContractNodes())
+            else if (pMap->getHash().isZero())
             {
-                if (nodes.empty())
-                {
-                    if (!pMap->isValid())
-                        mFailed = true;
-                    else
-                    {
-                        mContractMapInfo[rootHash].second = true;
+                // we need the root node
+                tmGL.set_itype(protocol::liCONTRACT_NODE);
+                *tmGL.add_nodeids() = SHAMapNodeID().getRawString();
+                JLOG(m_journal.debug())
+                    << "Sending CONTRACT root request to "
+                    << (peer ? "selected peer" : "all peers");
+                sendRequest(tmGL, peer);
+                return;
+            }
+            else
+            {
+                AccountStateSF filter(
+                    pMap->family().db(), app_.getLedgerMaster());
 
-                        if (checkComplete())
-                            mComplete = true;
-                    }
-                }
-                else
-                {
-                    filterNodes(nodes, reason);
+                // Release the lock while we process the large state map
+                sl.unlock();
+                auto nodes = pMap->getMissingNodes(missingNodesFind, &filter);
+                sl.lock();
 
-                    if (!nodes.empty())
+                // Make sure nothing happened while we released the lock
+                if (!mFailed && !mComplete && !haveContractNodes())
+                {
+                    if (nodes.empty())
                     {
-                        tmGL.set_itype(protocol::liCONTRACT_NODE);
-                        for (auto const& id : nodes)
+                        if (!pMap->isValid())
                         {
-                            *(tmGL.add_nodeids()) = id.first.getRawString();
+                            mFailed = true;
+                            it++;
                         }
+                        else
+                        {
+                            it = mContractMapInfo.erase(it);
 
-                        JLOG(m_journal.debug())
-                            << "Sending CONTRACT node request (" << nodes.size()
-                            << ") to "
-                            << (peer ? "selected peer" : "all peers");
-                        sendRequest(tmGL, peer);
-                        return;
+                            if (checkComplete())
+                                mComplete = true;
+                        }
                     }
                     else
                     {
-                        JLOG(m_journal.trace()) << "All CONTRACT nodes filtered";
+                        filterNodes(nodes, reason);
+
+                        if (!nodes.empty())
+                        {
+                            tmGL.set_itype(protocol::liCONTRACT_NODE);
+                            for (auto const& id : nodes)
+                            {
+                                *(tmGL.add_nodeids()) = id.first.getRawString();
+                            }
+
+                            JLOG(m_journal.debug())
+                                << "Sending CONTRACT node request ("
+                                << nodes.size() << ") to "
+                                << (peer ? "selected peer" : "all peers");
+                            sendRequest(tmGL, peer);
+                            if (++requstedCount >= reqMapCount)
+                                return;
+                        }
+                        else
+                        {
+                            JLOG(m_journal.trace())
+                                << "All CONTRACT nodes filtered";
+                        }
+                        it++;
                     }
                 }
             }
@@ -982,15 +990,8 @@ InboundLedger::haveContractNodes()
 {
     if (!mContractRootLoaded)
         return false;
-    for (auto const& item : mContractRoots)
-    {
-        if (mContractMapInfo.find(item) == mContractMapInfo.end() ||
-            !mContractMapInfo[item].second)
-        {
-            return false;
-        }
-    }
-    return true;
+
+    return mContractMapInfo.empty();
 }
 
 void
@@ -1007,37 +1008,34 @@ InboundLedger::checkLoadContractRoots()
             auto const& mapStore = sleNode->getFieldM256(sfStorageOverlay);
             if (mapStore.rootHash())
             {
-                mContractRoots.insert(*mapStore.rootHash());
+                auto hash = *mapStore.rootHash();
+                auto map = std::make_shared<SHAMap>(
+                    SHAMapType::CONTRACT, hash, app_.getNodeFamily());
+                // Not need to judge fetch root success,we are syncing.
+                map->fetchRoot(SHAMapHash(hash), nullptr);
+                mContractMapInfo.emplace(hash, map);
             }
         });
-    for (auto const& item : mContractRoots)
-    {
-        if (mContractMapInfo.find(item) == mContractMapInfo.end())
-        {
-            auto map = std::make_shared<SHAMap>(
-                SHAMapType::CONTRACT, item, app_.getNodeFamily());
-            map->fetchRoot(SHAMapHash(item), nullptr);
-            mContractMapInfo.emplace(item, std::make_pair(map, false));
-        }
-    }
+    JLOG(m_journal.info())
+        << "Totally " << mContractMapInfo.size() << " contracts need to be synced for ledger "<<mSeq;
     mContractRootLoaded = true;
 }
 
-void
-InboundLedger::insertContractRoots(std::set<uint256>& setHashes)
-{
-    mContractRoots.merge(setHashes);
-    for (auto const& item : mContractRoots)
-    {
-        if (mContractMapInfo.find(item) == mContractMapInfo.end())
-        {
-            auto map = std::make_shared<SHAMap>(
-                SHAMapType::CONTRACT, item, app_.getNodeFamily());
-            map->fetchRoot(SHAMapHash(item), nullptr);
-            mContractMapInfo.emplace(item, std::make_pair(map, false));
-        }
-    }
-}
+//void
+//InboundLedger::insertContractRoots(std::set<uint256>& setHashes)
+//{
+//    mContractRoots.merge(setHashes);
+//    for (auto const& item : mContractRoots)
+//    {
+//        if (mContractMapInfo.find(item) == mContractMapInfo.end())
+//        {
+//            auto map = std::make_shared<SHAMap>(
+//                SHAMapType::CONTRACT, item, app_.getNodeFamily());
+//            map->fetchRoot(SHAMapHash(item), nullptr);
+//            mContractMapInfo.emplace(item, std::make_pair(map, false));
+//        }
+//    }
+//}
 
 void
 InboundLedger::filterNodes(
@@ -1190,7 +1188,7 @@ InboundLedger::receiveNode(protocol::TMLedgerData& packet, SHAMapAddNode& san)
                 << "receiveNode liCONTRACT_NODE rootHash=" << hash;
 
             return {
-                *mContractMapInfo[hash].first,
+                (SHAMap&)*mContractMapInfo[hash],
                 SHAMapHash{hash},
                 std::make_unique<AccountStateSF>(
                     mLedger->stateMap().family().db(), app_.getLedgerMaster())};
@@ -1232,7 +1230,7 @@ InboundLedger::receiveNode(protocol::TMLedgerData& packet, SHAMapAddNode& san)
             mHaveState = true;
         else
         {
-            mContractMapInfo[map.getHash().as_uint256()].second = true;
+            mContractMapInfo.erase(map.getHash().as_uint256());
         }
 
         if (checkComplete())
@@ -1333,23 +1331,29 @@ InboundLedger::getNeededHashes()
     checkLoadContractRoots();
     if (!haveContractNodes())
     {
-        for (auto const& item : mContractRoots)
+        int addedCount = 0;
+        auto it = mContractMapInfo.begin();
+        while (it != mContractMapInfo.end())
         {
             AccountStateSF filter(
                 mLedger->stateMap().family().db(), app_.getLedgerMaster());
-            auto& mapInfo = mContractMapInfo[item];
-            if (mapInfo.first && !mapInfo.second)
+            auto retTmp =
+                neededCTNodeHashes(*it->second, it->first, 4, &filter);
+            if (retTmp.empty())
+                it = mContractMapInfo.erase(it);
+            else
             {
-                auto retTmp = neededCTNodeHashes(*mapInfo.first, item, 1, &filter);
-
                 for (auto const& h : retTmp)
                 {
                     ret.push_back(std::make_pair(
                         protocol::TMGetObjectByHash::otCONTRACT_NODE, h));
                 }
+                addedCount += retTmp.size();
+                if (addedCount >= 4)
+                    break;
+                it++;
             }
         }
-
     }
 
     return ret;
