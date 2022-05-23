@@ -243,7 +243,8 @@ invoke(MessageHeader const& header, Buffers const& buffers, Handler& handler)
         if (payloadSize == 0 || !m->ParseFromArray(payload.data(), payloadSize))
             return false;
     }
-    else if (!m->ParseFromZeroCopyStream(&stream))
+    else if (!m->ParseFromBoundedZeroCopyStream(
+                 &stream, header.payload_wire_size))
         return false;
 
     handler.onMessageBegin(header.message_type, m, header.payload_wire_size);
