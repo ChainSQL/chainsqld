@@ -1142,7 +1142,8 @@ Json::Value doGetUserToken(RPC::JsonContext& context)
 	bool bRet = false;
 	ripple::Blob passWd;
 	error_code_i errCode;
-	std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(userID, ownerID, tableName);
+    std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(
+        ledger ,userID, ownerID, tableName);
 
 	if (bRet)
 	{

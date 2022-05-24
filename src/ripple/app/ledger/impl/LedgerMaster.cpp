@@ -1102,7 +1102,7 @@ LedgerMaster::isAuthorityValid(
             auto pEntry = std::get<1>(tup);
             if (pEntry != nullptr)
             {
-                if (!STEntry::hasAuthority(*pEntry, accountID, roles))
+                if (!hasAuthority(*ledger, ownerID, sCheckName, accountID, roles))
                     return std::make_pair(false, rpcTAB_UNAUTHORIZED);
             }
             else
@@ -1113,6 +1113,7 @@ LedgerMaster::isAuthorityValid(
 }
 std::tuple<bool, ripple::Blob, error_code_i>
 LedgerMaster::getUserToken(
+    std::shared_ptr<ReadView const> ledger,
     AccountID accountID,
     AccountID ownerID,
     std::string sTableName)
@@ -1120,43 +1121,25 @@ LedgerMaster::getUserToken(
     std::string sToken, errMsg;
 
     assert(accountID.isZero() == false);
-    auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto tup = getTableEntry(*ledger, ownerID, sTableName);
-        auto pEntry = std::get<1>(tup);
-        if (pEntry)
-        {
-            auto& users = pEntry->getFieldArray(sfUsers);
-            assert(users.size() > 0);
-            bool bNeedToken = users[0].isFieldPresent(sfToken);
-            if (!bNeedToken)
-            {
-                return std::make_tuple(true, Blob(), rpcSUCCESS);
-            }
-            else
-            {
-                for (auto& user : users)  // check if there same user
-                {
-                    if (user.getAccountID(sfUser) == accountID)
-                    {
-                        if (user.isFieldPresent(sfToken))
-                        {
-                            ripple::Blob passBlob = user.getFieldVL(sfToken);
-                            return std::make_tuple(true, passBlob, rpcSUCCESS);
-                        }
-                        else
-                        {
-                            return std::make_tuple(
-                                false, Blob(), rpcSLE_TOKEN_MISSING);
-                        }
-                    }
-                }
-                return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
-            }
-        }
-        else
+        auto tupTable = getTableEntry(*ledger, ownerID, sTableName);
+        if (std::get<1>(tupTable) == nullptr)
             return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
+
+        bool bNeedToken = ripple::isConfidential(*ledger, ownerID, sTableName);
+        if (!bNeedToken)
+            return std::make_tuple(true, Blob(), rpcSUCCESS);
+
+        auto tup = getUserAuthAndToken(*ledger, ownerID, sTableName, accountID);
+        if (!std::get<0>(tup))
+            return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
+
+        auto token = std::get<2>(tup);
+        if (token.size() > 0)
+            return std::make_tuple(true, token, rpcSUCCESS);
+        else
+            return std::make_tuple(false, Blob(), rpcSLE_TOKEN_MISSING);
     }
     else
     {
@@ -1265,10 +1248,7 @@ LedgerMaster::isConfidentialUnit(const STTx& tx)
         if (ledger == NULL)
             return false;
 
-        auto tup = getTableEntry(*ledger,owner,sTxTableName);
-        auto pEntry = std::get<1>(tup);
-        if (pEntry)
-            return STEntry::isConfidential(*pEntry);
+        return ripple::isConfidential(*ledger, owner, sTxTableName);
     }
 
     return false;

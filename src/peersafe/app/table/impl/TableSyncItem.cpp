@@ -747,9 +747,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
         return std::make_pair(false, "Can't find table sle.");
 
     auto& table = *pEntry;
-	auto& users = table.getFieldArray(sfUsers);
-	assert(users.size() > 0);
-	bool bConfidential = users[0].isFieldPresent(sfToken);
+    bool bConfidential = isConfidential(*ledger,accountID_,sTableName_);
     if (bConfidential)
     {
         confidential_ = true;
@@ -778,54 +776,53 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                 false);
             return std::make_pair(false, "user account is null.");
         }
-        bool isRight_userSecret = false;
-        for (auto& user : users)  // check if there same user
+        auto tup = getUserAuthAndToken(
+            *ledger, accountID_, sTableName_, *user_accountID_);
+
+        if (std::get<0>(tup))
         {
-            if (user.getAccountID(sfUser) == user_accountID_)
+            auto selectFlags = getFlagFromOptype(R_GET);
+            auto userFlags = std::get<1>(tup);
+            if ((userFlags & selectFlags) == 0)
             {
-                isRight_userSecret = true;
-                auto selectFlags = getFlagFromOptype(R_GET);
-                auto userFlags = user.getFieldU32(sfFlags);
-                if ((userFlags & selectFlags) == 0)
+                app_.getOPs().pubTableTxs(
+                    accountID_,
+                    sTableName_,
+                    *pTx,
+                    std::make_tuple("db_noSyncConfig", "", ""),
+                    false);
+                return std::make_pair(false, "no authority.");
+            }
+            else
+            {
+                auto token = std::get<2>(tup);
+                if (token.size() > 0)
                 {
-                    app_.getOPs().pubTableTxs(
-                        accountID_,
-                        sTableName_,
-                        *pTx,
-                        std::make_tuple("db_noSyncConfig", "", ""),
-                        false);
-                    return std::make_pair(false, "no authority.");
+                    bool result = tokenProcObj_.setSymmertryKey( 
+                        token, *user_secret_);
+                    if (result)
+                        return std::make_pair(true, "");
+                    else
+                    {
+                        app_.getOPs().pubTableTxs(
+                            accountID_,
+                            sTableName_,
+                            *pTx,
+                            std::make_tuple("db_noSyncConfig", "", ""),
+                            false);
+                        return std::make_pair(
+                            false,
+                            "Cann't get password for this table.");
+                    }
                 }
                 else
                 {
-                    if (user.isFieldPresent(sfToken))
-                    {
-                        auto token = user.getFieldVL(sfToken);
-                        bool result = tokenProcObj_.setSymmertryKey( 
-                            token, *user_secret_);
-                        if (result)
-                            return std::make_pair(true, "");
-                        else
-                        {
-                            app_.getOPs().pubTableTxs(
-                                accountID_,
-                                sTableName_,
-                                *pTx,
-                                std::make_tuple("db_noSyncConfig", "", ""),
-                                false);
-                            return std::make_pair(
-                                false,
-                                "Cann't get password for this table.");
-                        }
-                    }
-                    else
-                    {
-                        return std::make_pair(false, "table error");
-                    }
+                    return std::make_pair(false, "table error");
                 }
             }
+
         }
-        if (!isRight_userSecret)
+        else
         {
             app_.getOPs().pubTableTxs(
                 accountID_,

@@ -120,8 +120,8 @@ class FeatureCollections
         "NegativeUNL",
         "TableSLEChange",
         "ContractStorage",
-        "PromethSLEHideInMeta"
-
+        "PromethSLEHideInMeta",
+        "TableGrant"
     };
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
@@ -394,6 +394,7 @@ extern uint256 const fixAmendmentMajorityCalc;
 extern uint256 const featureNegativeUNL;
 extern uint256 const featureTableSleChange;
 extern uint256 const featureContractStorage;
+extern uint256 const featureTableGrant;
 extern uint256 const featurePromethSLEHideInMeta;
 
 }  // namespace ripple

@@ -51,13 +51,6 @@ namespace ripple {
 
 		static std::string getOperationRule(STObject const& entry, TableOpType opType);
 
-		static bool hasAuthority(
-                    STObject const& entry,
-                    AccountID const& account,
-                    TableRoleFlags flag);
-
-		static bool isConfidential(STObject const& entry);
-
         STBase*
             copy(std::size_t n, void* buf) const override
         {

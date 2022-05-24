@@ -619,6 +619,7 @@ JSS ( Admin );
 JSS ( FrozenAccounts );
 JSS ( SchemaIndex );
 JSS ( Statis );
+JSS ( TableGrant );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);
@@ -664,6 +665,8 @@ JSS ( contract_topics);             // in: Contract Local Call
 JSS ( tablelist );
 JSS ( table );
 JSS ( schema );
+JSS ( statis );
+JSS ( tablegrant );
 JSS	( tablename );					// in tablename
 JSS ( nameInDB );
 JSS	(confidential);

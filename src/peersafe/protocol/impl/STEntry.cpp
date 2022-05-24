@@ -105,41 +105,6 @@ namespace ripple {
 		return ret;
 	}
 
-	bool STEntry::hasAuthority(
-            STObject const& entry,
-            AccountID const& account,
-            TableRoleFlags flag)
-	{
-		//check the authority
-		auto const & aUsers(entry.getFieldArray(sfUsers));
-		//if all user has authority
-		bool bAllGrant = false;
-		for (auto const& user : aUsers)
-		{
-			auto const userID = user.getAccountID(sfUser);
-			if (account == userID )
-			{
-				if ((user.getFieldU32(sfFlags) & flag) == 0)
-					return false;
-				else
-					return true;
-			}
-			if (userID == noAccount())
-				if ((user.getFieldU32(sfFlags) & flag) != 0)
-					bAllGrant = true;
-		}
-
-		return bAllGrant;
-	}
-
-	bool STEntry::isConfidential(STObject const& entry)
-	{
-        auto const& aUsers(entry.getFieldArray(sfUsers));
-		if (aUsers.size() > 0 && aUsers[0].isFieldPresent(sfToken))
-			return true;
-		return false;
-	}
-
     SOTemplate const& STEntry::getFormat()
     {
         struct FormatHolder
@@ -156,7 +121,7 @@ namespace ripple {
 				{ sfPreviousTxnLgrSeq,	soeREQUIRED },
 				{ sfPrevTxnLedgerHash,	soeREQUIRED },
 				{ sfTxCheckHash,		soeREQUIRED },
-				{ sfUsers,				soeREQUIRED },
+				{ sfUsers,				soeOPTIONAL },
 				{ sfRules,				soeREQUIRED }
 			};
         };
