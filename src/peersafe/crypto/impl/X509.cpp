@@ -188,7 +188,7 @@ namespace ripple {
             Blob result(33);
             std::uint8_t* ptr = &result[0];
             int const size = i2o_ECPublicKey((EC_KEY*)key.get(), &ptr);
-            if(size <= 33) Throw<std::runtime_error>("get public key len is not 33");
+            if(size < 33) Throw<std::runtime_error>("get public key len is not 33");
             
             return result;
         }
