@@ -1292,7 +1292,7 @@ PopConsensus::onViewChange(uint64_t toView)
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
 
-    viewChangeManager_.onViewChanged(view_);
+    viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
     if (bWaitingInit_)
     {
         if (mode_.get() != ConsensusMode::wrongLedger)

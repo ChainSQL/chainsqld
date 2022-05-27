@@ -141,18 +141,28 @@ ViewChangeManager::haveConsensus(
 }
 
 void
-ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
+ViewChangeManager::onViewChanged(VIEWTYPE const& newView, std::uint32_t preSeq)
 {
-    auto iter = viewChangeReq_.begin();
-    while (iter != viewChangeReq_.end())
+    for (auto it = viewChangeReq_.begin(); it != viewChangeReq_.end();)
     {
-        if (iter->first <= newView)
+        if (it->first <= newView)
         {
-            iter = viewChangeReq_.erase(iter);
+            it = viewChangeReq_.erase(it);
         }
         else
         {
-            iter++;
+            for (auto it1 = it->second.begin(); it1 != it->second.end();)
+            {
+                if (it1->second->prevSeq() < preSeq)
+                    it1 = it->second.erase(it1);
+                else
+                    it1++;
+            }
+
+            if (it->second.empty())
+                it = viewChangeReq_.erase(it);
+            else
+                it++;
         }
     }
 }
