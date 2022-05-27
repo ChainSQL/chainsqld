@@ -1258,9 +1258,20 @@ PopConsensus::checkChangeView(uint64_t toView)
             }
             else if (previousLedger_.seq() == std::get<1>(ret))
             {
-                JLOG(j_.info())
-                    << "We have the newest ledger, change view to " << view_;
-                onViewChange(toView);
+                if (previousLedger_.id() != std::get<2>(ret))
+                {
+                    JLOG(j_.info())
+                        << "View changed fulfilled in other nodes: " << toView
+                        << ", and we need ledger:" << std::get<2>(ret);
+                    handleWrongLedger(std::get<2>(ret));
+                }
+                else
+                {
+                    JLOG(j_.info())
+                        << "We have the newest ledger, change view to "
+                        << view_;
+                    onViewChange(toView);
+                }
             }
         }
     }
