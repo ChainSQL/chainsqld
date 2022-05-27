@@ -260,7 +260,7 @@ verifyHandshake(
     }();
 
     if (publicKey == app.nodeIdentity().first)
-        throw std::runtime_error("Self connection");
+        throw std::runtime_error("Self connection(same node publicKey)");
 
     // This check gets two birds with one stone:
     //
@@ -334,6 +334,10 @@ verifyHandshake(
 
         throw std::runtime_error("Bad node public key");
     }();
+
+    if (publicValidate == app.getValidationPublicKey())
+        throw std::runtime_error("Self connection(same validate publicKey)");
+
     {
         auto const iter = headers.find("Validate-Proof");
 
