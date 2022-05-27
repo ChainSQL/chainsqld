@@ -1315,6 +1315,7 @@ PopConsensus::onViewChange(uint64_t toView)
     else
     {
         adaptor_.onViewChanged(bWaitingInit_, previousLedger_, view_);
+        mode_.set(adaptor_.mode(), adaptor_);
     }
 
     if (mode_.get() == ConsensusMode::proposing)

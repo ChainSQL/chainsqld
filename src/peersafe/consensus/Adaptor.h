@@ -418,7 +418,7 @@ public:
     void
     onModeChange(ConsensusMode before, ConsensusMode after);
 
-    virtual void
+    virtual TrustChanges
     onConsensusReached(
         bool bWaitingInit,
         Ledger_t previousLedger,
