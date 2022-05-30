@@ -28,6 +28,10 @@ else()
     set(GMALG_LIBRARIES)
 endif()
 
+if (NOT openssl)
+    add_definitions(-DSOFTENCRYPT)
+endif()
+
 file (GLOB_RECURSE rb_headers
   src/ripple/beast/*.h
   src/ripple/beast/*.hpp)

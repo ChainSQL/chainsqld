@@ -43,9 +43,12 @@ public:
         : ssl_context_{method}, j_(j), verify_{config.SSL_VERIFY}
     {
         boost::system::error_code ec;
+        
+#ifdef SOFTENCRYPT
         static int my_pref_list[] = {NID_secp256k1, NID_sm2p256v1};
         SSL_CTX_set1_curves(ssl_context_.native_handle(), my_pref_list, 2);
-
+#endif
+        
         if (config.SSL_VERIFY_FILE.empty())
         {
             registerSSLCerts(ssl_context_, ec, j_);
