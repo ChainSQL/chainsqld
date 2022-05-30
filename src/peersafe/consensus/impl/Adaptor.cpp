@@ -356,7 +356,7 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
     }
 }
 
-void
+TrustChanges
 Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t curTurn)
 {
     app_.getLedgerMaster().onConsensusReached(
@@ -399,7 +399,7 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t
             mode() != ConsensusMode::wrongLedger);
     }
 
-    app_.validators().updateTrustedAndBroadcast(
+    return app_.validators().updateTrustedAndBroadcast(
         app_.getValidations().getCurrentNodeIDs(),
         app_.schemaId(),
         previousLedger.seq() + 1,

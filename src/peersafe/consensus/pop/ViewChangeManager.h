@@ -76,7 +76,7 @@ public:
 
     // Erase some old view-change cache when view_change happen.
     void
-    onViewChanged(VIEWTYPE const& newView);
+    onViewChanged(VIEWTYPE const& newView, std::uint32_t preSeq);
 
     std::tuple<bool, uint32_t, uint256>
     shouldTriggerViewChange(

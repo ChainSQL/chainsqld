@@ -222,10 +222,37 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
-PopAdaptor::onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView)
+PopAdaptor::onViewChanged(
+    bool bWaitingInit,
+    Ledger_t previousLedger,
+    uint64_t newView)
 {
-    onConsensusReached(bWaitingInit, previousLedger, newView);
-	app_.getOPs().pubViewChange(previousLedger.seq(), newView);
+    if (app_.getOPs().getOperatingMode() == OperatingMode::CONNECTED ||
+        app_.getOPs().getOperatingMode() == OperatingMode::SYNCING)
+    {
+        app_.getOPs().setMode(OperatingMode::TRACKING);
+    }
+
+    if (app_.getOPs().getOperatingMode() == OperatingMode::CONNECTED ||
+        app_.getOPs().getOperatingMode() == OperatingMode::TRACKING)
+    {
+        if (app_.getLedgerMaster().getValidatedLedgerAge() <
+            2 * parms_.consensusTIMEOUT)
+        {
+            app_.getOPs().setMode(OperatingMode::FULL);
+        }
+    }
+
+    TrustChanges const changes = onConsensusReached(
+        bWaitingInit, previousLedger, newView);
+
+    ConsensusMode mode = preStartRound(previousLedger, changes.added)
+        ? ConsensusMode::proposing
+        : ConsensusMode::observing;
+    onModeChange(Adaptor::mode(), mode);
+
+    app_.getOPs().pubViewChange(previousLedger.seq(), newView);
+
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >
             3 * parms_.consensusTIMEOUT &&
