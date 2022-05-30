@@ -108,12 +108,10 @@ namespace ripple {
 			mDirtyCache[contract].find(key) == mDirtyCache[contract].end())
             return boost::none;
         
-		if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end() &&
-            mDirtyCache[contract][key].type != ValueOpType::erase)
+		if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
             return mDirtyCache[contract][key].value;
 
-		if (mStateCache[contract].find(key) != mStateCache[contract].end() && 
-            mStateCache[contract][key].type != ValueOpType::erase)
+		if (mStateCache[contract].find(key) != mStateCache[contract].end())
             return mStateCache[contract][key].value;
 
 		return boost::none;
