@@ -86,13 +86,6 @@ namespace ripple {
 
 	/////////////////////////////////////////////////////////////////////
 	// Contract state storage related
-    bool
-    ContractHelper::hasStorage(AccountID const& contract)
-    {
-        return mStateCache.find(contract) != mStateCache.end() || 
-			   mDirtyCache.find(contract) != mDirtyCache.end();
-    }
-
     boost::optional<uint256>
     ContractHelper::fetchFromCache(
         AccountID const& contract,
@@ -102,18 +95,18 @@ namespace ripple {
         if (bQuery)
             return boost::none;
 
-        if (!hasStorage(contract))
-            return boost::none;
-        if (mStateCache[contract].find(key) == mStateCache[contract].end() && 
-			mDirtyCache[contract].find(key) == mDirtyCache[contract].end())
-            return boost::none;
+        if (mDirtyCache.find(contract) != mDirtyCache.end())
+        {
+            if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
+                return mDirtyCache[contract][key].value;
+        }
+
+        if( mStateCache.find(contract) != mStateCache.end())
+        {
+            if (mStateCache[contract].find(key) != mStateCache[contract].end())
+                return mStateCache[contract][key].value;
+        }
         
-		if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
-            return mDirtyCache[contract][key].value;
-
-		if (mStateCache[contract].find(key) != mStateCache[contract].end())
-            return mStateCache[contract][key].value;
-
 		return boost::none;
     }
 

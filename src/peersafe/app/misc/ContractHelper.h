@@ -40,9 +40,6 @@ public:
 	void releaseHandle(uint256 const& handle);
 	uint256 genRandomUniqueHandle();
 
-	//Contract state storage related
-	bool hasStorage(AccountID const& contract);
-
     boost::optional<uint256>
     fetchFromCache(
         AccountID const& contract,
