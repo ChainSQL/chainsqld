@@ -145,14 +145,12 @@ namespace ripple {
     }
 
     boost::optional<uint256>
-    ContractHelper::fetchValue(
+    ContractHelper::fetchFromDB(
         AccountID const& contract,
-        uint256 const& root,
+        boost::optional<uint256> const& root,
         uint256 const& key,
-        bool bQuery/*=false*/)
+        bool bQuery /*=false*/)
     {
-        if (root == uint256(0))
-            return boost::none;
         std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, root, bQuery);
         if (mapPtr == nullptr)
             return boost::none;
@@ -170,9 +168,26 @@ namespace ripple {
         {
             JLOG(mJournal.warn())
                 << "Fetch item for key:" << to_string(key) << " of contract "
-                << to_string(contract) << " failed :" <<mn.what();
+                << to_string(contract) << " failed :" << mn.what();
             return boost::none;
         } 
+    }
+
+    boost::optional<uint256>
+    ContractHelper::fetchValue(
+        AccountID const& contract,
+        boost::optional<uint256> const& root,
+        uint256 const& key,
+        bool bQuery/*=false*/)
+    {
+        auto ret = fetchFromCache(contract, key, bQuery);
+        if (ret)
+            return ret;
+
+        if (!root || *root == uint256(0))
+            return boost::none;
+
+        return fetchFromDB(contract, root, key, bQuery);
     }
 
     void
@@ -209,19 +224,6 @@ namespace ripple {
         mShaMapCache.clear();
     }
 
-	void
-    ContractHelper::eraseStorage(
-        AccountID const& contract,
-        boost::optional<uint256> root,
-        uint256 const& key)
-    {
-        if (root && (fetchFromCache(contract,key)|| fetchValue(contract,*root,key)))
-        {
-            ValueType value(uint256(0), ValueOpType::erase);
-            mDirtyCache[contract][key] = value;
-        }
-    }
-
     void ContractHelper::setStorage(
         AccountID const& contract,
         boost::optional<uint256> root,
@@ -238,16 +240,16 @@ namespace ripple {
 		if (mStateCache.find(contract) != mStateCache.end() &&
             mStateCache[contract].find(key) != mStateCache[contract].end())
         {
-            mDirtyCache[contract][key].value = value;
-            mDirtyCache[contract][key].type = mStateCache[contract][key].type;
+            mDirtyCache[contract][key].value = value;   
+            mDirtyCache[contract][key].existInDB = mStateCache[contract][key].existInDB;
             return;	
         }
 
         mDirtyCache[contract][key].value = value;
-        if (root && fetchValue(contract,*root,key)) 
-            mDirtyCache[contract][key].type = ValueOpType::modify;
+        if (root && fetchFromDB(contract,root,key)) 
+            mDirtyCache[contract][key].existInDB = true;
         else
-            mDirtyCache[contract][key].type = ValueOpType::insert;
+            mDirtyCache[contract][key].existInDB = false;
     }
 
     std::shared_ptr<SHAMapItem const>
@@ -256,6 +258,25 @@ namespace ripple {
         Serializer ss;
         ss.add256(value);
         return std::make_shared<SHAMapItem const>(key, std::move(ss));
+    }
+
+    ContractHelper::ValueOpType
+    ContractHelper::getOpType(ValueType const& value)
+    {
+        auto type = ValueOpType::invalid;
+        if (value.value == uint256(0))
+        {
+            if (value.existInDB)
+                type = ValueOpType::erase;
+        }
+        else
+        {
+            if (value.existInDB)
+                type = ValueOpType::modify;
+            else
+                type = ValueOpType::insert;
+        }
+        return type;
     }
 
     void
@@ -281,12 +302,12 @@ namespace ripple {
                         continue;
 
                     // Modify SHAMap
-                    for (auto iter = it->second.begin();
-                         iter != it->second.end();
-                         iter++)
+                    auto iter = it->second.begin();
+                    while (iter != it->second.end())
                     {
                         auto key = sha512Half(contract, iter->first);
-                        switch (iter->second.type)
+                        auto type = getOpType(iter->second);
+                        switch (type)
                         {
                             case ValueOpType::insert: {
                                 auto item =
@@ -306,6 +327,7 @@ namespace ripple {
                             default:
                                 break;
                         }
+                        iter++;
                     }
                     // Store to disk
                     mapPtr->flushDirty(hotACCOUNT_NODE, open.seq());
