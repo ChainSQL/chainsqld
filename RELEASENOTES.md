@@ -1,4 +1,3 @@
-
 ![Chainsql](/images/logo.png)
 
 
@@ -12,8 +11,7 @@
 如果你是开发者，请访问[www.docs.chainsql.net](http://docs.chainsql.net)
 
 # 进行中
-1. 支持Oracle数据库
-2. 智能合约状态存储重新实现
+1. 支持wasm智能合约
 
 
 # 待发布
