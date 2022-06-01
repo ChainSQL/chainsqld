@@ -21,12 +21,9 @@ public:
     struct ValueType
     {
         uint256 value;
-        ValueOpType type;
+        bool existInDB;
 
-        ValueType() : value(uint256(0)), type(ValueOpType::invalid)
-        {}
-		ValueType(uint256 const& value, ValueOpType type)
-            : value(value), type(type)
+        ValueType() : value(uint256(0)), existInDB(false)
         {}
     };
 
@@ -43,18 +40,23 @@ public:
 	void releaseHandle(uint256 const& handle);
 	uint256 genRandomUniqueHandle();
 
-	//Contract state storage related
-	bool hasStorage(AccountID const& contract);
     boost::optional<uint256>
     fetchFromCache(
-            AccountID const& contract,
-            uint256 const& key,
-            bool bQuery = false);
+        AccountID const& contract,
+        uint256 const& key,
+        bool bQuery = false);
+
+    boost::optional<uint256>
+    fetchFromDB(
+        AccountID const& contract,
+        boost::optional<uint256> const& root,
+        uint256 const& key,
+        bool bQuery = false);
 
     boost::optional<uint256>
     fetchValue(
         AccountID const& contract,
-        uint256 const& root,
+        boost::optional<uint256> const& root,
         uint256 const& key,
         bool bQuery = false);
 
@@ -65,12 +67,6 @@ public:
         bool bQuery = false
     );
 
-	//erase from dirty
-	void
-    eraseStorage(
-        AccountID const& contract,
-        boost::optional<uint256> root,
-        uint256 const& key);
 	//set storage to dirty
 	void
     setStorage(
@@ -86,6 +82,9 @@ public:
 
     //apply cached modification to SHAMap and modify storage_overlay in contract SLE
     void apply(OpenView& openView);
+
+    ValueOpType 
+    getOpType(ValueType const& value);
 
 private:
 	Schema&									app_;

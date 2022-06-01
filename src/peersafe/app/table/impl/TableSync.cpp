@@ -1786,7 +1786,8 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
 
                     if (!bIsHaveSync_)
                     {
-                        app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noDbConfig", "", ""), false);
+                        app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
+                            std::make_tuple(std::string(jss::db_noDbConfig), "", ""), false);
                         break;
                     }
 
@@ -1809,7 +1810,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                                 accountID,
                                 tableName,
                                 *pSTTX,
-                                std::make_tuple("db_noSyncTable", "", ""),
+                                std::make_tuple(std::string(jss::db_noSyncTable), "", ""),
                                 false);
                             break;
                         }
@@ -1821,7 +1822,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                                 accountID,
                                 tableName,
                                 *pSTTX,
-                                std::make_tuple("db_noAutoSync", "", ""),
+                                std::make_tuple(std::string(jss::db_noAutoSync), "", ""),
                                 false);
                             break;
                         }
@@ -1849,7 +1850,8 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         {
                             if (!bDBTableExist)
                             {
-                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_noTableExistInDB", "", ""), false);
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
+                                    std::make_tuple(std::string(jss::db_noTableExistInDB), "", ""), false);
                                 break;
                             }
 
@@ -1865,7 +1867,8 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                             }
                             if (!bDBTableSync)
                             {
-                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, std::make_tuple("db_notInSync", "", ""), false);
+                                app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
+                                    std::make_tuple(std::string(jss::db_notInSync), "", ""), false);
                                 break;
                             }
                         }
@@ -1907,7 +1910,7 @@ bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> co
 	{
 		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
 
-		std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", insertRes.second);
+		std::tuple<std::string, std::string, std::string> result = std::make_tuple(std::string(jss::db_error), "", insertRes.second);
 		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);
 	}
 

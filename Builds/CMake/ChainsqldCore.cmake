@@ -1147,6 +1147,8 @@ target_link_libraries (chainsqld
   libff::ff
   intx
   instructions
+  wasmvm
+  m3
   )
   
 if (APPLE)

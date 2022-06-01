@@ -772,7 +772,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                 accountID_,
                 sTableName_,
                 *pTx,
-                std::make_tuple("db_noSyncConfig", "", ""),
+                std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
                 false);
             return std::make_pair(false, "user account is null.");
         }
@@ -789,7 +789,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                     accountID_,
                     sTableName_,
                     *pTx,
-                    std::make_tuple("db_noSyncConfig", "", ""),
+                    std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
                     false);
                 return std::make_pair(false, "no authority.");
             }
@@ -808,7 +808,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                             accountID_,
                             sTableName_,
                             *pTx,
-                            std::make_tuple("db_noSyncConfig", "", ""),
+                            std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
                             false);
                         return std::make_pair(
                             false,
@@ -828,7 +828,7 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                 accountID_,
                 sTableName_,
                 *pTx,
-                std::make_tuple("db_acctSecretError", "", ""),
+                std::make_tuple(std::string(jss::db_acctSecretError), "", ""),
                 false);
             return std::make_pair(false, "user account secret is incorrect ");
         }
@@ -1127,7 +1127,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 {
                     JLOG(journal_.error()) << "Dispose exception: " << e.what();
 
-                    std::tuple<std::string, std::string, std::string> result = std::make_tuple("db_error", "", e.what());
+                    std::tuple<std::string, std::string, std::string> result = 
+                        std::make_tuple(std::string(jss::db_error), "", e.what());
                     app_.getOPs().pubTableTxs(accountID_, sTableName_, tx, result, false);
 
                     if (isSQLTransaction) {

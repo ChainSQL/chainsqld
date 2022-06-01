@@ -117,14 +117,14 @@ namespace ripple {
 
 	void TableTxAccumulator::pubTableTxSuccess(STTx const& tx, AccountID const& owner, std::string tableName)
 	{
-		std::tuple <std::string, std::string, std::string> result = std::make_tuple("db_success", "", "");
+		std::tuple <std::string, std::string, std::string> result = std::make_tuple((std::string)jss::db_success, "", "");
 		app_.getOPs().pubTableTxs(owner, tableName, tx, result, false);
 	}
 
 	void TableTxAccumulator::pubTableTxError(STTx const& tx, AccountID const& owner,
 		std::string tableName, std::string err_msg)
 	{
-		std::tuple <std::string, std::string, std::string> result = std::make_tuple("db_error", "", err_msg);
+		std::tuple <std::string, std::string, std::string> result = std::make_tuple(std::string(jss::db_error), "", err_msg);
 		app_.getOPs().pubTableTxs(owner, tableName, tx, result, false);
 		clearCache(tx.getTransactionID());
 	}
