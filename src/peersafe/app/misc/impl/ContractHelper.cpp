@@ -144,6 +144,9 @@ namespace ripple {
         uint256 const& key,
         bool bQuery /*=false*/)
     {
+        if (!root || *root == uint256(0))
+            return boost::none;
+
         std::shared_ptr<SHAMap> mapPtr = getSHAMap(contract, root, bQuery);
         if (mapPtr == nullptr)
             return boost::none;
@@ -176,9 +179,6 @@ namespace ripple {
         auto ret = fetchFromCache(contract, key, bQuery);
         if (ret)
             return ret;
-
-        if (!root || *root == uint256(0))
-            return boost::none;
 
         return fetchFromDB(contract, root, key, bQuery);
     }
@@ -239,7 +239,7 @@ namespace ripple {
         }
 
         mDirtyCache[contract][key].value = value;
-        if (root && fetchFromDB(contract,root,key)) 
+        if (fetchFromDB(contract,root,key)) 
             mDirtyCache[contract][key].existInDB = true;
         else
             mDirtyCache[contract][key].existInDB = false;
