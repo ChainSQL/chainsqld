@@ -129,9 +129,7 @@ namespace ripple {
 				JLOG(ctx_.journal.warn()) << "SmartContract exception:"<< errMsg;
 				setExtraMsg(errMsg);
 			}	
-			if(ctx_.tx.getFieldU16(sfContractOpType) == ContractCreation)
-				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CREATE);
-            else
+			if(ctx_.tx.getFieldU16(sfContractOpType) != ContractCreation)
 				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CALL);
 			return e.finalize();
 		}			
