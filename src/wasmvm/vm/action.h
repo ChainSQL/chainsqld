@@ -1,6 +1,7 @@
 #pragma once
 
-#include "chainsqlib/core/name.h"
+#include "common/check.h"
+#include "common/name.h"
 
 namespace chainsql {
 

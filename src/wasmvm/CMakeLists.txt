@@ -4,4 +4,4 @@ project(wasmvm)
 
 add_subdirectory(vm)
 add_subdirectory(wasm3)
-#add_subdirectory(example)
+add_subdirectory(example)

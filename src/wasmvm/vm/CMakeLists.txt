@@ -1,7 +1,6 @@
 set(sources
     "./impl/chainsqlWasmVm.cc"
     "./impl/action.cc"
-    "../libraries/native/intrinsics.cc"
 )
 
 set(headers
@@ -13,21 +12,14 @@ set(headers
 add_library(wasmvm STATIC ${sources} ${headers})
 
 include_directories(
-    ".."
-    "../wasm3/source"
-    "../wasm3/platforms/cpp/wasm3_cpp/include"
-    "../libraries"
-    #"../libraries/boost/include"
+    ${CMAKE_SOURCE_DIR}/src/wasmvm
 )
 
 target_include_directories(
     wasmvm 
     PUBLIC 
-    "./"
-    "../wasm3/source"
-    "../wasm3/platforms/cpp/wasm3_cpp/include"
-    #"../libraries"
-    #"../libraries/boost/include"
-    )
+    ${CMAKE_SOURCE_DIR}/src/wasmvm
+    ${CMAKE_SOURCE_DIR}/src/wasmvm/wasm3/source
+)
 
 target_compile_features(wasmvm PRIVATE cxx_std_17)
