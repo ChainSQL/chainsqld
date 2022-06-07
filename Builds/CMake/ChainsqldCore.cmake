@@ -797,6 +797,12 @@ target_sources (chainsqld PRIVATE
   src/eth/vm/executor/interpreter/VMCalls.cpp
   src/eth/vm/executor/interpreter/VMOpt.cpp
   src/eth/vm/utils/keccak.cpp
+  #[===============================[
+      wasmvm sources:
+        subdir: wasmvm
+  #]===============================]
+  src/wasmvm/vm/impl/action.cc
+  src/wasmvm/vm/impl/chainsqlWasmVm.cc
   ${test_srcs}
   #[===============================[
       test sources:
@@ -1147,7 +1153,7 @@ target_link_libraries (chainsqld
   libff::ff
   intx
   instructions
-  wasmvm
+  wasm3_cpp
   m3
   )
   

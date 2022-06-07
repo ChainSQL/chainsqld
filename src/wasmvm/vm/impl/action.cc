@@ -3,7 +3,7 @@
 #include <cstring>
 #include <utility>
 
-#include "vm/action.h"
+#include <wasmvm/vm/action.h>
 
 namespace chainsql {
     //action::action(

@@ -1,6 +1,4 @@
-#include "native/chainsql/intrinsics.hpp"
-#include "chainsqlib/capi/system.h"
-#include "vm/chainsqlWasmVm.h"
+#include <wasmvm/vm/chainsqlWasmVm.h>
 
 namespace chainsql {
 
