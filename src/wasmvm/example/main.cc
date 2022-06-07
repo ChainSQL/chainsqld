@@ -2,12 +2,12 @@
 #include <string>
 #include <tuple>
 
-#include "vm/chainsqlWasmVm.h"
-#include "common/name.h"
-#include "common/datastream.h"
-#include "vm/actionCallback.h"
+#include "wasmvm/vm/chainsqlWasmVm.h"
+#include "wasmvm/vm/actionCallback.h"
+#include "wasmvm/common/name.h"
+#include "wasmvm/common/datastream.h"
 
-#include "contract/math/math.wasm.h"
+#include "wasmvm/contract/math/math.wasm.h"
 
 void execute_math_contract()
 {

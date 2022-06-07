@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common/check.h"
-#include "common/name.h"
+#include <wasmvm/common/check.h>
+#include <wasmvm/common/name.h>
 
 namespace chainsql {
 

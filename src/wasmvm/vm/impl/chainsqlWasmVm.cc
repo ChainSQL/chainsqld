@@ -1,4 +1,4 @@
-#include "vm/chainsqlWasmVm.h"
+#include <wasmvm/vm/chainsqlWasmVm.h>
 
 namespace chainsql {
 

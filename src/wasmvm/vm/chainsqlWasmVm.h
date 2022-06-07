@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "vm/actionCallback.h"
-#include "wasm3/platforms/cpp/wasm3_cpp/include/wasm3_cpp.h"
+#include <wasmvm/vm/actionCallback.h>
+#include <wasm3_cpp.h>
 
 namespace chainsql {
 
