@@ -233,6 +233,7 @@ private:
     std::vector<PeerDataPairType> mReceivedData;
     bool mReceiveDispatched;
     std::map<uint256, std::shared_ptr<SHAMap>> mContractMapInfo;
+    std::atomic_bool mCheckingContract{false};
 };
 
 /** Deserialize a ledger header from a byte array. */

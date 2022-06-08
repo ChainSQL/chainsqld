@@ -865,6 +865,8 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
     }
 
     checkLoadContractRoots();
+    if (mCheckingContract.exchange(true))
+        return;
     // Get the state data first because it's the most likely to be useful
     // if we wind up abandoning this fetch.
     bool bHaveContractNodes = haveContractNodes();
@@ -897,7 +899,12 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                     << "Sending CONTRACT root request to "
                     << (peer ? "selected peer" : "all peers");
                 sendRequest(tmGL, peer);
-                return;
+                if (++requstedCount >= reqMapCount)
+                {
+                    mCheckingContract.exchange(false);
+                    return;
+                }
+                it++;
             }
             else
             {
@@ -917,14 +924,17 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                         if (!pMap->isValid())
                         {
                             mFailed = true;
-                            it++;
+                            break;
                         }
                         else
                         {
                             it = mContractMapInfo.erase(it);
 
                             if (checkComplete())
+                            {
                                 mComplete = true;
+                                break;
+                            }
                         }
                     }
                     else
@@ -945,7 +955,10 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                                 << (peer ? "selected peer" : "all peers");
                             sendRequest(tmGL, peer);
                             if (++requstedCount >= reqMapCount)
+                            {
+                                mCheckingContract.exchange(false);
                                 return;
+                            }
                         }
                         else
                         {
@@ -963,9 +976,11 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
         mComplete = true;
     }
 
+    mCheckingContract.exchange(false);
+
     if (checkComplete() || mFailed)
     {
-        JLOG(m_journal.debug())
+        JLOG(m_journal.warn())
             << "Done:" << (mComplete ? " complete" : "")
             << (mFailed ? " failed " : " ") << mLedger->info().seq;
         sl.unlock();
@@ -1002,22 +1017,26 @@ InboundLedger::checkLoadContractRoots()
     forEachItem(
         *mLedger,
         keylet::contract_index(),
-        [this](std::shared_ptr<SLE const> const& sleNode) 
-        { 
+        [this](std::shared_ptr<SLE const> const& sleNode) {
             assert(sleNode->getType() == ltACCOUNT_ROOT);
             auto const& mapStore = sleNode->getFieldM256(sfStorageOverlay);
             if (mapStore.rootHash())
             {
                 auto hash = *mapStore.rootHash();
-                auto map = std::make_shared<SHAMap>(
-                    SHAMapType::CONTRACT, hash, app_.getNodeFamily());
-                // Not need to judge fetch root success,we are syncing.
-                map->fetchRoot(SHAMapHash(hash), nullptr);
-                mContractMapInfo.emplace(hash, map);
+                if(hash.isNonZero())
+                {
+                    auto map = std::make_shared<SHAMap>(
+                        SHAMapType::CONTRACT, hash, app_.getNodeFamily());
+                    // Not need to judge fetch root success,we are syncing.
+                    map->fetchRoot(SHAMapHash(hash), nullptr);
+                    mContractMapInfo.emplace(hash, map);
+                }
             }
         });
-    JLOG(m_journal.info())
-        << "Totally " << mContractMapInfo.size() << " contracts need to be synced for ledger "<<mSeq;
+    JLOG(m_journal.info()) 
+        << "Totally " << mContractMapInfo.size()
+                           << " contracts need to be synced for ledger "
+                           << mSeq;
     mContractRootLoaded = true;
 }
 
@@ -1165,17 +1184,17 @@ InboundLedger::receiveNode(protocol::TMLedgerData& packet, SHAMapAddNode& san)
         }
     }
 
-    auto [map, rootHash, filter] = [&]()
-        -> std::tuple<SHAMap&, SHAMapHash, std::unique_ptr<SHAMapSyncFilter>> {
+    auto [pMap, rootHash, filter] = [&]()
+        -> std::tuple<SHAMap*, SHAMapHash, std::unique_ptr<SHAMapSyncFilter>> {
         if (packet.type() == protocol::liTX_NODE)
             return {
-                mLedger->txMap(),
+                &(mLedger->txMap()),
                 SHAMapHash{mLedger->info().txHash},
                 std::make_unique<TransactionStateSF>(
                     mLedger->txMap().family().db(), app_.getLedgerMaster())};
         else if (packet.type() == protocol::liAS_NODE)
             return {
-                mLedger->stateMap(),
+                &(mLedger->stateMap()),
                 SHAMapHash{mLedger->info().accountHash},
                 std::make_unique<AccountStateSF>(
                     mLedger->stateMap().family().db(), app_.getLedgerMaster())};
@@ -1187,14 +1206,21 @@ InboundLedger::receiveNode(protocol::TMLedgerData& packet, SHAMapAddNode& san)
             JLOG(m_journal.debug())
                 << "receiveNode liCONTRACT_NODE rootHash=" << hash;
 
+            auto pMap = (mContractMapInfo.find(hash) == mContractMapInfo.end())
+                ? nullptr
+                : &(*mContractMapInfo[hash]);
             return {
-                (SHAMap&)*mContractMapInfo[hash],
+                pMap,
                 SHAMapHash{hash},
                 std::make_unique<AccountStateSF>(
                     mLedger->stateMap().family().db(), app_.getLedgerMaster())};
         }
     }();
 
+    if (pMap == nullptr)
+        return;
+
+    auto& map = *pMap;
     try
     {
         for (auto const& node : packet.nodes())
@@ -1340,7 +1366,9 @@ InboundLedger::getNeededHashes()
             auto retTmp =
                 neededCTNodeHashes(*it->second, it->first, 4, &filter);
             if (retTmp.empty())
+            {
                 it = mContractMapInfo.erase(it);
+            }
             else
             {
                 for (auto const& h : retTmp)
@@ -1395,7 +1423,7 @@ InboundLedger::processData(
     protocol::TMLedgerData& packet)
 {
     ScopedLockType sl(mLock);
-
+    
     if (packet.type() == protocol::liBASE)
     {
         if (packet.nodes_size() < 1)
