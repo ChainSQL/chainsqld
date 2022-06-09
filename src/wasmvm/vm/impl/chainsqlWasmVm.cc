@@ -15,6 +15,7 @@ chainsqlWasmVm::~chainsqlWasmVm() {
 wasm3::module chainsqlWasmVm::loadWasm(const uint8_t *data, size_t size) throw() {
     wasm3::module mod = env_.parse_module(data, size);
     runtime_.load(mod);
+    mod.link_libc();
     return mod;
 }
 
