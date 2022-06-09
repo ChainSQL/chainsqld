@@ -230,12 +230,12 @@ M3Result  m3_LinkLibC  (IM3Module module)
 
     const char* env = "env";
 
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_debug",            "i(*i)",   &m3_libc_print)));
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_memset",           "*(*ii)",  &m3_libc_memset)));
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_memmove",          "*(**i)",  &m3_libc_memmove)));
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_memcpy",           "*(**i)",  &m3_libc_memmove))); // just alias of memmove
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_abort",            "v()",     &m3_libc_abort)));
-_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "_exit",             "v(i)",    &m3_libc_exit)));
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "debug",            "i(*i)",   &m3_libc_print)));
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "memset",           "*(*ii)",  &m3_libc_memset)));
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "memmove",          "*(**i)",  &m3_libc_memmove)));
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "memcpy",           "*(**i)",  &m3_libc_memmove))); // just alias of memmove
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "abort",            "v()",     &m3_libc_abort)));
+_   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "exit",             "v(i)",    &m3_libc_exit)));
 _   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "clock_ms",          "i()",     &m3_libc_clock_ms)));
 _   (SuppressLookupFailure (m3_LinkRawFunction (module, env, "printf",            "i(**)",   &m3_libc_printf)));
 

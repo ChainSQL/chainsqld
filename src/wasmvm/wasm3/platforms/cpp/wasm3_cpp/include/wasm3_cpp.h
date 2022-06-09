@@ -10,11 +10,15 @@
 #include <iterator>
 #include <cassert>
 
+#include <boost/format.hpp>
+
 #include "wasm3.h"
+#include "m3_env.h"
 #include "m3_api_libc.h"
 
 
 namespace wasm3 {
+
     /** @cond */
     namespace detail {
         typedef uint64_t *stack_type;
@@ -127,11 +131,17 @@ namespace wasm3 {
         struct wrap_helper<std::function<void(Args...)>> {
             using Func = std::function<void(Args...)>;
             static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type sp, mem_type mem) {
-                std::tuple<Args...> args;
-                get_args_from_stack(sp, mem, args);
-                Func* function = reinterpret_cast<Func*>(_ctx->userdata);
-                std::apply(*function, args);
-                m3ApiSuccess();
+                try {
+                    std::tuple<Args...> args;
+                    get_args_from_stack(sp, mem, args);
+                    Func* function = reinterpret_cast<Func*>(_ctx->userdata);
+                    std::apply(*function, args);
+                    m3ApiSuccess();
+                }
+                catch (const std::runtime_error& ec) {
+                    ErrorRuntime(m3Err_trapAbort, rt, "%s", ec.what());
+                    m3ApiTrap(m3Err_trapAbort);
+                }
             }
         };
 
@@ -184,6 +194,7 @@ namespace wasm3 {
     class error : public std::runtime_error {
     public:
         explicit error(M3Result err) : std::runtime_error(err) {}
+        explicit error(std::string& err) : std::runtime_error(err) {}
     };
 
     /** @cond */
@@ -191,6 +202,15 @@ namespace wasm3 {
         static inline void check_error(M3Result err) {
             if (err != m3Err_none) {
                 throw error(err);
+            }
+        }
+
+        static inline void check_error(M3ErrorInfo& info) {
+            if (info.result != m3Err_none) {
+                throw error(
+                    (boost::format("%s. %s")
+                        % info.result
+                        % info.message).str());
             }
         }
     } // namespace detail
@@ -377,11 +397,16 @@ namespace wasm3 {
             /* std::enable_if above checks that all argument types are convertible const char* */
             const char* argv[] = {args...};
             M3Result res = m3_CallArgv(m_func, sizeof...(args), argv);
-            detail::check_error(res);
+
+            M3ErrorInfo info;
+            m3_GetErrorInfo(m_runtime.get(), &info);
+            detail::check_error(info);
+
             Ret ret;
             const void* ret_ptrs[] = { &ret };
             res = m3_GetResults(m_func, 1, ret_ptrs);
             detail::check_error(res);
+
             return ret;
         }
 
@@ -392,7 +417,10 @@ namespace wasm3 {
             /* std::enable_if above checks that all argument types are convertible const char* */
             const char* argv[] = {args...};
             M3Result res = m3_CallArgv(m_func, sizeof...(args), argv);
-            detail::check_error(res);
+
+            M3ErrorInfo info;
+            m3_GetErrorInfo(m_runtime.get(), &info);
+            detail::check_error(info);
         }
 
         /**
@@ -406,7 +434,10 @@ namespace wasm3 {
         Ret call(Args... args) {
             const void *arg_ptrs[] = { reinterpret_cast<const void*>(&args)... };
             M3Result res = m3_Call(m_func, sizeof...(args), arg_ptrs);
-            detail::check_error(res);
+
+            M3ErrorInfo info;
+            m3_GetErrorInfo(m_runtime.get(), &info);
+            detail::check_error(info);
 
             if constexpr (!std::is_void<Ret>::value) {
                 Ret ret;
@@ -464,7 +495,15 @@ namespace wasm3 {
     template<typename Func>
     void module::link(const char *module, const char *function_name, Func *function) {
         M3Result ret = detail::m3_wrapper<Func>::link(m_module.get(), module, function_name, function);
-        detail::check_error(ret);
+        if (ret != m3Err_none) {
+            ErrorModule(ret, m_module.get(), "%s.%s", module, function_name);
+            M3ErrorInfo info;
+            m3_GetErrorInfo(m_module->runtime, &info);
+            detail::check_error(info);
+        }
+        else {
+            detail::check_error(m3Err_none);
+        }
     }
 
     template<typename Func>
