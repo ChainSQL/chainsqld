@@ -27,7 +27,6 @@
 #include <peersafe/crypto/hashBaseObj.h>
 #include "ripple.pb.h"
 #include <mutex>
-
 #include <openssl/sha.h>
 
 namespace ripple {
@@ -201,31 +200,29 @@ SHAMapAbstractNode::makeContractState(
     uint256 tag;
 
     if (s.size() < tag.bytes)
-        Throw<std::runtime_error>("short AS node");
+        Throw<std::runtime_error>("short Contract node");
 
     // FIXME: improve this interface so that the above check isn't needed
     if (!s.getBitString(tag, s.size() - tag.bytes))
         Throw<std::out_of_range>(
-            "Short AS node (" + std::to_string(s.size()) + ")");
+            "Short Contract node (" + std::to_string(s.size()) + ")");
 
     s.chop(tag.bytes);
 
     if (tag.isZero())
-        Throw<std::runtime_error>("Invalid AS node");
+        Throw<std::runtime_error>("Invalid Contract node");
 
     uint256 storageRoot;
     if (s.size() < storageRoot.bytes)
-        Throw<std::runtime_error>("short AS node");
+        Throw<std::runtime_error>("short Contract node");
 
     // FIXME: improve this interface so that the above check isn't needed
     if (!s.getBitString(storageRoot, s.size() - storageRoot.bytes))
         Throw<std::out_of_range>(
-            "Short AS node (" + std::to_string(s.size()) + ")");
+            "Short Contract node (" + std::to_string(s.size()) + ")");
 
     s.chop(storageRoot.bytes);
 
-    if (storageRoot.isZero())
-        Throw<std::runtime_error>("Invalid AS node");
 
     auto item = std::make_shared<SHAMapItem const>(tag, s.peekData());
 

@@ -6,9 +6,8 @@
 #include <cstring>
 #include <utility>
 
-#include "vm/action.h"
-
-#include "wasm3_cpp.h"
+#include <wasmvm/vm/action.h>
+#include <wasm3_cpp.h>
 
 namespace chainsql
 {

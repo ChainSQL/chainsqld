@@ -987,7 +987,7 @@ InboundLedger::insertContractRoots(std::set<uint256>& setHashes)
     mContractRoots.merge(setHashes);
     for (auto const& item : mContractRoots)
     {
-        if (mContractMapInfo.find(item) == mContractMapInfo.end())
+        if (mContractMapInfo.find(item) == mContractMapInfo.end() && item.isNonZero())
         {
             auto map = std::make_shared<SHAMap>(
                 SHAMapType::CONTRACT, item, app_.getNodeFamily());

@@ -4540,7 +4540,7 @@ NetworkOPsImp::pubTxResult(
 
                 // for table-related tx and validation event
                 if (bValidated && bForTableTx && 
-                    std::get<1>(disposRes) == jss::validate_success)
+                    std::get<0>(disposRes) == jss::validate_success)
                 {
                     // for chainsql type, subscribe db event
                     mValidatedSubTx[simiIt->first] =
