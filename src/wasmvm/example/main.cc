@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     try {
         execute_math_contract();
     }
-    catch (std::runtime_error &e)
+    catch (wasm3::error &e)
     {
         std::cerr << "WASM3 error: " << e.what() << std::endl;
         return 1;
