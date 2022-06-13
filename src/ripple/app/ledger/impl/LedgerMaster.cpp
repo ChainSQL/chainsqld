@@ -2138,6 +2138,13 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
 
     tryAdvance();
 
+    auto const lastVals = app_.getValidations().getTrustedForLedger(
+                ledger->info().hash);
+
+    if (lastVals.size() > 0)
+    {
+        app_.getValidations().setLastValidations(lastVals);
+    }
     if (ledger->seq() % 256 == 0)
     {
         // Check if the majority of validators run a higher version rippled
@@ -2154,8 +2161,8 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
         // The variable upgradeWarningPrevTime_ will be set when and only when
         // the warning is printed.
         if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
-        {
-            // Have not printed the warning before, check if need to print.
+        {     
+            // Have not printed the warning before, check if need to print.           
             auto const vals = app_.getValidations().getTrustedForLedger(
                 ledger->info().parentHash);
             std::size_t higherVersionCount = 0;

@@ -29,6 +29,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
@@ -1040,6 +1041,8 @@ saveValidatedLedger(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
 	boost::format deleteTrans3(
 		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
+    boost::format deleteLastValidations(
+            "DELETE FROM LastValidations WHERE LedgerSeq = %u;");
 
     if (!ledger->info().accountHash.isNonZero())
     {
@@ -1092,6 +1095,12 @@ saveValidatedLedger(
     {
         auto db = app.getLedgerDB().checkoutDb();
         *db << boost::str(deleteLedger % seq);
+        if (current)
+        {
+            auto db = app.getLedgerDB().checkoutDb();
+            *db << boost::str(deleteLastValidations % seq);
+        }
+
     }
 
     if (app.config().useTxTables())
@@ -1217,7 +1226,14 @@ saveValidatedLedger(
                 (:ledgerHash,:ledgerSeq,:prevHash,:totalCoins,:closingTime,:prevClosingTime,
                 :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash);)sql");
 
+        static std::string const insVal(
+        "INSERT OR REPLACE INTO LastValidations "
+        "(LedgerSeq, LedgerHash, NodePubKey, SignTime, RawData) "
+        "VALUES (:ledgerSeq, "
+        ":ledgerHash,:nodePubKey,:signTime,:rawData);");
+
         auto db(app.getLedgerDB().checkoutDb());
+
 
         soci::transaction tr(*db);
 
@@ -1239,6 +1255,36 @@ saveValidatedLedger(
             soci::use(parentCloseTime), soci::use(closeTimeResolution),
             soci::use(closeFlags), soci::use(accountHash), soci::use(txHash);
 
+        if (current)
+        {
+            auto currentStale = app.getValidations().getLastValidations(ledger->info().seq, ledger->info().hash);
+
+            Serializer s(1024);
+            for (auto const rclValidation : currentStale)
+                {
+                    auto ledgerSeq = rclValidation->getFieldU32(sfLedgerSequence);
+                    s.erase();
+                    STValidation::pointer const& val = rclValidation;
+                    val->add(s);
+
+                    auto const ledgerHash = to_string(val->getLedgerHash());
+
+                    auto const nodePubKey =
+                        toBase58(TokenType::NodePublic, val->getSignerPublic());
+                    auto const signTime =
+                        val->getSignTime().time_since_epoch().count();
+
+                    soci::blob rawData(*db);
+                    rawData.append(
+                        reinterpret_cast<const char*>(s.peekData().data()),
+                        s.peekData().size());
+                    assert(rawData.get_len() == s.peekData().size());
+
+                    *db << insVal, soci::use(ledgerSeq),
+                        soci::use(ledgerHash), soci::use(nodePubKey),
+                        soci::use(signTime), soci::use(rawData);
+                }
+        }
         tr.commit();
     }
 

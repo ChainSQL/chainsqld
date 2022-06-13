@@ -344,6 +344,9 @@ class Validations
 
     StalePolicy stalePolicy_;
 
+    std::tuple<std::uint32_t, uint256, std::vector<std::shared_ptr<STValidation>>>
+        lastValidations_;
+    
 private:
     // Remove support of a validated ledger
     void
@@ -388,7 +391,7 @@ private:
             }
             else
                 ++it;
-        }
+        } 
     }
 
     // Update the trie to reflect a new validated ledger
@@ -572,6 +575,7 @@ public:
         , parms_(p)
         , adaptor_(std::forward<Ts>(ts)...)
         , stalePolicy_(std::forward<Ts>(ts)...)
+        , lastValidations_(std::make_tuple(0,0,std::vector<std::shared_ptr<STValidation>>()))
     {
     }
 
@@ -706,6 +710,43 @@ public:
     {
         std::lock_guard lock{mutex_};
         toKeep_ = s;
+    }
+
+    /**
+    * Set the latest validatedLedger related Validations
+    * @param validations
+    */
+    void
+    setLastValidations(std::vector<std::shared_ptr<STValidation>>const validations)
+    {
+        std::lock_guard lock{mutex_};
+        if (validations.empty())
+            return;
+        auto seq = validations[0]->getFieldU32(sfLedgerSequence);
+        if (std::get<2>(lastValidations_).size() != 0)
+        {
+            if (seq >= std::get<2>(lastValidations_)[0]->getFieldU32(sfLedgerSequence))
+                lastValidations_ = std::make_tuple(validations[0]->getFieldU32(sfLedgerSequence),validations[0]->getFieldH256(sfLedgerHash),
+                    validations);
+        }
+        else
+        {
+            lastValidations_ = std::make_tuple(validations[0]->getFieldU32(sfLedgerSequence),validations[0]->getFieldH256(sfLedgerHash),
+                    validations);
+        }
+    }
+
+    /**
+    * get the latest validatedLedger related Validations
+    * @param 
+    */
+    std::vector<std::shared_ptr<STValidation>>
+    getLastValidations(std::uint32_t seq, uint256 id)
+    {
+        if (seq == std::get<0>(lastValidations_) &&
+            id == std::get<1>(lastValidations_))
+            return std::get<2>(lastValidations_);
+        return std::vector<std::shared_ptr<STValidation>>();
     }
 
     /** Expire old validation sets
