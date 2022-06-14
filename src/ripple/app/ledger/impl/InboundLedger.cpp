@@ -438,21 +438,20 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
         }
     }
 
-    for (auto const& item : mContractRoots)
+    for (auto& iter : mContractMapInfo)
     {
         AccountStateSF filter(
             mLedger->stateMap().family().db(), app_.getLedgerMaster());
-        auto& mapInfo = mContractMapInfo[item];
+        auto& mapInfo = iter.second;
         if (mapInfo.first && !mapInfo.second)
         {
-            auto ret = neededCTNodeHashes(*mapInfo.first, item, 1, &filter);
+            auto ret = neededCTNodeHashes(*mapInfo.first, iter.first, 1, &filter);
             if (ret.empty())
             {
                 mapInfo.second = true;
             }
         }
     }
-
     if (checkComplete())
     {
         JLOG(m_journal.debug()) << "Had everything locally";
@@ -867,12 +866,12 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
 
         std::shared_ptr<SHAMap> pMap = nullptr;
         uint256 rootHash = beast::zero;
-        for (auto& it : mContractRoots)
+        for (auto const& iter : mContractMapInfo)
         {
-            if (!mContractMapInfo[it].second)
+            if (!iter.second.second)
             {
-                pMap = mContractMapInfo[it].first;
-                rootHash = it;
+                pMap = iter.second.first;
+                rootHash = iter.first;
                 break;
             }
         }
@@ -970,10 +969,9 @@ InboundLedger::checkComplete()
 bool
 InboundLedger::haveContractNodes()
 {
-    for (auto const& item : mContractRoots)
+    for (auto const& iter : mContractMapInfo)
     {
-        if (mContractMapInfo.find(item) == mContractMapInfo.end() ||
-            !mContractMapInfo[item].second)
+        if (!iter.second.second)
         {
             return false;
         }
@@ -984,8 +982,7 @@ InboundLedger::haveContractNodes()
 void
 InboundLedger::insertContractRoots(std::set<uint256>& setHashes)
 {
-    mContractRoots.merge(setHashes);
-    for (auto const& item : mContractRoots)
+    for (auto const& item : setHashes)
     {
         if (mContractMapInfo.find(item) == mContractMapInfo.end() && item.isNonZero())
         {
@@ -1295,14 +1292,15 @@ InboundLedger::getNeededHashes()
 
     if (!haveContractNodes())
     {
-        for (auto const& item : mContractRoots)
+        for (auto const& iter : mContractMapInfo)
         {
             AccountStateSF filter(
                 mLedger->stateMap().family().db(), app_.getLedgerMaster());
-            auto& mapInfo = mContractMapInfo[item];
+            auto& mapInfo = iter.second;
             if (mapInfo.first && !mapInfo.second)
             {
-                auto retTmp = neededCTNodeHashes(*mapInfo.first, item, 1, &filter);
+                auto retTmp =
+                    neededCTNodeHashes(*mapInfo.first, iter.first, 1, &filter);
 
                 for (auto const& h : retTmp)
                 {
@@ -1311,7 +1309,6 @@ InboundLedger::getNeededHashes()
                 }
             }
         }
-
     }
 
     return ret;

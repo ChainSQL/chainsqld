@@ -229,7 +229,6 @@ private:
     std::mutex mReceivedDataLock;
     std::vector<PeerDataPairType> mReceivedData;
     bool mReceiveDispatched;
-    std::set<uint256> mContractRoots;
     std::map<uint256, ShamapInfo> mContractMapInfo;
 };
 
