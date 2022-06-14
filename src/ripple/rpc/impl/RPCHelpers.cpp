@@ -788,7 +788,12 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         }
         
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, tokenType);
-        
+        if (privateKeyStrDe58.empty())
+        {
+            error = RPC::make_error(
+                rpcBAD_SEED, "Specified secret derive key-pair failed.");
+            return {};
+        }
 		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
 		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
         auto publicKey = derivePublicKey(KeyType::gmalg, secretkeyTemp);
