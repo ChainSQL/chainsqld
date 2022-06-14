@@ -93,14 +93,20 @@ namespace wasm3 {
         struct wrap_helper<Ret(Args...)> {
             using Func = Ret(Args...);
             static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type _sp, mem_type mem) {
-                std::tuple<Args...> args;
-                // The order here matters: m3ApiReturnType should go before calling get_args_from_stack,
-                // since both modify `_sp`, and the return value on the stack is reserved before the arguments.
-                m3ApiReturnType(Ret);
-                get_args_from_stack(_sp, mem, args);
-                Func* function = reinterpret_cast<Func*>(_ctx->userdata);
-                Ret r = std::apply(function, args);
-                m3ApiReturn(r);
+                try {
+                    std::tuple<Args...> args;
+                    // The order here matters: m3ApiReturnType should go before calling get_args_from_stack,
+                    // since both modify `_sp`, and the return value on the stack is reserved before the arguments.
+                    m3ApiReturnType(Ret);
+                    get_args_from_stack(_sp, mem, args);
+                    Func* function = reinterpret_cast<Func*>(_ctx->userdata);
+                    Ret r = std::apply(function, args);
+                    m3ApiReturn(r);
+                }
+                catch (const std::runtime_error& ec) {
+                    ErrorRuntime(m3Err_trapAbort, rt, "%s", ec.what());
+                    m3ApiTrap(m3Err_trapAbort);
+                }
             }
         };
     
@@ -108,11 +114,17 @@ namespace wasm3 {
         struct wrap_helper<void(Args...)> {
             using Func = void(Args...);
             static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type sp, mem_type mem) {
-                std::tuple<Args...> args;
-                get_args_from_stack(sp, mem, args);
-                Func* function = reinterpret_cast<Func*>(_ctx->userdata);
-                std::apply(function, args);
-                m3ApiSuccess();
+                try {
+                    std::tuple<Args...> args;
+                    get_args_from_stack(sp, mem, args);
+                    Func* function = reinterpret_cast<Func*>(_ctx->userdata);
+                    std::apply(function, args);
+                    m3ApiSuccess();
+                }
+                catch (const std::runtime_error& ec) {
+                    ErrorRuntime(m3Err_trapAbort, rt, "%s", ec.what());
+                    m3ApiTrap(m3Err_trapAbort);
+                }
             }
         };
     
@@ -120,14 +132,20 @@ namespace wasm3 {
         struct wrap_helper<std::function<Ret(Args...)>> {
             using Func = std::function<Ret(Args...)>;
             static const void *wrap_fn(IM3Runtime rt, IM3ImportContext _ctx, stack_type _sp, mem_type mem) {
-                std::tuple<Args...> args;
-                // The order here matters: m3ApiReturnType should go before calling get_args_from_stack,
-                // since both modify `_sp`, and the return value on the stack is reserved before the arguments.
-                m3ApiReturnType(Ret);
-                get_args_from_stack(_sp, mem, args);
-                Func* function = reinterpret_cast<Func*>(_ctx->userdata);
-                Ret r = std::apply(*function, args);
-                m3ApiReturn(r);
+                try {
+                    std::tuple<Args...> args;
+                    // The order here matters: m3ApiReturnType should go before calling get_args_from_stack,
+                    // since both modify `_sp`, and the return value on the stack is reserved before the arguments.
+                    m3ApiReturnType(Ret);
+                    get_args_from_stack(_sp, mem, args);
+                    Func* function = reinterpret_cast<Func*>(_ctx->userdata);
+                    Ret r = std::apply(*function, args);
+                    m3ApiReturn(r);
+                }
+                catch (const std::runtime_error& ec) {
+                    ErrorRuntime(m3Err_trapAbort, rt, "%s", ec.what());
+                    m3ApiTrap(m3Err_trapAbort);
+                }
             }
         };
 
