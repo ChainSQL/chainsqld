@@ -89,6 +89,8 @@ public:
 
     Json::Value
     getJson() const;
+    std::shared_ptr<STViewChange>
+    FindHighPrevSeqViewChange(uint64_t view,PublicKey const& nodePublic);
 };
 
 }  // namespace ripple

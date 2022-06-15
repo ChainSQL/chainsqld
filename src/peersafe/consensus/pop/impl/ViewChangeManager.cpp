@@ -276,4 +276,24 @@ ViewChangeManager::getJson() const
     return ret;
 }
 
+std::shared_ptr<STViewChange>
+ViewChangeManager::FindHighPrevSeqViewChange(uint64_t view,PublicKey const& nodePublic){
+    std::shared_ptr<STViewChange> viewChange;
+    if (viewChangeReq_.find(view) != viewChangeReq_.end())
+    {
+        auto nodeView = viewChangeReq_[view].find(nodePublic)->second;
+        auto validatedSeq = nodeView->validatedSeq();
+        for (auto item : viewChangeReq_[view]){
+            if (item.second->validatedSeq() > validatedSeq)
+            {
+                viewChange = item.second;
+                JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: " << validatedSeq
+                    << "desValidatedSeq: " << viewChange->validatedSeq()
+                    << " view: " << view << " nodePublic: " << viewChange->nodePublic();
+            }
+        }
+    }  
+    return viewChange;
+}
+
 }  // namespace ripple

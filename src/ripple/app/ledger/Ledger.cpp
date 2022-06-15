@@ -1257,7 +1257,7 @@ saveValidatedLedger(
 
         if (current)
         {
-            auto currentStale = app.getValidations().getLastValidations(ledger->info().seq, ledger->info().hash);
+            auto currentStale = app.getValidations().getLastValidationsFromCache(ledger->info().seq, ledger->info().hash);
 
             Serializer s(1024);
             for (auto const rclValidation : currentStale)

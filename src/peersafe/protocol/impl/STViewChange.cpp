@@ -42,12 +42,14 @@ STViewChange::STViewChange(
     uint256 const& prevHash,
     std::uint64_t const& toView,
     PublicKey const nodePublic,
-    NetClock::time_point signTime)
+    NetClock::time_point signTime,
+    std::uint32_t const validatedSeq)
     : STObject(getFormat(), sfViewChange)
     , prevSeq_(prevSeq)
     , prevHash_(prevHash)
     , toView_(toView)
     , nodePublic_(nodePublic)
+    , validatedSeq_(validatedSeq)
 {
     // This is our own public key and it should always be valid.
     if (!publicKeyType(nodePublic))
@@ -57,6 +59,7 @@ STViewChange::STViewChange(
     setFieldH256(sfParentHash, prevHash);
     setFieldU64(sfView, toView);
     setFieldU32(sfSigningTime, signTime.time_since_epoch().count());
+    setFieldU32(sfValidatedSequence, validatedSeq);
 }
 
 Blob STViewChange::getSerialized() const
@@ -90,7 +93,8 @@ SOTemplate const& STViewChange::getFormat()
             { sfSequence,         soeREQUIRED },    // previousledger Sequence
             { sfParentHash,       soeREQUIRED },    // previousledger Hash
             { sfView,             soeREQUIRED },    // toView
-            { sfSigningTime,      soeREQUIRED }     // compute unique ID
+            { sfSigningTime,      soeREQUIRED },     // compute unique ID
+            { sfValidatedSequence,soeREQUIRED }     // validatedLedger Sequence
         };
     };
 

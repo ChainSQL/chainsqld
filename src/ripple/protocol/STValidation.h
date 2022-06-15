@@ -126,6 +126,12 @@ public:
             signDigest(getSignerPublic(), secretKey, getLedgerHash()));
     }
 
+    bool
+    verify()
+    {
+        return verifyDigest(getSignerPublic(), getLedgerHash(), makeSlice(getFieldVL(sfSignature)));
+    }
+
     STBase*
     copy(std::size_t n, void* buf) const override
     {

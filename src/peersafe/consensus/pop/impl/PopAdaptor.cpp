@@ -222,6 +222,20 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
+PopAdaptor::launchAcquirValidation(STViewChange const& viewChange)
+{
+    Blob v = viewChange.getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&v[0], v.size());
+    consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATION);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+    signAndSendMessage(consensus);
+}
+
+void
 PopAdaptor::onViewChanged(
     bool bWaitingInit,
     Ledger_t previousLedger,

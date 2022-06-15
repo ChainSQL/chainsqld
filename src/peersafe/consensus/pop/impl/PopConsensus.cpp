@@ -25,6 +25,7 @@
 #include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/consensus/pop/PopConsensus.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
+#include <ripple/protocol/STValidationSet.h>
 
 namespace ripple {
 
@@ -113,12 +114,15 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             if (initAcquireLedgerID_ != beast::zero &&
                 initAcquireLedgerID_ == prevLedgerID_)
                  oldLedger = previousLedger_.ledger_;
-
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
                 << " times of timeout, will rollback to ledger "
                 << oldLedger->seq()
                 << " with view = 0,current ledger:" << previousLedger_.seq();
+
+            auto viewChange = viewChangeManager_.FindHighPrevSeqViewChange(toView_, adaptor_.valPublic());
+            if (viewChange)
+                adaptor_.launchAcquirValidation(*viewChange);
 
             if (oldLedger)
             {
@@ -184,6 +188,10 @@ PopConsensus::peerConsensusMessage(
             return peerValidation(peer, isTrusted, m);
         case ConsensusMessageType::mtINITANNOUNCE:
             return peerInitAnnounce(peer, isTrusted, m);
+        case ConsensusMessageType::mtACQUIRVALIDATION:
+            return peerAcquirValidation(peer, isTrusted, m);
+        case ConsensusMessageType::mtVALIDATIONDATA:
+            return peerValidationData(peer, isTrusted, m);
         default:
             break;
     }
@@ -872,7 +880,8 @@ PopConsensus::launchViewChange()
         prevLedgerID_,
         toView_,
         adaptor_.valPublic(),
-        adaptor_.closeTime());
+        adaptor_.closeTime(),
+        adaptor_.getValidLedgerIndex());
 
     adaptor_.launchViewChange(*viewChange);
 
@@ -1302,6 +1311,9 @@ PopConsensus::onViewChange(uint64_t toView)
 
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
+    auto viewChange = viewChangeManager_.FindHighPrevSeqViewChange(view_, adaptor_.valPublic());
+    if (viewChange)
+        adaptor_.launchAcquirValidation(*viewChange);
 
     viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
     if (bWaitingInit_)
@@ -1435,6 +1447,70 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
         }
 
         return true;
+    }
+
+    return false;
+}
+
+bool
+PopConsensus::peerAcquirValidation(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED AcquirValidation";
+        return false;
+    }
+
+    try
+    {
+        STViewChange::pointer viewChange;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        viewChange = std::make_shared<STViewChange>(sit, publicKey);
+
+        return adaptor_.peerAcquirValidation(viewChange);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Acquir Validation Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
+
+bool
+PopConsensus::peerValidationData(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED ValidationData";
+        return false;
+    }
+
+    try
+    {
+        STValidationSet::pointer validationSet;
+
+        SerialIter sit(makeSlice(m->msg()));
+        PublicKey const publicKey{makeSlice(m->signerpubkey())};
+
+        validationSet = std::make_shared<STValidationSet>(std::ref(sit), publicKey, adaptor_.app_.validatorManifests());
+
+        return adaptor_.peerValidationData(validationSet);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "ValidationData Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
     }
 
     return false;

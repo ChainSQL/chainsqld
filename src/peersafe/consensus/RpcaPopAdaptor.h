@@ -23,7 +23,8 @@
 
 
 #include <peersafe/consensus/Adaptor.h>
-
+#include <peersafe/protocol/STViewChange.h>
+#include <ripple/protocol/STValidationSet.h>
 
 namespace ripple {
 
@@ -115,6 +116,16 @@ public:
         uint256 ledgerID,
         RCLCxLedger const& ledger,
         ConsensusMode mode);
+    bool
+    peerAcquirValidation(STViewChange::ref viewChange);
+    bool
+    sendAcquirValidation(std::shared_ptr<STValidationSet> const& validationSet);
+    bool
+    peerValidationData(STValidationSet::ref vaildationSet);
+    std::vector<std::shared_ptr<STValidation>>
+    getLastValidationsFromDB(std::uint32_t seq, uint256 id);
+    std::vector<std::shared_ptr<STValidation>>
+    getLastValidations(std::uint32_t seq, uint256 id);
 
 protected:
     /** Report that the consensus process built a particular ledger */
@@ -154,7 +165,7 @@ private:
 
     auto
     checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
-        -> std::pair<std::shared_ptr<Ledger const> const, bool>;
+        -> std::pair<std::shared_ptr<Ledger const> const, bool>;   
 };
 
 }  // namespace ripple

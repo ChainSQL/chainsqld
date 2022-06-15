@@ -49,7 +49,8 @@ public:
         uint256 const& prevHash,
         std::uint64_t const& toView,
         PublicKey const nodePublic,
-        NetClock::time_point signTime);
+        NetClock::time_point signTime,
+        std::uint32_t const validatedSeq);
 
     STBase*
     copy(std::size_t n, void* buf) const override
@@ -67,6 +68,7 @@ public:
     uint256 const& prevHash() const { return prevHash_; }
     std::uint64_t const& toView() const { return toView_; }
     PublicKey const& nodePublic() const { return nodePublic_; }
+    std::uint32_t const& validatedSeq() const { return validatedSeq_; }
 
     Blob getSerialized() const;
 
@@ -79,6 +81,8 @@ private:
     std::uint64_t   toView_;
 
     PublicKey       nodePublic_;
+    std::uint32_t   validatedSeq_;
+
 
 private:
     static SOTemplate const& getFormat();

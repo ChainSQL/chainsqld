@@ -47,7 +47,10 @@ enum ConsensusMessageType {
     mtACQUIREBLOCK = 5,  // acquire hotstuff block
     mtBLOCKDATA = 6,     // provide hotstuff block
     mtINITANNOUNCE = 7,
-    mtEPOCHCHANGE = 8
+    mtEPOCHCHANGE = 8,
+    mtACQUIRVALIDATION = 9,
+    mtVALIDATIONDATA = 10
+
 };
 
 class PeerImp;

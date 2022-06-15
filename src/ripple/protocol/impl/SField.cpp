@@ -40,20 +40,21 @@ static SField::private_access_tag_t access;
 // Construct all compile-time SFields, and register them in the knownCodeToField
 // database:
 
-SField const sfInvalid      (access, -1);
-SField const sfGeneric      (access, 0);
-SField const sfLedgerEntry  (access, STI_LEDGERENTRY, 257, "LedgerEntry");
-SField const sfTransaction  (access, STI_TRANSACTION, 257, "Transaction");
-SField const sfValidation   (access, STI_VALIDATION,  257, "Validation");
-SField const sfMetadata     (access, STI_METADATA,    257, "Metadata");
-SField const sfProposeSet   (access, STI_PROPOSESET,  257, "ProposeSet");
-SField const sfViewChange   (access, STI_VIEWCHANGE,  257, "ViewChange");
-SField const sfProposal     (access, STI_PROPOSAL,    257, "Proposal");
-SField const sfVote         (access, STI_VOTE,        257, "Vote");
-SField const sfInitAnnounce (access, STI_INITANNOUNCE,257, "InitAnnounce");
-SField const sfEpochChange  (access, STI_EPOCHCHANGE, 257, "EpochChange");
-SField const sfHash         (access, STI_HASH256,     257, "hash");
-SField const sfIndex        (access, STI_HASH256,     258, "index");
+SField const sfInvalid          (access, -1);
+SField const sfGeneric          (access, 0);
+SField const sfLedgerEntry      (access, STI_LEDGERENTRY,   257, "LedgerEntry");
+SField const sfTransaction      (access, STI_TRANSACTION,   257, "Transaction");
+SField const sfValidation       (access, STI_VALIDATION,    257, "Validation");
+SField const sfValidationSet    (access, STI_VALIDAYIONSET, 257, "ValidationSet");
+SField const sfMetadata         (access, STI_METADATA,      257, "Metadata");
+SField const sfProposeSet       (access, STI_PROPOSESET,    257, "ProposeSet");
+SField const sfViewChange       (access, STI_VIEWCHANGE,    257, "ViewChange");
+SField const sfProposal         (access, STI_PROPOSAL,      257, "Proposal");
+SField const sfVote             (access, STI_VOTE,          257, "Vote");
+SField const sfInitAnnounce     (access, STI_INITANNOUNCE,  257, "InitAnnounce");
+SField const sfEpochChange      (access, STI_EPOCHCHANGE,   257, "EpochChange");
+SField const sfHash             (access, STI_HASH256,       257, "hash");
+SField const sfIndex            (access, STI_HASH256,       258, "index");
 
 // 8-bit integers
 SF_U8 const sfCloseResolution   (access, STI_UINT8, 1, "CloseResolution");
@@ -125,6 +126,7 @@ SF_U32 const sfContractCallCountField    (access, STI_UINT32, 57, "ContractCallC
 SF_U32 const sfTxSuccessCountField       (access, STI_UINT32, 58, "TxSuccessCountField ");
 SF_U32 const sfTxFailureCountField       (access, STI_UINT32, 59, "TxFailureCountField");
 SF_U32 const sfAccountCountField         (access, STI_UINT32, 60, "AccountCountField");
+SF_U32 const sfValidatedSequence         (access, STI_UINT32, 61, "ValidatedSequence");
 
 // 64-bit integers
 SF_U64 const sfIndexNext        (access, STI_UINT64, 1, "IndexNext");
@@ -332,6 +334,7 @@ SField const sfPeerList        (access, STI_ARRAY, 54, "PeerList");
 SField const sfTransactions    (access, STI_ARRAY, 55, "Transactions");
 SField const sfWhiteLists      (access, STI_ARRAY, 56, "WhiteLists");
 SField const sfFrozenAccounts  (access, STI_ARRAY, 57, "FrozenAccounts");
+SField const sfValidations     (access, STI_ARRAY, 58, "Validations");
 
 // array of objects (uncommon)
 SField const sfMajorities(access, STI_ARRAY, 16, "Majorities");

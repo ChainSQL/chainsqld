@@ -741,7 +741,7 @@ public:
     * @param 
     */
     std::vector<std::shared_ptr<STValidation>>
-    getLastValidations(std::uint32_t seq, uint256 id)
+    getLastValidationsFromCache(std::uint32_t seq, uint256 id)
     {
         if (seq == std::get<0>(lastValidations_) &&
             id == std::get<1>(lastValidations_))

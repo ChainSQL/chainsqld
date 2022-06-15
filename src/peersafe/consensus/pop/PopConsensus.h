@@ -299,6 +299,18 @@ private:
         std::shared_ptr<protocol::TMConsensus> const& m);
     bool
     peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
+
+    bool
+    peerAcquirValidation(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
+
+    bool
+    peerValidationData(
+        std::shared_ptr<PeerImp>& peer,
+        bool isTrusted,
+        std::shared_ptr<protocol::TMConsensus> const& m);
 };
 
 
