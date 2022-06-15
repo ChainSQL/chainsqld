@@ -53,6 +53,18 @@ struct custom_delete<RSA>
 };
 
 template <>
+struct custom_delete<EC_KEY>
+{
+    explicit custom_delete() = default;
+
+    void
+    operator()(EC_KEY* ec_key) const
+    {
+        EC_KEY_free(ec_key);
+    }
+};
+
+template <>
 struct custom_delete<EVP_PKEY>
 {
     explicit custom_delete() = default;
@@ -120,6 +132,27 @@ rsa_generate_key(int n_bits)
     return rsa_ptr(rsa);
 }
 
+using ec_key_ptr = custom_delete_unique_ptr<EC_KEY>;
+
+static ec_key_ptr
+ec_key_generate_key()
+{
+    EC_KEY *sm2Keypair = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+    if (nullptr == sm2Keypair)
+    {
+        LogicError("ec_key_generate_key: EC_KEY_new_by_curve_name failed");
+    }
+
+    int genRet = EC_KEY_generate_key(sm2Keypair);
+    if (0 == genRet)
+    {
+        EC_KEY_free(sm2Keypair);
+        LogicError("ec_key_generate_key: EC_KEY_generate_key failed");
+    }
+    
+    return ec_key_ptr(sm2Keypair);
+}
+
 // EVP_PKEY
 
 using evp_pkey_ptr = custom_delete_unique_ptr<EVP_PKEY>;
@@ -142,6 +175,14 @@ evp_pkey_assign_rsa(EVP_PKEY* evp_pkey, rsa_ptr rsa)
         LogicError("EVP_PKEY_assign_RSA failed");
 
     rsa.release();
+}
+static void
+evp_pkey_assign_ec_key(EVP_PKEY* evp_pkey, ec_key_ptr ec_key)
+{
+    if (!EVP_PKEY_assign_EC_KEY(evp_pkey, ec_key.get()))
+        LogicError("EVP_PKEY_assign_EC_KEY failed");
+
+    ec_key.release();
 }
 
 // X509
@@ -271,7 +312,15 @@ initAnonymous(boost::asio::ssl::context& context)
     using namespace openssl;
 
     evp_pkey_ptr pkey = evp_pkey_new();
-    evp_pkey_assign_rsa(pkey.get(), rsa_generate_key(2048));
+    
+    if(CommonKey::chainAlgTypeG == KeyType::gmalg)
+    {
+        evp_pkey_assign_ec_key(pkey.get(), ec_key_generate_key());
+    }
+    else
+    {
+        evp_pkey_assign_rsa(pkey.get(), rsa_generate_key(2048));
+    }
 
     x509_ptr cert = x509_new();
     x509_set_pubkey(cert.get(), pkey.get());
