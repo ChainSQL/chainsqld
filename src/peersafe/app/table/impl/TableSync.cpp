@@ -86,8 +86,8 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     m.set_nameindb(sNameInDB);
 	m.set_ledgerseq(TxnLgrSeq);
 	m.set_lastledgerseq(PreviousTxnLgrSeq);
-	m.set_lastledgerhash(to_string(PrevTxnLedgerHash));
-	m.set_ledgercheckhash(to_string(TxnLgrHash));
+	m.set_lastledgerhash(PrevTxnLedgerHash.begin(), PrevTxnLedgerHash.size());
+	m.set_ledgercheckhash(TxnLgrHash.begin(), TxnLgrHash.size());
     m.set_seekstop(bStop);
     m.set_account(sAccountID);    
     m.set_closetime(time);
@@ -102,7 +102,8 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     int txnCount = 0;
     if (ledger)
     {
-        m.set_ledgerhash(to_string(ledger->info().hash));
+        auto hash = ledger->info().hash;
+        m.set_ledgerhash(hash.begin(), hash.size());
         
         std::shared_ptr<AcceptedLedger> alpAccepted =
             app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
@@ -200,14 +201,14 @@ bool TableSync::SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t
 }
 bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string nameInDB, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply)
 {
-    reply.set_ledgerhash(to_string(hash));
+    reply.set_ledgerhash(hash.begin(), hash.size());
     reply.set_ledgerseq(iSeq);
     reply.set_lastledgerseq(iLastSeq);
-    reply.set_lastledgerhash(to_string(lastHash));
+    reply.set_lastledgerhash(lastHash.begin(), lastHash.size());
     reply.set_seekstop(true);
     reply.set_account(account);
     reply.set_nameindb(nameInDB);
-    reply.set_ledgercheckhash(to_string(checkHash));
+    reply.set_ledgercheckhash(checkHash.begin(), checkHash.size());
     reply.set_closetime(time);
 	reply.set_etargettype(eTargeType);
     reply.set_nickname(sNickName);
@@ -486,10 +487,10 @@ bool TableSync::SendSyncRequest(AccountID accountID, std::string sNameInDB, Ledg
     tmGT.set_account(to_string(accountID));
     tmGT.set_nameindb(sNameInDB);
     tmGT.set_ledgerseq(iStartSeq);
-    tmGT.set_ledgerhash(to_string(iStartHash)); 
+    tmGT.set_ledgerhash(iStartHash.begin(),iStartHash.size()); 
     tmGT.set_ledgerstopseq(iStopSeq);
     tmGT.set_ledgercheckseq(iCheckSeq);
-    tmGT.set_ledgercheckhash(to_string(iCheckHash));
+    tmGT.set_ledgercheckhash(iCheckHash.begin(), iCheckHash.size());
     tmGT.set_getlost(bGetLost);
 	tmGT.set_etargettype(pItem->TargetType());
     tmGT.set_nickname(pItem->GetNickName());
@@ -1693,7 +1694,7 @@ bool TableSync::SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_pt
 {       
     protocol::TMGetLedger tmGL;
     tmGL.set_ledgerseq(iSeq);
-    tmGL.set_ledgerhash(to_string(hash));
+    tmGL.set_ledgerhash(hash.begin(), hash.size());
     tmGL.set_itype(protocol::liSKIP_NODE);
     tmGL.set_querydepth(3); // We probably need the whole thing
 	tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
