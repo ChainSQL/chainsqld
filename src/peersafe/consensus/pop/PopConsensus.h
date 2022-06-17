@@ -301,13 +301,13 @@ private:
     peerInitAnnounceInternal(STInitAnnounce::ref viewChange);
 
     bool
-    peerAcquirValidation(
+    peerAcquirValidationSet(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);
 
     bool
-    peerValidationData(
+    peerValidationSetData(
         std::shared_ptr<PeerImp>& peer,
         bool isTrusted,
         std::shared_ptr<protocol::TMConsensus> const& m);

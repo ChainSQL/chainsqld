@@ -120,12 +120,12 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
                 << oldLedger->seq()
                 << " with view = 0,current ledger:" << previousLedger_.seq();
 
-            auto viewChange = viewChangeManager_.FindHighPrevSeqViewChange(toView_, adaptor_.valPublic());
-            if (viewChange)
-                adaptor_.launchAcquirValidation(*viewChange);
-
+            
             if (oldLedger)
             {
+                auto ret = viewChangeManager_.FindHighValSeqViewChange(toView_, adaptor_.valPublic());
+                if (ret.first > oldLedger->info().seq)
+                    adaptor_.launchAcquirValidationSet(ret);
                 startRoundInternal(
                     now_,
                     oldLedger->info().hash,
@@ -188,10 +188,10 @@ PopConsensus::peerConsensusMessage(
             return peerValidation(peer, isTrusted, m);
         case ConsensusMessageType::mtINITANNOUNCE:
             return peerInitAnnounce(peer, isTrusted, m);
-        case ConsensusMessageType::mtACQUIRVALIDATION:
-            return peerAcquirValidation(peer, isTrusted, m);
-        case ConsensusMessageType::mtVALIDATIONDATA:
-            return peerValidationData(peer, isTrusted, m);
+        case ConsensusMessageType::mtACQUIRVALIDATIONSET:
+            return peerAcquirValidationSet(peer, isTrusted, m);
+        case ConsensusMessageType::mtVALIDATIONSETDATA:
+            return peerValidationSetData(peer, isTrusted, m);
         default:
             break;
     }
@@ -1311,9 +1311,9 @@ PopConsensus::onViewChange(uint64_t toView)
 
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
-    auto viewChange = viewChangeManager_.FindHighPrevSeqViewChange(view_, adaptor_.valPublic());
-    if (viewChange)
-        adaptor_.launchAcquirValidation(*viewChange);
+    auto ret = viewChangeManager_.FindHighValSeqViewChangeByView(view_, adaptor_.valPublic());
+    if (ret.first > prevLedgerSeq_)
+        adaptor_.launchAcquirValidationSet(ret);
 
     viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
     if (bWaitingInit_)
@@ -1453,7 +1453,7 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
 }
 
 bool
-PopConsensus::peerAcquirValidation(
+PopConsensus::peerAcquirValidationSet(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
@@ -1463,17 +1463,17 @@ PopConsensus::peerAcquirValidation(
         JLOG(j_.info()) << "drop UNTRUSTED AcquirValidation";
         return false;
     }
-
+    if (m->msg().size() != 4)
+    {
+        JLOG(j_.warn()) << "Acquire ValidationSet: malformed";
+        peer->charge(Resource::feeInvalidSignature);
+        return false;
+    }
     try
     {
-        STViewChange::pointer viewChange;
-
-        SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{makeSlice(m->signerpubkey())};
-
-        viewChange = std::make_shared<STViewChange>(sit, publicKey);
-
-        return adaptor_.peerAcquirValidation(viewChange);
+        uint8_t seq;
+        memcpy(&seq, m->msg().data(), 4);
+        return adaptor_.peerAcquirValidationSet(std::int32_t(seq), peer);
     }
     catch (std::exception const& e)
     {
@@ -1485,7 +1485,7 @@ PopConsensus::peerAcquirValidation(
 }
 
 bool
-PopConsensus::peerValidationData(
+PopConsensus::peerValidationSetData(
     std::shared_ptr<PeerImp>& peer,
     bool isTrusted,
     std::shared_ptr<protocol::TMConsensus> const& m)
@@ -1505,7 +1505,7 @@ PopConsensus::peerValidationData(
 
         validationSet = std::make_shared<STValidationSet>(std::ref(sit), publicKey, adaptor_.app_.validatorManifests());
 
-        return adaptor_.peerValidationData(validationSet);
+        return adaptor_.peerValidationSetData(validationSet);
     }
     catch (std::exception const& e)
     {

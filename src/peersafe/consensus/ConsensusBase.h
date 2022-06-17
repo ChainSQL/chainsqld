@@ -48,8 +48,8 @@ enum ConsensusMessageType {
     mtBLOCKDATA = 6,     // provide hotstuff block
     mtINITANNOUNCE = 7,
     mtEPOCHCHANGE = 8,
-    mtACQUIRVALIDATION = 9,
-    mtVALIDATIONDATA = 10
+    mtACQUIRVALIDATIONSET = 9,
+    mtVALIDATIONSETDATA = 10
 
 };
 

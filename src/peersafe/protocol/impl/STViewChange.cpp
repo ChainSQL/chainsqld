@@ -94,7 +94,7 @@ SOTemplate const& STViewChange::getFormat()
             { sfParentHash,       soeREQUIRED },    // previousledger Hash
             { sfView,             soeREQUIRED },    // toView
             { sfSigningTime,      soeREQUIRED },     // compute unique ID
-            { sfValidatedSequence,soeREQUIRED }     // validatedLedger Sequence
+            { sfValidatedSequence,soeOPTIONAL }     // validatedLedger Sequence
         };
     };
 

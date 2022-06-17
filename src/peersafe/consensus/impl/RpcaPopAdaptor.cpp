@@ -570,45 +570,39 @@ RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
 }
 
 bool
-RpcaPopAdaptor::peerAcquirValidation(
-    STViewChange::ref viewChange)
+RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer)
 {
-    JLOG(j_.warn()) << "Processing peer AcquirValidation View="
-            << viewChange->toView() << ", PublicKey index="
-            << getPubIndex(viewChange->nodePublic())
-            << ",PrevSeq=" << viewChange->prevSeq()
-            << ",PrevHash=" << viewChange->prevHash()
-            << ",ValidatedSeq=" << viewChange->validatedSeq();
+    JLOG(j_.warn()) << "Processing peer AcquirValidation ValidatedSeq=" << validatedSeq;
 
     auto ledger = getValidatedLedger();
-    if (ledger && ledger->info().seq == viewChange->validatedSeq())
+    if (ledger && ledger->info().seq == validatedSeq)
     {
         auto validations = getLastValidations(ledger->info().seq, ledger->info().hash);
         if (validations.size() > 0 )
-            sendAcquirValidation(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations));
+            sendAcquirValidationSet(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations), peer);
     }
     
     return true;
 }
 
 bool
-RpcaPopAdaptor::sendAcquirValidation(std::shared_ptr<STValidationSet> const& validationSet)
+RpcaPopAdaptor::sendAcquirValidationSet(std::shared_ptr<STValidationSet> const& validationSet, std::shared_ptr<PeerImp>& peer)
 {
     Blob valSet =  validationSet->getSerialized();
 
     protocol::TMConsensus consensus;
 
     consensus.set_msg(&valSet[0], valSet.size());
-    consensus.set_msgtype(ConsensusMessageType::mtVALIDATIONDATA);
+    consensus.set_msgtype(ConsensusMessageType::mtVALIDATIONSETDATA);
     consensus.set_signflags(vfFullyCanonicalSig);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    signAndSendMessage(consensus);
+    signAndSendMessage(peer, consensus);
     return true;
 }
 
 bool
-RpcaPopAdaptor::peerValidationData(
+RpcaPopAdaptor::peerValidationSetData(
     STValidationSet::ref vaildationSet)
 {
     JLOG(j_.warn()) << "Processing peer ValidationData seq="

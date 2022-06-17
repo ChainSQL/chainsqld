@@ -276,24 +276,62 @@ ViewChangeManager::getJson() const
     return ret;
 }
 
-std::shared_ptr<STViewChange>
-ViewChangeManager::FindHighPrevSeqViewChange(uint64_t view,PublicKey const& nodePublic){
-    std::shared_ptr<STViewChange> viewChange;
+std::pair<std::uint32_t const&, PublicKey const&>
+ViewChangeManager::FindHighValSeqViewChange(uint64_t view, PublicKey const& nodePublic){
     if (viewChangeReq_.find(view) != viewChangeReq_.end())
     {
-        auto nodeView = viewChangeReq_[view].find(nodePublic)->second;
-        auto validatedSeq = nodeView->validatedSeq();
+        auto viewChange = viewChangeReq_[view].find(nodePublic)->second;
+        auto validatedSeq = viewChange->validatedSeq();
+        std::uint32_t maxSeq = validatedSeq;
+        auto iter = viewChangeReq_.begin();
+	    while (iter != viewChangeReq_.end())
+        {
+            for (auto item : iter->second){
+                if (item.second->validatedSeq() > maxSeq)
+                {
+                    maxSeq = item.second->validatedSeq();
+                    viewChange = item.second;
+                }
+            }
+        }  
+        if (maxSeq > validatedSeq)
+        {
+            JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: " << validatedSeq
+                        << "desValidatedSeq: " << viewChange->validatedSeq()
+                        << " view: " << view << " nodePublic: " << viewChange->nodePublic();
+        }
+     
+        return std::make_pair(maxSeq, viewChange->nodePublic());
+    }
+    return std::make_pair(0, PublicKey());
+}
+
+
+std::pair<std::uint32_t const&, PublicKey const&>
+ViewChangeManager::FindHighValSeqViewChangeByView(uint64_t view,PublicKey const& nodePublic){
+    if (viewChangeReq_.find(view) != viewChangeReq_.end())
+    {
+        auto viewChange = viewChangeReq_[view].find(nodePublic)->second;
+        auto validatedSeq = viewChange->validatedSeq();
+        std::uint32_t maxSeq = validatedSeq;
         for (auto item : viewChangeReq_[view]){
-            if (item.second->validatedSeq() > validatedSeq)
+            if (item.second->validatedSeq() > maxSeq)
             {
+                maxSeq = item.second->validatedSeq();
                 viewChange = item.second;
-                JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: " << validatedSeq
-                    << "desValidatedSeq: " << viewChange->validatedSeq()
-                    << " view: " << view << " nodePublic: " << viewChange->nodePublic();
             }
         }
-    }  
-    return viewChange;
+        if (maxSeq > validatedSeq)
+        {
+            JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: "
+                            << validatedSeq
+                            << "desValidatedSeq: " << viewChange->validatedSeq()
+                            << " view: " << view
+                            << " nodePublic: " << viewChange->nodePublic();
+        }
+         return std::make_pair(maxSeq, viewChange->nodePublic());
+    }
+    return std::make_pair(0, PublicKey());
 }
 
 }  // namespace ripple

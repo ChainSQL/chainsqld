@@ -117,11 +117,11 @@ public:
         RCLCxLedger const& ledger,
         ConsensusMode mode);
     bool
-    peerAcquirValidation(STViewChange::ref viewChange);
+    peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer);
     bool
-    sendAcquirValidation(std::shared_ptr<STValidationSet> const& validationSet);
+    sendAcquirValidationSet(std::shared_ptr<STValidationSet> const& validationSet, std::shared_ptr<PeerImp>& peer);
     bool
-    peerValidationData(STValidationSet::ref vaildationSet);
+    peerValidationSetData(STValidationSet::ref vaildationSet);
     std::vector<std::shared_ptr<STValidation>>
     getLastValidationsFromDB(std::uint32_t seq, uint256 id);
     std::vector<std::shared_ptr<STValidation>>

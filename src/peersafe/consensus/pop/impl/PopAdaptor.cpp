@@ -222,17 +222,15 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 }
 
 void
-PopAdaptor::launchAcquirValidation(STViewChange const& viewChange)
+PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t const&, PublicKey const&> pair)
 {
-    Blob v = viewChange.getSerialized();
-
     protocol::TMConsensus consensus;
 
-    consensus.set_msg(&v[0], v.size());
-    consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATION);
+    consensus.set_msg((uint8_t*)&pair.first, sizeof(pair.first));
+    consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATIONSET);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
-    signAndSendMessage(consensus);
+    signAndSendMessage(pair.second, consensus);
 }
 
 void

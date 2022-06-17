@@ -725,7 +725,7 @@ public:
         auto seq = validations[0]->getFieldU32(sfLedgerSequence);
         if (std::get<2>(lastValidations_).size() != 0)
         {
-            if (seq >= std::get<2>(lastValidations_)[0]->getFieldU32(sfLedgerSequence))
+            if (seq >= std::get<0>(lastValidations_))
                 lastValidations_ = std::make_tuple(validations[0]->getFieldU32(sfLedgerSequence),validations[0]->getFieldH256(sfLedgerHash),
                     validations);
         }
