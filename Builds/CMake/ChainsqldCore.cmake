@@ -171,6 +171,7 @@ install (
     src/ripple/protocol/digest.h
     src/ripple/protocol/jss.h
     src/ripple/protocol/tokens.h
+    src/ripple/protocol/STValidationSet.h
   DESTINATION include/ripple/protocol)
 install (
   FILES
