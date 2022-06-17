@@ -1471,7 +1471,7 @@ PopConsensus::peerAcquirValidationSet(
     }
     try
     {
-        uint8_t seq;
+        uint32_t seq;
         memcpy(&seq, m->msg().data(), 4);
         return adaptor_.peerAcquirValidationSet(std::int32_t(seq), peer);
     }

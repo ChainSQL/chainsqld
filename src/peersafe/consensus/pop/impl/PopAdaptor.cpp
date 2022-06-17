@@ -226,7 +226,7 @@ PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t const&, PublicKey 
 {
     protocol::TMConsensus consensus;
 
-    consensus.set_msg((uint8_t*)&pair.first, sizeof(pair.first));
+    consensus.set_msg(&pair.first, sizeof(pair.first));
     consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATIONSET);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
 
