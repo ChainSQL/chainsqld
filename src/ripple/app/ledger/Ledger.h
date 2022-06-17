@@ -136,6 +136,7 @@ public:
 	/** Create a new ledger from an exist ledger
 	*/
 	Ledger(Ledger const& ledger,
+        std::vector<uint256> const& amendments,
 		Family& f);
 
     // used for database ledgers

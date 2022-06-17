@@ -1229,19 +1229,9 @@ SchemaImp::setup()
     }
 
     // Configure the amendments the server supports
-    {
-        auto const& sa = detail::supportedAmendments();
-        std::vector<std::string> saHashes;
-        saHashes.reserve(sa.size());
-        for (auto const& name : sa)
-        {
-            auto const f = getRegisteredFeature(name);
-            BOOST_ASSERT(f);
-            if (f)
-                saHashes.push_back(to_string(*f) + " " + name);
-        }
+    {        
         Section supportedAmendments("Supported Amendments");
-        supportedAmendments.append(saHashes);
+        supportedAmendments.append(getSupportedAmendments());
 
         Section enabledAmendments = config_->section(SECTION_AMENDMENTS);
 
@@ -1547,10 +1537,9 @@ SchemaImp::setup()
 void
 SchemaImp::startGenesisLedger()
 {
-    std::vector<uint256> initialAmendments =
-        (config_->START_UP == Config::FRESH) ? m_amendmentTable->getDesired()
-                                             : std::vector<uint256>{};
-
+    std::vector<uint256> initialAmendments = m_amendmentTable->getDesired();
+    if (initialAmendments.empty())
+        initialAmendments = getDefaultEnabledFeature();
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
         create_genesis, *config_, initialAmendments, nodeFamily_);
     m_ledgerMaster->storeLedger(genesis);
@@ -1951,7 +1940,10 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         return false;
     }
 
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_);
+    std::vector<uint256> initialAmendments = m_amendmentTable->getDesired();
+    if (initialAmendments.empty())
+        initialAmendments = getDefaultEnabledFeature();
+    auto genesis = std::make_shared<Ledger>(*loadLedger, initialAmendments, nodeFamily_);
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));

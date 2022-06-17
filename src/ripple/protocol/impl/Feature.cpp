@@ -227,4 +227,28 @@ uint256 const
 
 // clang-format on
 
+static std::vector<uint256> const enabled{featureMultiSign, featureTableSleChange, featureContractStorage, featurePromethSLEHideInMeta, featureTableGrant};
+
+std::vector<std::string> const
+getSupportedAmendments()
+{
+    auto const& sa = detail::supportedAmendments();
+    std::vector<std::string> saHashes;
+    saHashes.reserve(sa.size());
+    for (auto const& name : sa)
+    {
+        auto const f = getRegisteredFeature(name);
+        BOOST_ASSERT(f);
+        if (f)
+            saHashes.push_back(to_string(*f) + " " + name);
+    }
+    return saHashes;
+}
+
+
+std::vector<uint256> const
+getDefaultEnabledFeature()
+{
+    return enabled;
+}
 }  // namespace ripple

@@ -337,7 +337,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, Family& f)
+Ledger::Ledger(Ledger const& ledger, std::vector<uint256> const& amendments, Family& f)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -381,7 +381,12 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
             count++;
         }
     }
-
+    if (!amendments.empty())
+    {
+        auto const sle = std::make_shared<SLE>(keylet::amendments());
+        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        rawInsert(sle);
+    }
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);
     rawInsert(sle);
