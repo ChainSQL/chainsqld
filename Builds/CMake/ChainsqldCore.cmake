@@ -351,6 +351,7 @@ target_sources (chainsqld PRIVATE
   src/ripple/protocol/impl/UintTypes.cpp
   src/ripple/protocol/impl/digest.cpp
   src/ripple/protocol/impl/tokens.cpp
+  src/ripple/protocol/impl/STValidationSet.cpp
   #[===============================[
     main sources:
       subdir: crypto
