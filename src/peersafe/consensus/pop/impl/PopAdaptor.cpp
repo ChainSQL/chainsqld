@@ -28,7 +28,7 @@
 #include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
-
+#include <peersafe/schema/PeerManagerImp.h>
 
 namespace ripple {
 
@@ -217,20 +217,20 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVIEWCHANGE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
-
     signAndSendMessage(consensus);
 }
 
 void
-PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t const&, PublicKey const&> pair)
+PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair)
 {
     protocol::TMConsensus consensus;
 
     consensus.set_msg(&pair.first, sizeof(pair.first));
     consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATIONSET);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
-
-    signAndSendMessage(pair.second, consensus);
+    auto peer = app_.peerManager().findPeerByValPublicKey(pair.second);
+    if (peer)
+        signAndSendMessage(peer, consensus);
 }
 
 void

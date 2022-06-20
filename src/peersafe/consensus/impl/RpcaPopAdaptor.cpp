@@ -582,7 +582,7 @@ RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_
             sendAcquirValidationSet(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations), peer);
     }
     
-    return true;
+    return false;
 }
 
 bool
@@ -635,7 +635,7 @@ RpcaPopAdaptor::peerValidationSetData(
         }
     }
     
-    return true;
+    return false;
 }
 std::vector<std::shared_ptr<STValidation>>
 RpcaPopAdaptor::getLastValidations(std::uint32_t seq, uint256 id)
@@ -661,7 +661,7 @@ RpcaPopAdaptor::getLastValidationsFromDB(std::uint32_t seq, uint256 id)
                 << " AND LedgerHash = '" << id << "'";
     std::string const sql =
         "SELECT NodePubKey, RawData "
-        "FROM Validations " +
+        "FROM LastValidations " +
         sqlSuffix.str() + ";";
 
     soci::statement st =

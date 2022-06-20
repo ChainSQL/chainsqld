@@ -743,6 +743,7 @@ public:
     std::vector<std::shared_ptr<STValidation>>
     getLastValidationsFromCache(std::uint32_t seq, uint256 id)
     {
+        std::lock_guard lock{mutex_};
         if (seq == std::get<0>(lastValidations_) &&
             id == std::get<1>(lastValidations_))
             return std::get<2>(lastValidations_);

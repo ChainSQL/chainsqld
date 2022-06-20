@@ -276,12 +276,11 @@ ViewChangeManager::getJson() const
     return ret;
 }
 
-std::pair<std::uint32_t const&, PublicKey const&>
-ViewChangeManager::FindHighValSeqViewChange(uint64_t view, PublicKey const& nodePublic){
+std::pair<std::uint32_t, PublicKey>
+ViewChangeManager::FindHighValSeqViewChange(uint64_t view, std::uint32_t const& validatedSeq){
     if (viewChangeReq_.find(view) != viewChangeReq_.end())
     {
-        auto viewChange = viewChangeReq_[view].find(nodePublic)->second;
-        auto validatedSeq = viewChange->validatedSeq();
+        ViewChange viewChange;
         std::uint32_t maxSeq = validatedSeq;
 
 	    for (auto it = viewChangeReq_.begin(); it != viewChangeReq_.end();)
@@ -303,20 +302,18 @@ ViewChangeManager::FindHighValSeqViewChange(uint64_t view, PublicKey const& node
             JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: "<< validatedSeq
                         << "desValidatedSeq: " << viewChange->validatedSeq()
                         << " view: " << view << " nodePublic: " << viewChange->nodePublic();
+             return std::make_pair(maxSeq, viewChange->nodePublic());
         }
-     
-        return std::make_pair(maxSeq, viewChange->nodePublic());
     }
     return std::make_pair(0, PublicKey());
 }
 
 
-std::pair<std::uint32_t const&, PublicKey const&>
-ViewChangeManager::FindHighValSeqViewChangeByView(uint64_t view,PublicKey const& nodePublic){
+std::pair<std::uint32_t, PublicKey>
+ViewChangeManager::FindHighValSeqViewChangeByView(uint64_t view,std::uint32_t const& validatedSeq){
     if (viewChangeReq_.find(view) != viewChangeReq_.end())
     {
-        auto viewChange = viewChangeReq_[view].find(nodePublic)->second;
-        auto validatedSeq = viewChange->validatedSeq();
+        ViewChange viewChange;
         std::uint32_t maxSeq = validatedSeq;
         for (auto item : viewChangeReq_[view]){
             if (item.second->validatedSeq() > maxSeq)
@@ -332,8 +329,9 @@ ViewChangeManager::FindHighValSeqViewChangeByView(uint64_t view,PublicKey const&
                             << "desValidatedSeq: " << viewChange->validatedSeq()
                             << " view: " << view
                             << " nodePublic: " << viewChange->nodePublic();
+            return std::make_pair(maxSeq, viewChange->nodePublic());
         }
-        return std::make_pair(maxSeq, viewChange->nodePublic());
+        
     }
     return std::make_pair(0, PublicKey());
 }

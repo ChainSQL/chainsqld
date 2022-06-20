@@ -123,7 +123,7 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             
             if (oldLedger)
             {
-                auto ret = viewChangeManager_.FindHighValSeqViewChange(toView_, adaptor_.valPublic());
+                auto ret = viewChangeManager_.FindHighValSeqViewChange(toView_, adaptor_.getValidLedgerIndex());
                 if (ret.first > oldLedger->info().seq)
                     adaptor_.launchAcquirValidationSet(ret);
                 startRoundInternal(
@@ -1311,7 +1311,7 @@ PopConsensus::onViewChange(uint64_t toView)
 
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
-    auto ret = viewChangeManager_.FindHighValSeqViewChangeByView(view_, adaptor_.valPublic());
+    auto ret = viewChangeManager_.FindHighValSeqViewChangeByView(view_, adaptor_.getValidLedgerIndex());
     if (ret.first > prevLedgerSeq_)
         adaptor_.launchAcquirValidationSet(ret);
 

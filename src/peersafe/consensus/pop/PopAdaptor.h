@@ -88,7 +88,7 @@ public:
     void
     onViewChanged(bool bWaitingInit, Ledger_t previousLedger, uint64_t newView);
     void
-    launchAcquirValidationSet(std::pair<std::uint32_t const&, PublicKey const&> pair);
+    launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair);
 
 private:
     void

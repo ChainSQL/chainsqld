@@ -89,10 +89,10 @@ public:
 
     Json::Value
     getJson() const;
-    std::pair<std::uint32_t const&, PublicKey const&>
-    FindHighValSeqViewChange(uint64_t view,PublicKey const& nodePublic);
-    std::pair<std::uint32_t const&, PublicKey const&>
-    FindHighValSeqViewChangeByView(uint64_t view,PublicKey const& nodePublic);
+    std::pair<std::uint32_t, PublicKey>
+    FindHighValSeqViewChange(uint64_t view,std::uint32_t const& validatedSeq);
+    std::pair<std::uint32_t, PublicKey>
+    FindHighValSeqViewChangeByView(uint64_t view,std::uint32_t const& validatedSeq);
 };
 
 }  // namespace ripple

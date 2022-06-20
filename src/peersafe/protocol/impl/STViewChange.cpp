@@ -35,6 +35,7 @@ STViewChange::STViewChange(
     prevSeq_ = getFieldU32(sfSequence);
     prevHash_ = getFieldH256(sfParentHash);
     toView_ = getFieldU64(sfView);
+    validatedSeq_ = getFieldU32(sfValidatedSequence);
 }
 
 STViewChange::STViewChange(
