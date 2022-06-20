@@ -283,20 +283,24 @@ ViewChangeManager::FindHighValSeqViewChange(uint64_t view, PublicKey const& node
         auto viewChange = viewChangeReq_[view].find(nodePublic)->second;
         auto validatedSeq = viewChange->validatedSeq();
         std::uint32_t maxSeq = validatedSeq;
-        auto iter = viewChangeReq_.begin();
-	    while (iter != viewChangeReq_.end())
+
+	    for (auto it = viewChangeReq_.begin(); it != viewChangeReq_.end();)
         {
-            for (auto item : iter->second){
-                if (item.second->validatedSeq() > maxSeq)
+            for (auto cache_entry = it->second.begin();
+             cache_entry != it->second.end();)
+            {
+                if (cache_entry->second->validatedSeq() > maxSeq)
                 {
-                    maxSeq = item.second->validatedSeq();
-                    viewChange = item.second;
+                    maxSeq = cache_entry->second->validatedSeq();
+                    viewChange = cache_entry->second;
                 }
+                cache_entry++;
             }
+            it++;
         }  
         if (maxSeq > validatedSeq)
         {
-            JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: " << validatedSeq
+            JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: "<< validatedSeq
                         << "desValidatedSeq: " << viewChange->validatedSeq()
                         << " view: " << view << " nodePublic: " << viewChange->nodePublic();
         }
@@ -329,7 +333,7 @@ ViewChangeManager::FindHighValSeqViewChangeByView(uint64_t view,PublicKey const&
                             << " view: " << view
                             << " nodePublic: " << viewChange->nodePublic();
         }
-         return std::make_pair(maxSeq, viewChange->nodePublic());
+        return std::make_pair(maxSeq, viewChange->nodePublic());
     }
     return std::make_pair(0, PublicKey());
 }
