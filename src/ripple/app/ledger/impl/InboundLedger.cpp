@@ -625,7 +625,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             stream << "complete=" << mComplete << " failed=" << mFailed;
         else
             stream << "header=" << mHaveHeader << " tx=" << mHaveTransactions
-                   << " as=" << mHaveState;
+                   << " as=" << mHaveState << " contracts=" <<mHaveContracts;
     }
 
     if (!mHaveHeader)
@@ -890,7 +890,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             std::map<uint256, std::shared_ptr<SHAMap>> tmpMap;
             auto it = mContractMapInfo.begin();
             int count = 0;
-            while (count < reqMapCount && it != mContractMapInfo.end())
+            while (count++ < reqMapCount && it != mContractMapInfo.end())
             {
                 tmpMap.insert(std::make_pair(it->first, it->second));
                 it++;
@@ -944,6 +944,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                             else
                             {
                                 vecKeysDel.push_back(it->first);
+                                it++;
                             }
                         }
                         else
@@ -981,6 +982,8 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 mContractMapInfo.erase(key);
             }
             mHaveContracts = haveContractNodes();
+            if (checkComplete())
+                mComplete = true;
         }   
     }
     else if (mHaveContracts)
@@ -990,7 +993,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
 
     mCheckingContract.store(false);
 
-    if (checkComplete() || mFailed)
+    if (mComplete || mFailed)
     {
         JLOG(m_journal.warn())
             << "Done:" << (mComplete ? " complete" : "")
