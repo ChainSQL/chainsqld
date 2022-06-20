@@ -208,7 +208,7 @@ private:
     //void
     //insertContractRoots(std::set<uint256>& setHashes);
 
-    void
+    bool
     checkLoadContractRoots();
 
     clock_type& m_clock;
@@ -218,9 +218,10 @@ private:
     bool mHaveHeader;
     bool mHaveState;
     bool mHaveTransactions;
+    bool mHaveContracts;
     bool mSignaled;
     bool mByHash;
-    bool mContractRootLoaded;
+    std::atomic_bool mContractRootLoaded;
     std::uint32_t mSeq;
     Reason const mReason;
 

@@ -122,6 +122,8 @@ public:
 
 	size_t erase(const uint256& key);
 
+    bool has(const uint256& key);
+
     void updateRoot(const uint256& rootHash);
 
     boost::optional<uint256> rootHash();

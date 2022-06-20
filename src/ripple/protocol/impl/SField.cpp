@@ -286,7 +286,9 @@ SF_Vec256 const sfHashes     (access, STI_VECTOR256, 2, "Hashes");
 SF_Vec256 const sfAmendments (access, STI_VECTOR256, 3, "Amendments");
 SF_Vec256 const sfSchemaIndexes(access, STI_VECTOR256, 4, "SchemaIndexes");
 // map of 256-bit
-SF_Map256 const sfStorageOverlay (access, STI_MAP256, 1, "StorageOverlay");
+SF_Map256 const sfStorageOverlay        (access, STI_MAP256, 1, "StorageOverlay");
+SF_Map256 const sfStorageExtension      (access, STI_MAP256, 2, "StorageExtension");
+
 
 // inner object
 // OBJECT/1 is reserved for end of object

@@ -60,7 +60,8 @@ LedgerFormats::LedgerFormats()
 			{ sfContractCode,		 soeOPTIONAL },
             { sfWhiteLists,          soeOPTIONAL },
             { sfAuthorize,           soeOPTIONAL },
-            { sfOwnerNode,           soeOPTIONAL }
+            { sfOwnerNode,           soeOPTIONAL },      
+            { sfStorageExtension,    soeOPTIONAL }
         },
         commonFields);
 

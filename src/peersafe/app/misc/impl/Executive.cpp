@@ -9,6 +9,7 @@
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -429,6 +430,22 @@ TER Executive::finalize() {
     {
         for (auto a : m_ext->sub.selfdestruct)
         {
+            auto pSle = m_s.getSle(a);
+            if (pSle->isFieldPresent(sfStorageExtension))
+            {
+                STMap256& mapExtension = pSle->peekFieldM256(sfStorageExtension);
+                if (mapExtension.has(NODE_TYPE_CONTRACTKEY))
+                {
+                    uint64_t page = fromUint256(mapExtension[NODE_TYPE_CONTRACTKEY]);
+                    // Remove from directory
+                    if (!m_s.ctx().view().dirRemove(
+                            keylet::contract_index(), page, pSle->key(), true))
+                    {
+                        return tefBAD_LEDGER;
+                    }
+                }
+            }
+
             m_s.kill(a);
             LedgerAdjust::updateContractCount(
                 m_s.ctx().app, m_s.ctx().view(), CONTRACT_DESTORY);

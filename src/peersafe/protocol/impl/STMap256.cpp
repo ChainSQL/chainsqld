@@ -75,6 +75,13 @@ STMap256::erase(const uint256& key)
     return mValue.erase(key);
 }
 
+bool
+STMap256::has(const uint256& key)
+{
+    assert(!mRootHash);
+    return mValue.find(key) != mValue.end();
+}
+
 void
 STMap256::updateRoot(const uint256& rootHash)
 {
