@@ -221,7 +221,6 @@ private:
     bool mHaveContracts;
     bool mSignaled;
     bool mByHash;
-    std::atomic_bool mContractRootLoaded;
     std::uint32_t mSeq;
     Reason const mReason;
 
@@ -233,6 +232,7 @@ private:
     std::mutex mReceivedDataLock;
     std::vector<PeerDataPairType> mReceivedData;
     bool mReceiveDispatched;
+    std::atomic_bool mContractRootLoaded;
     std::map<uint256, std::shared_ptr<SHAMap>> mContractMapInfo;
     std::atomic_bool mCheckingContract{false};
 };
