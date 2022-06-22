@@ -41,7 +41,8 @@ STValidationSet::STValidationSet(
     std::uint32_t validationSeq,
     uint256 validationHash,
     PublicKey const& publicKey,
-    valSet set)
+    valSet set,
+    NetClock::time_point closeTime)
     : STObject(validationSetFormat(), sfValidationSet)
     , mValidationSeq(validationSeq)
     , mValidationHash(validationHash)
@@ -66,6 +67,8 @@ STValidationSet::STValidationSet(
         }
         setFieldArray(sfValidations, validations);
     } 
+    setFieldU32(sfCloseTime, closeTime.time_since_epoch().count());
+
 }
 
 //std::shared_ptr<RCLTxSet>
@@ -115,6 +118,7 @@ SOTemplate const& STValidationSet::validationSetFormat()
         { sfSequence,         soeREQUIRED },  
         { sfLedgerHash,       soeREQUIRED },
         { sfValidations,      soeREQUIRED },
+        { sfCloseTime,        soeREQUIRED },
 
     };
     return format;

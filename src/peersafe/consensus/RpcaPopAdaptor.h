@@ -117,7 +117,7 @@ public:
         RCLCxLedger const& ledger,
         ConsensusMode mode);
     bool
-    peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer);
+    peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer, NetClock::time_point closeTime);
     bool
     sendAcquirValidationSet(std::shared_ptr<STValidationSet> const& validationSet, std::shared_ptr<PeerImp>& peer);
     bool

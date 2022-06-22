@@ -39,7 +39,8 @@ public:
         std::uint32_t validationSeq,
         uint256 validationHash,
         PublicKey const& publicKey,
-        valSet set);
+        valSet set,
+        NetClock::time_point closeTime);
 
     Blob getSerialized() const;
 

@@ -1467,7 +1467,7 @@ PopConsensus::peerAcquirValidationSet(
     {
         SerialIter sit(makeSlice(m->msg()));
         STObject object(sit, sfNewFields);
-        return adaptor_.peerAcquirValidationSet(object.getFieldU32(sfValidatedSequence), peer);
+        return adaptor_.peerAcquirValidationSet(object.getFieldU32(sfValidatedSequence), peer, adaptor_.app_.timeKeeper().closeTime());
     }
     catch (std::exception const& e)
     {
