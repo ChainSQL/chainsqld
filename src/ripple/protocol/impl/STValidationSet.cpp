@@ -12,12 +12,12 @@ STValidationSet::STValidationSet(
     ManifestCache& cache)
     : STObject(validationSetFormat(), sit, sfValidationSet)
     , mPublic(publicKey)
+    , mSet(std::vector<std::shared_ptr<STValidation>>())
 
 {
      // This is our own public key and it should always be valid.
     if (!publicKeyType(publicKey))
         LogicError("Invalid STValidationSet public key");
-    assert(mNodeID.isNonZero());
     mValidationSeq = getFieldU32(sfSequence);
     mValidationHash = getFieldH256(sfLedgerHash);
     auto validations = getFieldArray(sfValidations);
@@ -25,16 +25,15 @@ STValidationSet::STValidationSet(
     {
         if (item.getFieldVL(sfPublicKey).size() == 0)
             continue;
-        PublicKey const publicKey{makeSlice(item.getFieldVL(sfPublicKey))};
-        SerialIter sit(makeSlice(item.getFieldVL(sfRaw)));
+        Blob const& publickey = item.getFieldVL(sfPublicKey);
+        PublicKey const publicKey{makeSlice(publickey)};
+
+        Blob const& raw = item.getFieldVL(sfRaw);
+        SerialIter sit(makeSlice(raw));
         mSet.emplace_back(std::make_shared<STValidation>(
             std::ref(sit), publicKey, [&](PublicKey const& pk) {
                     return calcNodeID(cache.getMasterKey(pk));
                 }));
-        /*mSet.emplace_back(std::make_shared<STValidation>(
-            item.getFieldVL(sfRaw), publicKey, [&](PublicKey const& pk) {
-                        return calcNodeID(pk);
-                    }));*/
     }
 }
 
@@ -66,7 +65,7 @@ STValidationSet::STValidationSet(
             validations.push_back(obj);
         }
         setFieldArray(sfValidations, validations);
-    }
+    } 
 }
 
 //std::shared_ptr<RCLTxSet>

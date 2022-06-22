@@ -223,9 +223,14 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 void
 PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair)
 {
-    protocol::TMConsensus consensus;
+    STObject obj(sfNewFields);
+    obj.setFieldU32(sfValidatedSequence, pair.first);
+    auto now = app_.timeKeeper().closeTime().time_since_epoch().count();
+    obj.setFieldU32(sfCloseTime, now);
+    auto data = obj.getSerializer().peekData();
 
-    consensus.set_msg(&pair.first, sizeof(pair.first));
+    protocol::TMConsensus consensus;
+    consensus.set_msg(&data[0], data.size());
     consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATIONSET);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
     auto peer = app_.peerManager().findPeerByValPublicKey(pair.second);

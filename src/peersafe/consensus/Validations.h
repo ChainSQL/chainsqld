@@ -296,6 +296,7 @@ class Validations
 
     // Manages concurrent access to members
     mutable Mutex mutex_;
+    mutable Mutex lastValmutex_;
 
     // Validations from currently listed and trusted nodes (partial and full)
     hash_map<NodeID, Validation> current_;
@@ -719,7 +720,7 @@ public:
     void
     setLastValidations(std::vector<std::shared_ptr<STValidation>>const validations)
     {
-        std::lock_guard lock{mutex_};
+        std::lock_guard lock{lastValmutex_};
         if (validations.empty())
             return;
         auto seq = validations[0]->getFieldU32(sfLedgerSequence);
@@ -743,7 +744,7 @@ public:
     std::vector<std::shared_ptr<STValidation>>
     getLastValidationsFromCache(std::uint32_t seq, uint256 id)
     {
-        std::lock_guard lock{mutex_};
+        std::lock_guard lock{lastValmutex_};
         if (seq == std::get<0>(lastValidations_) &&
             id == std::get<1>(lastValidations_))
             return std::get<2>(lastValidations_);

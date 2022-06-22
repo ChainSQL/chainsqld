@@ -105,8 +105,12 @@ RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
     auto const tvc = validations.size();
     if (tvc < minVal)  // nothing we can do
     {
-        JLOG(j_.trace()) << "Only " << tvc << " validations for " << info.hash;
-        return nullptr;
+        validations = getLastValidations(ledger->info().seq, ledger->info().hash);
+        if (validations.size() < minVal)
+        {
+            JLOG(j_.trace()) << "Only " << tvc << " validations for " << info.hash;
+            return nullptr;
+        }
     }
 
     JLOG(j_.info()) << "Advancing accepted ledger to " << info.seq
@@ -617,14 +621,14 @@ RpcaPopAdaptor::peerValidationSetData(
         auto valSet = vaildationSet->getValSet();
         for (auto const& item : valSet)
         {
-            if (seq != item->getFieldU32(sfSequence) || hash != item->getLedgerHash())
+            if (seq != item->getFieldU32(sfLedgerSequence) || hash != item->getLedgerHash())
                 return false;
             if (item->verify())
             {
                 validations.push_back(item);
             }
         }
-        if (validations.size() > app_.validators().quorum())
+        if (validations.size() >= app_.validators().quorum())
         {
             app_.getValidations().setLastValidations(validations);
             auto result = checkLedgerAccept(hash, seq);

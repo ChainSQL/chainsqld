@@ -1312,7 +1312,7 @@ PopConsensus::onViewChange(uint64_t toView)
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
     auto ret = viewChangeManager_.FindHighValSeqViewChangeByView(view_, adaptor_.getValidLedgerIndex());
-    if (ret.first > prevLedgerSeq_)
+    if (ret.first > adaptor_.getValidLedgerIndex())
         adaptor_.launchAcquirValidationSet(ret);
 
     viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
@@ -1463,17 +1463,11 @@ PopConsensus::peerAcquirValidationSet(
         JLOG(j_.info()) << "drop UNTRUSTED AcquirValidation";
         return false;
     }
-    if (m->msg().size() != 4)
-    {
-        JLOG(j_.warn()) << "Acquire ValidationSet: malformed";
-        peer->charge(Resource::feeInvalidSignature);
-        return false;
-    }
     try
     {
-        uint32_t seq;
-        memcpy(&seq, m->msg().data(), 4);
-        return adaptor_.peerAcquirValidationSet(std::int32_t(seq), peer);
+        SerialIter sit(makeSlice(m->msg()));
+        STObject object(sit, sfNewFields);
+        return adaptor_.peerAcquirValidationSet(object.getFieldU32(sfValidatedSequence), peer);
     }
     catch (std::exception const& e)
     {
@@ -1501,9 +1495,8 @@ PopConsensus::peerValidationSetData(
         STValidationSet::pointer validationSet;
 
         SerialIter sit(makeSlice(m->msg()));
-        PublicKey const publicKey{makeSlice(m->signerpubkey())};
 
-        validationSet = std::make_shared<STValidationSet>(std::ref(sit), publicKey, adaptor_.app_.validatorManifests());
+        validationSet = std::make_shared<STValidationSet>(std::ref(sit), adaptor_.valPublic_, adaptor_.app_.validatorManifests());
 
         return adaptor_.peerValidationSetData(validationSet);
     }
