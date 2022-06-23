@@ -6,42 +6,77 @@
 namespace ripple {
 
 uint32_t
-StateManager::getAccountSeq(AccountID const& id, ReadView const& view)
+StateManager::getAndIncSignSeq(AccountID const& id, ReadView const& view)
 {
-	std::lock_guard lock(mutex_);
-	auto sle = view.read(keylet::account(id));
-	if (sle)
-	{
-        auto seq = sle->getFieldU32(sfSequence);
+    std::lock_guard lock(mutex_);
+    auto sle = view.read(keylet::account(id));
+    if (sle)
+    {
+        auto seq = std::max(sle->getFieldU32(sfSequence),accountState_[id].checkSeq);
         if (accountState_.find(id) != accountState_.end() &&
-            accountState_[id].sequence >= seq)
+            accountState_[id].signSeq >= seq)
         {
-                return accountState_[id].sequence;
+            if (!accountState_[id].setFailedSeq.empty())
+            {
+                auto ret = *accountState_[id].setFailedSeq.begin();
+                accountState_[id].setFailedSeq.erase(ret);
+                return ret;
+            }
+            return accountState_[id].signSeq++;
         }
         else
         {
-            accountState_[id].sequence = sle->getFieldU32(sfSequence);
-            return sle->getFieldU32(sfSequence);
-        }		
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-uint32_t
-StateManager::getAccountSeq(AccountID const& id,std::shared_ptr<const SLE> const sle)
-{
-    std::lock_guard lock(mutex_);
-    if (accountState_.find(id) != accountState_.end() && 
-		accountState_[id].sequence >= sle->getFieldU32(sfSequence))
-    {
-		return accountState_[id].sequence;
+            //Maybe client sign and submit tx first,and then let chain-node sign and submit
+            accountState_[id].signSeq = seq + 1;
+            accountState_[id].checkSeq = seq;
+            return seq;
+        }
     }
     else
     {
-        accountState_[id].sequence = sle->getFieldU32(sfSequence);
+        return 0;
+    }
+}
+
+uint32_t
+StateManager::getAccountCheckSeq(AccountID const& id, ReadView const& view)
+{
+    std::lock_guard lock(mutex_);
+    auto sle = view.read(keylet::account(id));
+    if (sle)
+    {
+        auto seq = sle->getFieldU32(sfSequence);
+        if (accountState_.find(id) != accountState_.end() &&
+            accountState_[id].checkSeq >= seq)
+        {
+            return accountState_[id].checkSeq;
+        }
+        else
+        {
+            accountState_[id].signSeq = sle->getFieldU32(sfSequence);
+            accountState_[id].checkSeq = sle->getFieldU32(sfSequence);
+            return sle->getFieldU32(sfSequence);
+        }
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+uint32_t
+StateManager::getAccountCheckSeq(AccountID const& id,std::shared_ptr<const SLE> const sle)
+{
+    std::lock_guard lock(mutex_);
+    if (accountState_.find(id) != accountState_.end() && 
+		accountState_[id].checkSeq >= sle->getFieldU32(sfSequence))
+    {
+		return accountState_[id].checkSeq;
+    }
+    else
+    {
+        accountState_[id].signSeq = sle->getFieldU32(sfSequence);
+        accountState_[id].checkSeq = sle->getFieldU32(sfSequence);
         return sle->getFieldU32(sfSequence);
     }
 }
@@ -55,19 +90,25 @@ void StateManager::resetAccountSeq(AccountID const& id)
 	}	
 }
 
-void StateManager::incrementSeq(AccountID const& id)
+void
+StateManager::onTxCheckSuccess(AccountID const& id)
 {
-	std::lock_guard lock(mutex_);
-	if (accountState_.find(id) != accountState_.end())
-	{
-		++accountState_[id].sequence;
-		return;
-	}
-	auto sle = app_.openLedger().current()->read(keylet::account(id));
-	if (sle)
-	{
-		accountState_[id].sequence = sle->getFieldU32(sfSequence) + 1;
-	}
+    std::lock_guard lock(mutex_);
+    if (accountState_.find(id) != accountState_.end())
+    {
+        auto seq = accountState_[id].checkSeq;
+        if (accountState_[id].setFailedSeq.find(seq) != accountState_[id].setFailedSeq.end())
+            accountState_[id].setFailedSeq.erase(seq);
+        ++accountState_[id].checkSeq;
+        return;
+    }
+}
+
+void
+StateManager::addFailedSeq(AccountID const& id, uint32_t seq)
+{
+    std::lock_guard lock(mutex_);
+    accountState_[id].setFailedSeq.insert(seq);
 }
 
 void StateManager::clear()

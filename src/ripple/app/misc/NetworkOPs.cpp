@@ -1620,8 +1620,13 @@ NetworkOPsImp::doTransactionCheck(
             return {ter, false};
         }
 
-        app_.getStateManager().incrementSeq(txCur->getAccountID(sfAccount));
+        app_.getStateManager().onTxCheckSuccess(txCur->getAccountID(sfAccount));
         return {tesSUCCESS, true};
+    }
+    else if (ter.ter != terPRE_SEQ)
+    {
+        app_.getStateManager().addFailedSeq(
+            txCur->getAccountID(sfAccount), txCur->getSequence());
     }
 
     return {ter, false};
@@ -1939,7 +1944,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 if (e.failType != FailHard::yes)
                 {
                     auto txCur = e.transaction->getSTransaction();
-                    auto seq = app_.getStateManager().getAccountSeq(
+                    auto seq = app_.getStateManager().getAccountCheckSeq(
                         txCur->getAccountID(sfAccount),
                         *app_.checkedOpenLedger().current());
 
