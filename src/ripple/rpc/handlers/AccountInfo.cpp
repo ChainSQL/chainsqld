@@ -107,7 +107,7 @@ doAccountInfo(RPC::JsonContext& context)
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
 
         auto seq = std::max(
-                    context.app.getStateManager().getAccountSeq(accountID, sleAccepted),
+                    context.app.getStateManager().getAccountCheckSeq(accountID, sleAccepted),
                     jvAccepted[jss::Sequence].asUInt());
 
         jvAccepted[jss::Sequence] = seq;
