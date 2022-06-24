@@ -1,3 +1,4 @@
+#include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/Executive.h>
 #include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
@@ -430,20 +431,10 @@ TER Executive::finalize() {
     {
         for (auto a : m_ext->sub.selfdestruct)
         {
-            auto pSle = m_s.getSle(a);
-            if (pSle->isFieldPresent(sfStorageExtension))
+            if (auto ter = Transactor::cleanUpDirOnDeleteAccount(m_s.ctx(), a);
+                ter != tesSUCCESS)
             {
-                STMap256& mapExtension = pSle->peekFieldM256(sfStorageExtension);
-                if (mapExtension.has(NODE_TYPE_CONTRACTKEY))
-                {
-                    uint64_t page = fromUint256(mapExtension[NODE_TYPE_CONTRACTKEY]);
-                    // Remove from directory
-                    if (!m_s.ctx().view().dirRemove(
-                            keylet::contract_index(), page, pSle->key(), true))
-                    {
-                        return tefBAD_LEDGER;
-                    }
-                }
+                return ter;
             }
 
             m_s.kill(a);

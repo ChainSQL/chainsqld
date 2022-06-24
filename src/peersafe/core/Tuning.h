@@ -53,6 +53,7 @@ namespace ripple {
 
     uint256 const NODE_TYPE_CONTRACTKEY = uint256(1);
     uint256 const NODE_TYPE_AUTHORIZE = uint256(2);
+    uint256 const NODE_TYPE_AUTHORIZER = uint256(3);
 
 } // ripple
 

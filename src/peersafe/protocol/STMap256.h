@@ -23,6 +23,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/STBitString.h>
 #include <ripple/protocol/STInteger.h>
 #include <ripple/protocol/STBase.h>
+#include <ripple/protocol/TER.h>
 #include <ripple/shamap/SHAMap.h>
 #include <ripple/protocol/jss.h>
 
@@ -69,28 +70,7 @@ public:
     }
 
     void
-    add(Serializer& s) const override
-    {
-        assert(fName->isBinary());
-        assert(fName->fieldType == STI_MAP256);
-
-        Blob blob;
-        if (mRootHash)
-        {
-            blob.insert(blob.end(),mRootHash->begin(),mRootHash->end());
-        }
-        else
-        {
-            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-            {
-                blob.insert(
-                    blob.end(), iter->first.begin(), iter->first.end());
-                blob.insert(
-                    blob.end(), iter->second.begin(), iter->second.end());
-            }
-        }
-        s.addVL(blob);
-    }
+    add(Serializer& s) const override;
 
     void
     setValue(const STMap256& v)
@@ -99,30 +79,28 @@ public:
         mRootHash = v.mRootHash;
     }
 
-    Json::Value getJson(JsonOptions /*options*/) const override
-    {
-        Json::Value ret(Json::objectValue);
+    Json::Value
+    getJson(JsonOptions /*options*/) const override;
 
-        if (mRootHash)
-            ret[jss::hash] = to_string(*mRootHash);
-        else
-        {
-            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-            {
-                ret[to_string(iter->first)] = to_string(iter->second);
-            }
-        }
+    uint256&
+    operator[](const uint256& key);
 
-        return ret;
-    }
+    uint256&
+    at(const uint256& key);
 
-	uint256& operator[](const uint256& key);	
+    uint256 const&
+    at(const uint256& key) const;
 
-	uint256& at(const uint256& key);
+    size_t erase(const uint256& key);
 
-	size_t erase(const uint256& key);
+    bool
+    has(const uint256& key) const;
 
-    bool has(const uint256& key);
+    size_t
+    size() const;
+
+    TER
+    forEach(std::function<TER(uint256 const&, uint256 const&)> f) const;
 
     void updateRoot(const uint256& rootHash);
 

@@ -59,8 +59,6 @@ LedgerFormats::LedgerFormats()
 			{ sfStorageOverlay,		 soeOPTIONAL },
 			{ sfContractCode,		 soeOPTIONAL },
             { sfWhiteLists,          soeOPTIONAL },
-            { sfAuthorize,           soeOPTIONAL },
-            { sfOwnerNode,           soeOPTIONAL },      
             { sfStorageExtension,    soeOPTIONAL }
         },
         commonFields);

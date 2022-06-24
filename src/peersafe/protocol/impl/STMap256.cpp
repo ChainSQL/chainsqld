@@ -54,6 +54,46 @@ STMap256::STMap256(SerialIter& sit, SField const& name) : STBase(name)
     }
 }
 
+void
+STMap256::add(Serializer& s) const
+{
+    assert(fName->isBinary());
+    assert(fName->fieldType == STI_MAP256);
+
+    Blob blob;
+    if (mRootHash)
+    {
+        blob.insert(blob.end(), mRootHash->begin(), mRootHash->end());
+    }
+    else
+    {
+        for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+        {
+            blob.insert(blob.end(), iter->first.begin(), iter->first.end());
+            blob.insert(blob.end(), iter->second.begin(), iter->second.end());
+        }
+    }
+    s.addVL(blob);
+}
+
+Json::Value
+STMap256::getJson(JsonOptions /*options*/) const
+{
+    Json::Value ret(Json::objectValue);
+
+    if (mRootHash)
+        ret[jss::hash] = to_string(*mRootHash);
+    else
+    {
+        for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
+        {
+            ret[to_string(iter->first)] = to_string(iter->second);
+        }
+    }
+
+    return ret;
+}
+
 uint256&
 STMap256::operator[](const uint256& key)
 {
@@ -68,6 +108,13 @@ STMap256::at(const uint256& key)
     return mValue.at(key);
 }
 
+uint256 const&
+STMap256::at(const uint256& key) const
+{
+    assert(!mRootHash);
+    return mValue.at(key);
+}
+
 size_t
 STMap256::erase(const uint256& key)
 {
@@ -76,10 +123,30 @@ STMap256::erase(const uint256& key)
 }
 
 bool
-STMap256::has(const uint256& key)
+STMap256::has(const uint256& key) const
 {
     assert(!mRootHash);
     return mValue.find(key) != mValue.end();
+}
+
+size_t
+STMap256::size() const
+{
+    assert(!mRootHash);
+    return mValue.size();
+}
+
+TER
+STMap256::forEach(std::function<TER(uint256 const&, uint256 const&)> f) const
+{
+    assert(!mRootHash);
+    for (auto const& [k, v] : mValue)
+    {
+        if (auto ter = f(k, v); ter != tesSUCCESS)
+            return ter;
+    }
+
+    return tesSUCCESS;
 }
 
 void
