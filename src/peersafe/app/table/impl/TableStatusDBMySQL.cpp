@@ -428,12 +428,46 @@ namespace ripple {
 		soci_ret ret = soci_success;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
-            std::string sql = boost::str(boost::format(
-                (R"(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
-                WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)")));
+            ret = UpdateSyncDBNoCatch(
+                Owner,
+                TableNameInDB,
+                TxnLedgerHash,
+                TxnLedgerSeq,
+                LedgerHash,
+                LedgerSeq,
+                TxnUpdateHash,
+                TxnLedgerTime,
+                PreviousCommit);
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.error()) <<
+            "UpdateSyncDB exception" << e.what();
+			ret = soci_exception;
+        }
+        return ret;
+    }
 
-            soci::statement st = (sql_session->prepare << sql,
+    soci_ret
+    TableStatusDBMySQL::UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnLedgerHash,
+        const std::string& TxnLedgerSeq,
+        const std::string& LedgerHash,
+        const std::string& LedgerSeq,
+        const std::string& TxnUpdateHash,
+        const std::string& TxnLedgerTime,
+        const std::string& PreviousCommit)
+    {
+        soci_ret ret = soci_success;
+        LockedSociSession sql_session = databasecon_->checkoutDb();
+        std::string sql = boost::str(boost::format((
+            R"(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
+            WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)")));
+
+        soci::statement st =
+            (sql_session->prepare << sql,
                 soci::use(TxnLedgerHash),
                 soci::use(TxnLedgerSeq),
                 soci::use(LedgerHash),
@@ -444,14 +478,7 @@ namespace ripple {
                 soci::use(Owner),
                 soci::use(TableNameInDB));
 
-            st.execute(true);
-        }
-        catch (std::exception const& e)
-        {
-            JLOG(journal_.error()) <<
-            "UpdateSyncDB exception" << e.what();
-			ret = soci_exception;
-        }
+        st.execute(true);
         return ret;
     }
 
@@ -495,22 +522,7 @@ namespace ripple {
     {
 		soci_ret ret = soci_success;
         try {            
-            LockedSociSession sql_session = databasecon_->checkoutDb();
-            std::string sql = boost::str(boost::format(
-                (R"(UPDATE SyncTableState SET TxnUpdateHash = '%s'
-                WHERE Owner = '%s' AND TableNameInDB = '%s';)"))
-                % TxnUpdateHash
-                % Owner
-                % TableNameInDB);
-
-            soci::statement st = (*sql_session).prepare << sql;
-
-            bool dbret = st.execute(true);
-
-            if (dbret)//if have records
-            {
-                ret = soci_success;
-            }
+            ret = UpdateSyncDBNoCatch(Owner, TableNameInDB, TxnUpdateHash, PreviousCommit);
         }
         catch (std::exception const& e)
         {
@@ -519,6 +531,31 @@ namespace ripple {
 			ret = soci_exception;
         }
 
+        return ret;
+    }
+
+    soci_ret
+    TableStatusDBMySQL::UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnUpdateHash,
+        const std::string& PreviousCommit)
+    {
+        soci_ret ret = soci_success;
+        LockedSociSession sql_session = databasecon_->checkoutDb();
+        std::string sql = boost::str(
+            boost::format((R"(UPDATE SyncTableState SET TxnUpdateHash = '%s'
+                WHERE Owner = '%s' AND TableNameInDB = '%s';)")) %
+            TxnUpdateHash % Owner % TableNameInDB);
+
+        soci::statement st = (*sql_session).prepare << sql;
+
+        bool dbret = st.execute(true);
+
+        if (dbret)  // if have records
+        {
+            ret = soci_success;
+        }
         return ret;
     }
 

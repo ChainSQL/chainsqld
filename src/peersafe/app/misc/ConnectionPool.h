@@ -102,6 +102,15 @@ public:
     }
 
     void
+    removeConnection(const std::shared_ptr<ConnectionUnit>& conn)
+    {
+        std::lock_guard lock(mtx_);
+        auto it = std::find(vecPool_.begin(), vecPool_.end(), conn);
+        if (it != vecPool_.end())
+            vecPool_.erase(it);
+    }
+
+    void
     sweep()
     {
         std::lock_guard lock(mtx_);

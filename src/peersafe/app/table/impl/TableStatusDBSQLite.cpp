@@ -480,23 +480,8 @@ namespace ripple {
 
        try
         {
-            auto db(databasecon_->checkoutDb());
-            
-            static std::string updateVal(
-                R"sql(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
-                WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)sql");
-
-            *db << updateVal,
-                soci::use(TxnLedgerHash),
-                soci::use(TxnLedgerSeq),
-                soci::use(LedgerHash),
-                soci::use(LedgerSeq),
-                soci::use(TxnUpdateHash), 
-                soci::use(TxnLedgerTime),
-                soci::use(PreviousCommit),
-                soci::use(Owner),
-                soci::use(TableNameInDB);
-                        
+           ret = UpdateSyncDBNoCatch(Owner,TableNameInDB,TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,
+                    TxnUpdateHash, TxnLedgerTime, PreviousCommit);
         }
         catch (std::exception const& e)
         {
@@ -505,6 +490,35 @@ namespace ripple {
 			ret = soci_exception;
         }
         
+        return ret;
+    }
+
+    soci_ret
+    TableStatusDBSQLite::UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnLedgerHash,
+        const std::string& TxnLedgerSeq,
+        const std::string& LedgerHash,
+        const std::string& LedgerSeq,
+        const std::string& TxnUpdateHash,
+        const std::string& TxnLedgerTime,
+        const std::string& PreviousCommit)
+    {
+        soci_ret ret = soci_success;
+
+        auto db(databasecon_->checkoutDb());
+
+        static std::string updateVal(
+            R"sql(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
+            WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)sql");
+
+        *db << updateVal, soci::use(TxnLedgerHash), soci::use(TxnLedgerSeq),
+            soci::use(LedgerHash), soci::use(LedgerSeq),
+            soci::use(TxnUpdateHash), soci::use(TxnLedgerTime),
+            soci::use(PreviousCommit), soci::use(Owner),
+            soci::use(TableNameInDB);
+
         return ret;
     }
 
@@ -543,18 +557,8 @@ namespace ripple {
 		soci_ret ret = soci_success;
   
         try {
-            auto db(databasecon_->checkoutDb());            
-
-            static std::string updateVal(
-                R"sql(UPDATE SyncTableState SET TxnUpdateHash = :TxnUpdateHash,PreviousCommit = :PreviousCommit
-        WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)sql");
-
-            *db << updateVal,
-                soci::use(TxnUpdateHash),
-				soci::use(PreviousCommit),
-                soci::use(Owner),
-                soci::use(TableNameInDB);
-                       
+            ret = UpdateSyncDBNoCatch(
+                Owner, TableNameInDB, TxnUpdateHash, PreviousCommit);
         }
         catch (std::exception const& e)
         {
@@ -562,6 +566,27 @@ namespace ripple {
                 "UpdateSyncDB exception" << e.what();
 			ret = soci_exception;
         }
+
+        return ret;
+    }
+    soci_ret
+    TableStatusDBSQLite::UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnUpdateHash,
+        const std::string& PreviousCommit)
+    {
+        soci_ret ret = soci_success;
+
+        auto db(databasecon_->checkoutDb());
+
+        static std::string updateVal(
+            R"sql(UPDATE SyncTableState SET TxnUpdateHash = :TxnUpdateHash,PreviousCommit = :PreviousCommit
+    WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)sql");
+
+        *db << updateVal, soci::use(TxnUpdateHash),
+            soci::use(PreviousCommit), soci::use(Owner),
+            soci::use(TableNameInDB);
 
         return ret;
     }

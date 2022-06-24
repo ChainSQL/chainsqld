@@ -65,6 +65,18 @@ public:
         const std::string &TxnLedgerHash, const std::string &TxnLedgerSeq, const std::string &LedgerHash,
         const std::string &LedgerSeq, const std::string &TxHash, const std::string &TxnLedgerTime, const std::string &PreviousCommit) = 0;
 
+    virtual soci_ret
+    UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnLedgerHash,
+        const std::string& TxnLedgerSeq,
+        const std::string& LedgerHash,
+        const std::string& LedgerSeq,
+        const std::string& TxHash,
+        const std::string& TxnLedgerTime,
+        const std::string& PreviousCommit) = 0;
+
     virtual soci_ret UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB,
             const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &PreviousCommit) = 0;
 
@@ -73,6 +85,13 @@ public:
 
     virtual soci_ret UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB,
         bool bDel, const std::string &PreviousCommit) = 0;
+
+    virtual soci_ret
+    UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnUpdateHash,
+        const std::string& PreviousCommit) = 0;
 
     virtual DatabaseCon* GetDatabaseConn() = 0;
 

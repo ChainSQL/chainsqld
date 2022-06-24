@@ -50,6 +50,9 @@ namespace ripple {
     uint64_t const CONNECTION_TIMEOUT   = 60;
 
     int const DELAY_START_COUNT = 5;
-    } // ripple
+
+    int const MAX_CONN_RETRY_COUNT = 3;
+
+} // ripple
 
 #endif

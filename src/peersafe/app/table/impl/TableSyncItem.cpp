@@ -719,6 +719,50 @@ bool TableSyncItem::UpdateSyncDB(AccountID accountID, std::string TableName, std
 	return ret == soci_success;
 }
 
+bool
+TableSyncItem::UpdateSyncDB(
+    bool bLastOne,
+    const STTx& tx,
+    const protocol::TMTableData& tableData)
+{
+    if (bLastOne)
+    {
+        uTxDBUpdateHash_ = beast::zero;
+        UpdateSyncDB(tableData);
+    }
+    else
+    {
+        uTxDBUpdateHash_ = tx.getTransactionID();
+        getTableStatusDB().UpdateSyncDBNoCatch(
+            to_string(accountID_),
+            sTableNameInDB_,
+            to_string(uTxDBUpdateHash_),
+            std::string(""));
+    }
+    return true;
+}
+
+bool TableSyncItem::UpdateSyncDB(const protocol::TMTableData& tableData)
+{
+    std::string LedgerHash = tableData.ledgerhash();
+    std::string LedgerCheckHash = tableData.ledgercheckhash();
+    std::string PreviousCommit;
+    std::uint32_t closeTime = tableData.closetime();
+    std::uint32_t seq = tableData.ledgerseq();
+    std::string LedgerSeq = std::to_string(seq);
+    getTableStatusDB().UpdateSyncDBNoCatch(
+        to_string(accountID_),
+        sTableNameInDB_,
+        LedgerCheckHash,
+        LedgerSeq,
+        LedgerHash,
+        LedgerSeq,
+        to_string(uTxDBUpdateHash_),
+        std::to_string(closeTime),
+        PreviousCommit);
+    return true;
+}
+
 bool TableSyncItem::UpdateStateDB(const std::string & owner, const std::string & tablename, const bool &isAutoSync)
 {
     return app_.getTableStatusDB().UpdateStateDB(owner, tablename, isAutoSync);
@@ -1002,7 +1046,10 @@ TableSyncItem::DealTranCommonTx(
 
 bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableData>& aData)
 {
-    for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
+    std::vector<protocol::TMTableData>::const_iterator iter = aData.begin();
+    int restart = 0;
+    int repeated = 0;
+    while ( iter != aData.end())
     {
         std::string LedgerHash = iter->ledgerhash();
         std::string LedgerCheckHash = iter->ledgercheckhash();
@@ -1028,7 +1075,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             }
             //JLOG(journal_.info()) <<
             //    "find no tx and DoUpdateSyncDB LedgerSeq:" << LedgerSeq;
-
+            iter++;
             continue;
         }
 
@@ -1040,6 +1087,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             break;
         }
 
+        int start = restart;
         try
         {
             // start transaction
@@ -1047,9 +1095,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             bool earlyCommitTxs = false;
 
             int count = 0;
-            std::vector<std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubVec;
-
-            for (int i = 0; i < iter->txnodes().size(); i++)
+            std::map<uint256,std::tuple<STTx, int, std::pair<bool, std::string>>> tmpPubMap;
+            bool bFindLastSuccessTx = uTxDBUpdateHash_.isZero() ? true : false;
+            for (int i = start; i < iter->txnodes().size(); i++)
             {
                 const protocol::TMLedgerNode& node = iter->txnodes().Get(i);
 
@@ -1058,7 +1106,17 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 blob.assign(str.begin(), str.end());
                 STTx tx = std::move((STTx)(SerialIter{ blob.data(), blob.size() }));
                 bool isSQLTransaction = tx.getTxnType() == ttSQLTRANSACTION;
+                bool isLastOne = (i == iter->txnodes().size() - 1);
 
+                if (!bFindLastSuccessTx)  // if a ledger have many txs,first handles some txs,then stop rippled,next start rippled,must jump those txs
+                {
+                    if (tx.getTransactionID() == uTxDBUpdateHash_)
+                    {
+                        bFindLastSuccessTx = true;
+                    }
+                    count++;
+                    continue;
+                }
                 try
                 {
                     //check for jump one tx.
@@ -1071,6 +1129,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     if (stTran == nullptr)
                     {
                         stTran = std::make_shared<TxStoreTransaction>(&getTxStoreDBConn());
+                        start = i;
                     }
 
                     // if the current tx is a transaction,
@@ -1079,9 +1138,11 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     {
                         if (earlyCommitTxs)
                         {
+                            UpdateSyncDB(isLastOne, tx, *iter);
                             stTran->commit();
                             // Re-create transaction object for SQLTransaction Tx
                             stTran.reset(new TxStoreTransaction(&getTxStoreDBConn()));
+                            start = i;
                         }
                         earlyCommitTxs = false;
                     }
@@ -1115,13 +1176,27 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
                     if (isSQLTransaction && ret.first == false) {
                         stTran->rollback();
+                        UpdateSyncDB(isLastOne,tx, *iter);
                         stTran.reset();
                     }
 
                     if (app_.getOPs().hasChainSQLTxListener())
-                        tmpPubVec.emplace_back(tx, vecTxs.size(), ret);
+                        tmpPubMap.emplace(tx.getTransactionID(), std::make_tuple(tx, vecTxs.size(), ret));
 
                     count++;
+                }
+                catch (soci::soci_error& e)
+                {
+                    JLOG(journal_.error()) << "soci exception: " << e.what();
+                    RemoveConnectionUnit();
+                    if (++repeated > MAX_CONN_RETRY_COUNT)
+                    {
+                        SetSyncState(SYNC_STOP);
+                        return true;
+                    }
+                    i = start - 1;
+                    stTran.reset();
+                    continue;
                 }
                 catch (std::exception const& e)
                 {
@@ -1133,56 +1208,62 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
                     if (isSQLTransaction) {
                         stTran->rollback();
+                        UpdateSyncDB(isLastOne, tx, *iter);
                         stTran.reset();
                         continue;
                     }
                 }
 
-                if (isSQLTransaction) {
+                if (isSQLTransaction)
+                {
+                    UpdateSyncDB(isLastOne, tx, *iter);
                     stTran->commit();
                     stTran.reset();
                 }
             }
 
             if (stTran)
+            {
+                uTxDBUpdateHash_.zero();
+                UpdateSyncDB(*iter);
                 stTran->commit();
+            }
 
             //deal with subscribe
             if (app_.getOPs().hasChainSQLTxListener())
             {
-                for (auto iter : tmpPubVec)
+                for (auto itMap : tmpPubMap)
                 {
+                    auto& iter = itMap.second;
                     app_.getTableTxAccumulator().onSubtxResponse(std::get<0>(iter), accountID_, sTableName_, std::get<1>(iter), std::get<2>(iter));
                 }
             }
 
             JLOG(journal_.info()) <<
                 "find tx and UpdateSyncDB LedgerSeq: " << LedgerSeq << " count: " << count;
-            uTxDBUpdateHash_.zero();
-            // write tx time into db,so next start chainsqld can get
-            // last txntime and compare it to time condition
-            auto ret = getTableStatusDB().UpdateSyncDB(
-                to_string(accountID_),
-                sTableNameInDB_,
-                LedgerCheckHash,
-                LedgerSeq,
-                LedgerHash,
-                LedgerSeq,
-                to_string(uTxDBUpdateHash_),
-                std::to_string(iter->closetime()),
-                PreviousCommit);
-            if (ret == soci_exception)
+        }
+        catch (soci::soci_error& e)
+        {
+            JLOG(journal_.error()) << "DealWithEveryLedgerData soci exception: " << e.what();
+            RemoveConnectionUnit();
+            if (++repeated > MAX_CONN_RETRY_COUNT)
             {
                 SetSyncState(SYNC_STOP);
-                break;
+                return true;
             }
+            restart = start;
+            continue;
         }
-        catch (soci::soci_error& e) {
-
-            JLOG(journal_.error()) << "soci::soci_error : " << std::string(e.what());
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.error())
+                << "DealWithEveryLedgerData exception for ledger" << LedgerSeq
+                << ": " << std::string(e.what());
             SetSyncState(SYNC_STOP);
             break;
         }
+        restart = 0;
+        ++iter;
     }
 
     //release connection lock
@@ -1384,6 +1465,17 @@ void TableSyncItem::ReleaseConnectionUnit()
 {
     if (pConnectionUnit_) {
         app_.getConnectionPool().releaseConnection(pConnectionUnit_);
+        pConnectionUnit_.reset();
+    }
+}
+
+
+void
+TableSyncItem::RemoveConnectionUnit()
+{
+    if (pConnectionUnit_)
+    {
+        app_.getConnectionPool().removeConnection(pConnectionUnit_);
         pConnectionUnit_.reset();
     }
 }
