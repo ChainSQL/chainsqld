@@ -467,7 +467,7 @@ PopConsensus::initAnnounce()
 
     auto initAnnounce = std::make_shared<STInitAnnounce>(
         previousLedger_.seq(),
-        prevLedgerID_,
+        previousLedger_.id(),
         adaptor_.valPublic(),
         adaptor_.closeTime());
 
