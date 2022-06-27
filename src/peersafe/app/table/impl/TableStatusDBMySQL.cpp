@@ -621,9 +621,9 @@ namespace ripple {
 
                 if (Owner_ != boost::none && !Owner_.value().empty())
                 {
-                    owner = Owner_.value();
-                    tablename = TableName_.value();
-                    time = TxnLedgerTime_.value();
+                    owner = trim_whitespace(Owner_.value());
+                    tablename = trim_whitespace(TableName_.value());
+                    time = trim_whitespace(TxnLedgerTime_.value());
 
                     std::tuple<std::string, std::string, std::string, bool>tp = make_tuple(owner, tablename, time,isAutoSync);
                     list.push_back(tp);

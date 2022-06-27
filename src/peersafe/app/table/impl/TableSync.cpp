@@ -887,7 +887,7 @@ void TableSync::CreateTableItems()
         AccountID accountID;
         try
         {
-            if (auto pOwner = ripple::parseBase58<AccountID>(trim_whitespace(owner));
+            if (auto pOwner = ripple::parseBase58<AccountID>(owner);
                 pOwner)
             {
                 accountID = *pOwner;
@@ -1288,6 +1288,9 @@ void TableSync::TableSyncThread()
 						std::string localNameInDB;
 						if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, localNameInDB))
 						{
+                            JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT IsNameInDBExist got nameInDB="
+                                                        << localNameInDB
+                                                        << " set deleted = 1 and delete table.";
 							pItem->DoUpdateSyncDB(to_string(stItem.accountID), localNameInDB, true, PreviousCommit);
 							pItem->DeleteTable(localNameInDB);
 						}
@@ -1326,9 +1329,15 @@ void TableSync::TableSyncThread()
 				}
 				else if(!stItem.isDeleted)
 				{
+                    JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT table "
+                                        << stItem.sTableName
+                                        << " not found in ledger:"
+                                        << app_.getLedgerMaster().getValidLedgerIndex();
 					std::string sNameInDB;
 					if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 					{
+                        JLOG(journal_.warn()) << "TableSyncThread SYNC_INIT found real nameInDB " << sNameInDB 
+                            << " in db for table:"<< stItem.sTableName;
 						if (stItem.isAutoSync)
 						{
 							//will drop on the next ledger
