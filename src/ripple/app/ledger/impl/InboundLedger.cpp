@@ -903,7 +903,9 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 rootHash = it->first;
                 assert(pMap != nullptr);
 
+                tmGL.set_itype(protocol::liCONTRACT_NODE);
                 tmGL.set_roothash(rootHash.begin(), rootHash.size());
+                tmGL.clear_nodeids();
                 if (!pMap->isValid())
                 {
                     mFailed = true;
@@ -912,7 +914,6 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 else if (pMap->getHash().isZero())
                 {
                     // we need the root node
-                    tmGL.set_itype(protocol::liCONTRACT_NODE);
                     *tmGL.add_nodeids() = SHAMapNodeID().getRawString();
                     JLOG(m_journal.debug())
                         << "Sending CONTRACT root request to "
@@ -953,7 +954,6 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
 
                             if (!nodes.empty())
                             {
-                                tmGL.set_itype(protocol::liCONTRACT_NODE);
                                 for (auto const& id : nodes)
                                 {
                                     *(tmGL.add_nodeids()) =
