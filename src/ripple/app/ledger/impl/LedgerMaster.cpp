@@ -2138,13 +2138,6 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
 
     tryAdvance();
 
-    auto const lastVals = app_.getValidations().getTrustedForLedger(
-                ledger->info().hash);
-
-    if (lastVals.size() > 0)
-    {
-        app_.getValidations().setLastValidations(lastVals);
-    }
     if (ledger->seq() % 256 == 0)
     {
         // Check if the majority of validators run a higher version rippled

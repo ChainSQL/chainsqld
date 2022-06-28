@@ -1098,7 +1098,7 @@ saveValidatedLedger(
         if (current)
         {
             auto db = app.getLedgerDB().checkoutDb();
-            *db << boost::str(deleteLastValidations % seq);
+            *db << boost::str(deleteLastValidations);
         }
 
     }

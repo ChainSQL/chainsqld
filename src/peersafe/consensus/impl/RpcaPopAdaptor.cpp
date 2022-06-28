@@ -113,6 +113,8 @@ RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
         }
     }
 
+    app_.getValidations().setLastValidations(validations);
+
     JLOG(j_.info()) << "Advancing accepted ledger to " << info.seq
                     << " with >= " << minVal << " validations";
 

@@ -300,7 +300,7 @@ ViewChangeManager::FindHighValSeqViewChange(uint64_t view, std::uint32_t const& 
         if (maxSeq > validatedSeq)
         {
             JLOG(j_.warn()) << "Find a higher validatedledger srcValidatedSeq: "<< validatedSeq
-                        << "desValidatedSeq: " << viewChange->validatedSeq()
+                        << " desValidatedSeq: " << viewChange->validatedSeq()
                         << " view: " << view << " nodePublic: " << viewChange->nodePublic();
              return std::make_pair(maxSeq, viewChange->nodePublic());
         }
