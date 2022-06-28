@@ -1042,7 +1042,7 @@ saveValidatedLedger(
 	boost::format deleteTrans3(
 		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
     boost::format deleteLastValidations(
-            "DELETE FROM LastValidations WHERE LedgerSeq = %u;");
+            "DELETE FROM LastValidations;");
 
     if (!ledger->info().accountHash.isNonZero())
     {

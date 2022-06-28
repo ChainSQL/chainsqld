@@ -81,7 +81,7 @@ STViewChange::getJson(bool withView) const
     ret[jss::PreviousHash] = to_string(prevHash_);
     ret[jss::PreviousSeq] = prevSeq_;
     ret[jss::public_key] = toBase58(TokenType::NodePublic, nodePublic_);
-
+    ret[jss::ValidatedSeq] = validatedSeq_;
     return ret;
 }
 

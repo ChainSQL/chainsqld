@@ -628,6 +628,8 @@ RpcaPopAdaptor::peerValidationSetData(
                 validations.push_back(item);
             }
         }
+        JLOG(j_.warn()) << "Processing peer ValidationData size = "
+                    << validations.size();
         if (validations.size() >= app_.validators().quorum())
         {
             app_.getValidations().setLastValidations(validations);
