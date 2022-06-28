@@ -149,7 +149,7 @@ applyTransaction(
                 << "Transaction failure: " << transHuman(result.first);
             return ApplyResult::Fail;
         }
-         if (result.second)
+        if (result.second)
         {
             JLOG(j.debug())
                 << "Transaction applied: " << transHuman(result.first);

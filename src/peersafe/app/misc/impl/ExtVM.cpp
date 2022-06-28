@@ -648,7 +648,7 @@ ExtVM::transfer_fee_set(
     }
 
     ApplyContext const& ctx = oSle_.ctx();
-    auto j = ctx.app.journal("ExtVM");
+//    auto j = ctx.app.journal("ExtVM");
     std::string sRate = _Rate.toString();
     std::string sMin = _Min.toString();
     std::string sMax = _Max.toString();
