@@ -528,6 +528,7 @@ PopConsensus::startRoundInternal(
         previousLedger_.closeAgree(),
         previousLedger_.seq() + 1);
 
+    adaptor_.ledgerMaster_.setBuildingLedger(0);
     if (mode == ConsensusMode::proposing)
     {
         viewChangeManager_.onNewRound(previousLedger_);
@@ -1041,6 +1042,8 @@ PopConsensus::peerProposalInternal(
                 rawCloseTimes_.self = now_;
                 closeTime_ = newPeerProp.closeTime();
                 proposalTime_ = clock_.now();
+                // Tell the ledger master not to acquire the ledger we're probably building
+                adaptor_.ledgerMaster_.setBuildingLedger(prevLedgerSeq_ + 1);
 
                 if (txSetCached_.find(*setID_) != txSetCached_.end())
                 {
