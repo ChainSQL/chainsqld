@@ -546,7 +546,7 @@ RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
 
         if (seq == getValidLedgerIndex())
             return {nullptr, false};
-
+        
         // Ledger could match the ledger we're already building
         if (seq == ledgerMaster_.getBuildingLedger())
             return {nullptr, false};
@@ -635,10 +635,15 @@ RpcaPopAdaptor::peerValidationSetData(
         if (validations.size() >= app_.validators().quorum())
         {
             app_.getValidations().setLastValidations(validations);
-            auto result = checkLedgerAccept(hash, seq);
-            if (result.first && result.second)
+
+            auto ledger = app_.getInboundLedgers().acquire(
+            hash, seq, InboundLedger::Reason::GENERIC);
+            if (ledger)
             {
-                doValidLedger(result.first);
+                if (!!checkLedgerAccept(ledger->info()))
+                {
+                    doValidLedger(ledger);
+                }
             }
         }
     }
