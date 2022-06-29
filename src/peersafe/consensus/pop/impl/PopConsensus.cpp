@@ -591,6 +591,15 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         startRoundInternal(
             now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
     }
+    else if (adaptor_.app_.getInboundLedgers().isFailure(prevLedgerID_))
+    {
+        mode_.set(ConsensusMode::observing, adaptor_);
+        prevLedgerID_ = previousLedger_.id();
+
+        JLOG(j_.warn())
+                    << "fetch for netLgr found failed acquire lgrId: "<< lgrId
+                        << " prevLedgerID_: " << prevLedgerID_;
+    }
     else
     {
         mode_.set(ConsensusMode::wrongLedger, adaptor_);
