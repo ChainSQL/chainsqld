@@ -240,8 +240,8 @@ public:
 
     bool UpdateStateDB(const std::string & owner, const std::string & tablename, const bool &isAutoSync);
 
-    bool UpdateSyncDB(bool bLastOne, const STTx& tx,const protocol::TMTableData& tableData);
-    bool UpdateSyncDB(const protocol::TMTableData& tableData);
+    bool UpdateSyncDB(bool bLastOne, uint256 const& updateHash,const protocol::TMTableData& tableData);
+    bool UpdateSyncDB(const protocol::TMTableData& tableData,uint256 const& updateHash);
     //bool DoUpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &PreviousCommit);
 
     bool DoUpdateSyncDB(const std::string &Owner, const std::string &TableName, const std::string &TxnLedgerHash, const std::string &TxnLedgerSeq, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &TxHash, const std::string &cond, const std::string &PreviousCommit);
@@ -290,6 +290,9 @@ private:
             const std::vector<STTx>& vecTxs,
             std::uint32_t seq,
             std::uint32_t closeTime);
+
+    std::vector<std::vector<std::shared_ptr<STTx>>>
+    fetchLedgerTxSlices(const protocol::TMTableData& tableData);
 
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
     bool WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce);
