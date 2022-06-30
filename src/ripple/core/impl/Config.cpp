@@ -1003,6 +1003,17 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error>(
                     "Unknown feature: " + s + "  in config file.");
         }
+
+        auto const partAmend = section("amendments");
+        for (auto const& s : partAmend.values())
+        {
+            if (auto const f = getRegisteredFeature(s))
+                amendments.push_back(to_string(*f) + " " + s);
+            else
+                Throw<std::runtime_error>(
+                    "Unknown feature: " + s + "  in config file.");
+        }
+
     }
 
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);

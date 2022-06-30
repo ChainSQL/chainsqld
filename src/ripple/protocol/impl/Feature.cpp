@@ -227,8 +227,6 @@ uint256 const
 
 // clang-format on
 
-static std::vector<uint256> const enabled{featureMultiSign, featureTableSleChange, featureContractStorage, featurePromethSLEHideInMeta, featureTableGrant};
-
 std::vector<std::string> const
 getSupportedAmendments()
 {
@@ -249,6 +247,7 @@ getSupportedAmendments()
 std::vector<uint256> const
 getDefaultEnabledFeature()
 {
+    std::vector<uint256> const enabled{featureMultiSign, featureTableSleChange, featureContractStorage, featurePromethSLEHideInMeta, featureTableGrant};
     return enabled;
 }
 }  // namespace ripple

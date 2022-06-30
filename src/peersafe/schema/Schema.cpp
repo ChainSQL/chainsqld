@@ -1233,7 +1233,9 @@ SchemaImp::setup()
         Section supportedAmendments("Supported Amendments");
         supportedAmendments.append(getSupportedAmendments());
 
-        Section enabledAmendments = config_->section(SECTION_AMENDMENTS);
+        Section enabledAmendments("enable Amendments");
+
+        enabledAmendments.append(config_->amendments);
 
         m_amendmentTable = make_AmendmentTable(
             config().AMENDMENT_MAJORITY_TIME,
