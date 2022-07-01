@@ -2056,8 +2056,8 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
         if (mTransactions.empty())
             mTransactions.swap(submit_held);
         else
-            for (auto& e : submit_held)
-                mTransactions.push_back(std::move(e));
+            mTransactions.insert(
+                mTransactions.begin(), submit_held.begin(), submit_held.end());
     }
 
     mCond.notify_all();

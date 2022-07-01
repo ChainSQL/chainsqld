@@ -54,7 +54,7 @@ bool Executive::execute() {
 	// Entry point for a user-executed transaction.
 	
 	// Pay...
-	JLOG(j.info()) << "Paying " << m_gasCost << " from sender";
+	JLOG(j.debug()) << "Paying " << m_gasCost << " from sender";
 	auto& tx = m_s.ctx().tx;
 	auto sender = tx.getAccountID(sfAccount);
 	auto ter = m_s.subBalance(sender, m_gasCost);
