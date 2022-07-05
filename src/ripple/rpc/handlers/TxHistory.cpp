@@ -97,7 +97,7 @@ doTxHistory(RPC::JsonContext& context)
     {
         sql = boost::str(
             boost::format(
-                "SELECT TransID "
+                "SELECT TransID, TxResult "
                 "FROM Transactions WHERE (TransType != 'EnableAmendment' "
                 "AND TransType != 'SetFee' AND TransType != 'UNLModify') "
                 "ORDER BY LedgerSeq desc LIMIT %u,20;") %
@@ -115,7 +115,7 @@ doTxHistory(RPC::JsonContext& context)
         }
 
         sql = boost::str(
-            boost::format("SELECT TransID "
+            boost::format("SELECT TransID, TxResult "
                           "FROM Transactions WHERE (%s) "
                           "ORDER BY LedgerSeq desc LIMIT %u,20;") %
             cond % startIndex);
@@ -125,7 +125,9 @@ doTxHistory(RPC::JsonContext& context)
         auto db = context.app.getTxnDB().checkoutDbRead();
 
         boost::optional<std::string> stxnHash;
-        soci::statement st = (db->prepare << sql, soci::into(stxnHash));
+        boost::optional<std::string> stxnResult;
+        soci::statement st =
+            (db->prepare << sql, soci::into(stxnHash), soci::into(stxnResult));
         st.execute();
 
         while (st.fetch())
@@ -137,7 +139,10 @@ doTxHistory(RPC::JsonContext& context)
                 continue;
             }
 
-            txs.append(txn->getJson(JsonOptions::none));
+            Json::Value obj = txn->getJson(JsonOptions::include_date);
+            obj["TransactionResult"] = stxnResult.value();
+
+            txs.append(obj);
         }
     }
 

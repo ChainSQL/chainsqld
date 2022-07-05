@@ -95,49 +95,51 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
     st.execute();
 
     std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
-    while (st.fetch ())
+    while (st.fetch())
+    {
+        if (lookingForMarker)
         {
-            if (lookingForMarker)
+            if (findLedger == ledgerSeq.value_or(0) &&
+                findSeq == txnSeq.value_or(0))
             {
-                if (findLedger == ledgerSeq.value_or(0) &&
-                    findSeq == txnSeq.value_or(0))
-                {
-                    lookingForMarker = false;
-                }
-            }
-            else if (numberOfResults == 0)
-            {
-                marker = {
-                    rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-                    txnSeq.value_or(0)};
-                break;
-            }
-
-            if (!lookingForMarker)
-            {
-                auto const seq =
-                    rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
-                auto const txID = from_hex_text<uint256>(transID.value());
-
-                std::shared_ptr<const ripple::Ledger> lgr = nullptr;
-
-                if (ledgerCache.count(seq))
-                {
-                    lgr = ledgerCache[seq];
-                }
-                else if (lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
-                {
-                    ledgerCache.emplace(seq, lgr);
-                }
-
-                Blob txRaw, txMeta;
-                if (lgr && getRawMeta(*lgr, txID, txRaw, txMeta))
-                {
-                    onTransaction(seq, std::move(txRaw), std::move(txMeta));
-                }
-                --numberOfResults;
+                lookingForMarker = false;
             }
         }
+        else if (numberOfResults == 0)
+        {
+            marker = {
+                rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
+                txnSeq.value_or(0)};
+            break;
+        }
+
+        if (!lookingForMarker)
+        {
+            auto const seq =
+                rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+            auto const txID = from_hex_text<uint256>(transID.value());
+
+            std::shared_ptr<const ripple::Ledger> lgr = nullptr;
+
+            if (ledgerCache.count(seq))
+            {
+                lgr = ledgerCache[seq];
+            }
+            else if (
+                lgr =
+                    app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            {
+                ledgerCache.emplace(seq, lgr);
+            }
+
+            Blob txRaw, txMeta;
+            if (lgr && getRawMeta(*lgr, txID, txRaw, txMeta))
+            {
+                onTransaction(seq, std::move(txRaw), std::move(txMeta));
+            }
+            --numberOfResults;
+        }
+    }
 }
 
 void
