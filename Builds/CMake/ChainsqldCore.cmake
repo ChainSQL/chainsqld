@@ -781,6 +781,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/LedgerObjects.cpp
   src/peersafe/rpc/handlers/MallocTrim.cpp
   src/peersafe/rpc/handlers/NodeSize.cpp
+  src/peersafe/rpc/handlers/MonitorStatis.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp
