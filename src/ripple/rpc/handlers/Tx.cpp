@@ -1218,6 +1218,10 @@ doTxCount(RPC::JsonContext& context)
     int ledger_index = -1;
     if (context.params.isMember(jss::ledger_index))
         ledger_index = context.params[jss::ledger_index].asInt();
+    if (ledger_index = -1)
+    {
+        ledger_index = context.app.getLedgerMaster().getValidLedgerIndex();
+    }
     if (context.params.isMember(jss::chainsql_tx))
         bChainsql = context.params[jss::chainsql_tx].asBool();
     Json::Value ret(Json::objectValue);
