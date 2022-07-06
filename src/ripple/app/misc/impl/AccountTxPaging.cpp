@@ -84,7 +84,7 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
     auto db(connection.checkoutDb());
 
     boost::optional<std::uint64_t> ledgerSeq;
-    boost::optional<std::uint32_t> txnSeq;
+    boost::optional<std::uint64_t> txnSeq;
     boost::optional<std::string> transID;
 
     soci::statement st = (db->prepare << sql,
@@ -100,7 +100,7 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
         if (lookingForMarker)
         {
             if (findLedger == ledgerSeq.value_or(0) &&
-                findSeq == txnSeq.value_or(0))
+                (uint64_t(findLedger) * 100000 + findSeq) == txnSeq.value_or(0))
             {
                 lookingForMarker = false;
             }
@@ -109,7 +109,7 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
         {
             marker = {
                 rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-                txnSeq.value_or(0)};
+                rangeCheckedCast<std::uint32_t>(txnSeq.value_or(0) % 100000)};
             break;
         }
 
@@ -525,7 +525,7 @@ contractTxPage(
             LIMIT %u;
             )")) %
             b58acct % minLedger % (findLedger - 1) % b58acct % findLedger %
-            findSeq % queryLimit);
+            (findLedger * 100000 + findSeq) % queryLimit);
     }
     else
     {
