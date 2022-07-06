@@ -246,7 +246,7 @@ struct TxArgs
     uint256 hash;
     bool binary = false;
     bool metaData = true;
-    bool metaChain = true;
+    bool metaChain = false;
     std::optional<std::pair<uint32_t, uint32_t>> ledgerRange;
 };
 
@@ -517,9 +517,9 @@ doTxJson(RPC::JsonContext& context)
     }
 
     if (context.params.isMember(jss::meta_chain) &&
-        !context.params[jss::meta_chain].asBool())
+        context.params[jss::meta_chain].asBool())
     {
-        args.metaChain = false;
+        args.metaChain = true;
     }
     if (context.params.isMember(jss::min_ledger) &&
         context.params.isMember(jss::max_ledger))
