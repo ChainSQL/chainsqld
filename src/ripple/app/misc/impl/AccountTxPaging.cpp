@@ -109,9 +109,7 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
         {
             marker = {
                 rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-                rangeCheckedCast<std::uint32_t>(
-                    ledgerSeq.value_or(0) ? txnSeq.value_or(0) % *ledgerSeq
-                                          : txnSeq.value_or(0))};
+                rangeCheckedCast<std::uint32_t>(txnSeq.value_or(0) % 100000)};
             break;
         }
 
