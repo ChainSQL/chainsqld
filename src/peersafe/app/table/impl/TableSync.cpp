@@ -977,6 +977,7 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
 
     uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
     auto ledgerSeq = data.ledgerseq();
+    auto ledgerHash = from_hex_text<uint256>(data.lastledgerhash());
 
     LedgerIndex iCurSeq, iTxSeq;
     uint256 iCurHash, iTxHash;
@@ -984,10 +985,9 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
     pItem->GetSyncTxLedger(iTxSeq, iTxHash);
     //consecutive
     auto tmp = std::make_pair(ledgerSeq, data);
-    auto str = to_string(iTxHash);
     if (data.txnodes().size() > 0)
     {
-        if (data.lastledgerseq() == iTxSeq && data.lastledgerhash() == to_string(iTxHash))
+        if (data.lastledgerseq() == iTxSeq && ledgerHash == iTxHash)
         {  
             pItem->PushDataToWholeDataQueue(tmp);
             if (!data.seekstop())
@@ -1003,7 +1003,7 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
     }
     else
     {
-        if (data.lastledgerseq() == iCurSeq && data.lastledgerhash() == to_string(iCurHash))
+        if (data.lastledgerseq() == iCurSeq && ledgerHash == iCurHash)
         {
             pItem->PushDataToWholeDataQueue(tmp);
             pItem->TryOperateSQL();
@@ -1024,7 +1024,7 @@ bool TableSync::GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, s
     AccountID accountID(*ripple::parseBase58<AccountID>(data.account()));
     uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
     auto ledgerSeq = data.ledgerseq();
-
+    
     std::string sNickName = data.has_nickname() ? data.nickname() : "";
     std::shared_ptr <TableSyncItem> pItem = GetRightItem(accountID, data.nameindb(), sNickName, (TableSyncItem::SyncTargetType)data.etargettype());
     
