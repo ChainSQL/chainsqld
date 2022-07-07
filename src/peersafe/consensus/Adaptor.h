@@ -272,9 +272,9 @@ public:
         app_.getTxPool().updateAvoid(map, seq);
     }
     inline void
-    clearPoolAvoid(LedgerIndex seq)
+    clearPoolAvoid()
     {
-        app_.getTxPool().clearAvoid(seq);
+        app_.getTxPool().clearAvoid();
     }
     inline Json::Value
     getSyncStatusJson()

@@ -138,7 +138,7 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
 
                 adaptor_.flushValidations();
                 //In case: ledger closed,but not validated,reopen consensus for the same ledger.
-                adaptor_.clearPoolAvoid(oldLedger->seq() + 1);
+                adaptor_.clearPoolAvoid();
             }
         }
     }
@@ -542,7 +542,6 @@ PopConsensus::checkLedger()
 {
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
-
     if (netLgr != prevLedgerID_)
     {
         JLOG(j_.warn()) << "View of consensus changed during "
@@ -584,10 +583,15 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
 
-        adaptor_.removePoolTxs(
-            newLedger->ledger_->txMap(),
-            newLedger->ledger_->info().seq,
-            newLedger->ledger_->info().parentHash);
+        auto tmp = adaptor_.acquireLedger(previousLedger_.id());
+        for (auto seq = tmp->seq(); seq >= newLedger->seq(); seq--)
+        {
+            if (tmp->ledger_->info().txHash ==
+                newLedger->ledger_->info().txHash)
+                break;
+            adaptor_.app_.getTxPool().clearAvoid(seq);
+            tmp = adaptor_.acquireLedger(tmp->parentID());
+        }
 
         startRoundInternal(
             now_, lgrId, *newLedger, ConsensusMode::switchedLedger);

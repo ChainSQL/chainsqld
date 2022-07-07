@@ -113,9 +113,9 @@ public:
         @return Whether the validation satisfies the invariant
     */
     bool
-    operator()(time_point now, Seq s, ValidationParms const& p)
+    operator()(time_point now, Seq s, std::chrono::milliseconds valSetExpires)
     {
-        if (now > (when_ + p.validationSET_EXPIRES))
+        if (now > (when_ + valSetExpires))
             seq_ = Seq{0};
         if (s <= seq_)
             return false;
@@ -338,7 +338,7 @@ class Validations
 
     // Parameters to determine validation staleness
     ValidationParms const parms_;
-
+    std::chrono::milliseconds valSeqExpires_;
     // Adaptor instance
     // Is NOT managed by the mutex_ above
     Adaptor adaptor_;
@@ -595,6 +595,14 @@ public:
     {
         return parms_;
     }
+    /**
+    * Set the expiration time of validation seq
+    */
+    void
+    setValSeqExpires(std::chrono::milliseconds valSeqExpires)
+    {
+        valSeqExpires_ = valSeqExpires;
+    }
 
     /** Return whether the local node can issue a validation for the given
        sequence number
@@ -607,7 +615,7 @@ public:
     canValidateSeq(Seq const s)
     {
         std::lock_guard lock{mutex_};
-        return localSeqEnforcer_(byLedger_.clock().now(), s, parms_);
+        return localSeqEnforcer_(byLedger_.clock().now(), s, valSeqExpires_);
     }
 
     /** Add a new validation
@@ -645,14 +653,14 @@ public:
                     std::max(seqit->second.signTime(), val.signTime()) -
                     std::min(seqit->second.signTime(), val.signTime());
 
-                if (diff > parms_.validationCURRENT_WALL &&
+                if (diff > valSeqExpires_ &&
                     val.signTime() > seqit->second.signTime())
                     seqit->second = val;
             }
 
             // Enforce monotonically increasing sequences for validations
             // by a given node:
-            if (auto& enf = seqEnforcers_[nodeID]; !enf(now, val.seq(), parms_))
+            if (auto& enf = seqEnforcers_[nodeID]; !enf(now, val.seq(), valSeqExpires_))
             {
                 // If the validation is for the same sequence as one we are
                 // tracking, check it closely:

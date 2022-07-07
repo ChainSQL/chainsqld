@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
 
@@ -102,7 +103,7 @@ TxPool::insertTx(
         }
     }
 
-    JLOG(j_.info()) << "Inserting a exist Tx: " << transaction->getID();
+    JLOG(j_.info()) << "Inserting an exist Tx: " << transaction->getID();
 
     return tefPAST_SEQ;
 }
@@ -115,6 +116,7 @@ TxPool::removeTxs(
 {
     int count = 0;
     TransactionSet::iterator iterSet;
+    std::vector<uint256> vecHash;
     try
     {
         for (auto const& item : cSet)
@@ -123,6 +125,7 @@ TxPool::removeTxs(
             if (mTxsHash.count(item.key()) <= 0)
             {
                 mInLedgerCache.insert(item.key());
+                vecHash.push_back(item.key());
             }
             else
             {
@@ -131,11 +134,35 @@ TxPool::removeTxs(
                 // remove from Tx pool.
                 mTxsHash.erase(item.key());
                 mTxsSet.erase(iterSet);
+                count++;
             }
-
-            count++;
         }
 
+        if (!vecHash.empty())
+        {
+            for (auto txID : vecHash)
+            {
+                auto tx = app_.getMasterTransaction().fetch(txID);
+                if (tx)
+                {
+                    auto iter = std::find_if(
+                        mTxsSet.begin(),
+                        mTxsSet.end(),
+                        [&tx](std::shared_ptr<Transaction> txLocal)
+                            {
+                            return tx->getSTransaction()->getSequence() ==
+                                txLocal->getSTransaction()->getSequence();
+                            });
+                    if (iter != mTxsSet.end())
+                    {
+                        mTxsHash.erase((*iter)->getID());
+                        mTxsSet.erase(iter);
+                        count++;
+                    }
+                }
+            }
+            
+        }
         // remove avoid set.
         clearAvoid(ledgerSeq);
     }
@@ -290,12 +317,12 @@ TxPool::removeTx(uint256 hash)
 {
     {
         std::unique_lock lock(mutexSet_);
-        if (mTxsHash.find(hash) != mTxsHash.end())
+        auto iter = mTxsHash.find(hash);
+        if ( iter != mTxsHash.end())
         {
             // remove from Tx pool.
-            auto iter = mTxsHash.at(hash);
             mTxsHash.erase(hash);
-            mTxsSet.erase(iter);
+            mTxsSet.erase(iter->second);
         }
     }
     
@@ -305,7 +332,7 @@ TxPool::removeTx(uint256 hash)
     {
         LedgerIndex seq = mAvoidByHash[hash];
         mAvoidBySeq[seq].erase(hash);
-        if (mAvoidBySeq[seq].size())
+        if (mAvoidBySeq[seq].size() == 0)
         {
             mAvoidBySeq.erase(seq);
         }
@@ -375,16 +402,6 @@ TxPool::removeExpired()
                     pTx->getSTransaction()->getAccountID(sfAccount));
                 iter = mTxsSet.erase(iter);
                 mTxsHash.erase(hash);
-                if (mAvoidByHash.find(hash) != mAvoidByHash.end())
-                {
-                    LedgerIndex seq = mAvoidByHash[hash];
-                    mAvoidBySeq[seq].erase(hash);
-                    if (mAvoidBySeq[seq].size() == 0)
-                    {
-                        mAvoidBySeq.erase(seq);
-                    }
-                    mAvoidByHash.erase(hash);
-                }
                 txCnt++;
                 continue;
             }
@@ -404,8 +421,7 @@ TxPool::removeExpired()
         {
             auto seqTmp = it->second;
             it = mAvoidByHash.erase(it);
-            if (mAvoidBySeq.find(seqTmp) != mAvoidBySeq.end())
-                mAvoidBySeq.erase(seqTmp);
+            mAvoidBySeq.erase(seqTmp);
         }
         else
             it++;

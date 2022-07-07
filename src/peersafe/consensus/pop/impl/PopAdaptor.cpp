@@ -168,7 +168,6 @@ PopAdaptor::onCollectFinish(
             JLOG(j_.warn()) << "onCollectFinish no tx sequence ok,will use empty tx-set";
             initialSet = std::make_shared<SHAMap>(
                 SHAMapType::TRANSACTION, app_.getNodeFamily());
-            app_.getTxPool().clearAvoid();
         } 
     }       
 
