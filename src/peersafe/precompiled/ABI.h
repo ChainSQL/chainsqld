@@ -433,20 +433,22 @@ public:
         const std::vector<std::string>& _allTypes,
         std::vector<std::string>& _out);
 
-    // template <class... T>
-    // bytes
-    // abiIn(const std::string& _sig, T const&... _t)
-    // {
-    //     offset = Offset<T...>::value * MAX_BYTE_LENGTH;
-    //     fixed.clear();
-    //     dynamic.clear();
+     template <class... T>
+     bytes
+     abiIn(const std::string& _sig, T const&... _t)
+     {
+         offset = Offset<T...>::value * MAX_BYTE_LENGTH;
+         fixed.clear();
+         dynamic.clear();
 
-    //     abiInAux(_t...);
+         abiInAux(_t...);
 
-    //     return _sig.empty() ? fixed + dynamic
-    //                         : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
-    //             fixed + dynamic;
-    // }
+         //return _sig.empty() ? fixed + dynamic
+         //                    : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
+         //        fixed + dynamic;
+         (void)_sig;
+         return fixed + dynamic;
+     }
 
     // template <class... T>
     // std::string
