@@ -8,6 +8,7 @@ namespace ripple {
 const char* const VERIFY_SIGNATURE_STR = "verify(string,string,string)";
 const char* const PUBLIC_TO_ADDRESS = "publicToAddress(string)";
 const char* const STRING_CONCAT = "stringConcat(string[])";
+const char* const SHA256_COMMON = "sha256(bytes)";
 
 ToolsPrecompiled::ToolsPrecompiled()
 {
@@ -15,6 +16,7 @@ ToolsPrecompiled::ToolsPrecompiled()
         getFuncSelector(VERIFY_SIGNATURE_STR);
     name2Selector_[PUBLIC_TO_ADDRESS] = getFuncSelector(PUBLIC_TO_ADDRESS);
     name2Selector_[STRING_CONCAT] = getFuncSelector(STRING_CONCAT);
+    name2Selector_[SHA256_COMMON] = getFuncSelector(SHA256_COMMON);
 }
 
 std::string
@@ -84,6 +86,13 @@ ToolsPrecompiled::execute(
                 vString[0].append(vString[i]);
             }
             ret = abi.abiIn("", vString[0]);
+        }
+        else if (func == name2Selector_[SHA256_COMMON])
+        {
+            std::string param;
+            abi.abiOut(data, param);
+            uint256 shaRes = eth_sha256(makeSlice(param));
+            ret = Blob(shaRes.begin(), shaRes.end());
         }
 
         return std::make_tuple(
