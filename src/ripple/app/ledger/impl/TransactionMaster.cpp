@@ -66,15 +66,15 @@ TransactionMaster::getTxCount(bool chainsql, int ledgerIndex)
         if (ledgerIndex > 0)
         {
             sql += " and LedgerSeq <=";
-            sql += ledgerIndex;
+            sql += std::to_string(ledgerIndex);
         }
 	}
     else if (ledgerIndex > 0)
     {
         sql += "WHERE LedgerSeq <=";
-        sql += ledgerIndex;
+        sql += std::to_string(ledgerIndex);
     }
-   
+
 	sql += ";";
 
 	boost::optional<int> txCount;

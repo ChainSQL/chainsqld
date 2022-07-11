@@ -1228,6 +1228,7 @@ doTxCount(RPC::JsonContext& context)
     if (bChainsql)
         ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true,ledger_index);
     ret["all"] = context.app.getMasterTransaction().getTxCount(false, ledger_index);
+    ret[jss::ledger_index] = ledger_index;
 
     return ret;
 }
