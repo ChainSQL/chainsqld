@@ -112,7 +112,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             auto oldLedger = adaptor_.getValidatedLedger();
             //If we are acquiring ledger just after init phrase,don't switch ledger to validated.
             if (initAcquireLedgerID_ != beast::zero &&
-                initAcquireLedgerID_ == prevLedgerID_)
+                initAcquireLedgerID_ == prevLedgerID_ &&
+                (!oldLedger || prevLedgerSeq_ > oldLedger->info().seq))
                  oldLedger = previousLedger_.ledger_;
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
