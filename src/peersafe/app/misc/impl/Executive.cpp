@@ -197,7 +197,10 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         }
         auto output = get<1>(retPre);
         if (output.size() > 0)
-			m_output = eth::owning_bytes_ref{std::move(output), 0, output.size()};
+        {
+            size_t outputSize = output.size();
+            m_output = eth::owning_bytes_ref{std::move(output), 0, outputSize};
+        }
 	}
     else
     {

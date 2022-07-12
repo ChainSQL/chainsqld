@@ -100,11 +100,18 @@ ToolsPrecompiled::execute(
         {
             std::string param;
             abi.abiOut(data, param);
-            ret = eth_ripemd160(makeSlice(param));
+            //ret = eth_ripemd160(makeSlice(param));
+            auto accID = eth_ripemd160(makeSlice(param));
+            uint256 retValue(0);
+            std::copy(
+                accID.begin(),
+                accID.end(),
+                retValue.begin());
+            ret = Blob(retValue.begin(), retValue.end());
         }
 
         return std::make_tuple(
-            TER::fromInt(ter), Blob(ret.begin(), ret.end()), runGas);
+            TER::fromInt(ter), ret, runGas);
     }
     else
     {
