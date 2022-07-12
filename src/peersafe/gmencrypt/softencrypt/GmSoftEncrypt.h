@@ -160,10 +160,10 @@ public:
         unsigned char *pCipherData,
         unsigned long *pulCipherDataLen
     ) override;
-private:
-    ENGINE *sm_engine_;
-    const EVP_MD *md_;
-    sm3_ctx_t sm3_ctx_;
+//private:
+//    ENGINE *sm_engine_;
+//    const EVP_MD *md_;
+//    sm3_ctx_t sm3_ctx_;
 
 private:
     bool getPublicKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& pubKey);
@@ -173,8 +173,7 @@ private:
     EC_KEY* CreateEC(unsigned char *key, int is_public);
     void cipherReEncode(unsigned char* pCipher, unsigned long cipherLen);
     void cipherReDecode(unsigned char* pCipher, unsigned long cipherLen);
-    int computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen, 
-                            unsigned char* dgst, unsigned int*dgstLen);
+    int computeDigestWithSm2(EC_KEY* ec_key, unsigned char* pInData, unsigned long ulInDataLen, unsigned char* dgst, unsigned int*dgstLen);
     unsigned long generateIV(unsigned int uiAlgMode, unsigned char * pIV);
 };
 

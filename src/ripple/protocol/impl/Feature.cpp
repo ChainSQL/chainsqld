@@ -98,6 +98,7 @@ detail::supportedAmendments()
         "DecreaseStorage",
         "TableSLEChange",
         "ContractStorage",
+        "TableGrant",
         "MultiSign",      // Unconditionally supported.
         "Tickets",
         "TrustSetAuth",   // Unconditionally supported.
@@ -200,7 +201,8 @@ featureDisableV2 = *getRegisteredFeature("DisableV2"),
 featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage"),
 featureTableSleChange = *getRegisteredFeature("TableSLEChange"),
 featureContractStorage = *getRegisteredFeature("ContractStorage"),
-featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta");
+featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta"),
+featureTableGrant = *getRegisteredFeature("TableGrant");
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
 // uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");

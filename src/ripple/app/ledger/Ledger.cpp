@@ -359,7 +359,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
     int count = 0;
     for (auto sle : ledger.sles)
     {
-        if (sle->getType() == ltACCOUNT_ROOT)
+        if (sle->getType() == ltACCOUNT_ROOT && !sle->isFieldPresent(sfContractCode))
         {
             auto id = sle->getAccountID(sfAccount);
             std::shared_ptr<SLE> sleNew = std::make_unique<SLE>(keylet::account(id));

@@ -252,6 +252,9 @@ statis() noexcept;
 Keylet
 contract_index() noexcept;
 
+Keylet
+tablegrant(AccountID const& owner, std::string const& tableName,AccountID const& user) noexcept;
+
 }  // namespace keylet
 
 

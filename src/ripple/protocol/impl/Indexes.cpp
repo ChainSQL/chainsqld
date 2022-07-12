@@ -72,6 +72,7 @@ enum class LedgerNameSpace : std::uint16_t {
     STATIS = 'I',
     CONTRACT_INDEX = 'H',
 
+    GRANT = 'G',
     // No longer used or supported. Left here to reserve the space
     // to avoid accidental reuse.
     CONTRACT [[deprecated]] = 'c',
@@ -381,6 +382,15 @@ Keylet
 contract_index() noexcept
 {
     return {ltDIR_NODE, indexHash(LedgerNameSpace::CONTRACT_INDEX)};
+}
+
+Keylet
+tablegrant(
+    AccountID const& owner,
+    std::string const& tableName,
+    AccountID const& user) noexcept
+{
+    return {ltTABLEGRANT, indexHash(LedgerNameSpace::GRANT, owner, tableName, user)};
 }
 
 }  // namespace keylet

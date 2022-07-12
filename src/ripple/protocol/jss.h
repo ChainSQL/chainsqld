@@ -619,6 +619,7 @@ JSS ( Admin );
 JSS ( FrozenAccounts );
 JSS ( SchemaIndex );
 JSS ( Statis );
+JSS ( TableGrant );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);
@@ -664,6 +665,8 @@ JSS ( contract_topics);             // in: Contract Local Call
 JSS ( tablelist );
 JSS ( table );
 JSS ( schema );
+JSS ( statis );
+JSS ( tablegrant );
 JSS	( tablename );					// in tablename
 JSS ( nameInDB );
 JSS	(confidential);
@@ -671,7 +674,20 @@ JSS ( raw );
 JSS ( inclusive );
 JSS(txn_success);                   // out: NetworkOPs
 JSS(txn_failure);                   // out: NetworkOPs
-JSS(transaction_result);			// out: doLedgerTxs
+JSS (validate_success);
+JSS (validate_error);
+JSS (validate_timeout);
+JSS (db_success);
+JSS (db_error);
+JSS (db_timeout);
+JSS (db_noTableExistInDB);
+JSS (db_noDbConfig);
+JSS (db_noSyncConfig);
+JSS (db_noAutoSync);
+JSS (db_acctSecretError);
+JSS (db_notInSync);
+JSS (db_noSyncTable);
+JSS (transaction_result);			// out: doLedgerTxs
 JSS(include_success);			    // out: doLedgerTxs
 JSS(include_failure);			    // out: doLedgerTxs
 JSS(txn_success_detail);			// out: doLedgerTxs

@@ -129,7 +129,7 @@ namespace ripple {
             return res;
 
         int64_t value = fromUint256(_value);
-        auto ret = subBalance(_from, value);
+        auto ret = subBalance(_from, value, addressHasCode(_from));
         if (ret == tesSUCCESS)
             addBalance(_to, value);
         return ret;

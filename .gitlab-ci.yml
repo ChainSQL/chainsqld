@@ -21,6 +21,3 @@ deployToGithub:
     refs:
       - master
       - develop
-      - feature/newConsensus
-      - feature/schema
-

@@ -488,8 +488,23 @@ Json::Value getLedgerTableInfo(TxStore& txStore, const std::string& sql, std::se
 		}
 
 		const Json::Value & line = lines[0u];
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
-		setOwnerID2TableName.emplace(std::make_pair(*ownerID, line[jss::TableName].asString()));
+        boost::optional<AccountID> ownerID = boost::none;
+        std::string tableName;
+        if (line.isMember(jss::Owner) && line.isMember(jss::TableName))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line[jss::Owner].asString()));
+            tableName =
+                trim_whitespace(line[jss::TableName].asString());
+        }
+        else if (line.isMember("OWNER") && line.isMember("TABLENAME"))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line["OWNER"].asString()));
+            tableName = trim_whitespace(line["TABLENAME"].asString());
+        }
+        if (ownerID)
+			setOwnerID2TableName.emplace(std::make_pair(*ownerID, tableName));
 
 	}
 	return ret;
@@ -523,9 +538,23 @@ Json::Value getLedgerTableInfo(RPC::JsonContext& context,TxStore& txStore,Accoun
 			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
 		}
 		const Json::Value & line = lines[0u];
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
+        boost::optional<AccountID> ownerID = boost::none;
+        std::string tableName;
+        if (line.isMember(jss::Owner) && line.isMember(jss::TableName))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line[jss::Owner].asString()));
+            tableName = trim_whitespace(line[jss::TableName].asString());
+        }
+        else if (line.isMember("OWNER") && line.isMember("TABLENAME"))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line["OWNER"].asString()));
+            tableName = trim_whitespace(line["TABLENAME"].asString());
 
-		setOwnerID2TableName.emplace(std::make_pair(*ownerID, line[jss::TableName].asString()));
+        }
+        if (ownerID)
+			setOwnerID2TableName.emplace(std::make_pair(*ownerID, tableName));
 	}
 
 	return Json::Value();
@@ -1113,7 +1142,8 @@ Json::Value doGetUserToken(RPC::JsonContext& context)
 	bool bRet = false;
 	ripple::Blob passWd;
 	error_code_i errCode;
-	std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(userID, ownerID, tableName);
+    std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(
+        ledger ,userID, ownerID, tableName);
 
 	if (bRet)
 	{

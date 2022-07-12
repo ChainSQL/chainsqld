@@ -50,9 +50,12 @@ namespace ripple {
 
 	X509* readCertFromString(std::string const& cert)
 	{
+        X509* pCert = nullptr;
 		BIO *bio_mem = BIO_new(BIO_s_mem());
 		BIO_puts(bio_mem, cert.c_str());
-		return PEM_read_bio_X509(bio_mem, NULL, NULL, NULL);
+        pCert = PEM_read_bio_X509(bio_mem, NULL, NULL, NULL);
+        BIO_free_all(bio_mem);
+        return pCert;
 	}
 
 	X509* readCertFromFile(const char* filename)
@@ -85,7 +88,6 @@ namespace ripple {
 		}
 
 		if (!bValidation) {
-
 			exception = "All of the rootCert  is  invalidation ";
 			return false;
 		}
@@ -152,8 +154,10 @@ namespace ripple {
 	{
         if(CommonKey::chainAlgTypeG == KeyType::gmalg)
         {
+            Blob result;
 #ifdef SOFTENCRYPT
             EC_KEY* ecKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+            if (ecKey == nullptr)  Throw<std::runtime_error>("EC_KEY_new_by_curve_name(NID_sm2p256v1) failed");
             EC_KEY_set_conv_form(ecKey, POINT_CONVERSION_UNCOMPRESSED);
             if (EC_KEY_set_public_key(ecKey, ecPoint) <= 0)
                 Throw<std::runtime_error>("EC_KEY_set_public_key() failed");
@@ -161,20 +165,19 @@ namespace ripple {
             size_t pubLen = i2o_ECPublicKey(ecKey, NULL);
             if(pubLen != 0)
             {
-                Blob result(pubLen);
+                result.resize(pubLen);
                 unsigned char* ptr = &result[0];
                 pubLen = i2o_ECPublicKey(ecKey, &ptr);
                 result[0] = GM_ALG_MARK;
-                return result;
             }
+            EC_KEY_free(ecKey);
 #endif
-            return Blob();
+            return result;
         }
         else
         {
             EC_KEY* key1 = EC_KEY_new_by_curve_name(NID_secp256k1);
-            if (key1 == nullptr)  Throw<std::runtime_error>("EC_KEY_new_by_curve_name() failed");
-
+            if (key1 == nullptr)  Throw<std::runtime_error>("EC_KEY_new_by_curve_name(NID_secp256k1) failed");
             EC_KEY_set_conv_form(key1, POINT_CONVERSION_COMPRESSED);
 
             openssl::ec_key key = openssl::ec_key((openssl::ec_key::pointer_t) key1);
@@ -184,10 +187,8 @@ namespace ripple {
 
             Blob result(33);
             std::uint8_t* ptr = &result[0];
-
             int const size = i2o_ECPublicKey((EC_KEY*)key.get(), &ptr);
-            (void)size;
-            assert(size <= 33);
+            if(size < 33) Throw<std::runtime_error>("get public key len is not 33");
             
             return result;
         }
@@ -223,8 +224,7 @@ namespace ripple {
 			publicKey = PublicKey(makeSlice(blob));
 
 		}
-
-
+        
 		EC_KEY_free(pEcKey);
 		EVP_PKEY_free(pkey);
 		X509_free(x509Ca);
@@ -254,14 +254,14 @@ namespace ripple {
             res = NULL;
             BN_free(bn);
             bn = NULL;
+            X509_free(x509Ca);
         }
 		return ret;
     }
 
-	bool genCsr(KeyType keyType,std::string const& seedStr, x509_subject const& sub, std::string const& reqPath, std::string & exception)
+	bool genCsr(KeyType keyType, std::string const& seedStr, x509_subject const& sub, std::string const& reqPath, std::string & exception)
 	{
 		//  OpenSSL_add_all_algorithms is not thread safe
-
 		//static std::mutex m;
 		//std::lock_guard lock{ m };
 
@@ -272,16 +272,19 @@ namespace ripple {
 		ERR_load_BIO_strings();
 		//ERR_load_crypto_strings();
         
-//        BIO               *outbio = NULL;
-        
-        EVP_PKEY          *pkey = NULL;
-//        int               eccgrp;
+        EVP_PKEY        *pkey = NULL;
         int             ret = 0;
         int             nVersion = 1;
         X509_REQ        *x509_req  = NULL;
         X509_name_st    *x509_name = NULL;
-//        RSA             *tem = NULL;
         BIO             *out = NULL;
+        
+        EC_POINT *pub_key = NULL;
+        BIGNUM* bn = NULL;
+        EC_KEY* pEcKey = NULL;
+        const EC_GROUP* pEcGroup = NULL;
+        const BIGNUM* priv_key = NULL;
+        BN_CTX *bnCtx = NULL;
 
         if (keyType == KeyType::gmalg)
         {
@@ -289,37 +292,33 @@ namespace ripple {
             std::string priKeyStrDe58 = decodeBase58Token(seedStr, TokenType::AccountSecret);
             if (priKeyStrDe58.empty())
             {
-                return false;
+                goto free_all;
             }
-            EC_POINT *pub_key = NULL;
-            BIGNUM* bn = BN_bin2bn((unsigned char*)priKeyStrDe58.c_str(), priKeyStrDe58.size(), nullptr);
+            bn = BN_bin2bn((unsigned char*)priKeyStrDe58.c_str(), priKeyStrDe58.size(), nullptr);
             if (bn == nullptr)
             {
-                return false;
+                goto free_all;
             }
 
-            EC_KEY* pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
-            const bool ok = EC_KEY_set_private_key(pEcKey, bn);
-            BN_clear_free(bn);
-
-            if (!ok)
+            pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+            if (!EC_KEY_set_private_key(pEcKey, bn))
             {
-                EC_KEY_free(pEcKey);
-                return false;
+                goto free_all;
             }
 
-            const EC_GROUP* pEcGroup = EC_KEY_get0_group(pEcKey);
-            const BIGNUM* priv_key = EC_KEY_get0_private_key(pEcKey);
+            pEcGroup = EC_KEY_get0_group(pEcKey);
+            priv_key = EC_KEY_get0_private_key(pEcKey);
             if ((pub_key = EC_POINT_new(pEcGroup)) == NULL)
-                return false;
+                goto free_all;
 
-            BN_CTX *ctx = BN_CTX_new();
-            if(ctx == NULL) return false;
-            if (!EC_POINT_mul(pEcGroup, pub_key, priv_key, NULL, NULL, ctx))
-                return false;
-            
+            bnCtx = BN_CTX_new();
+            if(bnCtx == NULL) goto free_all;
+            if (!EC_POINT_mul(pEcGroup, pub_key, priv_key, NULL, NULL, bnCtx))
+            {
+                goto free_all;
+            }
             if (!EC_KEY_set_public_key(pEcKey, pub_key))
-                return false;
+                goto free_all;
             
             /* -------------------------------------------------------- *
             * Converting the EC key into a PKEY structure let us       *
@@ -329,12 +328,11 @@ namespace ripple {
             if (!EVP_PKEY_assign_EC_KEY(pkey, pEcKey))
             {
                 exception = "Error assigning ECC key to EVP_PKEY structure.";
-                return false;
+                goto free_all;
             }
 #else
-            return false;
+            goto free_all;
 #endif
-//            EC_KEY_free(pEcKey);
         }
         else
         {
@@ -368,10 +366,11 @@ namespace ripple {
             if (!EVP_PKEY_assign_EC_KEY(pkey, myecc))
             {
                 exception = "Error assigning ECC key to EVP_PKEY structure.";
-                return false;
+                goto free_all;
             }
-//            EC_KEY_free(myecc);
         }
+        
+        //int eccgrp;
 
 		/* ---------------------------------------------------------- *
 		* Create the Input/Output BIO's.                             *
@@ -459,7 +458,8 @@ namespace ripple {
 		}
 
 		// 5. set sign key of x509 req
-		ret = X509_REQ_sign(x509_req, pkey, EVP_sha256());    // return x509_req->signature->length
+        // return x509_req->signature->length
+        ret = X509_REQ_sign(x509_req, pkey, keyType == KeyType::gmalg ? EVP_sm3() : EVP_sha256());
 		if (ret <= 0) {
 			exception = (boost::format("X509_REQ_sign failed,ret = %d") % ret).str();
 			goto free_all;
@@ -481,9 +481,12 @@ namespace ripple {
 		* Free up all structures                                     *
 		* ---------------------------------------------------------- */	// 6. free
 	free_all:
+        EC_POINT_clear_free(pub_key);
+        BN_clear_free(bn);
+        BN_CTX_free(bnCtx);
+        
 		X509_REQ_free(x509_req);
 		EVP_PKEY_free(pkey);
-//		EC_KEY_free(myecc);
 		BIO_free_all(out);
 		return ret == 1;
 	}

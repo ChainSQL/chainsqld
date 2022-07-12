@@ -474,7 +474,7 @@ namespace ripple {
 				return ret;
 		}
 		if (!ctx_.view().dirRemove(
-                keylet::ownerDir(account),
+                keylet::ownerDir(sleSchema->getAccountID(sfAccount)),
                 (*sleSchema)[sfOwnerNode],
                 sleSchema->key(),
                 true))

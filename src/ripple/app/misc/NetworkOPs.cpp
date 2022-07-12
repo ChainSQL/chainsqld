@@ -1297,8 +1297,8 @@ NetworkOPsImp::processSubTxTimer()
 {
     std::lock_guard sl(mSubLock);
 
-    processSubTx(mSubTx, "validate_timeout");
-    processSubTx(mValidatedSubTx, "db_timeout");
+    processSubTx(mSubTx, (std::string)jss::validate_timeout);
+    processSubTx(mValidatedSubTx, (std::string)jss::db_timeout);
 
     m_bCheckTxThread = false;
 }
@@ -1620,8 +1620,13 @@ NetworkOPsImp::doTransactionCheck(
             return {ter, false};
         }
 
-        app_.getStateManager().incrementSeq(txCur->getAccountID(sfAccount));
+        app_.getStateManager().onTxCheckSuccess(txCur->getAccountID(sfAccount));
         return {tesSUCCESS, true};
+    }
+    else if (ter.ter != terPRE_SEQ)
+    {
+        app_.getStateManager().addFailedSeq(
+            txCur->getAccountID(sfAccount), txCur->getSequence());
     }
 
     return {ter, false};
@@ -1939,7 +1944,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 if (e.failType != FailHard::yes)
                 {
                     auto txCur = e.transaction->getSTransaction();
-                    auto seq = app_.getStateManager().getAccountSeq(
+                    auto seq = app_.getStateManager().getAccountCheckSeq(
                         txCur->getAccountID(sfAccount),
                         *app_.checkedOpenLedger().current());
 
@@ -4263,10 +4268,12 @@ std::tuple<std::string, std::string, std::string>
 NetworkOPsImp::get_res(TER ter, std::string const& contracDetailMsg)
 {
     if (ter == tesSUCCESS)
-        return std::make_tuple("validate_success", "", "");
+        return std::make_tuple((std::string)jss::validate_success, "", "");
     if (!contracDetailMsg.empty())
-        return std::make_tuple("validate_error", contracDetailMsg, contracDetailMsg);
-    return std::make_tuple("validate_error", transToken(ter), transHuman(ter));
+        return std::make_tuple(std::string(jss::validate_error), 
+            contracDetailMsg, contracDetailMsg);
+    return std::make_tuple(
+        std::string(jss::validate_error), transToken(ter), transHuman(ter));
 }
 
 void
@@ -4488,7 +4495,7 @@ NetworkOPsImp::pubTableTxs(
     // db_success come,but validate_success not processed
     if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
     {
-        auto result = std::make_tuple("validate_success", "", "");
+        auto result = std::make_tuple(std::string(jss::validate_success), "", "");
         pubTxResult(stTxn, result, true, true);
     }
 
@@ -4537,7 +4544,8 @@ NetworkOPsImp::pubTxResult(
                 p->send(jvObj, true);
 
                 // for table-related tx and validation event
-                if (bValidated && bForTableTx)
+                if (bValidated && bForTableTx && 
+                    std::get<0>(disposRes) == jss::validate_success)
                 {
                     // for chainsql type, subscribe db event
                     mValidatedSubTx[simiIt->first] =

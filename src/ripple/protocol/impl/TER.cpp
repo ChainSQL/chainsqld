@@ -102,7 +102,7 @@ transResults()
 		MAKE_ERROR(tefPAST_SEQ,               "This sequence number has already passed."                                        ),
 		MAKE_ERROR(tefWRONG_PRIOR,            "This previous transaction does not match."                                     ),
 		MAKE_ERROR(tefBAD_AUTH_MASTER,        "Auth for unclaimed account needs correct master key."                          ),
-		MAKE_ERROR(tefTABLE_GRANTFULL,		  "A table can only grant 500 uses."												),
+		MAKE_ERROR(tefTABLE_GRANTFULL,		  "A table can only grant 256 users."												),
 		MAKE_ERROR(tefTABLE_COUNTFULL,		  "One account can own at most 100 tables,now you are creating the 101 one."		),
 		MAKE_ERROR(tefGAS_INSUFFICIENT,		  "Gas insufficient." ),
 		MAKE_ERROR(tefCONTRACT_EXEC_EXCEPTION, "Exception occurred while executing contract ." ),

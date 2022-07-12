@@ -283,6 +283,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 		m_excepted = ret;
 		return true;
 	}
+	LedgerAdjust::updateContractCount(m_s.ctx().app, m_s.ctx().view(),CONTRACT_CREATE);
 
     JLOG(j.info()) << "Contract create , address : "
                    << to_string(m_newAddress) << ", from sender :" << to_string(_sender);
@@ -292,7 +293,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
     if (!_code.empty())
         m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
             value, _gasPrice, &data, _code, sha512Half(makeSlice(_code.toBytes())), m_depth, true, false);
-
+	
     return !m_ext;
 }
 

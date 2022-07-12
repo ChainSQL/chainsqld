@@ -229,29 +229,6 @@ static constexpr std::array<char const*, 3> DatabaseBodyDBInit{
 
      "END TRANSACTION;"}};
 
-static constexpr std::array<char const*, 4> SyncTableStateDBInit{
-    {"BEGIN TRANSACTION;",
-
-    "CREATE TABLE IF NOT EXISTS SyncTableState (                         \
-        Owner               CHARACTER(64) ,  \
-        TableName           CHARACTER(64),   \
-        TableNameInDB       CHARACTER(64),   \
-        TxnLedgerHash       CHARACTER(64),   \
-        TxnLedgerSeq        CHARACTER(64),   \
-        LedgerHash          CHARACTER(64),   \
-        LedgerSeq           CHARACTER(64),   \
-        TxnUpdateHash       CHARACTER(64),   \
-        deleted             CHARACTER(64),   \
-        AutoSync            CHARACTER(64),   \
-		TxnLedgerTime		CHARACTER(64),   \
-        PreviousCommit      CHARACTER(64),   \
-        primary key  (Owner,TableNameInDB)   \
-    );",
-    "CREATE INDEX IF NOT EXISTS SyncSeqLedger ON SyncTableState(LedgerSeq);",
-
-    "END TRANSACTION;"}
-};
-
 }  // namespace ripple
 
 #endif

@@ -463,7 +463,8 @@ transactionPreProcessImpl(
             }
 			//use new consensus
             tx_json[jss::Sequence] =
-                app.getStateManager().getAccountSeq(srcAddressID, *ledger);
+                app.getStateManager().getAndIncSignSeq(
+                srcAddressID, *ledger);
 			//use old consensus
 			/*
             auto seq = (*sle)[sfSequence];

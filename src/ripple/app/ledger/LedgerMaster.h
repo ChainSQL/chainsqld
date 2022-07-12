@@ -323,6 +323,7 @@ public:
 
     std::tuple<bool, ripple::Blob, error_code_i>
     getUserToken(
+        std::shared_ptr<ReadView const> ledger,
         AccountID accountID,
         AccountID ownerID,
         std::string sTableName);

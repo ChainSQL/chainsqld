@@ -34,6 +34,8 @@ namespace ripple {
 void
 getTableInfo(
     RPC::JsonContext& context,
+    std::shared_ptr<ReadView const> view,
+    AccountID& ownerID,
     STObject const& table,
     bool bGetDetailInfo,
     Json::Value& ret)
@@ -75,7 +77,7 @@ getTableInfo(
                 }
             }
         }
-        tmp[jss::confidential] = STEntry::isConfidential(table);
+        tmp[jss::confidential] = isConfidential(*view,ownerID, str);
 
         auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
         if (ledger != nullptr)
@@ -157,41 +159,31 @@ doGetAccountTables(RPC::JsonContext& context)
         bGetDetailInfo = true;
     }
 
-    auto const root = keylet::ownerDir(ownerID);
-    auto dirIndex = root.key;
-    auto dir = ledger->read({ltDIR_NODE, dirIndex});
-    if (!dir)
-        return ret;
-    for (;;)
-    {
-        auto const& entries = dir->getFieldV256(sfIndexes);
-        auto iter = entries.begin();
-
-        for (; iter != entries.end(); ++iter)
-        {
-            auto const sleNode = ledger->read(keylet::child(*iter));
+    forEachItem(
+        *ledger,
+        ownerID,
+        [&bGetDetailInfo, &context, &ledger,&ownerID,&ret](
+            std::shared_ptr<SLE const> const& sleNode) {
             if (sleNode->getType() == ltTABLE)
             {
-                getTableInfo(context, sleNode->getFieldObject(sfTableEntry), bGetDetailInfo, ret);
+                getTableInfo(
+                    context,
+                    ledger,
+                    ownerID,
+                    sleNode->getFieldObject(sfTableEntry),
+                    bGetDetailInfo,
+                    ret);
             }
             else if (sleNode->getType() == ltTABLELIST)
             {
                 auto& aTables = sleNode->getFieldArray(sfTableEntries);
                 for (auto& table : aTables)
                 {
-                    getTableInfo(context, table, bGetDetailInfo, ret);
+                    getTableInfo(
+                        context, ledger, ownerID, table, bGetDetailInfo, ret);
                 }
             }
-        }
-        auto const nodeIndex = dir->getFieldU64(sfIndexNext);
-        if (nodeIndex == 0)
-            break;
-
-        dirIndex = keylet::page(root, nodeIndex).key;
-        dir = ledger->read({ltDIR_NODE, dirIndex});
-        if (!dir)
-            break;
-    }
+        });
 
     return ret;
 }

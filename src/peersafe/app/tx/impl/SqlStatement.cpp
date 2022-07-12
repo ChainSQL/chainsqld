@@ -142,6 +142,8 @@ namespace ripple {
 
 		auto const & sTxTables = tx.getFieldArray(sfTables);
         uint160 uTxDBName = sTxTables[0].getFieldH160(sfNameInDB);
+        Blob vTableNameStr = sTxTables[0].getFieldVL(sfTableName);
+        auto sTableName = strCopy(vTableNameStr);
 
         auto tup = getTableEntry(view, tx);
         auto pEntry = std::get<1>(tup);
@@ -169,9 +171,9 @@ namespace ripple {
 				}
 			}
 			//check authority
-			AccountID sourceID(tx.getAccountID(sfAccount));
+			AccountID userID(tx.getAccountID(sfAccount));
 			auto tableFalgs = getFlagFromOptype((TableOpType)tx.getFieldU16(sfOpType));
-			if (!STEntry::hasAuthority(*pEntry,sourceID, tableFalgs))
+			if (!hasAuthority(view,uOwnerID,sTableName,userID, tableFalgs))
 			{
 				JLOG(j.trace()) <<
 					"Invalid table flags: Destination table does not authorize this account.";

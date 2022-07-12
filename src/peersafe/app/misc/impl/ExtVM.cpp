@@ -108,6 +108,16 @@ ExtVM::balance(evmc_address const& addr)
     return toEvmC(uint256(drops));
 }
 
+bool
+useNewStorage(STMap256& mapStore, SleOps& oSle)
+{
+    if (mapStore.rootHash())
+        return true;
+    if (mapStore.isDefault() && oSle.ctx().view().rules().enabled(featureContractStorage))
+        return true;
+    return false;
+}
+
 evmc_uint256be
 ExtVM::store(evmc_uint256be const& key)
 {
@@ -117,23 +127,17 @@ ExtVM::store(evmc_uint256be const& key)
     ContractHelper& helper = oSle_.ctx().app.getContractHelper();
 
     uint256 uKey = fromEvmC(key);
-    if (mapStore.rootHash() || helper.hasStorage(contract))
+    if (useNewStorage(mapStore,oSle_))
     {
         bool bQuery =
             (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
-        //check cache first
-        if (auto value = helper.fetchFromCache(contract,uKey,bQuery))
+        auto value =
+            helper.fetchValue(contract, mapStore.rootHash(), uKey, bQuery);
+        if (value)
             return toEvmC(*value);
-
-        //fetch from SHAMap
-        auto root = mapStore.rootHash();
-        if (root)
-        {
-            if (auto value = helper.fetchValue(contract, *root, uKey, bQuery))
-                return toEvmC(*value);
-        }
+        return toEvmC(uint256(0));
     }
-    else if (!mapStore.isDefault())
+    else
     {
         try
         {
@@ -145,8 +149,6 @@ ExtVM::store(evmc_uint256be const& key)
             return toEvmC(uint256(0));
         }
     }
-
-    return toEvmC(uint256(0));
 }
 
 void
@@ -159,14 +161,9 @@ ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
 
     uint256 uKey = fromEvmC(key);
     uint256 uValue = fromEvmC(value);
-    if (mapStore.rootHash() || 
-        (mapStore.isDefault() && oSle_.ctx().view().rules().enabled(featureContractStorage)))
+    if (useNewStorage(mapStore, oSle_))
     {
-        auto root = mapStore.rootHash();
-        if (uValue == uint256(0))
-            helper.eraseStorage(contract,root,uKey);
-        else
-            helper.setStorage(contract,root,uKey,uValue);
+        helper.setStorage(contract, mapStore.rootHash(), uKey, uValue);
     }
     else
     {

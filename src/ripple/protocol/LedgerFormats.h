@@ -109,6 +109,8 @@ enum LedgerEntryType {
     ltTABLE = 't',
 
     ltSTATIS = 'I',
+
+    ltTABLEGRANT = 'G'
 };
 
 /**

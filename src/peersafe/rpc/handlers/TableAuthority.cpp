@@ -34,6 +34,18 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
+	void
+	addUserAuth(Json::Value& jvUsers,AccountID& userId,uint32_t flags)
+	{
+        Json::Value& jvObj = jvUsers.append(Json::objectValue);
+        jvObj[jss::account] = to_string(userId);
+        Json::Value& jvAuth = jvObj["authority"];
+        jvAuth["insert"] = flags & lsfInsert ? true : false;
+        jvAuth["delete"] = flags & lsfDelete ? true : false;
+        jvAuth["update"] = flags & lsfUpdate ? true : false;
+        jvAuth["select"] = flags & lsfSelect ? true : false;
+	}
+
 	Json::Value doTableAuthority(RPC::JsonContext& context)
 	{
 		Json::Value params(context.params);
@@ -80,17 +92,16 @@ namespace ripple {
 		ret[jss::owner] = params[jss::owner].asString();
 		ret[jss::tablename] = tableName;
 
-		auto ledger = context.ledgerMaster.getValidatedLedger();
-		if (ledger)
+        auto tup = getTableEntry(*ledgerConst, ownerID, tableName);
+		auto pEntry = std::get<1>(tup);
+		if (!pEntry)
 		{
-           		auto tup = getTableEntry(*ledger, ownerID, tableName);
-		        auto pEntry = std::get<1>(tup);
-			if (!pEntry)
-			{
-				return rpcError(rpcTAB_NOT_EXIST);
-			}
+			return rpcError(rpcTAB_NOT_EXIST);
+		}
 
-			Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
+		Json::Value& jvUsers = (ret["users"] = Json::arrayValue);
+        if (pEntry->isFieldPresent(sfUsers))
+        {
 			auto users = pEntry->peekFieldArray(sfUsers);
 			for (auto & user : users)  //check if there same user
 			{
@@ -100,15 +111,30 @@ namespace ripple {
 				if (!ids.empty() && ids.find(userID) == ids.end())
 					continue;
 
-				Json::Value& jvObj = jvUsers.append(Json::objectValue);
-				jvObj[jss::account] = to_string(userID);
-				Json::Value& jvAuth = jvObj["authority"];
-				jvAuth["insert"] = flags & lsfInsert ? true : false;
-				jvAuth["delete"] = flags & lsfDelete ? true : false;
-				jvAuth["update"] = flags & lsfUpdate ? true : false;
-				jvAuth["select"] = flags & lsfSelect ? true : false;
+				addUserAuth(jvUsers, userID, flags);
 			}
-		}
+        }
+        else
+        {
+            auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+            forEachItem(
+                *ledgerConst,
+                ownerID,
+                [&ids,&jvUsers,&nameInDB](std::shared_ptr<SLE const> const& sleCur) {
+                    if (sleCur->getType() == ltTABLEGRANT)
+                    {
+                        if (sleCur->getFieldH160(sfNameInDB) == nameInDB)
+                        {
+                            auto userID = sleCur->getAccountID(sfUser);
+                            auto flags = sleCur->getFieldU32(sfFlags);
+                            if (!ids.empty() && ids.find(userID) == ids.end())
+                                return;
+                            addUserAuth(jvUsers, userID, flags);
+                        }
+                    }
+                });
+        }
+
 		return ret;
 	}
 
