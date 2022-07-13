@@ -146,19 +146,6 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
-        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-        {
-            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
-                            << ":" << prevLedgerID_;
-
-            adaptor_.removePoolTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-
-            startRoundInternal(
-                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-        }
         return;
     }
 
@@ -584,14 +571,14 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
 
-        auto tmp = adaptor_.acquireLedger(previousLedger_.id());
-        for (auto seq = tmp->seq(); seq >= newLedger->seq(); seq--)
+        auto tmp = previousLedger_.ledger_;
+        for (auto seq = tmp->seq(); tmp && seq >= newLedger->seq(); seq--)
         {
-            if (tmp->ledger_->info().txHash ==
+            if (tmp->info().txHash ==
                 newLedger->ledger_->info().txHash)
                 break;
             adaptor_.app_.getTxPool().clearAvoid(seq);
-            tmp = adaptor_.acquireLedger(tmp->parentID());
+            tmp = adaptor_.ledgerMaster_.getLedgerByHash(tmp->info().parentHash);
         }
 
         startRoundInternal(
@@ -603,7 +590,7 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         prevLedgerID_ = previousLedger_.id();
 
         JLOG(j_.warn())
-                    << "fetch for netLgr found failed acquire lgrId: "<< lgrId
+                    << "Failed to get netlgr. lgrId: "<< lgrId
                         << " prevLedgerID_: " << prevLedgerID_;
     }
     else
