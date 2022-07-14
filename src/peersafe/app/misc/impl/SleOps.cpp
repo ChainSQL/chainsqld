@@ -407,9 +407,9 @@ namespace ripple {
 	//table operation
 	int64_t SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_raw](auto& obj)
 		{
 
 			obj.setFieldU16(sfOpType, T_CREATE);
@@ -422,9 +422,9 @@ namespace ripple {
 
 	int64_t SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_ctx](auto& obj)
+			[&_account](auto& obj)
 		{
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
@@ -435,9 +435,9 @@ namespace ripple {
 
 	int64_t SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_sTableNewName, &_ctx](auto& obj)
+			[&_account](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -478,7 +478,7 @@ namespace ripple {
     {
 		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_opType, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_opType, &_raw](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -499,9 +499,9 @@ namespace ripple {
             std::string const& _raw,
             std::string const& _autoFillField)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw,&_autoFillField, &_ctx](auto& obj)
+			[&_account, &_owner, &_raw,&_autoFillField](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -545,9 +545,9 @@ namespace ripple {
 
 	int64_t SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx](auto& obj)
+			[&_account, &_owner, &_getRaw, &_updateRaw](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -809,7 +809,7 @@ namespace ripple {
 			return tefINVALID_CURRENY;
 
 		STTx accountSetTx(ttTRUST_SET,
-			[&_value, &_sCurrency, &_issuer,&currency](auto& obj)
+			[&_value, &_issuer,&currency](auto& obj)
 		{
 			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ currency,_issuer }, _value));
 		});

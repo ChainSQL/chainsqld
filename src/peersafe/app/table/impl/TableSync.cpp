@@ -40,7 +40,7 @@
 
 namespace ripple {
 
-int32_t const SYNC_JUMP_TIME = 120;
+//int32_t const SYNC_JUMP_TIME = 120;
 
 TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
     : app_(app)

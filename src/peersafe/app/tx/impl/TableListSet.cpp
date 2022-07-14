@@ -806,7 +806,7 @@ namespace ripple {
             }
             else if (tableSleExist && pEntry)
             {
-                Keylet key = keylet::table(accountId, sTableName);
+//                Keylet key = keylet::table(accountId, sTableName);
                 if (!view.dirRemove(
                         keylet::ownerDir(accountId),
                         (*tableSleExist)[sfOwnerNode],
@@ -827,7 +827,7 @@ namespace ripple {
                 //Remove related TableGrant sles and directory node
                 if (!pEntry->isFieldPresent(sfUsers))
                 {
-                    auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+//                    auto nameInDB = pEntry->getFieldH160(sfNameInDB);
                     std::vector<std::shared_ptr<SLE>> vecDel;
 
                     //Need non-const sle-pointer,so not use foreachItem

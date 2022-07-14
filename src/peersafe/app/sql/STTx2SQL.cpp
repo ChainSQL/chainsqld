@@ -2965,7 +2965,7 @@ namespace helper {
 						having_conditions.append(having);
 						buildsql.AddHavingCondition(having_conditions);
 					},
-						[&buildsql, &error](const Json::Value& e) {
+						[&error](const Json::Value& e) {
 						if (e["result"].asInt() != 0) {
 							error = (boost::format("Parsing limit-condition or order-condition is unsuccessfull.[%s]")
 								% e["message"].asString()).str();
@@ -3770,7 +3770,7 @@ bool STTx2SQL::assert_result(const soci::rowset<soci::row>& records, const Json:
 						break;
 
 					result = conditionParse::judge(node.second,
-						[this, &r](const conditionTree::expression_result& expression) {
+						[&r](const conditionTree::expression_result& expression) {
 						bool result = false;
 						std::string keyname = std::get<0>(expression);
 						std::string op = std::get<1>(expression);

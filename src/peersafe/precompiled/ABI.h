@@ -12,22 +12,6 @@
 using namespace eth;
 namespace ripple{
 
-// unsigned int256
-using u256 =
-    boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-        256,
-        256,
-        boost::multiprecision::unsigned_magnitude,
-        boost::multiprecision::unchecked,
-        void>>;
-// signed int256
-using s256 =
-    boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-        256,
-        256,
-        boost::multiprecision::signed_magnitude,
-        boost::multiprecision::unchecked,
-        void>>;
 using string32 = std::array<char, 32>;
 using Address = base_uint<160, detail::AccountIDTag>;
 
