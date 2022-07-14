@@ -41,8 +41,7 @@ STValidationSet::STValidationSet(
     std::uint32_t validationSeq,
     uint256 validationHash,
     PublicKey const& publicKey,
-    valSet set,
-    NetClock::time_point closeTime)
+    valSet set)
     : STObject(validationSetFormat(), sfValidationSet)
     , mValidationSeq(validationSeq)
     , mValidationHash(validationHash)
@@ -67,35 +66,9 @@ STValidationSet::STValidationSet(
         }
         setFieldArray(sfValidations, validations);
     } 
-    setFieldU32(sfCloseTime, closeTime.time_since_epoch().count());
 
 }
 
-//std::shared_ptr<RCLTxSet>
-//STValidationSet::getTxSet(Schema& app) const
-//{
-//    if (isFieldPresent(sfTransactions))
-//    {
-//        auto initialSet = std::make_shared<SHAMap>(
-//            SHAMapType::TRANSACTION, app.getNodeFamily());
-//        initialSet->setUnbacked();
-//
-//        auto& txs = getFieldArray(sfTransactions);
-//        for (auto& obj : txs)
-//        {
-//            uint256 txID = obj.getFieldH256(sfTransactionHash);
-//            auto raw = obj.getFieldVL(sfRaw);
-//            Serializer s(raw.data(), raw.size());
-//            initialSet->addItem(
-//                SHAMapItem(txID, std::move(s)), true, false);
-//        }
-//        return std::make_shared<RCLTxSet>(initialSet);
-//    }
-//    else
-//    {
-//        return nullptr;
-//    }
-//}
 
 Blob STValidationSet::getSerialized() const
 {
@@ -118,7 +91,6 @@ SOTemplate const& STValidationSet::validationSetFormat()
         { sfSequence,         soeREQUIRED },  
         { sfLedgerHash,       soeREQUIRED },
         { sfValidations,      soeREQUIRED },
-        { sfCloseTime,        soeREQUIRED },
 
     };
     return format;

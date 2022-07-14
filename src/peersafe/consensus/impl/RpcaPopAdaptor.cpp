@@ -576,7 +576,7 @@ RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
 }
 
 bool
-RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer, NetClock::time_point closeTime)
+RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer)
 {
     JLOG(j_.warn()) << "Processing peer AcquirValidation ValidatedSeq=" << validatedSeq;
 
@@ -585,7 +585,7 @@ RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_
     {
         auto validations = getLastValidations(ledger->info().seq, ledger->info().hash);
         if (validations.size() > 0 )
-            sendAcquirValidationSet(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations, closeTime), peer);
+            sendAcquirValidationSet(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations), peer);
     }
     
     return false;

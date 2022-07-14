@@ -224,8 +224,6 @@ PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair)
 {
     STObject obj(sfNewFields);
     obj.setFieldU32(sfValidatedSequence, pair.first);
-    auto now = app_.timeKeeper().closeTime().time_since_epoch().count();
-    obj.setFieldU32(sfCloseTime, now);
     auto data = obj.getSerializer().peekData();
 
     protocol::TMConsensus consensus;
