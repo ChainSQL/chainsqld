@@ -141,8 +141,7 @@ detail::supportedAmendments()
         "HardenedValidations",
         "fixAmendmentMajorityCalc",
         //"NegativeUNL"      // Commented out to prevent automatic enablement
-        "PromethSLEHideInMeta",
-        "FeeEscalation"
+        "PromethSLEHideInMeta"
     };
     return supported;
 }
