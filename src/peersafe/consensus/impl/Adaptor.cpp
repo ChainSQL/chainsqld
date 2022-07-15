@@ -119,47 +119,6 @@ Adaptor::preStartRound(
     return validating_ && synced;
 }
 
-void
-Adaptor::notify(
-    protocol::NodeEvent ne,
-    RCLCxLedger const& ledger,
-    bool haveCorrectLCL)
-{
-    protocol::TMStatusChange s;
-
-    if (!haveCorrectLCL)
-        s.set_newevent(protocol::neLOST_SYNC);
-    else
-        s.set_newevent(ne);
-
-    s.set_ledgerseq(ledger.seq());
-    s.set_networktime(app_.timeKeeper().now().time_since_epoch().count());
-    s.set_ledgerhashprevious(
-        ledger.parentID().begin(),
-        std::decay_t<decltype(ledger.parentID())>::bytes);
-    s.set_ledgerhash(
-        ledger.id().begin(), std::decay_t<decltype(ledger.id())>::bytes);
-
-    s.set_schemaid(app_.schemaId().begin(), uint256::size());
-
-    std::uint32_t uMin, uMax;
-    if (!ledgerMaster_.getFullValidatedRange(uMin, uMax))
-    {
-        uMin = 0;
-        uMax = 0;
-    }
-    else
-    {
-        // Don't advertise ledgers we're not willing to serve
-        uMin = std::max(uMin, ledgerMaster_.getEarliestFetch());
-    }
-    s.set_firstseq(uMin);
-    s.set_lastseq(uMax);
-
-    app_.peerManager().foreach(
-        send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
-    JLOG(j_.trace()) << "send status change to peer";
-}
 
 void
 Adaptor::InitAnnounce(STInitAnnounce const& initAnnounce, boost::optional<PublicKey> pubKey /* = boost::none */)
@@ -364,7 +323,7 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t
 
     if (bWaitingInit)
     {
-        notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
+        notify(app_, protocol::neSWITCHED_LEDGER, previousLedger, true, j_);
     }
     if (app_.openLedger().current()->info().seq != previousLedger.seq() + 1)
     {
@@ -393,10 +352,11 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t
 
     if (!validating())
     {
-        notify(
+        notify(app_,
             protocol::neCLOSING_LEDGER,
             previousLedger,
-            mode() != ConsensusMode::wrongLedger);
+            mode() != ConsensusMode::wrongLedger,
+            j_);
     }
 
     return app_.validators().updateTrustedAndBroadcast(

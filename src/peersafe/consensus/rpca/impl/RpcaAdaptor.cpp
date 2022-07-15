@@ -117,7 +117,7 @@ RpcaAdaptor::onClose(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+    notify(app_,protocol::neCLOSING_LEDGER, ledger, !wrongLCL, j_);
 
     auto const& prevLedger = ledger.ledger_;
 
@@ -294,7 +294,7 @@ RpcaAdaptor::doAccept(
     JLOG(j_.debug()) << "Built ledger #" << built.seq() << ": " << newLCLHash;
 
     // Tell directly connected peers that we have a new LCL
-    notify(protocol::neACCEPTED_LEDGER, built, haveCorrectLCL);
+    notify(app_, protocol::neACCEPTED_LEDGER, built, haveCorrectLCL, j_);
 
     // As long as we're in sync with the network, attempt to detect attempts
     // at censorship of transaction by tracking which ones don't make it in

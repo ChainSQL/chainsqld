@@ -2102,7 +2102,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
-
+    notify(app_, protocol::neVALID_LEDGER, ledger, false, m_journal);
     checkSubChains();
 
     app_.getTxPool().removeTxs(

@@ -1037,6 +1037,8 @@ PopConsensus::peerProposalInternal(
                 // Tell the ledger master not to acquire the ledger we're probably building
                 adaptor_.ledgerMaster_.setBuildingLedger(prevLedgerSeq_ + 1);
 
+                notify(adaptor_.app_, protocol::neCLOSING_LEDGER, previousLedger_, false, j_);
+
                 if (txSetCached_.find(*setID_) != txSetCached_.end())
                 {
                     for (auto publicKey : txSetCached_[*setID_])

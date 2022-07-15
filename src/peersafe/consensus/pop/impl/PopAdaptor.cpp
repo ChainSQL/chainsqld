@@ -108,7 +108,7 @@ PopAdaptor::onCollectFinish(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+    notify(app_, protocol::neCLOSING_LEDGER, ledger, !wrongLCL, j_);
 
     auto const& prevLedger = ledger.ledger_;
 
@@ -366,7 +366,7 @@ PopAdaptor::doAccept(
     JLOG(j_.debug()) << "Built ledger #" << built.seq() << ": " << newLCLHash;
 
     // Tell directly connected peers that we have a new LCL
-    notify(protocol::neACCEPTED_LEDGER, built, haveCorrectLCL);
+    notify(app_, protocol::neACCEPTED_LEDGER, built, haveCorrectLCL, j_);
 
     if (validating_)
         validating_ = ledgerMaster_.isCompatible(

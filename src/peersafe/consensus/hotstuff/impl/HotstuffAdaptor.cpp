@@ -133,7 +133,7 @@ HotstuffAdaptor::onExtractTransactions(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL);
+    notify(app_, protocol::neCLOSING_LEDGER, prevLedger, !wrongLCL, j_);
 
     // Tell the ledger master not to acquire the ledger we're probably building
     ledgerMaster_.setBuildingLedger(prevLedger.seq() + 1);
@@ -361,9 +361,11 @@ HotstuffAdaptor::doAccept(typename Ledger_t::ID const& lgrId)
 
         // Tell directly connected peers that we have a new LCL
         notify(
+            app_,
             protocol::neACCEPTED_LEDGER,
             ledger,
-            mode_ != ConsensusMode::wrongLedger);
+            mode_ != ConsensusMode::wrongLedger,
+            j_);
 
         ledgerMaster_.switchLCL(ledger);
 

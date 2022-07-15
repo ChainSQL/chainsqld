@@ -21,7 +21,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <cctype>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
-
 namespace ripple {
 
 
@@ -48,5 +47,47 @@ isHexID(std::string const& txid)
     return (ret == txid.end());
 }
 
+void
+notify(
+    Schema& app,
+    protocol::NodeEvent ne,
+    RCLCxLedger const& ledger,
+    bool haveCorrectLCL,
+    beast::Journal journal)
+{
+    protocol::TMStatusChange s;
 
+    if (!haveCorrectLCL)
+        s.set_newevent(protocol::neLOST_SYNC);
+    else
+        s.set_newevent(ne);
+
+    s.set_ledgerseq(ledger.seq());
+    s.set_networktime(app.timeKeeper().now().time_since_epoch().count());
+    s.set_ledgerhashprevious(
+        ledger.parentID().begin(),
+        std::decay_t<decltype(ledger.parentID())>::bytes);
+    s.set_ledgerhash(
+        ledger.id().begin(), std::decay_t<decltype(ledger.id())>::bytes);
+
+    s.set_schemaid(app.schemaId().begin(), uint256::size());
+
+    std::uint32_t uMin, uMax;
+    if (!app.getLedgerMaster().getFullValidatedRange(uMin, uMax))
+    {
+        uMin = 0;
+        uMax = 0;
+    }
+    else
+    {
+        // Don't advertise ledgers we're not willing to serve
+        uMin = std::max(uMin, app.getLedgerMaster().getEarliestFetch());
+    }
+    s.set_firstseq(uMin);
+    s.set_lastseq(uMax);
+
+    app.peerManager().foreach(
+        send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
+    JLOG(journal.trace()) << "send status change to peer";
+}
 }
