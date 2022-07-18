@@ -296,6 +296,15 @@ private:
 
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
     bool WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce);
+
+    std::pair<bool, bool>
+    DealWithEveryTx(
+        STTx& tx, 
+        std::vector<protocol::TMTableData>::const_iterator iter,
+        std::map<uint256, std::tuple<STTx, int, std::pair<bool, std::string>>>&
+            tmpPubMap);
+    bool isMysqlConnectionErr();
+
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 
     LedgerIndex                                                  uTxSeq_;
