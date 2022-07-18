@@ -1138,6 +1138,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     uint256 lastTxHash = beast::zero;
                     bool isLastOne = i == vecTxSlices.size() - 1;
                     auto stTran = TxStoreTransaction(&getTxStoreDBConn());
+                    //Loop for a single slice
                     for (int j = 0; j < vecTxSlices[i].size(); j++)
                     {
                         auto& tx = *vecTxSlices[i][j];
@@ -1168,19 +1169,26 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                             break;
                         countProcessed++;
                     }
-                    // break to retry loops
+                    // If connection error, break to retry loops
                     if (connectionErr)
                     {
                         if (stTran.GetTransaction())
                             stTran.GetTransaction()->setHandled();
                         RemoveConnectionUnit();
+
+                        if (countTry < MAX_CONN_RETRY_COUNT - 1)
+                        {
+                            JLOG(journal_.warn())<< "Before retry sleep for 5 seconds.";
+                            std::this_thread::sleep_for(std::chrono::seconds(5));
+                        }
                         break;
                     }
+                    //when SqlTransaction tx failed,will rollback
                     if (rollback)
                     {
                         stTran.rollback();
                         UpdateSyncDB(isLastOne, lastTxHash, *iter);
-                    }
+                    }// else commit every query
                     else
                     {
                         UpdateSyncDB(isLastOne, lastTxHash, *iter);
@@ -1210,8 +1218,6 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                         break;
                     }
                 }
-                if (connectionErr)
-                    break;
             }
             if (i == vecTxSlices.size())
                 break;
@@ -1219,6 +1225,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         }
         if (countTry >= MAX_CONN_RETRY_COUNT)
         {
+            JLOG(journal_.warn()) << "Retry 3 times,set sync_stop";
             SetSyncState(SYNC_STOP);
             return true;
         }
@@ -1264,7 +1271,7 @@ TableSyncItem::DealWithEveryTx(
         {
             if (getTxStoreDBConn().GetDBConn() == nullptr)
                 return std::make_pair(false, true);
-            if(tx.getTxnType() == ttSQLTRANSACTION )
+            if (tx.getTxnType() == ttSQLTRANSACTION || tx.getTxnType() == ttCONTRACT)
                 return std::make_pair(true, false);
         }
     }
@@ -1280,11 +1287,12 @@ TableSyncItem::DealWithEveryTx(
                 std::make_tuple(tx, vecTxs.size(), std::make_pair(false, e.what())));
         if (isMysqlConnectionErr())
         {
+            JLOG(journal_.warn()) << "Dispose found connection error!";
             return std::make_pair(false, true);
         }
         else
         {
-            if (tx.getTxnType() == ttSQLTRANSACTION)
+            if (tx.getTxnType() == ttSQLTRANSACTION || tx.getTxnType() == ttCONTRACT)
                 return std::make_pair(true, false);
         }
     }
