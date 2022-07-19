@@ -1235,7 +1235,6 @@ SchemaImp::setup()
 
         Section enabledAmendments("enable Amendments");
 
-        enabledAmendments.append(config_->amendments);
 
         m_amendmentTable = make_AmendmentTable(
             config().AMENDMENT_MAJORITY_TIME,
@@ -1539,7 +1538,7 @@ SchemaImp::setup()
 void
 SchemaImp::startGenesisLedger()
 {
-    std::vector<uint256> initialAmendments = m_amendmentTable->getDesired();
+    std::vector<uint256> initialAmendments = config_->amendments;
     if (initialAmendments.empty())
         initialAmendments = getDefaultEnabledFeature();
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
@@ -1942,7 +1941,7 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         return false;
     }
 
-    std::vector<uint256> initialAmendments = m_amendmentTable->getDesired();
+    std::vector<uint256> initialAmendments = config_->amendments;
     if (initialAmendments.empty())
         initialAmendments = getDefaultEnabledFeature();
     auto genesis = std::make_shared<Ledger>(*loadLedger, initialAmendments, nodeFamily_);

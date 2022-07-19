@@ -1008,7 +1008,7 @@ Config::loadFromString(std::string const& fileContents)
         for (auto const& s : partAmend.values())
         {
             if (auto const f = getRegisteredFeature(s))
-                amendments.push_back(to_string(*f) + " " + s);
+                amendments.push_back(*f);
             else
                 Throw<std::runtime_error>(
                     "Unknown feature: " + s + "  in config file.");
