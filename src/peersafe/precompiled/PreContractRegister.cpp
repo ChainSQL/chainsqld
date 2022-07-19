@@ -88,7 +88,7 @@ int64_t linearPricer(unsigned _base, unsigned _word, eth::bytesConstRef _in)
      memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
      uint256 ret;
-     uint v = (uint)(eth::u256)in.v;
+     uint32_t v = (uint32_t)(eth::u256)in.v;
      if (v >= 27 && v <= 28)
      {
          ripple::SignatureStruct sig(in.r, in.s, (byte)(v - 27));
