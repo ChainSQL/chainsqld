@@ -452,9 +452,9 @@ namespace ripple {
 	
 	int64_t SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_account2, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_account2, &_raw](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -476,7 +476,7 @@ namespace ripple {
 
 	int64_t SleOps::updateFieldsTable(AccountID const& _account, TableOpType& _opType, std::string const& _sTableName, std::string const& _raw)
     {
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
 			[&_account, &_opType, &_raw](auto& obj)
 		{
