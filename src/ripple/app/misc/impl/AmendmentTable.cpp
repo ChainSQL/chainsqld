@@ -340,19 +340,19 @@ AmendmentTableImpl::AmendmentTableImpl(
         }
     }*/
 
-    //for (auto const& a : parseSection(vetoed))
-    //{
-    //    // Unknown amendments are effectively vetoed already
-    //    if (auto s = get(a.first, sl))
-    //    {
-    //        JLOG(j_.info()) << "Amendment " << a.first << " is vetoed.";
+    for (auto const& a : parseSection(vetoed))
+    {
+        // Unknown amendments are effectively vetoed already
+        if (auto s = get(a.first, sl))
+        {
+            JLOG(j_.info()) << "Amendment " << a.first << " is vetoed.";
 
-    //        if (!a.second.empty())
-    //            s->name = a.second;
+            if (!a.second.empty())
+                s->name = a.second;
 
-    //        s->vetoed = true;
-    //    }
-    //}
+            s->vetoed = true;
+        }
+    }
 }
 
 AmendmentState*
