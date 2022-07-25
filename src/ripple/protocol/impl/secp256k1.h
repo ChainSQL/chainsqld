@@ -21,6 +21,7 @@
 #define RIPPLE_PROTOCOL_SECP256K1_H_INCLUDED
 
 #include <secp256k1/include/secp256k1.h>
+#include <secp256k1/include/secp256k1_recovery.h>
 
 namespace ripple {
 

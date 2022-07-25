@@ -25,8 +25,8 @@
 #include <ripple/protocol/STExchange.h>
 #include <ripple/protocol/UintTypes.h>
 #include <ripple/protocol/Seed.h>
-//#include <ripple/protocol/SecretKey.h>
 #include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <eth/vm/Common.h>
 #include <boost/optional.hpp>
 #include <algorithm>
 #include <cstdint>
@@ -280,6 +280,26 @@ calcNodeID(PublicKey const&);
 //        is here because of header issues
 AccountID
 calcAccountID(PublicKey const& pk);
+
+using byte = uint8_t;
+using Signature = std::array<byte, 65>;
+
+struct SignatureStruct
+{
+    SignatureStruct() = default;
+    SignatureStruct(Signature const& _s) { *(Signature*)this = _s; }
+    SignatureStruct(uint256 const& _r, uint256 const& _s, byte _v): r(_r), s(_s), v(_v) {}
+    operator Signature() const { return *(Signature const*)this; }
+
+    /// @returns true if r,s,v values are valid, otherwise false
+    bool isValid() const noexcept;
+
+    uint256 r;
+    uint256 s;
+    byte v = 0;
+};
+
+Blob recover(Signature const& _sig, uint256 const& _message);
 
 }  // namespace ripple
 

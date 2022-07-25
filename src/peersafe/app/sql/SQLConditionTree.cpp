@@ -257,7 +257,7 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
         }
 
 		// handle regex 
-		std::function<bool(std::string&, int)> modify_bind_string = [this](std::string& fv, int style) {
+        std::function<bool(std::string&, int)> modify_bind_string = [](std::string& fv, int style) {
 			if(style == 0) {
 				if (fv[1] == '/' && fv[2] == '^' && fv[fv.size() - 2] == '/') {
 					std::string s("'%");
@@ -413,7 +413,7 @@ int conditionTree::format_conditions(int style, std::string& conditions) const {
 
 		return true;
 
-	}, [this, &c](const conditionTree& node, int process_state) {
+	}, [&c](const conditionTree& node, int process_state) {
 
 		if (process_state == 0) {
 			// starting a group of condition

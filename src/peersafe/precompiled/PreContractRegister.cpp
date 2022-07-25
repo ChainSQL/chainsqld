@@ -6,6 +6,8 @@
 #include <ripple/protocol/CommonKey.h>
 #include <ripple/basics/Blob.h>
 #include <ripple/basics/Slice.h>
+#include <ripple/protocol/PublicKey.h>
+
 using namespace std;
 
 namespace ripple {
@@ -67,45 +69,46 @@ int64_t linearPricer(unsigned _base, unsigned _word, eth::bytesConstRef _in)
     return b + (s + 31) / 32 * w;
 }
 
-// ETH_REGISTER_PRECOMPILED_PRICER(ecrecover)
-// (eth::bytesConstRef /*_in*/, ChainOperationParams const& /*_chainParams*/, int64_t const& /*_blockNumber*/)
-// {
-//     return 3000;
-// }
+ ETH_REGISTER_PRECOMPILED_PRICER(ecrecover)
+ (eth::bytesConstRef /*_in*/, int64_t const& /*_blockNumber*/)
+ {
+     return 3000;
+ }
 
-// ETH_REGISTER_PRECOMPILED(ecrecover)(eth::bytesConstRef _in)
-// {
-//     struct
-//     {
-//         h256 hash;
-//         h256 v;
-//         h256 r;
-//         h256 s;
-//     } in;
+ ETH_REGISTER_PRECOMPILED(ecrecover)(eth::bytesConstRef _in)
+ {
+     struct
+     {
+         uint256 hash;
+         uint256 v;
+         uint256 r;
+         uint256 s;
+     } in;
 
-//     memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
+     memcpy(&in, _in.data(), min(_in.size(), sizeof(in)));
 
-//     h256 ret;
-//     u256 v = (u256)in.v;
-//     if (v >= 27 && v <= 28)
-//     {
-//         SignatureStruct sig(in.r, in.s, (byte)((int)v - 27));
-//         if (sig.isValid())
-//         {
-//             try
-//             {
-//                 if (Public rec = recover(sig, in.hash))
-//                 {
-//                     ret = dev::sha3(rec);
-//                     memset(ret.data(), 0, 12);
-//                     return {true, ret.asBytes()};
-//                 }
-//             }
-//             catch (...) {}
-//         }
-//     }
-//     return {true, {}};
-// }
+     uint256 ret;
+     uint32_t v = (uint32_t)(eth::u256)in.v;
+     if (v >= 27 && v <= 28)
+     {
+         ripple::SignatureStruct sig(in.r, in.s, (byte)(v - 27));
+         if (sig.isValid())
+         {
+             try
+             {
+                 Blob rec = ripple::recover(sig, in.hash);
+                 if (rec.size() != 0)
+                 {
+                     eth::sha3(rec.data(), rec.size(), ret.data());
+                     memset(ret.data(), 0, 12);
+                     return {true, eth::bytes(ret.data(), ret.data() + ret.size())};
+                 }
+             }
+             catch (...) {}
+         }
+     }
+     return {true, {}};
+ }
 
 ETH_REGISTER_PRECOMPILED_PRICER(sha256)
 (eth::bytesConstRef _in, int64_t const& /*_blockNumber*/)

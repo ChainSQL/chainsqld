@@ -246,7 +246,7 @@ struct TxArgs
     uint256 hash;
     bool binary = false;
     bool metaData = true;
-    bool metaChain = true;
+    bool metaChain = false;
     std::optional<std::pair<uint32_t, uint32_t>> ledgerRange;
 };
 
@@ -517,9 +517,9 @@ doTxJson(RPC::JsonContext& context)
     }
 
     if (context.params.isMember(jss::meta_chain) &&
-        !context.params[jss::meta_chain].asBool())
+        context.params[jss::meta_chain].asBool())
     {
-        args.metaChain = false;
+        args.metaChain = true;
     }
     if (context.params.isMember(jss::min_ledger) &&
         context.params.isMember(jss::max_ledger))
@@ -1218,12 +1218,17 @@ doTxCount(RPC::JsonContext& context)
     int ledger_index = -1;
     if (context.params.isMember(jss::ledger_index))
         ledger_index = context.params[jss::ledger_index].asInt();
+    if (ledger_index == -1)
+    {
+        ledger_index = context.app.getLedgerMaster().getValidLedgerIndex();
+    }
     if (context.params.isMember(jss::chainsql_tx))
         bChainsql = context.params[jss::chainsql_tx].asBool();
     Json::Value ret(Json::objectValue);
     if (bChainsql)
         ret["chainsql"] = context.app.getMasterTransaction().getTxCount(true,ledger_index);
     ret["all"] = context.app.getMasterTransaction().getTxCount(false, ledger_index);
+    ret[jss::ledger_index] = ledger_index;
 
     return ret;
 }
