@@ -266,7 +266,7 @@ public:
         , mConsensus(
               app,
               make_FeeVote(
-                  setup_FeeVote(app_.config().section("voting")),
+                  setup_FeeVote(app_.config()),
                   app_.journal("FeeVote")),
               ledgerMaster,
               *m_localTX,

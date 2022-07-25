@@ -172,7 +172,6 @@ public:
 Ledger::Ledger(
     create_genesis_t,
     Config const& config,
-    std::vector<uint256> const& amendments,
     Family& family)
     : mImmutable(false)
     , txMap_(std::make_shared<SHAMap>(SHAMapType::TRANSACTION, family))
@@ -208,10 +207,38 @@ Ledger::Ledger(
     rootSle->setFieldAmount(sfBalance, info_.drops);
     rawInsert(rootSle);
 
-    if (!amendments.empty())
     {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
         auto const sle = std::make_shared<SLE>(keylet::amendments());
-        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
+        rawInsert(sle);
+    }
+    
+
+    {
+        auto const k = keylet::fees();
+
+        auto sle = std::make_shared<SLE>(k);
+        if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
+            sle->setFieldU64(sfBaseFee, *f);
+
+        sle->setFieldU32(
+            sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
+
+        if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
+            sle->setFieldU32(sfReserveBase, *f);
+
+        if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
+            sle->setFieldU32(
+                sfReserveIncrement, *f);
+
+        sle->setFieldU64(
+            sfDropsPerByte, config.DROPS_PER_BYTE);
+
+        sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
+
         rawInsert(sle);
     }
 
@@ -337,7 +364,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, std::vector<uint256> const& amendments, Family& f)
+Ledger::Ledger(Ledger const& ledger, Family& f, Config const& config)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -381,12 +408,41 @@ Ledger::Ledger(Ledger const& ledger, std::vector<uint256> const& amendments, Fam
             count++;
         }
     }
-    if (!amendments.empty())
     {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
         auto const sle = std::make_shared<SLE>(keylet::amendments());
-        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
         rawInsert(sle);
     }
+    
+
+    {
+        auto const k = keylet::fees();
+
+        auto sle = std::make_shared<SLE>(k);
+        if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
+            sle->setFieldU64(sfBaseFee, *f);
+
+        sle->setFieldU32(
+            sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
+
+        if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
+            sle->setFieldU32(sfReserveBase, *f);
+
+        if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
+            sle->setFieldU32(
+                sfReserveIncrement, *f);
+
+        sle->setFieldU64(
+            sfDropsPerByte, config.DROPS_PER_BYTE);
+
+        sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
+
+        rawInsert(sle);
+    }
+
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);
     rawInsert(sle);

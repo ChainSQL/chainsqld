@@ -1538,11 +1538,8 @@ SchemaImp::setup()
 void
 SchemaImp::startGenesisLedger()
 {
-    std::vector<uint256> initialAmendments = config_->amendments;
-    if (initialAmendments.empty())
-        initialAmendments = getDefaultEnabledFeature();
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
-        create_genesis, *config_, initialAmendments, nodeFamily_);
+        create_genesis, *config_, nodeFamily_);
     m_ledgerMaster->storeLedger(genesis);
 
     genesis->setImmutable(*config_);
@@ -1940,11 +1937,8 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         JLOG(m_journal.fatal()) << "Ledger is not sane.";
         return false;
     }
-
-    std::vector<uint256> initialAmendments = config_->amendments;
-    if (initialAmendments.empty())
-        initialAmendments = getDefaultEnabledFeature();
-    auto genesis = std::make_shared<Ledger>(*loadLedger, initialAmendments, nodeFamily_);
+    
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_);
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));

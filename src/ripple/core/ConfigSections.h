@@ -70,6 +70,11 @@ struct ConfigSection
     {
         return "prometheus";
     }
+    static std::string
+    voting()
+    {
+        return "voting";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.
@@ -78,9 +83,11 @@ struct ConfigSection
 #define SECTION_COMPRESSION "compression"
 #define SECTION_DEBUG_LOGFILE "debug_logfile"
 #define SECTION_ELB_SUPPORT "elb_support"
-#define SECTION_FEE_DEFAULT "fee_default"
-#define SECTION_FEE_ACCOUNT_RESERVE "fee_account_reserve"
-#define SECTION_FEE_OWNER_RESERVE "fee_owner_reserve"
+#define SECTION_FEE_DEFAULT "reference_fee"
+#define SECTION_FEE_ACCOUNT_RESERVE "account_reserve"
+#define SECTION_FEE_OWNER_RESERVE "owner_reserve"
+#define SECTION_DROPS_PER_BYTE "drops_per_byte"
+#define SECTION_GAS_PRICE "gas_price"
 #define SECTION_FETCH_DEPTH "fetch_depth"
 #define SECTION_LEDGER_HISTORY "ledger_history"
 #define SECTION_INSIGHT "insight"
