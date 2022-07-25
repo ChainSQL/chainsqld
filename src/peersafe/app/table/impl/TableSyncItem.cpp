@@ -175,7 +175,7 @@ TableSyncItem::getConnectionUnit()
 {
     if (pConnectionUnit_ == NULL)
     {
-        pConnectionUnit_ = app_.getConnectionPool().getAvailable();
+        pConnectionUnit_ = app_.getConnectionPool().getAvailable(true);
     }
     return *pConnectionUnit_;
 }
@@ -1113,13 +1113,13 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             continue;
         }
 
-        if (!getTxStoreDBConn().GetDBConn())
-        {
-            JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
+        //if (!getTxStoreDBConn().GetDBConn())
+        //{
+        //    JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
 
-            SetSyncState(SYNC_STOP);
-            break;
-        }
+        //    SetSyncState(SYNC_STOP);
+        //    break;
+        //}
         // Make ledger-txs to slices,every slice will run a soci::transaction.
         auto vecTxSlices = fetchLedgerTxSlices(*iter);
         int countTry;
@@ -1138,6 +1138,11 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     uint256 lastTxHash = beast::zero;
                     bool isLastOne = i == vecTxSlices.size() - 1;
                     auto stTran = TxStoreTransaction(&getTxStoreDBConn());
+                    if (!stTran.GetTransaction())
+                    {
+                        OnConnectionError(countTry);
+                        break;
+                    }
                     //Loop for a single slice
                     for (int j = 0; j < vecTxSlices[i].size(); j++)
                     {
@@ -1174,13 +1179,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     {
                         if (stTran.GetTransaction())
                             stTran.GetTransaction()->setHandled();
-                        RemoveConnectionUnit();
-
-                        if (countTry < MAX_CONN_RETRY_COUNT - 1)
-                        {
-                            JLOG(journal_.warn())<< "Before retry sleep for 5 seconds.";
-                            std::this_thread::sleep_for(std::chrono::seconds(5));
-                        }
+                        OnConnectionError(countTry);
                         break;
                     }
                     //when SqlTransaction tx failed,will rollback
@@ -1214,7 +1213,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     JLOG(journal_.error()) << "soci exception: " << e.what();
                     if (isMysqlConnectionErr())
                     {
-                        RemoveConnectionUnit();
+                        OnConnectionError(countTry);
                         break;
                     }
                 }
@@ -1302,6 +1301,8 @@ TableSyncItem::DealWithEveryTx(
 bool
 TableSyncItem::isMysqlConnectionErr()
 {
+    if (getTxStoreDBConn().GetDBConn() == nullptr)
+        return true;
     int errNo = getTxStoreDBConn().GetDBConn()->getSession().last_error().first;
     if (errNo == CR_SERVER_GONE_ERROR || errNo == CR_SERVER_LOST)
         return true;
@@ -1509,5 +1510,16 @@ TableSyncItem::RemoveConnectionUnit()
         pConnectionUnit_.reset();
     }
 }
+
+void TableSyncItem::OnConnectionError(int tryCount)
+{
+    RemoveConnectionUnit();
+    if (tryCount < MAX_CONN_RETRY_COUNT - 1)
+    {
+        JLOG(journal_.warn()) << "Before retry sleep for 5 seconds.";
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+}
+
 
 }

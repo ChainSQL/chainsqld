@@ -273,6 +273,7 @@ protected:
 
     void ReleaseConnectionUnit();
     void RemoveConnectionUnit();
+    void OnConnectionError(int tryCount);
 
 private:
     bool GetIsChange();
