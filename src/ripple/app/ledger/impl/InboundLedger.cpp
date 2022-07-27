@@ -82,6 +82,7 @@ InboundLedger::InboundLedger(
     clock_type& clock)
     : PeerSet(app, hash, ledgerAcquireTimeout, app.journal("InboundLedger"))
     , m_clock(clock)
+    , mLastAction(m_clock.now())
     , mHaveHeader(false)
     , mHaveState(false)
     , mHaveTransactions(false)
