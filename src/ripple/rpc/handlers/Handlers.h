@@ -211,6 +211,9 @@ Json::Value doGenCsr(RPC::JsonContext&); // for humans
 //for gm algorithm data generation
 Json::Value doCreateRandom(RPC::JsonContext&);
 Json::Value doCryptData(RPC::JsonContext&);
+
+// Ethereum-compatible JSON RPC API
+Json::Value doEthChainId(RPC::JsonContext&);
 }  // namespace ripple
 
 #endif

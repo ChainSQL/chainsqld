@@ -972,7 +972,17 @@ ServerHandlerImp::processRequest(
             {
                 result[jss::status]  = jss::success;
             }
-            r[jss::result] = std::move(result);
+            std::string ethMethod = "eth_";
+            if(strMethod.find(ethMethod) == std::string::npos)
+            {
+                r[jss::result] = std::move(result);
+            }
+            else
+            {
+                r[jss::result] = result[jss::result];
+                r["id"] = jsonRPC["id"];
+                r["jsonrpc"] = jsonRPC["jsonrpc"];
+            }
         }
 		//if trasaction operation,
 		//remove tx_blob & tx_json field,and make tx_id parallel with result
