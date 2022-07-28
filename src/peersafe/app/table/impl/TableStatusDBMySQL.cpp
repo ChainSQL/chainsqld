@@ -43,7 +43,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             static std::string const prefix(
                 R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash from SyncTableState
@@ -99,7 +99,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             static std::string const prefix(
                 R"(select TxnLedgerHash,TxnLedgerSeq from SyncTableState
@@ -144,7 +144,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             std::string sql(
                 "INSERT INTO SyncTableState "
@@ -186,7 +186,7 @@ namespace ripple {
     {
         bool ret = false;
         
-        LockedSociSession sql_session = databasecon_->checkoutDb();
+        LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
         //1.check the synctable whether exists.
         bool bExist = false;
@@ -254,7 +254,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
             static std::string const prefix(
                 R"(SELECT TableNameInDB from SyncTableState
             WHERE )");
@@ -300,7 +300,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET TableName = '%s'
                 WHERE Owner = '%s' AND TableNameInDB = '%s';)"))
@@ -330,7 +330,7 @@ namespace ripple {
         try {
             std::string Owner = to_string(accountID);
 
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET TableNameInDB = '%s'
@@ -359,7 +359,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             std::string deleteVal = boost::str(boost::format(
                 (R"(DELETE FROM  SyncTableState
@@ -390,7 +390,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
             static std::string const prefix(
                 R"(SELECT LedgerSeq from SyncTableState
             WHERE )");
@@ -461,7 +461,7 @@ namespace ripple {
         const std::string& PreviousCommit)
     {
         soci_ret ret = soci_success;
-        LockedSociSession sql_session = databasecon_->checkoutDb();
+        LockedSociSession sql_session = databasecon_.load()->checkoutDb();
         std::string sql = boost::str(boost::format((
             R"(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
             WHERE Owner = :Owner AND TableNameInDB = :TableNameInDB;)")));
@@ -488,7 +488,7 @@ namespace ripple {
 		soci_ret ret = soci_success;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,PreviousCommit = :PreviousCommit
@@ -542,7 +542,7 @@ namespace ripple {
         const std::string& PreviousCommit)
     {
         soci_ret ret = soci_success;
-        LockedSociSession sql_session = databasecon_->checkoutDb();
+        LockedSociSession sql_session = databasecon_.load()->checkoutDb();
         std::string sql = boost::str(
             boost::format((R"(UPDATE SyncTableState SET TxnUpdateHash = '%s'
                 WHERE Owner = '%s' AND TableNameInDB = '%s';)")) %
@@ -564,7 +564,7 @@ namespace ripple {
     {
 		soci_ret ret = soci_success;
         try {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET deleted = '%s'
@@ -592,7 +592,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 
 			std::string  sql = boost::str(boost::format(
 				(R"(select Owner,TableName,TxnLedgerTime from SyncTableState
@@ -644,7 +644,7 @@ namespace ripple {
     {
         bool ret = false;
         try {
-            LockedSociSession sql_session = databasecon_->checkoutDb();
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();
             std::string sql = boost::str(boost::format(
                 (R"(UPDATE SyncTableState SET AutoSync = '%s'
                 WHERE Owner = '%s' AND TableName = '%s';)"))

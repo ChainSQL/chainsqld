@@ -49,8 +49,7 @@ TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
 	, checkSkipNode_("SkipNode", 65536, std::chrono::seconds{ 450 }, stopwatch(),
         app_.journal("TaggedCache"))
 {
-    if (app.getTxStoreDBConn().GetDBConn() == nullptr || 
-		app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+    if (!app.checkGlobalConnection())
         bIsHaveSync_ = false;
     else
         bIsHaveSync_ = true;
@@ -1848,7 +1847,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         bool bDBTableExist = false;
                         if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end())
                         {
-                            bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+                            bDBTableExist = TableSyncUtil::IsTableExist(app_, uTxDBName);                                
                             mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
                         }
                         else
@@ -1859,8 +1858,15 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         {
                             if (!bDBTableExist)
                             {
+                                auto dbErr = std::string(jss::db_noTableExistInDB);
+                                auto msg = "";
+                                if (TableSyncUtil::IsMysqlConnectionErr(app_.getTxStoreDBConn().GetDBConn()))
+                                {
+                                    dbErr = std::string(jss::db_error);
+                                    msg = "Connection lost.";
+                                }
                                 app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
-                                    std::make_tuple(std::string(jss::db_noTableExistInDB), "", ""), false);
+                                    std::make_tuple(dbErr, "", msg), false);
                                 break;
                             }
 

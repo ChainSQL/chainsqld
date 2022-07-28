@@ -43,6 +43,8 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     std::string dbName = "chainsql";
 
     DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
+    if (setup.sync_db.lines().size() == 0)
+        return;
 
     std::pair<std::string, bool> dbNameCfg = setup.sync_db.find("db");
     if (dbNameCfg.second && !dbNameCfg.first.empty())

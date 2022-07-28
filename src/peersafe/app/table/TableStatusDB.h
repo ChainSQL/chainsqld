@@ -95,8 +95,11 @@ public:
 
     virtual DatabaseCon* GetDatabaseConn() = 0;
 
+    void
+    UpdateDatabaseConn(DatabaseCon* dbconn);
+
 protected:
-    DatabaseCon*                                                 databasecon_;
+    std::atomic<DatabaseCon*>                                    databasecon_;
 	Schema*		                                                 app_;
     beast::Journal&                                              journal_;
 }; // class TxStoreStatus

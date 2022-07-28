@@ -20,10 +20,8 @@ public:
         store_ = nullptr;
         locked_ = false;
         conn_ = std::make_shared<TxStoreDBConn>(app.config());
-        if (conn_ == nullptr)
-            return;
         store_ = std::make_shared<TxStore>(
-            conn_->GetDBConn(), app.config(), app.journal("RPCHandler"));
+            conn_->GetDBConn(), app.config(), app.journal("TxStore"));
         last_access_ = stopwatch().now();
     }
     

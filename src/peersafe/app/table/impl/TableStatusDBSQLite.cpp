@@ -37,7 +37,7 @@ namespace ripple {
     {   
         bool ret = false;
         try {
-            LockedSociSession sql_session = databasecon_->checkoutDb();            
+            LockedSociSession sql_session = databasecon_.load()->checkoutDb();            
 
             std::string sql(
                 "CREATE TABLE IF NOT EXISTS SyncTableState (\
@@ -79,7 +79,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            auto db(databasecon_->checkoutDb());
+            auto db(databasecon_.load()->checkoutDb());
 
             static std::string const prefix(
                 R"(SELECT TableNameInDB from SyncTableState
@@ -127,7 +127,7 @@ namespace ripple {
         bool ret = false;
 
         try {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string const prefix(
                 R"(select TxnLedgerHash,TxnLedgerSeq,LedgerHash,LedgerSeq,TxnUpdateHash from SyncTableState
@@ -183,7 +183,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string const prefix(
                 R"(select TxnLedgerHash,TxnLedgerSeq from SyncTableState
@@ -229,7 +229,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             std::string sql(
                 "INSERT OR REPLACE INTO SyncTableState "
@@ -271,7 +271,7 @@ namespace ripple {
         bool ret = false;
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
 			static std::string  sql = boost::str(boost::format(
 				(R"(select Owner,TableName,TxnLedgerTime from SyncTableState
@@ -322,7 +322,7 @@ namespace ripple {
     {
 		bool ret = false;
 		try {
-			LockedSociSession sql_session = databasecon_->checkoutDb();
+			LockedSociSession sql_session = databasecon_.load()->checkoutDb();
 			std::string sql = boost::str(boost::format(
 				(R"(UPDATE SyncTableState SET AutoSync = '%s'
                 WHERE Owner = '%s' AND TableName = '%s';)"))
@@ -352,7 +352,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string updateVal(
                 R"sql(UPDATE SyncTableState SET TableName = :TableName
@@ -380,7 +380,7 @@ namespace ripple {
 		soci_ret ret = soci_success;
         try {
             std::string Owner = to_string(accountID);
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string updateVal(
                 R"sql(UPDATE SyncTableState SET TableNameInDB = :TableNameInDB
@@ -410,7 +410,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string deleteVal(
                 R"sql(DELETE FROM  SyncTableState
@@ -439,7 +439,7 @@ namespace ripple {
         std::string Owner = to_string(accountID);
         try
         {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string const prefix(
                 R"(SELECT LedgerSeq from SyncTableState
@@ -507,7 +507,7 @@ namespace ripple {
     {
         soci_ret ret = soci_success;
 
-        auto db(databasecon_->checkoutDb());
+        auto db(databasecon_.load()->checkoutDb());
 
         static std::string updateVal(
             R"sql(UPDATE SyncTableState SET TxnLedgerHash = :TxnLedgerHash, TxnLedgerSeq = :TxnLedgerSeq,LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,TxnUpdateHash = :TxnUpdateHash,TxnLedgerTime = :TxnLedgerTime,PreviousCommit = :PreviousCommit
@@ -529,7 +529,7 @@ namespace ripple {
         
         try
         {
-            auto db(databasecon_->checkoutDb());
+            auto db(databasecon_.load()->checkoutDb());
             
             static std::string updateVal(
                 R"sql(UPDATE SyncTableState SET LedgerHash = :LedgerHash, LedgerSeq = :LedgerSeq,PreviousCommit = :PreviousCommit
@@ -578,7 +578,7 @@ namespace ripple {
     {
         soci_ret ret = soci_success;
 
-        auto db(databasecon_->checkoutDb());
+        auto db(databasecon_.load()->checkoutDb());
 
         static std::string updateVal(
             R"sql(UPDATE SyncTableState SET TxnUpdateHash = :TxnUpdateHash,PreviousCommit = :PreviousCommit
@@ -598,7 +598,7 @@ namespace ripple {
 		soci_ret ret = soci_success;
         
         try {
-            auto db(databasecon_->checkoutDb());            
+            auto db(databasecon_.load()->checkoutDb());            
 
             static std::string updateVal(
                 R"sql(UPDATE SyncTableState SET deleted = :deleted,PreviousCommit = :PreviousCommit

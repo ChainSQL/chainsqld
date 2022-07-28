@@ -273,7 +273,7 @@ protected:
 
     void ReleaseConnectionUnit();
     void RemoveConnectionUnit();
-    void OnConnectionError(int tryCount);
+    void OnConnectionError(bool bSleep);
 
 private:
     bool GetIsChange();
@@ -304,7 +304,6 @@ private:
         std::vector<protocol::TMTableData>::const_iterator iter,
         std::map<uint256, std::tuple<STTx, int, std::pair<bool, std::string>>>&
             tmpPubMap);
-    bool isMysqlConnectionErr();
 
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 

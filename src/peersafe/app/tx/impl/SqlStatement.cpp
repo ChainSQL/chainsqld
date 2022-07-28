@@ -256,8 +256,7 @@ namespace ripple {
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 		//
-		if (ctx_.app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			ctx_.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		if (!ctx_.app.checkGlobalConnection())
 		{
 			return tefDBNOTCONFIGURED;
 		}
@@ -269,9 +268,7 @@ namespace ripple {
 
 		try
 		{
-
-			if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
-				app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+			if (!app.checkGlobalConnection())
 			{
 				return tefDBNOTCONFIGURED;
 			}

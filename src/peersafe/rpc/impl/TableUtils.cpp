@@ -257,11 +257,9 @@ namespace ripple {
 
 	bool isDBConfigured(Schema& app)
 	{
-		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
-			return false;
-		else
-			return true;
+		if (app.checkGlobalConnection())
+            return true;
+		return false;
 	}
 
     bool

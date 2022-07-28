@@ -87,6 +87,8 @@ public:
     bool
     available() override;
     bool
+    checkGlobalConnection(bool bForceUpdate = false) override;
+    bool
     nodeToShards();
     bool
     validateShards();
@@ -157,8 +159,8 @@ private:
     std::unique_ptr<HashRouter> mHashRouter;
     RCLValidations mValidations;
     std::unique_ptr<TxQ> txQ_;
-    std::unique_ptr<TxStoreDBConn> m_pTxStoreDBConn;
-    std::unique_ptr<TxStore> m_pTxStore;
+    std::unique_ptr<ConnectionPool> m_pConnectionPool;
+    std::shared_ptr<ConnectionUnit> m_pGlobalConnUnit;
     std::unique_ptr<TableStatusDB> m_pTableStatusDB;
     std::unique_ptr<TableSync> m_pTableSync;
     std::unique_ptr<TableStorage> m_pTableStorage;
@@ -167,7 +169,6 @@ private:
     std::unique_ptr<TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
-    std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
     std::unique_ptr<TxnDBCon> mTxnDB;
@@ -323,12 +324,9 @@ public:
               setup_TxQ(*config_),
               SchemaImp::journal("TxQ")))
 
-        , m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
+        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
-        , m_pTxStore(std::make_unique<TxStore>(
-              m_pTxStoreDBConn->GetDBConn(),
-              *config_,
-              SchemaImp::journal("TxStore")))
+        , m_pGlobalConnUnit(m_pConnectionPool->getAvailable(true))
 
         , m_pTableSync(std::make_unique<TableSync>(
               *this,
@@ -355,8 +353,6 @@ public:
         , m_pStateManager(std::make_unique<StateManager>(
               *this,
               SchemaImp::journal("StateManager")))
-
-        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
         , m_pPrometheusClient(std::make_unique<PrometheusClient>(
@@ -475,13 +471,13 @@ public:
     TxStoreDBConn&
     getTxStoreDBConn() override
     {
-        return *m_pTxStoreDBConn;
+        return *m_pGlobalConnUnit->conn_;
     }
 
     TxStore&
     getTxStore() override
     {
-        return *m_pTxStore;
+        return *m_pGlobalConnUnit->store_;
     }
 
     TableStatusDB&
@@ -1203,6 +1199,23 @@ bool
 SchemaImp::available()
 {
     return m_schemaAvailable;
+}
+
+bool
+SchemaImp::checkGlobalConnection(bool bForceUpdate /* = false */)
+{
+    if (m_pGlobalConnUnit->conn_->GetDBConn() == nullptr || 
+        m_pGlobalConnUnit->conn_->GetDBConn()->getSession().get_backend() == nullptr ||
+        bForceUpdate)
+    {
+        getConnectionPool().removeConnection(m_pGlobalConnUnit);
+        m_pGlobalConnUnit = getConnectionPool().getAvailable(true);
+        m_pTableStatusDB->UpdateDatabaseConn(m_pGlobalConnUnit->conn_->GetDBConn());
+    }
+
+    return (m_pGlobalConnUnit->conn_->GetDBConn() != nullptr &&
+            m_pGlobalConnUnit->conn_->GetDBConn()->getSession().get_backend() !=
+            nullptr);
 }
 
 bool
@@ -2061,15 +2074,13 @@ SchemaImp::setMaxDisallowedLedger()
 bool
 SchemaImp::setSynTable()
 {
-    auto conn = m_pTxStoreDBConn->GetDBConn();
-
     DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
     // sync_db not configured
-    if (setup.sync_db.name() == "" && setup.sync_db.lines().size() == 0)
+    if (setup.sync_db.lines().size() == 0)
         return true;
 
     // sync_db configured,but not connected
-    if (conn == nullptr || conn->getSession().get_backend() == NULL)
+    if (!checkGlobalConnection())
     {
         m_pTableSync->SetHaveSyncFlag(false);
         m_pTableStorage->SetHaveSyncFlag(false);
@@ -2080,6 +2091,7 @@ SchemaImp::setSynTable()
     }
     else
     {
+        auto conn = m_pGlobalConnUnit->conn_->GetDBConn();
         std::pair<std::string, bool> result = setup.sync_db.find("type");
 
         if (result.first.compare("sqlite") == 0 || result.first.empty() ||

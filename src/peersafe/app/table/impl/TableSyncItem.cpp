@@ -42,7 +42,6 @@
 #include <ripple/app/misc/Transaction.h>
 #include <peersafe/app/util/TableSyncUtil.h>
 #include <peersafe/rpc/TableUtils.h>
-#include <errmsg.h>
 
 using namespace std::chrono;
 auto constexpr TABLE_DATA_OVERTM = 30s;
@@ -1105,6 +1104,22 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
         if (iter->txnodes().size() <= 0)
         {
+            if (getTableStatusDB().GetDatabaseConn() == nullptr)
+            {
+                for (int countTry = 0; countTry < MAX_CONN_RETRY_COUNT + 1; countTry++)
+                {
+                    if (getTableStatusDB().GetDatabaseConn() == nullptr)
+                        OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
+                    else
+                        break;
+                }
+                if (getTableStatusDB().GetDatabaseConn() == nullptr)
+                {
+                    SetSyncState(SYNC_STOP);
+                    break;
+                }
+            }
+            
             soci_ret ret = getTableStatusDB().UpdateSyncDB(to_string(accountID_), sTableNameInDB_, LedgerHash, LedgerSeq, PreviousCommit);
             if (ret == soci_exception) {
                 SetSyncState(SYNC_STOP);
@@ -1122,8 +1137,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         //}
         // Make ledger-txs to slices,every slice will run a soci::transaction.
         auto vecTxSlices = fetchLedgerTxSlices(*iter);
-        int countTry;
-        for (countTry = 0; countTry < MAX_CONN_RETRY_COUNT; countTry++)
+        int countTry = 0;
+        for (countTry = 0; countTry < MAX_CONN_RETRY_COUNT + 1; countTry++)
         {
             bool bFindLastSuccessTx = uTxDBUpdateHash_.isZero() ? true : false;
             int countProcessed = 0;
@@ -1140,7 +1155,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     auto stTran = TxStoreTransaction(&getTxStoreDBConn());
                     if (!stTran.GetTransaction())
                     {
-                        OnConnectionError(countTry);
+                        OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
                         break;
                     }
                     //Loop for a single slice
@@ -1179,7 +1194,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     {
                         if (stTran.GetTransaction())
                             stTran.GetTransaction()->setHandled();
-                        OnConnectionError(countTry);
+                        OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
                         break;
                     }
                     //when SqlTransaction tx failed,will rollback
@@ -1211,9 +1226,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 catch (soci::soci_error& e)
                 {
                     JLOG(journal_.error()) << "soci exception: " << e.what();
-                    if (isMysqlConnectionErr())
+                    if (TableSyncUtil::IsMysqlConnectionErr(getTxStoreDBConn().GetDBConn()))
                     {
-                        OnConnectionError(countTry);
+                        OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
                         break;
                     }
                 }
@@ -1222,7 +1237,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                 break;
 
         }
-        if (countTry >= MAX_CONN_RETRY_COUNT)
+        if (countTry >= MAX_CONN_RETRY_COUNT + 1)
         {
             JLOG(journal_.warn()) << "Retry 3 times,set sync_stop";
             SetSyncState(SYNC_STOP);
@@ -1284,7 +1299,7 @@ TableSyncItem::DealWithEveryTx(
             tmpPubMap.emplace(
                 tx.getTransactionID(),
                 std::make_tuple(tx, vecTxs.size(), std::make_pair(false, e.what())));
-        if (isMysqlConnectionErr())
+        if (TableSyncUtil::IsMysqlConnectionErr(getTxStoreDBConn().GetDBConn()))
         {
             JLOG(journal_.warn()) << "Dispose found connection error!";
             return std::make_pair(false, true);
@@ -1296,17 +1311,6 @@ TableSyncItem::DealWithEveryTx(
         }
     }
     return std::make_pair(false, false);
-}
-
-bool
-TableSyncItem::isMysqlConnectionErr()
-{
-    if (getTxStoreDBConn().GetDBConn() == nullptr)
-        return true;
-    int errNo = getTxStoreDBConn().GetDBConn()->getSession().last_error().first;
-    if (errNo == CR_SERVER_GONE_ERROR || errNo == CR_SERVER_LOST)
-        return true;
-    return false;
 }
 
 int TableSyncItem::GetWholeDataSize()
@@ -1511,14 +1515,15 @@ TableSyncItem::RemoveConnectionUnit()
     }
 }
 
-void TableSyncItem::OnConnectionError(int tryCount)
+void
+TableSyncItem::OnConnectionError(bool bSleep)
 {
     RemoveConnectionUnit();
-    if (tryCount < MAX_CONN_RETRY_COUNT - 1)
+    if (bSleep)
     {
         JLOG(journal_.warn()) << "Before retry sleep for 5 seconds.";
         std::this_thread::sleep_for(std::chrono::seconds(5));
-    }
+    }    
 }
 
 
