@@ -1204,13 +1204,17 @@ SchemaImp::available()
 bool
 SchemaImp::checkGlobalConnection(bool bForceUpdate /* = false */)
 {
+    DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
+    if (setup.sync_db.lines().size() == 0)
+        return false;
     if (m_pGlobalConnUnit->conn_->GetDBConn() == nullptr || 
         m_pGlobalConnUnit->conn_->GetDBConn()->getSession().get_backend() == nullptr ||
         bForceUpdate)
     {
         getConnectionPool().removeConnection(m_pGlobalConnUnit);
         m_pGlobalConnUnit = getConnectionPool().getAvailable(true);
-        m_pTableStatusDB->UpdateDatabaseConn(m_pGlobalConnUnit->conn_->GetDBConn());
+        if (m_pTableStatusDB != nullptr)
+            m_pTableStatusDB->UpdateDatabaseConn(m_pGlobalConnUnit->conn_->GetDBConn());
     }
 
     return (m_pGlobalConnUnit->conn_->GetDBConn() != nullptr &&
