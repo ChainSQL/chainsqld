@@ -138,7 +138,9 @@ TxPool::removeTxs(
             }
         }
 
-        if (!vecHash.empty())
+        //If there are too many transactions in the transaction pool, it will take a long time to traverse mTxsSet; 
+        //some expired transactions are cleaned up according to sfLastLedgerSequence
+        /*if (!vecHash.empty())
         {
             for (auto txID : vecHash)
             {
@@ -150,8 +152,10 @@ TxPool::removeTxs(
                         mTxsSet.end(),
                         [&tx](std::shared_ptr<Transaction> txLocal)
                             {
-                            return tx->getSTransaction()->getSequence() ==
-                                txLocal->getSTransaction()->getSequence();
+                            return (tx->getSTransaction()->getAccountID(sfAccount) ==
+                                    txLocal->getSTransaction()->getAccountID(sfAccount)) &&
+                                (tx->getSTransaction()->getSequence() <=
+                                txLocal->getSTransaction()->getSequence());
                             });
                     if (iter != mTxsSet.end())
                     {
@@ -162,7 +166,7 @@ TxPool::removeTxs(
                 }
             }
             
-        }
+        }*/
         // remove avoid set.
         clearAvoid(ledgerSeq);
     }
