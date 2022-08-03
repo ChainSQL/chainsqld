@@ -755,25 +755,23 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
         auto pTransaction = app_.getMasterTransaction().fetch(
             table.getFieldH256(sfCreatedTxnHash));
 
-        if (!pTransaction)
-        {
-            std::string errMsg = "fetch transaction " +
-                to_string(table.getFieldH256(sfCreatedTxnHash)) + " failed";
-            return std::make_pair(false, errMsg);
-        }
-        else
+        if (pTransaction)
         {
             pTx = pTransaction->getSTransaction();
         }
 
         if (!user_accountID_ || user_accountID_->isZero())
         {
-            app_.getOPs().pubTableTxs(
-                accountID_,
-                sTableName_,
-                *pTx,
-                std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
-                false);
+            if (pTx)
+            {
+                app_.getOPs().pubTableTxs(
+                    accountID_,
+                    sTableName_,
+                    *pTx,
+                    std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
+                    false);
+            }
+            
             return std::make_pair(false, "user account is null.");
         }
         auto tup = getUserAuthAndToken(
@@ -785,12 +783,16 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
             auto userFlags = std::get<1>(tup);
             if ((userFlags & selectFlags) == 0)
             {
-                app_.getOPs().pubTableTxs(
-                    accountID_,
-                    sTableName_,
-                    *pTx,
-                    std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
-                    false);
+                if (pTx)
+                {
+                    app_.getOPs().pubTableTxs(
+                        accountID_,
+                        sTableName_,
+                        *pTx,
+                        std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
+                        false);
+                }
+                
                 return std::make_pair(false, "no authority.");
             }
             else
@@ -804,12 +806,16 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
                         return std::make_pair(true, "");
                     else
                     {
-                        app_.getOPs().pubTableTxs(
-                            accountID_,
-                            sTableName_,
-                            *pTx,
-                            std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
-                            false);
+                        if (pTx)
+                        {
+                            app_.getOPs().pubTableTxs(
+                                accountID_,
+                                sTableName_,
+                                *pTx,
+                                std::make_tuple(std::string(jss::db_noSyncConfig), "", ""),
+                                false);
+                        }
+                        
                         return std::make_pair(
                             false,
                             "Cann't get password for this table.");
@@ -824,12 +830,16 @@ std::pair<bool, std::string> TableSyncItem::InitPassphrase()
         }
         else
         {
-            app_.getOPs().pubTableTxs(
-                accountID_,
-                sTableName_,
-                *pTx,
-                std::make_tuple(std::string(jss::db_acctSecretError), "", ""),
-                false);
+            if (pTx)
+            {
+                app_.getOPs().pubTableTxs(
+                    accountID_,
+                    sTableName_,
+                    *pTx,
+                    std::make_tuple(std::string(jss::db_acctSecretError), "", ""),
+                    false);
+            }
+            
             return std::make_pair(false, "user account secret is incorrect ");
         }
     }
