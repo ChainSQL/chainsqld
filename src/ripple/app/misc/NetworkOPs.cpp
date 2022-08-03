@@ -3675,10 +3675,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 std::string
 NetworkOPsImp::getServerStatus()
 {
-    auto const& consensusInfo = getConsensusInfo(false);
-
-    if (consensusInfo.isMember("initialized") &&
-        !consensusInfo["initialized"].asBool())
+    if (mConsensus.waitingForInit())
     {
         return "abnormal";
     }
@@ -3686,12 +3683,9 @@ NetworkOPsImp::getServerStatus()
     // Time out in milliseconds
     auto timeout = std::chrono::milliseconds(std::numeric_limits<
                   Json::Value::Int>::max());
-    if (consensusInfo.isMember("parms") &&
-        consensusInfo["parms"].isMember("time_out"))
-    {
-        timeout = 2 * std::chrono::milliseconds(
-            consensusInfo["parms"]["time_out"].asInt());
-    }
+    if (mConsensus.getConsensusTimeOut().count() > 0)
+        timeout = 2 * mConsensus.getConsensusTimeOut();
+    
 
     bool consensusValid = m_ledgerMaster.getValidatedLedgerAge() < timeout;
     auto mode = mConsensus.mode();

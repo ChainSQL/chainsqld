@@ -880,6 +880,12 @@ HotstuffConsensus::broadcast(
         }, adaptor_.app_.doJobCounter());
 }
 
+std::chrono::milliseconds 
+HotstuffConsensus::getConsensusTimeOut() const
+{
+    return adaptor_.parms().consensusTIMEOUT;
+}
+
 // -------------------------------------------------------------------
 // Private member functions
 

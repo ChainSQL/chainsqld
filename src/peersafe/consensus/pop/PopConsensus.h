@@ -164,6 +164,8 @@ public:
     void
     onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted) override final;
 
+    std::chrono::milliseconds 
+    getConsensusTimeOut() const override final;
 private:
     inline uint64_t
     timeSinceOpen() const

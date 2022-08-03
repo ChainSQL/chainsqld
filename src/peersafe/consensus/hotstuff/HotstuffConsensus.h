@@ -170,6 +170,8 @@ public:
         const hotstuff::EpochChange& epochChange,
         const hotstuff::SyncInfo& syncInfo) override final;
 
+    std::chrono::milliseconds 
+    getConsensusTimeOut() const override final;
 private:
     std::chrono::milliseconds
     timeSinceLastClose() const;

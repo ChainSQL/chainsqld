@@ -198,6 +198,9 @@ public:
 
     static std::string
     conMsgTypeToStr(ConsensusMessageType t);
+
+    std::chrono::milliseconds 
+    getConsensusTimeOut() const;
 };
 
 }  // namespace ripple

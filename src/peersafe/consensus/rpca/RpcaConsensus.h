@@ -289,6 +289,9 @@ public:
         return true;
     }
 
+    std::chrono::milliseconds 
+    getConsensusTimeOut() const override final;
+
 private:
     void
     startRoundInternal(

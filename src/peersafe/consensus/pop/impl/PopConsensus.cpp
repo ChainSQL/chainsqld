@@ -419,6 +419,12 @@ PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
     }
 }
 
+std::chrono::milliseconds 
+PopConsensus::getConsensusTimeOut() const
+{
+    return adaptor_.parms().consensusTIMEOUT;
+}
+
 // -------------------------------------------------------------------
 // Private member functions
 
