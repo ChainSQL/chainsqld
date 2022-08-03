@@ -1855,6 +1855,21 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
 {
     protocol::TMLedgerData& packet = *m;
 
+    if (m->type() == protocol::liSKIP_NODE)
+    {
+        auto hash = m->ledgerhash();
+        auto const pap = &app_;
+        // got data for a candidate transaction set
+        std::weak_ptr<PeerImp> weak = shared_from_this();
+        auto& journal = p_journal_;
+        app_.getJobQueue().addJob(
+            jtSKIPNODE, "recvPeerSkipNode",
+            [pap, weak, hash, journal, m](Job&) {
+            pap->getTableSync().GotLedger(m);
+        });
+        return;
+    }
+
     if (m->nodes().size() <= 0)
     {
         JLOG(p_journal_.warn()) << "Ledger/TXset data with no nodes";

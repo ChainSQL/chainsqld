@@ -95,7 +95,7 @@ inline constexpr std::array TxDBPragma
 #endif
 };
 
-inline constexpr std::array<char const*, 12> TxDBInit{
+inline constexpr std::array<char const*, 13> TxDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Transactions (          \
@@ -108,31 +108,33 @@ inline constexpr std::array<char const*, 12> TxDBInit{
         TxResult    CHARACTER(24),                      \
         RawTxn      BLOB,                               \
         TxnMeta     BLOB                                \
-    );",
+     );",
      "CREATE INDEX IF NOT EXISTS TxLgrIndex ON           \
         Transactions(LedgerSeq);",
 
-	"CREATE TABLE IF NOT EXISTS TraceTransactions (         \
+     "CREATE TABLE IF NOT EXISTS TraceTransactions (         \
         TransID     CHARACTER(64),              \
         TransType   CHARACTER(24),              \
         TxSeq       BIGINT UNSIGNED,            \
         LedgerSeq   BIGINT UNSIGNED,            \
         Owner       CHARACTER(64),              \
         Name        CHARACTER(64)              \
-    );",
-	"CREATE INDEX IF NOT EXISTS TraceTxIndex ON                 \
-	            TraceTransactions(TransID);",
-	"CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
-		    TraceTransactions(LedgerSeq);",
-    "CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
-         TraceTransactions(TxSeq, Owner, Name);",
+     );",
+     "CREATE INDEX IF NOT EXISTS TraceTxIndex ON                 \
+	TraceTransactions(TransID);",
+     "CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
+        TraceTransactions(LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
+        TraceTransactions(TxSeq, Owner, Name);",
+     "CREATE INDEX IF NOT EXISTS TraceMultiIndex2 ON             \
+        TraceTransactions(Owner, TransType, LedgerSeq);",
 
      "CREATE TABLE IF NOT EXISTS AccountTransactions (   \
         TransID     CHARACTER(64),                      \
         Account     CHARACTER(64),                      \
         LedgerSeq   BIGINT UNSIGNED,                    \
         TxnSeq      INTEGER                             \
-    );",
+     );",
      "CREATE INDEX IF NOT EXISTS AcctTxIDIndex ON        \
         AccountTransactions(TransID);",
      "CREATE INDEX IF NOT EXISTS AcctTxIndex ON          \

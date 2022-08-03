@@ -40,7 +40,7 @@
 
 namespace ripple {
 
-int32_t const SYNC_JUMP_TIME = 120;
+//int32_t const SYNC_JUMP_TIME = 120;
 
 TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
     : app_(app)
@@ -86,8 +86,8 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     m.set_nameindb(sNameInDB);
 	m.set_ledgerseq(TxnLgrSeq);
 	m.set_lastledgerseq(PreviousTxnLgrSeq);
-	m.set_lastledgerhash(to_string(PrevTxnLedgerHash));
-	m.set_ledgercheckhash(to_string(TxnLgrHash));
+	m.set_lastledgerhash(PrevTxnLedgerHash.begin(), PrevTxnLedgerHash.size());
+	m.set_ledgercheckhash(TxnLgrHash.begin(), TxnLgrHash.size());
     m.set_seekstop(bStop);
     m.set_account(sAccountID);    
     m.set_closetime(time);
@@ -102,7 +102,8 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
     int txnCount = 0;
     if (ledger)
     {
-        m.set_ledgerhash(to_string(ledger->info().hash));
+        auto hash = ledger->info().hash;
+        m.set_ledgerhash(hash.begin(), hash.size());
         
         std::shared_ptr<AcceptedLedger> alpAccepted =
             app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
@@ -200,14 +201,14 @@ bool TableSync::SendSeekResultReply(std::string sAccountID, bool bStop, uint32_t
 }
 bool TableSync::MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string nameInDB, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply)
 {
-    reply.set_ledgerhash(to_string(hash));
+    reply.set_ledgerhash(hash.begin(), hash.size());
     reply.set_ledgerseq(iSeq);
     reply.set_lastledgerseq(iLastSeq);
-    reply.set_lastledgerhash(to_string(lastHash));
+    reply.set_lastledgerhash(lastHash.begin(), lastHash.size());
     reply.set_seekstop(true);
     reply.set_account(account);
     reply.set_nameindb(nameInDB);
-    reply.set_ledgercheckhash(to_string(checkHash));
+    reply.set_ledgercheckhash(checkHash.begin(), checkHash.size());
     reply.set_closetime(time);
 	reply.set_etargettype(eTargeType);
     reply.set_nickname(sNickName);
@@ -486,10 +487,10 @@ bool TableSync::SendSyncRequest(AccountID accountID, std::string sNameInDB, Ledg
     tmGT.set_account(to_string(accountID));
     tmGT.set_nameindb(sNameInDB);
     tmGT.set_ledgerseq(iStartSeq);
-    tmGT.set_ledgerhash(to_string(iStartHash)); 
+    tmGT.set_ledgerhash(iStartHash.begin(),iStartHash.size()); 
     tmGT.set_ledgerstopseq(iStopSeq);
     tmGT.set_ledgercheckseq(iCheckSeq);
-    tmGT.set_ledgercheckhash(to_string(iCheckHash));
+    tmGT.set_ledgercheckhash(iCheckHash.begin(), iCheckHash.size());
     tmGT.set_getlost(bGetLost);
 	tmGT.set_etargettype(pItem->TargetType());
     tmGT.set_nickname(pItem->GetNickName());
@@ -511,18 +512,23 @@ bool TableSync::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &t
 
 
 bool
-TableSync::InitTableItems()
+TableSync::IsInitTable()
 {
-    std::lock_guard lock(mutexlistTable_);
-    if (bInitTableItems_)
-        return true;
-
     if (!bIsHaveSync_)
     {
-        bInitTableItems_ = true;
         return true;
     }
 
+    return bInitTableItems_;
+}
+
+
+bool
+TableSync::InitTableItems()
+{
+    std::lock_guard lock(mutexlistTable_);
+    if (IsInitTable())
+        return true;
     if (app_.getLedgerMaster().getValidatedLedger() != nullptr)
     {
         CreateTableItems();
@@ -976,6 +982,7 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
 
     uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
     auto ledgerSeq = data.ledgerseq();
+    auto ledgerHash = from_hex_text<uint256>(data.lastledgerhash());
 
     LedgerIndex iCurSeq, iTxSeq;
     uint256 iCurHash, iTxHash;
@@ -983,10 +990,9 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
     pItem->GetSyncTxLedger(iTxSeq, iTxHash);
     //consecutive
     auto tmp = std::make_pair(ledgerSeq, data);
-    auto str = to_string(iTxHash);
     if (data.txnodes().size() > 0)
     {
-        if (data.lastledgerseq() == iTxSeq && data.lastledgerhash() == to_string(iTxHash))
+        if (data.lastledgerseq() == iTxSeq && ledgerHash == iTxHash)
         {  
             pItem->PushDataToWholeDataQueue(tmp);
             if (!data.seekstop())
@@ -1002,7 +1008,7 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
     }
     else
     {
-        if (data.lastledgerseq() == iCurSeq && data.lastledgerhash() == to_string(iCurHash))
+        if (data.lastledgerseq() == iCurSeq && ledgerHash == iCurHash)
         {
             pItem->PushDataToWholeDataQueue(tmp);
             pItem->TryOperateSQL();
@@ -1023,7 +1029,7 @@ bool TableSync::GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, s
     AccountID accountID(*ripple::parseBase58<AccountID>(data.account()));
     uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
     auto ledgerSeq = data.ledgerseq();
-
+    
     std::string sNickName = data.has_nickname() ? data.nickname() : "";
     std::shared_ptr <TableSyncItem> pItem = GetRightItem(accountID, data.nameindb(), sNickName, (TableSyncItem::SyncTargetType)data.etargettype());
     
@@ -1693,7 +1699,7 @@ bool TableSync::SendLedgerRequest(LedgerIndex iSeq, uint256 hash, std::shared_pt
 {       
     protocol::TMGetLedger tmGL;
     tmGL.set_ledgerseq(iSeq);
-    tmGL.set_ledgerhash(to_string(hash));
+    tmGL.set_ledgerhash(hash.begin(), hash.size());
     tmGL.set_itype(protocol::liSKIP_NODE);
     tmGL.set_querydepth(3); // We probably need the whole thing
 	tmGL.set_schemaid(app_.schemaId().begin(), uint256::size());
@@ -1742,7 +1748,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
     if (ledger == NULL)
         return;
 
-    if (!InitTableItems())
+    if (!IsInitTable())
         return;
 
     std::shared_ptr<AcceptedLedger> alpAccepted =

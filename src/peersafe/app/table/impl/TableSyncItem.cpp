@@ -1014,8 +1014,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 {
     for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
     {
-        std::string LedgerHash = iter->ledgerhash();
-        std::string LedgerCheckHash = iter->ledgercheckhash();
+        std::string LedgerHash = to_string(from_hex_text<uint256>(iter->ledgerhash()));
+        std::string LedgerCheckHash = to_string(from_hex_text<uint256>(iter->ledgercheckhash()));
         std::string PreviousCommit;
         std::uint32_t closeTime = iter->closetime();
         std::uint32_t seq = iter->ledgerseq();

@@ -1623,7 +1623,7 @@ NetworkOPsImp::doTransactionCheck(
         app_.getStateManager().onTxCheckSuccess(txCur->getAccountID(sfAccount));
         return {tesSUCCESS, true};
     }
-    else if (ter.ter != terPRE_SEQ)
+    else if (ter.ter != terPRE_SEQ && ter.ter != tefPAST_SEQ)
     {
         app_.getStateManager().addFailedSeq(
             txCur->getAccountID(sfAccount), txCur->getSequence());
@@ -1936,7 +1936,9 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             else if (e.result.ter == tefPAST_SEQ)
             {
                 // duplicate or conflict
-                JLOG(m_journal.info()) << "Transaction is obsolete";
+                JLOG(m_journal.info())
+                    << "Transaction is obsolete " << e.transaction->getID()
+                    << " from " << (e.local ? "local" : "remote");
                 e.transaction->setStatus(OBSOLETE);
             }
             else if (isTerRetry(e.result.ter))
@@ -1982,7 +1984,11 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             else
             {
                 JLOG(m_journal.info())
-                    << "Status other than success " << e.result;
+                    << "Status other than success " << e.transaction->getID()
+                    << " from " << (e.local ? "local " : "remote ")
+                    << e.transaction->getSTransaction()->getAccountID(sfAccount)
+                    << " " << e.transaction->getSTransaction()->getSequence()
+                    << " " << e.result;
                 e.transaction->setStatus(INVALID);
             }
 
@@ -2056,8 +2062,8 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
         if (mTransactions.empty())
             mTransactions.swap(submit_held);
         else
-            for (auto& e : submit_held)
-                mTransactions.push_back(std::move(e));
+            mTransactions.insert(
+                mTransactions.begin(), submit_held.begin(), submit_held.end());
     }
 
     mCond.notify_all();

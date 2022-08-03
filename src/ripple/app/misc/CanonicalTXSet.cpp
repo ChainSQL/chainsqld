@@ -238,7 +238,13 @@ CanonicalTXSetHeld::prune(AccountID const& account, std::uint32_t const seq)
     if (!result.empty() &&
         accountTxsize_.find(account) != accountTxsize_.end() &&
         accountTxsize_[account] > 0)
+    {
         accountTxsize_[account]--;
+        if (accountTxsize_[account] <= 0)
+        {
+            accountTxsize_.erase(account);
+        }
+    }
 
     return result;
 }

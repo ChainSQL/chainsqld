@@ -607,7 +607,7 @@ Json::Int constexpr method_not_found = -32601;
 Json::Int constexpr server_overloaded = -32604;
 Json::Int constexpr forbidden = -32605;
 Json::Int constexpr wrong_version = -32606;
-Json::Int constexpr schema_not_found  = -32608;
+//Json::Int constexpr schema_not_found  = -32608;
 
 void
 ServerHandlerImp::processRequest(

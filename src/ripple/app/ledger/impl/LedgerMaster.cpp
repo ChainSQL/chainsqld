@@ -2515,7 +2515,7 @@ LedgerMaster::minSqlSeq()
 {
     boost::optional<LedgerIndex> seq;
     auto db = app_.getLedgerDB().checkoutDb();
-    *db << "SELECT MIN(LedgerSeq) FROM Ledgers", soci::into(seq);
+    *db << "SELECT MIN(LedgerSeq) FROM Ledgers WHERE LedgerSeq > 1", soci::into(seq);
     return seq;
 }
 

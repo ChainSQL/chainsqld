@@ -201,6 +201,7 @@ Json::Value doValidatorListSites    (RPC::JsonContext&);
 Json::Value doTxInPool(RPC::JsonContext&);
 Json::Value doSyncInfo(RPC::JsonContext&);
 Json::Value doLedgerProof(RPC::JsonContext&);
+Json::Value doMonitorStatis(RPC::JsonContext&);
 
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);

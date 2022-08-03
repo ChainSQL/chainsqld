@@ -34,4 +34,12 @@ getFuncSelectorByFunctionName(std::string const& _functionName)
     return selector;
 }
 
+uint256
+eth_sha256(Slice const& slice)
+{
+    uint256 ret;
+    picosha2::hash256(slice.begin(), slice.end(), ret.data(), ret.data() + 32);
+    return ret;
+}
+
 }  // namespace ripple
