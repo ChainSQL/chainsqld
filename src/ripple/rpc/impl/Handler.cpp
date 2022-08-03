@@ -224,6 +224,10 @@ Handler const handlerArray[]{
     
     // Ethereum-compatible JSON RPC API
     {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
+    {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
+    {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
+    {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

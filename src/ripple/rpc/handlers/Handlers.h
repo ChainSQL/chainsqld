@@ -214,6 +214,10 @@ Json::Value doCryptData(RPC::JsonContext&);
 
 // Ethereum-compatible JSON RPC API
 Json::Value doEthChainId(RPC::JsonContext&);
+Json::Value doNetVersion(RPC::JsonContext&);
+Json::Value doEthBlockNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
+Json::Value doEthGetBalance(RPC::JsonContext&);
 }  // namespace ripple
 
 #endif

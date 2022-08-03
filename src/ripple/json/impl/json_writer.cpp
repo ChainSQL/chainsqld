@@ -43,46 +43,46 @@ containsControlCharacter(const char* str)
 
     return false;
 }
-static void
-uintToString(unsigned int value, char*& current)
-{
-    *--current = 0;
 
-    do
-    {
-        *--current = (value % 10) + '0';
-        value /= 10;
-    } while (value != 0);
+static inline void uintToString(LargestUInt value, char*& current) {
+  *--current = 0;
+  do {
+    *--current = static_cast<char>(value % 10U + static_cast<unsigned>('0'));
+    value /= 10;
+  } while (value != 0);
 }
 
-std::string
-valueToString(Int value)
-{
-    char buffer[32];
-    char* current = buffer + sizeof(buffer);
-    bool isNegative = value < 0;
-
-    if (isNegative)
-        value = -value;
-
-    uintToString(UInt(value), current);
-
-    if (isNegative)
-        *--current = '-';
-
-    assert(current >= buffer);
-    return current;
+std::string valueToString(LargestInt value) {
+  UIntToStringBuffer buffer;
+  char* current = buffer + sizeof(buffer);
+  if (value == Value::minLargestInt) {
+    uintToString(LargestUInt(Value::maxLargestInt) + 1, current);
+    *--current = '-';
+  } else if (value < 0) {
+    uintToString(LargestUInt(-value), current);
+    *--current = '-';
+  } else {
+    uintToString(LargestUInt(value), current);
+  }
+  assert(current >= buffer);
+  return current;
 }
 
-std::string
-valueToString(UInt value)
-{
-    char buffer[32];
-    char* current = buffer + sizeof(buffer);
-    uintToString(value, current);
-    assert(current >= buffer);
-    return current;
+std::string valueToString(LargestUInt value) {
+  UIntToStringBuffer buffer;
+  char* current = buffer + sizeof(buffer);
+  uintToString(value, current);
+  assert(current >= buffer);
+  return current;
 }
+
+#if defined(JSON_HAS_INT64)
+
+std::string valueToString(Int value) { return valueToString(LargestInt(value)); }
+
+std::string valueToString(UInt value) { return valueToString(LargestUInt(value)); }
+
+#endif // # if defined(JSON_HAS_INT64)
 
 std::string
 valueToString(double value)
@@ -207,11 +207,11 @@ FastWriter::writeValue(const Value& value)
             break;
 
         case intValue:
-            document_ += valueToString(value.asInt());
+            document_ += valueToString(value.asLargestInt());
             break;
 
         case uintValue:
-            document_ += valueToString(value.asUInt());
+            document_ += valueToString(value.asLargestUInt());
             break;
 
         case realValue:

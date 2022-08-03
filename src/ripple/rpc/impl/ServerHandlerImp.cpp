@@ -972,16 +972,19 @@ ServerHandlerImp::processRequest(
             {
                 result[jss::status]  = jss::success;
             }
-            std::string ethMethod = "eth_";
-            if(strMethod.find(ethMethod) == std::string::npos)
-            {
-                r[jss::result] = std::move(result);
-            }
-            else
+
+            if(strMethod.find("eth_") != std::string::npos || strMethod.find("net_") != std::string::npos)
             {
                 r[jss::result] = result[jss::result];
                 r["id"] = jsonRPC["id"];
-                r["jsonrpc"] = jsonRPC["jsonrpc"];
+                if(jsonRPC.isMember("jsonrpc"))
+                {
+                    r["jsonrpc"] = jsonRPC["jsonrpc"];
+                }
+            }
+            else
+            {
+                r[jss::result] = std::move(result);
             }
         }
 		//if trasaction operation,
