@@ -1332,7 +1332,7 @@ LedgerMaster::checkLoadLedger()
 {
     if (ledgerLoadInited.exchange(true))
         return;
-    if (app_.getInboundLedgers().getInfo().size() == 0)
+    if (app_.getInboundLedgers().getCount() <= 0)
     {
         app_.getJobQueue().addJob(
             jtCheckLoadLedger, "LedgerMaster.checkLoadLedger", [this](Job&) {
@@ -1379,7 +1379,7 @@ LedgerMaster::checkLoadLedger()
                             InboundLedger::Reason::GENERIC);
                     }                    
                 }
-            });
+            }, app_.doJobCounter());
     }
 }
 

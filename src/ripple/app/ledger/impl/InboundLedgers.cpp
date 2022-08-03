@@ -60,6 +60,7 @@ public:
         , m_clock(clock)
         , mRecentFailures(clock)
         , mCounter(collector->make_counter("ledger_fetches"))
+        , mCount(0)
     {
     }
 
@@ -94,6 +95,7 @@ public:
                 mLedgers.emplace(hash, inbound);
                 inbound->init(sl);
                 ++mCounter;
+                ++mCount;
             }
         }
 
@@ -352,6 +354,13 @@ public:
         return ret;
     }
 
+    uint64_t
+    getCount() override
+    {
+        ScopedLockType sl(mLock);
+        return mCount;
+    }
+
     void
     gotFetchPack() override
     {
@@ -440,6 +449,7 @@ private:
     beast::aged_map<uint256, std::uint32_t> mRecentFailures;
 
     beast::insight::Counter mCounter;
+    uint64_t mCount;
 };
 
 //------------------------------------------------------------------------------

@@ -69,6 +69,9 @@ public:
     virtual Json::Value
     getInfo() = 0;
 
+    virtual uint64_t
+    getCount() = 0;
+
     /** Returns the rate of historical ledger fetches per minute. */
     virtual std::size_t
     fetchRate() = 0;
