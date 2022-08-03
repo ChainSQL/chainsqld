@@ -101,12 +101,12 @@ HotstuffAdaptor::HotstuffAdaptor(
 
 TrustChanges
 HotstuffAdaptor::onConsensusReached(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     Ledger_t previousLedger,
     uint64_t newRound)
 {
     TrustChanges const changes = Adaptor::onConsensusReached(
-        bWaitingInit, previousLedger, newRound);
+        waitingConsensusReach, previousLedger, newRound);
 
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >

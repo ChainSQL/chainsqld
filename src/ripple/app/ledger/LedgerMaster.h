@@ -216,7 +216,7 @@ public:
     setLedgerRangePresent(std::uint32_t minV, std::uint32_t maxV);
     void
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         std::shared_ptr<Ledger const> previousLedger);
 
     // Returns the minimum ledger sequence in SQL database, if any.

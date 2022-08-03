@@ -223,7 +223,7 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
 
 void
 PopAdaptor::onViewChanged(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     Ledger_t previousLedger,
     uint64_t newView)
 {
@@ -244,7 +244,7 @@ PopAdaptor::onViewChanged(
     }
 
     TrustChanges const changes = onConsensusReached(
-        bWaitingInit, previousLedger, newView);
+        waitingConsensusReach, previousLedger, newView);
 
     ConsensusMode mode = preStartRound(previousLedger, changes.added)
         ? ConsensusMode::proposing

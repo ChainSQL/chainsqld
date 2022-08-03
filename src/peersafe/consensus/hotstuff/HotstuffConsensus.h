@@ -262,7 +262,7 @@ private:
 
     hotstuff::Round newRound_ = 0;
 
-    bool bWaitingInit_ = true;
+    bool waitingConsensusReach_ = true;
 
     std::recursive_mutex lock_;
     hash_map<typename TxSet_t::ID, const TxSet_t> acquired_;

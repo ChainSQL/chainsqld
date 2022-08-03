@@ -420,7 +420,7 @@ public:
 
     virtual TrustChanges
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         Ledger_t previousLedger,
         uint64_t curTurn);
 

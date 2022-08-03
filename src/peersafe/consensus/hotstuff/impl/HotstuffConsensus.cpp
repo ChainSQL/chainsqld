@@ -639,10 +639,10 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
         prevInfo.ledger_info.seq == previousLedger_.seq() &&
         adaptor_.parms().omitEMPTY && prevInfo.round > 0)
     {
-        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_, newRound_);
-        if (bWaitingInit_)
+        adaptor_.onConsensusReached(waitingConsensusReach_, previousLedger_, newRound_);
+        if (waitingConsensusReach_)
         {
-            bWaitingInit_ = false;
+            waitingConsensusReach_ = false;
         }
     }
 

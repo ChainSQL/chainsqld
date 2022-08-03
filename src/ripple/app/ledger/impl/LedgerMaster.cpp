@@ -277,12 +277,12 @@ LedgerMaster::getPublishedLedgerAge()
 
 void
 LedgerMaster::onConsensusReached(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     std::shared_ptr<Ledger const> previousLedger)
 {
     updateConsensusTime();
 
-    if (bWaitingInit &&
+    if (waitingConsensusReach &&
         previousLedger &&
         previousLedger->info().seq != mValidLedgerSeq)
     {
