@@ -286,7 +286,7 @@ public:
     bool
     waitingForInit() const override final
     {
-        return true;
+        return false;
     }
 
     std::chrono::milliseconds 
