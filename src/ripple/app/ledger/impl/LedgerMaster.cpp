@@ -1394,6 +1394,9 @@ LedgerMaster::checkUpdateOpenLedger()
 {
     if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
     {
+        JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
+                               << app_.openLedger().current()->seq()
+                               << "<= mValidLedgerSeq:" << mValidLedgerSeq;
         auto const lastVal = getValidatedLedger();
         boost::optional<Rules> rules;
         if (lastVal)
