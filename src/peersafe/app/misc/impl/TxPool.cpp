@@ -140,7 +140,7 @@ TxPool::removeTxs(
 
         //If there are too many transactions in the transaction pool, it will take a long time to traverse mTxsSet; 
         //some expired transactions are cleaned up according to sfLastLedgerSequence
-        /*if (!vecHash.empty())
+        if (!vecHash.empty() && mTxsSet.size() < 10000)
         {
             for (auto txID : vecHash)
             {
@@ -166,7 +166,7 @@ TxPool::removeTxs(
                 }
             }
             
-        }*/
+        }
         // remove avoid set.
         clearAvoid(ledgerSeq);
     }

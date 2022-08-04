@@ -122,6 +122,7 @@ PopAdaptor::onCollectFinish(
 
     // Build SHAMap containing all transactions in our open ledger
     std::map<AccountID, int> mapAccount2Seq;
+    std::map<AccountID, int> mapSleAccount2Seq;
     for (auto const& txID : transactions)
     {
         auto tx = app_.getMasterTransaction().fetch(txID);
@@ -136,9 +137,28 @@ PopAdaptor::onCollectFinish(
         auto act = tx->getSTransaction()->getAccountID(sfAccount);
         auto seq = tx->getSTransaction()->getFieldU32(sfSequence);
         //save smallest account-sequence
-        if (mapAccount2Seq.find(act) == mapAccount2Seq.end() || seq < mapAccount2Seq[act])
+        if (mapAccount2Seq.find(act) == mapAccount2Seq.end())
         {
             mapAccount2Seq[act] = seq;
+
+            auto sle = prevLedger->read(keylet::account(act));
+            if (!sle)
+                continue;
+            std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
+            mapSleAccount2Seq[act] = a_seq;
+        }
+        else if (seq < mapAccount2Seq[act])
+        {
+            mapAccount2Seq[act] = seq;
+        }
+
+        if (mapSleAccount2Seq[act] > seq)
+        {
+            JLOG(j_.error())
+                << "has past sequence number, Account: "
+                << toBase58(act) << " a_seq=" << mapSleAccount2Seq[act]
+                << " t_seq=" << seq;
+            app_.getTxPool().removeTx(txID);
         }
 
         JLOG(j_.trace()) << "Adding open ledger TX " << txID;
@@ -152,10 +172,7 @@ PopAdaptor::onCollectFinish(
         bool bHasSeqOk = false;
         for (auto it = mapAccount2Seq.begin(); it != mapAccount2Seq.end(); it++)
         {
-            auto sle = prevLedger->read(keylet::account(it->first));
-            if (!sle)
-                continue;
-            std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
+            std::uint32_t const a_seq = mapSleAccount2Seq[it->first];
             if (a_seq == it->second)
             {
                 bHasSeqOk = true;
