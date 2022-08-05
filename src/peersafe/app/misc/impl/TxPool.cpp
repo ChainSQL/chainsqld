@@ -140,8 +140,9 @@ TxPool::removeTxs(
 
         //If there are too many transactions in the transaction pool, it will take a long time to traverse mTxsSet; 
         //some expired transactions are cleaned up according to sfLastLedgerSequence
-        if (!vecHash.empty() && mTxsSet.size() < 10000)
+        /*if (!vecHash.empty() && mTxsSet.size() < 10000)
         {
+            auto timeStart = utcTime();
             for (auto txID : vecHash)
             {
                 auto tx = app_.getMasterTransaction().fetch(txID);
@@ -154,7 +155,7 @@ TxPool::removeTxs(
                             {
                             return (tx->getSTransaction()->getAccountID(sfAccount) ==
                                     txLocal->getSTransaction()->getAccountID(sfAccount)) &&
-                                (tx->getSTransaction()->getSequence() <=
+                                (tx->getSTransaction()->getSequence() <
                                 txLocal->getSTransaction()->getSequence());
                             });
                     if (iter != mTxsSet.end())
@@ -165,8 +166,8 @@ TxPool::removeTxs(
                     }
                 }
             }
-            
-        }
+            JLOG(j_.warn()) << "Time to remove expired transactions:" << utcTime() - timeStart << "ms";
+        }*/
         // remove avoid set.
         clearAvoid(ledgerSeq);
     }
