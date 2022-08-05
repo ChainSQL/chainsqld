@@ -183,10 +183,10 @@ checkPayment(
     if (!tx_json.isMember(jss::Destination))
         return RPC::missing_field_error("tx_json.Destination");
 
-    auto const dstAccountID =
-        parseBase58<AccountID>(tx_json[jss::Destination].asString());
+    auto const dstAccountID = parseHexOrBase58<AccountID>(tx_json[jss::Destination].asString());
     if (!dstAccountID)
         return RPC::invalid_field_error("tx_json.Destination");
+    
 
     if ((doPath == false) && params.isMember(jss::build_path))
         return RPC::make_error(

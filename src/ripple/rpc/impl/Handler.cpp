@@ -221,7 +221,9 @@ Handler const handlerArray[]{
     {"tx_in_pool", byRef (&doTxInPool), Role::USER,  NO_CONDITION },
     {"sync_info", byRef (&doSyncInfo), Role::USER,  NO_CONDITION },
     {"monitor_statis", byRef (&doMonitorStatis), Role::USER, NO_CONDITION},
-    
+};
+
+Handler const ethHandlerArray[]{
     // Ethereum-compatible JSON RPC API
     {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
     {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
@@ -244,6 +246,15 @@ private:
             {
                 auto& innerTable = table_[versionToIndex(v)];
                 auto const& entry = entries[i];
+                assert(innerTable.find(entry.name_) == innerTable.end());
+                innerTable[entry.name_] = entry;
+            }
+            
+            std::size_t ethArrayLen = sizeof(ethHandlerArray)/sizeof(ethHandlerArray[0]);
+            for (std::size_t j = 0; j < ethArrayLen; ++j)
+            {
+                auto& innerTable = table_[versionToIndex(v)];
+                auto const& entry = ethHandlerArray[j];
                 assert(innerTable.find(entry.name_) == innerTable.end());
                 innerTable[entry.name_] = entry;
             }

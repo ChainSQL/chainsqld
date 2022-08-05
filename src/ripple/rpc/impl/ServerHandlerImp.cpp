@@ -817,13 +817,19 @@ ServerHandlerImp::processRequest(
             params = jsonRPC[jss::params];
             if (!params)
                 params = Json::Value(Json::objectValue);
-
-            else if (!params.isArray() || params.size() != 1)
+            
+            else if(params.isArray() && params.size() != 1)
             {
-                usage.charge(Resource::feeInvalidRPC);
-                HTTPReply(400, "params unparseable", output, rpcJ);
-                return;
+                Json::Value paramsTemp;
+                paramsTemp["realParams"] = params;
+                params = paramsTemp;
             }
+//            else if (!params.isArray() || params.size() != 1)
+//            {
+//                usage.charge(Resource::feeInvalidRPC);
+//                HTTPReply(400, "params unparseable", output, rpcJ);
+//                return;
+//            }
             else
             {
                 params = std::move(params[0u]);

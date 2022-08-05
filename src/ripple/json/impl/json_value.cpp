@@ -669,6 +669,10 @@ Value::UInt64 Value::asUInt64() const {
         return 0;
     case booleanValue:
         return value_.bool_ ? 1 : 0;
+    case stringValue: {
+            char const* const str{value_.string_ ? value_.string_ : ""};
+            return beast::lexicalCastThrow<std::uint64_t>(str);
+        }
     default:
         break;
     }
