@@ -818,7 +818,9 @@ ServerHandlerImp::processRequest(
             if (!params)
                 params = Json::Value(Json::objectValue);
             
-            else if(params.isArray() && params.size() != 1)
+            else if (
+                params.isArray() &&
+                (params.size() != 1 || (params.size() == 1 && !params[0u].isObject())))
             {
                 Json::Value paramsTemp;
                 paramsTemp["realParams"] = params;
