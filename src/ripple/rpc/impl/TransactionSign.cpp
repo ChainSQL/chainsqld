@@ -849,7 +849,7 @@ transactionSign(
 /** Returns a Json::objectValue. */
 Json::Value
 transactionSubmit(
-    Json::Value jvRequest,
+    Json::Value& jvRequest,
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,
