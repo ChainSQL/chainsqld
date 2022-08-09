@@ -42,6 +42,7 @@
 #include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/STETx.h>
 
 
 namespace ripple {
@@ -85,12 +86,15 @@ preflight1(PreflightContext const& ctx)
         return temBAD_FEE;
     }
 
-    auto const spk = ctx.tx.getSigningPubKey();
-
-    if (!spk.empty() && !publicKeyType(makeSlice(spk)))
+    if (!isEthTx(ctx.tx))
     {
-        JLOG(ctx.j.debug()) << "preflight1: invalid signing key";
-        return temBAD_SIGNATURE;
+        auto const spk = ctx.tx.getSigningPubKey();
+
+        if (!spk.empty() && !publicKeyType(makeSlice(spk)))
+        {
+            JLOG(ctx.j.debug()) << "preflight1: invalid signing key";
+            return temBAD_SIGNATURE;
+        }
     }
 
     return tesSUCCESS;
@@ -574,6 +578,8 @@ void Transactor::checkAddChainIDSle()
 NotTEC
 Transactor::checkSign (PreclaimContext const& ctx)
 {
+    if (isEthTx(ctx.tx))
+        return tesSUCCESS;
     // If the pk is empty, then we must be multi-signing.
     if (ctx.tx.getSigningPubKey().empty())
         return checkMultiSign(ctx);

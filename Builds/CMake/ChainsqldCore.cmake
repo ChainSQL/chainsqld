@@ -731,7 +731,6 @@ target_sources (chainsqld PRIVATE
   src/peersafe/precompiled/TableOpPrecompiled.cpp
   src/peersafe/precompiled/ToolsPrecompiled.cpp
   src/peersafe/precompiled/Utils.cpp
-  src/peersafe/precompiled/ripemd160.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
@@ -801,6 +800,7 @@ target_sources (chainsqld PRIVATE
   src/eth/vm/executor/interpreter/VMCalls.cpp
   src/eth/vm/executor/interpreter/VMOpt.cpp
   src/eth/vm/utils/keccak.cpp
+  src/eth/tools/ripemd160.cpp
   #[===============================[
       wasmvm sources:
         subdir: wasmvm

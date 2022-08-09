@@ -12,16 +12,15 @@
 
 namespace ripple {
 
-STETx::STETx(SerialIter& sit, CommonKey::HashType hashType) noexcept(false)
+STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
 {
     setFName(sfTransaction);
-    int length = sit.getBytesLeft();
+    int length = sit.size();
 
     if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
         Throw<std::runtime_error>("Transaction length invalid");
 
-    if (set(sit))
-        Throw<std::runtime_error>("Transaction contains an object terminator");
+    
 
     tx_type_ = ttETH_TX;
 

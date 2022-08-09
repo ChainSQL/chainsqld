@@ -33,7 +33,7 @@ public:
     STETx(STETx const& other) = default;
 
     explicit STETx(
-        SerialIter& sit,
+        Slice const& sit,
         CommonKey::HashType hashType =
             CommonKey::chainHashTypeG) noexcept(false);
 

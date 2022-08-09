@@ -201,8 +201,7 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             return rpcError(rpcINVALID_PARAMS);
 
         //Construct STETx
-        SerialIter sitTrans(makeSlice(*ret));
-        auto stpTrans = std::make_shared<STETx const>(std::ref(sitTrans));
+        auto stpTrans = std::make_shared<STETx const>(makeSlice(*ret));
 
         //Check validity
         auto [validity, reason] = checkValidity(

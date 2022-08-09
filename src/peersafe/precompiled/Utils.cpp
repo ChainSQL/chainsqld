@@ -1,4 +1,5 @@
 #include <peersafe/precompiled/Utils.h>
+#include <eth/tools/picosha2.h>
 
 using namespace eth;
 namespace ripple {
