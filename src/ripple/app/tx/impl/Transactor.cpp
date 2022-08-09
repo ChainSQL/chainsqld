@@ -874,22 +874,22 @@ Transactor::operator()()
 {
     JLOG(j_.trace()) << "apply: " << ctx_.tx.getTransactionID();
 
-#ifdef DEBUG
-    {
-        Serializer ser;
-        ctx_.tx.add(ser);
-        SerialIter sit(ser.slice());
-        STTx s2(sit);
-
-        if (!s2.isEquivalent(ctx_.tx))
-        {
-            JLOG(j_.fatal()) << "Transaction serdes mismatch";
-            JLOG(j_.info()) << to_string(ctx_.tx.getJson(JsonOptions::none));
-            JLOG(j_.fatal()) << s2.getJson(JsonOptions::none);
-            assert(false);
-        }
-    }
-#endif
+//#ifdef DEBUG
+//    {
+//        Serializer ser;
+//        ctx_.tx.add(ser);
+//        SerialIter sit(ser.slice());
+//        STTx s2(sit);
+//
+//        if (!s2.isEquivalent(ctx_.tx))
+//        {
+//            JLOG(j_.fatal()) << "Transaction serdes mismatch";
+//            JLOG(j_.info()) << to_string(ctx_.tx.getJson(JsonOptions::none));
+//            JLOG(j_.fatal()) << s2.getJson(JsonOptions::none);
+//            assert(false);
+//        }
+//    }
+//#endif
 
     auto terResult = STer(ctx_.preclaimResult);
 	if (terResult.ter == terPRE_SEQ)

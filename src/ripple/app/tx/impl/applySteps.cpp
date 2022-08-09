@@ -103,7 +103,8 @@ invoke_preflight (PreflightContext const& ctx)
             return SqlStatement::preflight(ctx);
         case ttSQLTRANSACTION:		 
             return SqlTransaction::preflight(ctx);
-        case ttCONTRACT:			 
+        case ttCONTRACT:	
+        case ttETH_TX:
             return SmartContract::preflight(ctx);
         case ttSCHEMA_CREATE:		 
             return SchemaCreate::preflight(ctx);
@@ -114,7 +115,7 @@ invoke_preflight (PreflightContext const& ctx)
         case ttFREEZE_ACCOUNT:
             return FreezeAccount ::preflight(ctx);
         case ttAUTHORIZE:
-        return AccountAuthorize ::preflight(ctx);
+            return AccountAuthorize ::preflight(ctx);
         default:
             assert(false);
             return temUNKNOWN;
@@ -209,7 +210,8 @@ invoke_preclaim(PreclaimContext const& ctx)
             return invoke_preclaim<SqlStatement>(ctx);
         case ttSQLTRANSACTION:		 
             return invoke_preclaim<SqlTransaction>(ctx); 
-        case ttCONTRACT:			 
+        case ttCONTRACT:		
+        case ttETH_TX:
             return invoke_preclaim<SmartContract>(ctx);
         case ttSCHEMA_CREATE:		 
             return invoke_preclaim <SchemaCreate>(ctx);
@@ -282,7 +284,8 @@ invoke_calculateBaseFee(ReadView const& view, STTx const& tx)
             return SqlStatement::calculateBaseFee(view,tx);
         case ttSQLTRANSACTION:		 
             return SqlTransaction::calculateBaseFee(view,tx);
-        case ttCONTRACT:			 
+        case ttCONTRACT:	
+        case ttETH_TX:
             return SmartContract::calculateBaseFee(view,tx);
         case ttSCHEMA_CREATE:		 
             return SchemaCreate::calculateBaseFee(view,tx);
@@ -293,7 +296,7 @@ invoke_calculateBaseFee(ReadView const& view, STTx const& tx)
         case ttFREEZE_ACCOUNT:
             return FreezeAccount::calculateBaseFee(view,tx);
         case ttAUTHORIZE:
-        return AccountAuthorize::calculateBaseFee(view,tx);
+            return AccountAuthorize::calculateBaseFee(view,tx);
         default:
             assert(false);
             return FeeUnit64{0};
@@ -368,7 +371,8 @@ invoke_calculateConsequences(STTx const& tx)
             return invoke_calculateConsequences<SqlStatement>(tx);
         case ttSQLTRANSACTION:		 
             return invoke_calculateConsequences<SqlTransaction>(tx);
-        case ttCONTRACT:			 
+        case ttCONTRACT:
+        case ttETH_TX:
             return invoke_calculateConsequences<SmartContract>(tx);
         case ttSCHEMA_CREATE:		 
             return invoke_calculateConsequences <SchemaCreate>(tx);
@@ -492,7 +496,8 @@ invoke_apply(ApplyContext& ctx)
             SqlTransaction p(ctx); 
             return p(); 
         } 
-        case ttCONTRACT: { 
+        case ttCONTRACT:
+        case ttETH_TX: { 
             SmartContract p(ctx); 
             return p(); 
         }

@@ -741,6 +741,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/protocol/impl/STViewChange.cpp
   src/peersafe/protocol/impl/STVote.cpp
   src/peersafe/protocol/impl/STInitAnnounce.cpp
+  src/peersafe/protocol/impl/STETx.cpp
   src/peersafe/serialization/impl/Buffer.cpp
   src/peersafe/serialization/impl/PublicKey.cpp
   src/peersafe/consensus/impl/Adaptor.cpp

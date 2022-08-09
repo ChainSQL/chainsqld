@@ -64,6 +64,7 @@ enum TxType {
     ttFREEZE_ACCOUNT = 27,
     ttSCHEMA_DELETE = 28,
     ttAUTHORIZE = 29,
+    ttETH_TX = 31,
 
     ttACCOUNT_DELETE = 51,
     ttAMENDMENT = 100,

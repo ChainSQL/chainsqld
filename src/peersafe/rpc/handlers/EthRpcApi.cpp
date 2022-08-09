@@ -12,6 +12,9 @@
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/rpc/handlers/LedgerHandler.h>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <peersafe/protocol/STETx.h>
+#include <ripple/app/tx/apply.h>
+#include <ripple/app/misc/Transaction.h>
 
 namespace ripple {
 
@@ -171,6 +174,98 @@ doEthGetBalance(RPC::JsonContext& context)
             }
         }
         else jvResult[jss::result] = "0x0";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthSendRawTransaction(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        auto ret =
+            strUnHex(context.params["realParams"][0u].asString().substr(2));
+
+        // 500KB
+        if (ret->size() > RPC::Tuning::max_txn_size)
+        {
+            return rpcError(rpcTXN_BIGGER_THAN_MAXSIZE);
+        }
+
+        if (!ret || !ret->size())
+            return rpcError(rpcINVALID_PARAMS);
+
+        //Construct STETx
+        SerialIter sitTrans(makeSlice(*ret));
+        auto stpTrans = std::make_shared<STETx const>(std::ref(sitTrans));
+
+        //Check validity
+        auto [validity, reason] = checkValidity(
+            context.app,
+            context.app.getHashRouter(),
+            *stpTrans,
+            context.ledgerMaster.getCurrentLedger()->rules(),
+            context.app.config());
+        if (validity != Validity::Valid)
+        {
+
+            return jvResult;
+        }
+
+        std::string reason2;
+        auto tpTrans =
+            std::make_shared<Transaction>(stpTrans, reason2, context.app);
+        if (tpTrans->getStatus() != NEW)
+        {
+            jvResult[jss::result] = "0x0";
+            return jvResult;
+        }
+
+        context.netOps.processTransaction(
+            tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
+
+        jvResult[jss::result] = "0x" + to_string(stpTrans->getTransactionID());
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGetTransactionReceipt(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        std::string txHash =
+            context.params["realParams"][0u].asString().substr(2);
+        
+        jvResult[jss::result] = "0x0";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGetTransactionByHash(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        std::string txHash =
+            context.params["realParams"][0u].asString().substr(2);
+
+        jvResult[jss::result] = "0x0";
     }
     catch (std::exception&)
     {
