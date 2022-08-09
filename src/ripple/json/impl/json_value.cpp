@@ -246,10 +246,12 @@ Value::Value(UInt value) : type_(uintValue)
 }
 
 #if defined(JSON_HAS_INT64)
-Value::Value(Int64 value) {
+Value::Value(Int64 value) : type_(intValue)
+{
     value_.int_ = value;
 }
-Value::Value(UInt64 value) {
+Value::Value(UInt64 value) : type_(intValue)
+{
     value_.uint_ = value;
 }
 #endif // defined(JSON_HAS_INT64)
