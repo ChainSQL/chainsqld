@@ -14,7 +14,7 @@
 #pragma warning(disable:597) //will not be called for implicit or explicit conversions
 #endif
 
-namespace dev
+namespace eth
 {
 
 /**

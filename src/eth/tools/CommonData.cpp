@@ -9,7 +9,7 @@
 #include "Exceptions.h"
 
 using namespace std;
-using namespace dev;
+using namespace eth;
 
 namespace
 {
@@ -25,7 +25,7 @@ int fromHexChar(char _i) noexcept
 }
 }
 
-bool dev::isHex(string const& _s) noexcept
+bool eth::isHex(string const& _s) noexcept
 {
 	auto it = _s.begin();
 	if (_s.compare(0, 2, "0x") == 0)
@@ -33,7 +33,7 @@ bool dev::isHex(string const& _s) noexcept
 	return std::all_of(it, _s.end(), [](char c){ return fromHexChar(c) != -1; });
 }
 
-std::string dev::escaped(std::string const& _s, bool _all)
+std::string eth::escaped(std::string const& _s, bool _all)
 {
 	static const map<char, char> prettyEscapes{{'\r', 'r'}, {'\n', 'n'}, {'\t', 't'}, {'\v', 'v'}};
 	std::string ret;
@@ -62,7 +62,7 @@ std::string dev::escaped(std::string const& _s, bool _all)
 }
 
 
-bytes dev::fromHex(std::string const& _s, WhenError _throw)
+bytes eth::fromHex(std::string const& _s, WhenError _throw)
 {
 	unsigned s = (_s.size() >= 2 && _s[0] == '0' && _s[1] == 'x') ? 2 : 0;
 	std::vector<uint8_t> ret;
@@ -92,7 +92,7 @@ bytes dev::fromHex(std::string const& _s, WhenError _throw)
 	return ret;
 }
 
-bytes dev::asNibbles(bytesConstRef const& _s)
+bytes eth::asNibbles(bytesConstRef const& _s)
 {
 	std::vector<uint8_t> ret;
 	ret.reserve(_s.size() * 2);

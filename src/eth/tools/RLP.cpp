@@ -3,10 +3,10 @@
 // Licensed under the GNU General Public License, Version 3.
 #include "RLP.h"
 using namespace std;
-using namespace dev;
+using namespace eth;
 
-bytes dev::RLPNull = rlp("");
-bytes dev::RLPEmptyList = rlpList();
+bytes eth::RLPNull = rlp("");
+bytes eth::RLPEmptyList = rlpList();
 
 namespace {
 
@@ -332,7 +332,7 @@ void RLPStream::pushCount(size_t _count, byte _base)
     pushInt(_count, br);
 }
 
-static void streamOut(std::ostream& _out, dev::RLP const& _d, unsigned _depth = 0)
+static void streamOut(std::ostream& _out, eth::RLP const& _d, unsigned _depth = 0)
 {
     if (_depth > 64)
         _out << "<max-depth-reached>";
@@ -355,7 +355,7 @@ static void streamOut(std::ostream& _out, dev::RLP const& _d, unsigned _depth = 
     }
 }
 
-std::ostream& dev::operator<<(std::ostream& _out, RLP const& _d)
+std::ostream& eth::operator<<(std::ostream& _out, RLP const& _d)
 {
     streamOut(_out, _d);
     return _out;

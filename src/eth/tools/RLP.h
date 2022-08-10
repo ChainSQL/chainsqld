@@ -16,7 +16,7 @@
 #include <iosfwd>
 #include <vector>
 
-namespace dev
+namespace eth
 {
 
 class RLP;
@@ -467,6 +467,6 @@ extern bytes RLPNull;
 extern bytes RLPEmptyList;
 
 /// Human readable version of RLP.
-std::ostream& operator<<(std::ostream& _out, dev::RLP const& _d);
+std::ostream& operator<<(std::ostream& _out, eth::RLP const& _d);
 
 }

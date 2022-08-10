@@ -4,7 +4,7 @@
 #include "FixedHash.h"
 #include <boost/algorithm/string.hpp>
 
-namespace dev
+namespace eth
 {
 
 std::random_device s_fixedHashEngine;

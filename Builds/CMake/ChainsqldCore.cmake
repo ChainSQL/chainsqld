@@ -802,7 +802,6 @@ target_sources (chainsqld PRIVATE
   src/eth/vm/utils/keccak.cpp
   src/eth/tools/ripemd160.cpp
   src/eth/tools/RLP.cpp
-  src/eth/tools/Common.cpp
   src/eth/tools/CommonData.cpp
   src/eth/tools/FixedHash.cpp
   #[===============================[

@@ -16,7 +16,7 @@
 #include <exception>
 #include <string>
 
-namespace dev
+namespace eth
 {
 /// Base class for all exceptions.
 struct Exception : virtual std::exception, virtual boost::exception
