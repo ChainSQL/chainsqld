@@ -519,6 +519,7 @@ TableSync::IsInitTable()
         return true;
     }
 
+    std::lock_guard lock(mutexlistTable_);
     return bInitTableItems_;
 }
 
@@ -526,11 +527,12 @@ TableSync::IsInitTable()
 bool
 TableSync::InitTableItems()
 {
-    std::lock_guard lock(mutexlistTable_);
     if (IsInitTable())
         return true;
+
     if (app_.getLedgerMaster().getValidatedLedger() != nullptr)
     {
+        std::lock_guard lock(mutexlistTable_);
         CreateTableItems();
         bInitTableItems_ = true;
         return true;
