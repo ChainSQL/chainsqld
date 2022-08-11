@@ -304,12 +304,6 @@ void TableSyncItem::PushDataToWaitCheckQueue(sqldata_type &sqlData)
     std::lock_guard lock(mutexWaitCheckQueue_);
     PushDataByOrder(aWaitCheckData_, sqlData);
 }
-void TableSyncItem::PushDataToBlockDataQueue(sqldata_type &sqlData)
-{
-    std::lock_guard lock(mutexBlockData_);
-    
-    PushDataByOrder(aBlockData_, sqlData);
-}
 
 bool TableSyncItem::GetRightRequestRange(TableSyncItem::BaseInfo &stRange)
 {
@@ -350,8 +344,8 @@ bool TableSyncItem::GetRightRequestRange(TableSyncItem::BaseInfo &stRange)
             {
                 iBegin = it->second.ledgerseq();
                 iCheckSeq = it->second.ledgerseq();
-                uHash = from_hex_text<uint256>(it->second.ledgerhash()); 
-                uCheckHash = from_hex_text<uint256>(it->second.ledgercheckhash());
+                uHash = uint256(it->second.ledgerhash());
+                uCheckHash = uint256(it->second.ledgercheckhash());
             }
             else
             {
@@ -379,44 +373,6 @@ bool TableSyncItem::GetRightRequestRange(TableSyncItem::BaseInfo &stRange)
     stRange.uTxHash = uTxHash_;
 
     return true;
-}
-
-bool TableSyncItem::TransBlock2Whole(LedgerIndex iSeq, uint256)
-{
-    std::lock_guard lock1(mutexBlockData_);
-    std::lock_guard lock2(mutexWholeData_);
-    auto iBegin = iSeq;    
-
-    bool bHasStop = false;
-    while(aBlockData_.size() > 0)
-    {
-        auto it = aBlockData_.begin();
-        if (iBegin == it->second.lastledgerseq())
-        {
-            uint256 uCurhash = from_hex_text<uint256>(it->second.ledgerhash());  
-            uint256 uCheckhash = from_hex_text<uint256>(it->second.ledgercheckhash());
-            iBegin = it->second.ledgerseq();            
-            bHasStop = it->second.seekstop();
-
-            SetSyncLedger(iBegin, uCurhash);
-            if (it->second.txnodes().size() > 0)
-            {
-                SetSyncTxLedger(iBegin, uCheckhash);
-            }            
-            aWholeData_.push_back(std::move(*it));
-            aBlockData_.erase(it);
-        }        
-        else
-        {
-            break;
-        }
-    }
-    bool bStop = aBlockData_.size() == 0 && bHasStop;
-    if (bStop && !bGetLocalData_)
-    {        
-        SetSyncState(SYNC_BLOCK_STOP);
-    }
-    return bStop;
 }
 
 bool TableSyncItem::IsGetLedgerExpire()
@@ -1014,8 +970,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 {
     for (std::vector<protocol::TMTableData>::const_iterator iter = aData.begin(); iter != aData.end(); ++iter)
     {
-        std::string LedgerHash = to_string(from_hex_text<uint256>(iter->ledgerhash()));
-        std::string LedgerCheckHash = to_string(from_hex_text<uint256>(iter->ledgercheckhash()));
+        std::string LedgerHash = to_string(uint256(iter->ledgerhash()));
+        std::string LedgerCheckHash = to_string(uint256(iter->ledgercheckhash()));
         std::string PreviousCommit;
         std::uint32_t closeTime = iter->closetime();
         std::uint32_t seq = iter->ledgerseq();
@@ -1290,48 +1246,77 @@ TableSyncItem::CheckConditionState TableSyncItem::CondFilter(uint32_t time, uint
 	return CHECK_ADVANCED;
 }
 
-void TableSyncItem::PushDataToWholeDataQueue(sqldata_type &sqlData)
+void
+TableSyncItem::PushDataToWholeDataQueue(sqldata_type& sqlData)
 {
     std::lock_guard lock(mutexWholeData_);
-    aWholeData_.push_back(sqlData);        
-    
+
+    aWholeData_.push_back(sqlData);
+
+    SetSyncLedger(sqlData.first, uint256(sqlData.second.ledgerhash()));
     if (sqlData.second.txnodes().size() > 0)
     {
-        SetSyncLedger(sqlData.first, from_hex_text<uint256>(sqlData.second.ledgerhash()));
-        SetSyncTxLedger(sqlData.first, from_hex_text<uint256>(sqlData.second.ledgercheckhash()));
+        SetSyncTxLedger(
+            sqlData.first, uint256(sqlData.second.ledgercheckhash()));
     }
-    else
-    {
-        SetSyncLedger(sqlData.first, from_hex_text<uint256>(sqlData.second.ledgerhash()));
-    }
-    
+
     if (sqlData.second.seekstop() && !bGetLocalData_)
     {
         SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
     }
 }
 
+void
+TableSyncItem::PushDataToBlockDataQueue(sqldata_type& sqlData)
+{
+    std::lock_guard lock(mutexBlockData_);
+
+    PushDataByOrder(aBlockData_, sqlData);
+}
+
+bool
+TableSyncItem::TransBlock2Whole(LedgerIndex iSeq)
+{
+    std::lock_guard lock1(mutexBlockData_);
+    std::lock_guard lock2(mutexWholeData_);
+    auto iBegin = iSeq;
+
+    bool bHasStop = false;
+    while (aBlockData_.size() > 0)
+    {
+        auto it = aBlockData_.begin();
+        if (iBegin == it->second.lastledgerseq())
+        {
+            uint256 uCurhash = uint256(it->second.ledgerhash());
+            uint256 uCheckhash = uint256(it->second.ledgercheckhash());
+            iBegin = it->second.ledgerseq();
+            bHasStop = it->second.seekstop();
+
+            SetSyncLedger(iBegin, uCurhash);
+            if (it->second.txnodes().size() > 0)
+            {
+                SetSyncTxLedger(iBegin, uCheckhash);
+            }
+            aWholeData_.push_back(std::move(*it));
+            aBlockData_.erase(it);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    bool bStop = aBlockData_.size() == 0 && bHasStop;
+    if (bStop && !bGetLocalData_)
+    {
+        SetSyncState(SYNC_BLOCK_STOP);
+    }
+    return bStop;
+}
+
 bool TableSyncItem::GetIsChange()
 {
     return  bIsChange_;
-}
-
-void TableSyncItem::PushDataToWholeDataQueue(std::list <sqldata_type>  &aSqlData)
-{
-    if (aSqlData.size() <= 0)  return;
-    std::lock_guard lock(mutexWholeData_);
-    for (std::list<sqldata_type>::iterator it = aSqlData.begin(); it != aSqlData.end(); it++)
-    {
-        aWholeData_.push_back(*it);
-    }    
-
-    auto &lastItem = aSqlData.back();
-    SetSyncLedger(lastItem.first, from_hex_text<uint256>(lastItem.second.ledgerhash()));
-
-    if (lastItem.second.seekstop() && !bGetLocalData_)
-    {
-        SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
-    }
 }
 
 void TableSyncItem::SetPeer(std::shared_ptr<Peer> peer)
