@@ -163,7 +163,7 @@ doTxChain(TxType txType, const RPC::JsonContext& context, Json::Value& retJson)
     boost::optional<std::string> previousTxid, nextTxid, ownerRead, nameRead,
         typeRead;
     {
-        auto db = context.app.getTxnDB().checkoutDbRead();
+        auto db = context.app.getTxnDBCHECK().checkoutDbRead();
 
         soci::statement st =
             (db->prepare << sql,
@@ -1168,7 +1168,7 @@ Json::Value doTxResult(RPC::JsonContext& context)
 	boost::optional<std::uint32_t> LedgerSeq;
 	boost::optional<std::string> TxResult;
 
-	auto db = context.app.getTxnDB().checkoutDbRead();
+	auto db = context.app.getTxnDBCHECK().checkoutDbRead();
 
 	soci::statement st = (db->prepare << sql,
 		soci::into(LedgerSeq),

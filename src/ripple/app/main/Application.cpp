@@ -818,10 +818,10 @@ public:
     }
 
     TxnDBCon&
-    getTxnDB(SchemaID const& id) override
+    getTxnDBCHECK(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));
-        return m_schemaManager->getSchema(id)->getTxnDB();
+        return m_schemaManager->getSchema(id)->getTxnDBCHECK();
     }
     DatabaseCon&
     getLedgerDB(SchemaID const& id) override

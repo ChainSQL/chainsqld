@@ -325,7 +325,7 @@ SHAMapStoreImp::run()
     fullBelowCache_ = &(*app_.getNodeFamily().getFullBelowCache(0));
     treeNodeCache_ = &(*app_.getNodeFamily().getTreeNodeCache(0));
     if (app_.config().useTxTables())
-        transactionDb_ = &app_.getTxnDB().connWrite();
+        transactionDb_ = &app_.getTxnDBCHECK().connWrite();
     ledgerDb_ = &app_.getLedgerDB();
 
     if (advisoryDelete_)

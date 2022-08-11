@@ -678,7 +678,7 @@ doContractTxHelp(RPC::Context& context, AccountTxArgs const& args)
 
     contractTxPage(
             app,
-            app.getTxnDB().connRead(),
+            app.getTxnDBCHECK().connRead(),
             app.accountIDCache(),
             bound,
             args.account,

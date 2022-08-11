@@ -813,7 +813,7 @@ public:
     }
 
     TxnDBCon&
-    getTxnDB() override
+    getTxnDBCHECK() override
     {
         assert(mTxnDB.get() != nullptr);
         return *mTxnDB;

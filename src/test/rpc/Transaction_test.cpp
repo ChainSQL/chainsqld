@@ -109,7 +109,7 @@ class Transaction_test : public beast::unit_test::suite
         const auto deletedLedger = (startLegSeq + endLegSeq) / 2;
         {
             // Remove one of the ledgers from the database directly
-            auto db = env.app().getTxnDB().checkoutDb();
+            auto db = env.app().getTxnDBCHECK().checkoutDb();
             *db << "DELETE FROM Transactions WHERE LedgerSeq == "
                 << deletedLedger << ";";
         }

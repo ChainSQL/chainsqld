@@ -1166,7 +1166,7 @@ saveValidatedLedger(
 
     if (app.config().useTxTables())
     {
-        auto db = app.getTxnDB().checkoutDb();
+        auto db = app.getTxnDBCHECK().checkoutDb();
 
         soci::transaction tr(*db);
         
@@ -1243,7 +1243,7 @@ saveValidatedLedger(
 			std::string token, human;
             transResultInfo(acceptedLedgerTx->getResult(), token, human);
 
-            if (app.getTxnDB().hasTxResult())
+            if (app.getTxnDBCHECK().hasTxResult())
             {
                 *db
                     << (STTx::getMetaSQLInsertReplaceHeader(true) +

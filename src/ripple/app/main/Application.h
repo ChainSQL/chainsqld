@@ -300,7 +300,7 @@ public:
     virtual OpenLedger const&
     openLedger(SchemaID const& id = beast::zero) const = 0;
     virtual TxnDBCon&
-    getTxnDB(SchemaID const& id = beast::zero) = 0;
+    getTxnDBCHECK(SchemaID const& id = beast::zero) = 0;
     virtual DatabaseCon&
     getLedgerDB(SchemaID const& id = beast::zero) = 0;
     /** Retrieve the "wallet database" */

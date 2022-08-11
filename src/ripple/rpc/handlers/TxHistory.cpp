@@ -122,7 +122,7 @@ doTxHistory(RPC::JsonContext& context)
     }
 
     {
-        auto db = context.app.getTxnDB().checkoutDbRead();
+        auto db = context.app.getTxnDBCHECK().checkoutDbRead();
 
         boost::optional<std::string> stxnHash;
         soci::statement st = (db->prepare << sql, soci::into(stxnHash));
