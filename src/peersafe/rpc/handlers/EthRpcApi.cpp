@@ -214,7 +214,18 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             return rpcError(rpcINVALID_PARAMS);
 
         //Construct STETx
-        auto stpTrans = std::make_shared<STETx const>(makeSlice(*ret));
+        auto stpTrans = std::make_shared<STETx>(makeSlice(*ret));
+
+        // if tranfer from user to user,use gas*gasPrice
+        if (stpTrans->isFieldPresent(sfDestination) &&
+            stpTrans->getAccountID(sfDestination) != beast::zero)
+        {
+            stpTrans->setFieldAmount(
+                sfFee,
+                ZXCAmount(
+                    stpTrans->getFieldU32(sfGas) *
+                    context.app.openLedger().current()->fees().gas_price));
+        }
 
         //Check validity
         auto [validity, reason] = checkValidity(
@@ -243,8 +254,9 @@ doEthSendRawTransaction(RPC::JsonContext& context)
 
         jvResult[jss::result] = "0x" + to_string(stpTrans->getTransactionID());
     }
-    catch (std::exception&)
+    catch (std::exception& e)
     {
+        JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
         jvResult[jss::result] = "0x0";
     }
     return jvResult;

@@ -351,6 +351,7 @@ TxFormats::TxFormats()
             {sfGas, soeREQUIRED},
             {sfContractAddress, soeOPTIONAL},
             {sfContractValue, soeOPTIONAL},
+            {sfDestination, soeOPTIONAL},
         },
         commonFields);
 }

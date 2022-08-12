@@ -1939,7 +1939,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 JLOG(m_journal.info()) << "Transaction is obsolete";
                 e.transaction->setStatus(OBSOLETE);
             }
-            else if (isTerRetry(e.result.ter))
+            else if (terPRE_SEQ == e.result.ter)
             {
                 if (e.failType != FailHard::yes)
                 {

@@ -126,7 +126,7 @@ using u256HashMap = std::unordered_map<u256, u256>;
 using strings = std::vector<std::string>;
 
 // Null/Invalid values for convenience.
-extern bytes const NullBytes;
+bytes const NullBytes;
 //u256 constexpr Invalid256 =
 //    0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_cppui256;
 

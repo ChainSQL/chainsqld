@@ -232,7 +232,7 @@ private:
             std::stringstream ss;
             ss << " deserialise failed, invalid offset , offset is " << _offset
                << " , length is " << data.size() << " , data is "
-               << toHex(data);
+               << eth::toHex(data);
 
             throw std::length_error(ss.str().c_str());
         }

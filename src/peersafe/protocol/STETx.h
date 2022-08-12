@@ -21,8 +21,24 @@
 #define RIPPLE_PROTOCOL_STETX_H_INCLUDED
 
 #include <ripple/protocol/STTx.h>
+#include <eth/tools/RLP.h>
+#include <eth/vm/Common.h>
+#include <peersafe/protocol/ContractDefines.h>
+
+using namespace eth;
 
 namespace ripple {
+
+
+/// Named-boolean type to encode whether a signature be included in the
+/// serialization process.
+enum IncludeSignature {
+    WithoutSignature = 0,  ///< Do not include a signature.
+    WithSignature = 1,     ///< Do include a signature.
+};
+
+extern const KnownFormats<TxType>::Item* getTxFormat(TxType type);
+
 class STETx final : public STTx
 {
 public:
@@ -43,8 +59,48 @@ public:
     virtual std::pair<bool, std::string>
     checkSign(RequireFullyCanonicalSig requireCanonicalSig) const override;
 
-private:
 
+    virtual void
+    add(Serializer& s) const override
+    {
+        s.add8(0);
+        s.addRaw(Blob(m_rlpData.begin(), m_rlpData.end()));
+    }
+
+private:
+    struct RlpDecoded
+    {
+        u256 nonce;
+        u256 gasPrice;
+        u256 gas;
+        h160 receiveAddress;
+        u256 value;
+        eth::bytes data;
+        u256 v;
+        h256 r;
+        h256 s;
+    };
+
+    std::pair<bool, AccountID>
+    getSender(RlpDecoded const& decoded);
+
+
+
+    // Serializes this transaction to an RLPStream.
+    /// @throws TransactionIsUnsigned if including signature was requested but
+    /// it was not initialized
+    void
+    streamRLP(RLPStream& _s, 
+        RlpDecoded const& _data,
+        IncludeSignature _sig = WithSignature,
+        bool _forEip155hash = false) const;
+
+    uint256
+    sha3(RlpDecoded const& _decoded, IncludeSignature _sig);
+
+private:
+    Slice m_rlpData;
+    ContractOpType m_type;
 };
 
 /** Check whether a transaction is a eth-transaction */

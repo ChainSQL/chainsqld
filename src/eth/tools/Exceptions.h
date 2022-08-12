@@ -25,7 +25,7 @@ struct Exception : virtual std::exception, virtual boost::exception
 };
 
 #define DEV_SIMPLE_EXCEPTION(X)  \
-    struct X : virtual Exception \
+    struct X : virtual eth::Exception \
     {                            \
     }
 

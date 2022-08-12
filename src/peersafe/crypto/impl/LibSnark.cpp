@@ -4,6 +4,7 @@
 #include <peersafe/crypto/LibSnark.h>
 #include <ripple/basics/base_uint.h>
 #include <peersafe/basics/TypeTransform.h>
+#include <eth/vm/Common.h>
 
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g1.hpp>
 #include <libff/algebra/curves/alt_bn128/alt_bn128_g2.hpp>
@@ -150,7 +151,7 @@ pair<bool, eth::bytes> alt_bn128_pairing_product(eth::bytesConstRef _in)
 		}
 		bool const result = libff::alt_bn128_final_exponentiation(x) == libff::alt_bn128_GT::one();
         ripple::Blob retBlob(32);
-        ripple::toBigEndian(result, retBlob);
+        eth::toBigEndian(result, retBlob);
 		return { true, retBlob };
 	}
 	catch (InvalidEncoding const&)

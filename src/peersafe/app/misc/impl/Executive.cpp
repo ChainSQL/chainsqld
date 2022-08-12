@@ -9,6 +9,7 @@
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/protocol/STETx.h>
 
 namespace ripple {
 
@@ -80,8 +81,14 @@ bool Executive::execute() {
 	}
 	else
 	{
-		AccountID contract_address = tx.getAccountID(sfContractAddress);
-		return call(contract_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
+		AccountID receive_address = tx.getAccountID(sfContractAddress);
+        if (isEthTx(tx))
+        {
+			//Payment between account.
+            if (receive_address == beast::zero && tx.isFieldPresent(sfDestination))
+                receive_address = tx.getAccountID(sfDestination);
+        }
+		return call(receive_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
 	}
 }
 
@@ -218,8 +225,8 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
                                             _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                                             m_depth, false, _p.staticCall);
-        }
-        else if (m_depth == 1) //if not first call,codeAddress not need to be a contract address
+        }// if not first call,codeAddress not need to be a contract address
+        else if (m_depth == 1 && !isEthTx(m_s.ctx().tx))                                                
         {
             // contract may be killed
             auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));

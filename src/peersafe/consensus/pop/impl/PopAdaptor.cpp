@@ -28,6 +28,7 @@
 #include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/protocol/STETx.h>
 
 
 namespace ripple {
@@ -264,6 +265,17 @@ PopAdaptor::onViewChanged(
 
 // ----------------------------------------------------------------------------
 // Private member functions.
+std::shared_ptr<STTx const>
+makeSTTx(Slice& sit)
+{
+    if (*sit.begin() == 0)
+    {
+        sit.remove_prefix(1);
+        return std::make_shared<STETx const>(sit);
+    }
+    else 
+        return std::make_shared<STTx const>(sit);
+}
 
 void
 PopAdaptor::doAccept(
@@ -325,8 +337,7 @@ PopAdaptor::doAccept(
     {
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            retriableTxs.insert(makeSTTx(item.slice()));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)

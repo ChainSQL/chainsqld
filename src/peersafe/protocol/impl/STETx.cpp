@@ -8,11 +8,15 @@
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/Protocol.h>
 #include <peersafe/protocol/STETx.h>
+#include <eth/vm/utils/keccak.h>
+#include <peersafe/basics/TypeTransform.h>
 #include <utility>
+
 
 namespace ripple {
 
-STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
+STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false) 
+: m_rlpData(sit)
 {
     setFName(sfTransaction);
     int length = sit.size();
@@ -20,19 +24,151 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
     if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
         Throw<std::runtime_error>("Transaction length invalid");
 
-    
-
     tx_type_ = ttETH_TX;
 
-    //Todo:
+    RlpDecoded decoded;
     //Decode RLP and set fields
+    RLP const rlp(bytesConstRef(sit.data(),sit.size()));
+    decoded.nonce = rlp[0].toInt<u256>();
+    decoded.gasPrice = rlp[1].toInt<u256>();
+    decoded.gas = rlp[2].toInt<u256>();
 
-    //Todo:
-    //Calculate tx-hash
-    tid_ = getHash(HashPrefix::transactionID, hashType);
+    if (!rlp[3].isData())
+        throw std::exception("recipient RLP must be a byte array");
+    m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+    decoded.receiveAddress =
+        rlp[3].isEmpty() ? h160() : rlp[3].toHash<h160>(RLP::VeryStrict);
+
+    decoded.value = rlp[4].toInt<u256>();
+
+    if (!rlp[5].isData())
+        throw std::exception("transaction data RLP must be a byte array");
+
+    decoded.data = rlp[5].toBytes();
+
+    decoded.v = rlp[6].toInt<u256>();
+    decoded.r = rlp[7].toInt<u256>();
+    decoded.s = rlp[8].toInt<u256>();
+
+    // Check signature and get sender.
+    auto sender = getSender(decoded);
+    if (!sender.first)
+        throw std::exception("check signature failed when get sender");
+
+    u256 drops = decoded.value / u256(1e+12);
+
+    uint160 receive = fromH160(decoded.receiveAddress);
+    auto realOpType = (receive == beast::zero) ? ContractCreation : MessageCall;
+    AccountID receiveAddress;
+    memcpy(receiveAddress.data(), receive.data(), receive.size());
+
+    //Tx-Hash
+    tid_ = sha3(decoded, WithSignature);
+
+    // Set fields
+    set(getTxFormat(tx_type_)->getSOTemplate());
+    setFieldU16(sfTransactionType, ttETH_TX);
+    setAccountID(sfAccount, sender.second);
+    setFieldU32(sfSequence, (uint32_t)decoded.nonce);
+    setFieldU32(sfGas, (uint32_t)decoded.gas);
+    setFieldU16(sfContractOpType, realOpType);
+    setFieldVL(sfContractData, decoded.data);
+    setFieldAmount(sfContractValue, ZXCAmount((uint64_t)drops));
+    setFieldVL(sfSigningPubKey, Blob{});
+    setFieldAmount(sfFee, ZXCAmount(10));
+    if (receiveAddress != beast::zero)
+    {
+        setAccountID(sfContractAddress, receiveAddress);
+        if (drops > 0 && decoded.data.empty())
+            setAccountID(sfDestination, receiveAddress);
+    }
+
+    auto str = getJson().toStyledString();
 
     pTxs_ = nullptr;
     paJsonLog_ = nullptr;
+}
+
+void
+STETx::streamRLP(
+    RLPStream& _s,
+    RlpDecoded const& _decoded,
+    IncludeSignature _sig,
+    bool _forEip155hash) const
+{
+    _s.appendList((_sig || _forEip155hash ? 3 : 0) + 6);
+    _s << _decoded.nonce << _decoded.gasPrice << _decoded.gas;
+    if (m_type == MessageCall)
+        _s << _decoded.receiveAddress;
+    else
+        _s << "";
+    _s << _decoded.value << _decoded.data;
+
+    if (_sig)
+    {
+        _s << _decoded.v;
+        _s << _decoded.r << _decoded.s;
+    }
+    else if (_forEip155hash)
+    {
+        auto chainId = ((uint64_t)_decoded.v - 35) / 2;
+        _s << chainId << 0 << 0;
+    }
+}
+
+uint256
+STETx::sha3(RlpDecoded const& _decoded, IncludeSignature _sig)
+{
+    RLPStream s;
+    bool isReplayProtected = ((uint64_t)_decoded.v > 36);
+    streamRLP(s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
+    uint256 ret;
+    eth::sha3(s.out().data(),s.out().size(),ret.data());
+    return ret;
+}
+
+std::pair<bool,AccountID>
+STETx::getSender(RlpDecoded const& decoded)
+{
+
+    uint256 r = fromU256(decoded.r);
+    uint256 s = fromU256(decoded.s);
+    uint64_t v = uint64_t(decoded.v);
+
+    AccountID from;
+    boost::optional<uint64_t> chainId;
+    if (v > 36)
+    {
+        chainId = (v - 35) / 2;
+        if (chainId > std::numeric_limits<uint64_t>::max())
+            throw std::exception("Invalid signature");
+    }
+    else if (v != 27 && v != 28)
+        throw std::exception("Invalid signature");
+
+    auto const recoveryID = chainId.has_value()
+        ? byte(v - (uint64_t{*chainId} * 2 + 35))
+        : byte(v - 27);
+
+    ripple::SignatureStruct sig(r, s, recoveryID);
+    if (sig.isValid())
+    {
+        try
+        {
+            Blob rec = ripple::recover(sig, sha3(decoded,WithoutSignature));
+            if (rec.size() != 0)
+            {
+                uint256 shaData;
+                eth::sha3(rec.data(), rec.size(), shaData.data());
+                memcpy(from.data(), shaData.begin() + 12, 20);
+                return std::make_pair(true, from);
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+    return std::make_pair(false, from);
 }
 
 std::pair<bool, std::string>
@@ -41,8 +177,8 @@ STETx::checkSign(RequireFullyCanonicalSig requireCanonicalSig) const
     std::pair<bool, std::string> ret{false, ""};
     try
     {
-        //Todo:
-        //check signature
+        if (isFieldPresent(sfAccount) && getAccountID(sfAccount) != beast::zero)
+            return {true, ""};
     }
     catch (std::exception const&)
     {
