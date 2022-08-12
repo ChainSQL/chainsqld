@@ -139,17 +139,15 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     return jvResult;
 }
 
-Json::Value
-doEthGetBalance(RPC::JsonContext& context)
+std::pair<std::shared_ptr<SLE const>, int>
+getAccountData(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
-    try
-    {
+    try {
         std::string addrStrHex = context.params["realParams"][0u].asString().substr(2);
         auto addrHex = *(strUnHex(addrStrHex));
         AccountID accountID;
         if (addrHex.size() != accountID.size())
-            return rpcError(rpcDST_ACT_MALFORMED);
+            return std::make_pair(nullptr, rpcDST_ACT_MALFORMED);
         std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
         
         std::shared_ptr<ReadView const> ledger;
@@ -160,12 +158,25 @@ doEthGetBalance(RPC::JsonContext& context)
         if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
             ledger = ledgerVal;
 
-        auto const sleAccepted = ledger->read(keylet::account(accountID));
-        if(sleAccepted)
+        return std::make_pair(ledger->read(keylet::account(accountID)), rpcSUCCESS);
+    } catch (std::exception&) {
+        return std::make_pair(nullptr, rpcINTERNAL);
+    }
+}
+
+Json::Value
+doEthGetBalance(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        auto accDataRet = getAccountData(context);
+
+        if(accDataRet.second == rpcSUCCESS && accDataRet.first)
         {
             Json::Value jvAccepted;
-            RPC::injectSLE(jvAccepted, *sleAccepted);
-            
+            RPC::injectSLE(jvAccepted, *(accDataRet.first));
+                
             if(jvAccepted.isMember("Balance"))
             {
                 boost::multiprecision::uint128_t balance;
@@ -173,6 +184,8 @@ doEthGetBalance(RPC::JsonContext& context)
                 jvResult[jss::result] = (boost::format("0x%x") % (balance)).str();
             }
         }
+        else if(accDataRet.second == rpcDST_ACT_MALFORMED)
+            return rpcError(rpcDST_ACT_MALFORMED);
         else jvResult[jss::result] = "0x0";
     }
     catch (std::exception&)
@@ -257,6 +270,71 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
 
 Json::Value
 doEthGetTransactionByHash(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        std::string txHash =
+            context.params["realParams"][0u].asString().substr(2);
+
+        jvResult[jss::result] = "0x0";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGetTransactionCount(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        auto accDataRet = getAccountData(context);
+
+        if(accDataRet.second == rpcSUCCESS && accDataRet.first)
+        {
+            Json::Value jvAccepted;
+            RPC::injectSLE(jvAccepted, *(accDataRet.first));
+                
+            if(jvAccepted.isMember("Sequence"))
+            {
+                jvResult[jss::result] = (boost::format("0x%x") % (jvAccepted["Sequence"].asUInt64())).str();
+            }
+        }
+        else if(accDataRet.second == rpcDST_ACT_MALFORMED)
+            return rpcError(rpcDST_ACT_MALFORMED);
+        else jvResult[jss::result] = "0x0";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthEstimateGas(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        std::string txHash =
+            context.params["realParams"][0u].asString().substr(2);
+
+        jvResult[jss::result] = "0x0";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthCall(RPC::JsonContext& context)
 {
     Json::Value jvResult;
     try

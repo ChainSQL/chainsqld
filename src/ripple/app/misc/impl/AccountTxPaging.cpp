@@ -125,9 +125,8 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
             {
                 lgr = ledgerCache[seq];
             }
-            else if (
-                lgr =
-                    app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            else if ((
+                lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0))))
             {
                 ledgerCache.emplace(seq, lgr);
             }

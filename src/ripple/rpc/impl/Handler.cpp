@@ -230,9 +230,12 @@ Handler const ethHandlerArray[]{
     {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
     {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
     {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
+    {"eth_call", byRef(&doEthCall), Role::USER, NO_CONDITION},
+    {"eth_estimateGas", byRef(&doEthEstimateGas), Role::USER, NO_CONDITION},
     {"eth_sendRawTransaction", byRef(&doEthSendRawTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
     {"eth_getTransactionReceipt", byRef(&doEthGetTransactionReceipt), Role::USER, NO_CONDITION},
     {"eth_getTransactionByHash", byRef(&doEthGetTransactionByHash), Role::USER, NO_CONDITION},
+    {"eth_getTransactionCount", byRef(&doEthGetTransactionCount), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable
