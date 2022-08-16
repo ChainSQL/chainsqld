@@ -596,11 +596,12 @@ jsonToSTTx(Json::Value& params, CommonKey::HashType hashType = CommonKey::chainH
             return std::make_pair(
                 nullptr, rpcError(rpcTXN_BIGGER_THAN_MAXSIZE));
 
-        SerialIter sitTrans(makeSlice(*blob));
+        //SerialIter sitTrans(makeSlice(*blob));
 
         try
         {
-            sttx = std::make_shared<STTx const>(std::ref(sitTrans), hashType);
+            //sttx = std::make_shared<STTx const>(std::ref(sitTrans), hashType);
+            sttx = makeSTTx(makeSlice(*blob));
         }
         catch (std::exception& e)
         {

@@ -26,6 +26,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/rpca/RpcaAdaptor.h>
+#include <peersafe/app/util/Common.h>
 
 
 namespace ripple {
@@ -267,8 +268,7 @@ RpcaAdaptor::doAccept(
     {
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            retriableTxs.insert(makeSTTx(item.slice()));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)
@@ -377,11 +377,10 @@ RpcaAdaptor::doAccept(
                         << "Test applying disputed transaction that did"
                         << " not get in " << it.second.tx().id();
 
-                    SerialIter sit(it.second.tx().tx_.slice());
-                    auto txn = std::make_shared<STTx const>(sit);
+                    auto txn = makeSTTx(it.second.tx().tx_.slice());
 
                     // Disputed pseudo-transactions that were not accepted
-                    // can't be succesfully applied in the next ledger
+                    // can't be successfully applied in the next ledger
                     if (isPseudoTx(*txn))
                         continue;
 

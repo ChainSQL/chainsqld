@@ -19,6 +19,7 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/OpenView.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -60,8 +61,9 @@ public:
     {
         value_type result;
         {
-            SerialIter sit(iter_->second.first->slice());
-            result.first = std::make_shared<STTx const>(sit);
+            //SerialIter sit(iter_->second.first->slice());
+            //result.first = std::make_shared<STTx const>(sit);
+            result.first = makeSTTx(iter_->second.first->slice());
         }
         if (metadata_)
         {
@@ -200,7 +202,8 @@ OpenView::txRead(key_type const& key) const -> tx_type
     if (iter == txs_.end())
         return base_->txRead(key);
     auto const& item = iter->second;
-    auto stx = std::make_shared<STTx const>(SerialIter{item.first->slice()});
+    //auto stx = std::make_shared<STTx const>(SerialIter{item.first->slice()});
+    auto stx = makeSTTx(item.first->slice());
     decltype(tx_type::second) sto;
     if (item.second)
         sto = std::make_shared<STObject const>(

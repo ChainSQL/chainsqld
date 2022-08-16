@@ -13,8 +13,10 @@
 #include <ripple/rpc/handlers/LedgerHandler.h>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <peersafe/protocol/STETx.h>
+#include <peersafe/protocol/Contract.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/app/misc/Transaction.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 
 namespace ripple {
 
@@ -214,7 +216,8 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             return rpcError(rpcINVALID_PARAMS);
 
         //Construct STETx
-        auto stpTrans = std::make_shared<STETx const>(makeSlice(*ret));
+        auto stpTrans = std::make_shared<STETx>(makeSlice(*ret));
+
 
         //Check validity
         auto [validity, reason] = checkValidity(
@@ -243,8 +246,9 @@ doEthSendRawTransaction(RPC::JsonContext& context)
 
         jvResult[jss::result] = "0x" + to_string(stpTrans->getTransactionID());
     }
-    catch (std::exception&)
+    catch (std::exception& e)
     {
+        JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
         jvResult[jss::result] = "0x0";
     }
     return jvResult;
@@ -258,14 +262,84 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
     {
         std::string txHash =
             context.params["realParams"][0u].asString().substr(2);
-        
-        jvResult[jss::result] = "0x0";
+        auto hash = from_hex_text<uint256>(txHash);
+        auto txn = context.app.getMasterTransaction().fetch(hash);
+        if (!txn)
+        {
+            jvResult[jss::status] = 0;
+            return jvResult;
+        }
+        auto tx = txn->getSTransaction();
+        auto ledger =
+            context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
+        jvResult["transactionHash"] = "0x" + txHash;
+        jvResult["transactionIndex"] = 0;
+        if (txn->getLedger() == 0)
+        {
+            jvResult["blockHash"] = Json::nullValue;
+            jvResult["blockNumber"] = Json::nullValue;
+        }
+        else
+        {
+            jvResult["blockHash"] = "0x" + to_string(ledger->info().hash);
+            jvResult["blockNumber"] = txn->getLedger();
+        }
+        auto accountID = tx->getAccountID(sfAccount);
+        uint160 fromAccount = uint160(accountID);
+        jvResult["from"] = "0x" + to_string(fromAccount);
+        if (tx->isFieldPresent(sfContractAddress))
+        {
+            uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
+            jvResult["to"] = "0x" + to_string(toAccount);
+        }
+        else
+            jvResult["to"] = Json::nullValue;
+
+        if (!txn->getMeta().empty())
+        {
+            auto meta = std::make_shared<TxMeta>(
+                txn->getID(), txn->getLedger(), txn->getMeta());
+            auto key = keylet::account(accountID);
+            try
+            {
+                auto node = meta->getAffectedNode(key.key);
+                auto preBalance = node.getFieldObject(sfPreviousFields)
+                    .getFieldAmount(sfBalance).zxc().drops();
+                auto finalBalance = 
+                    node.getFieldObject(sfFinalFields)
+                    .getFieldAmount(sfBalance).zxc().drops(); 
+                auto fee = tx->getFieldAmount(sfFee).zxc().drops();
+                uint64_t value = 0;
+                if (tx->isFieldPresent(sfContractValue))
+                    value = tx->getFieldAmount(sfContractValue).zxc().drops();
+                auto gasPrice = (preBalance - finalBalance - fee - value) / ledger->fees().gas_price;
+                jvResult["cumulativeGasUsed"] = gasPrice;
+                jvResult["gasUsed"] = gasPrice;
+            }
+            catch (...)
+            {
+            }
+
+            if (!tx->isFieldPresent(sfContractAddress) &&
+                tx->isFieldPresent(sfContractData))
+            {
+                // calculate contract address
+                auto newAddress = Contract::calcNewAddress(
+                    accountID, tx->getFieldU32(sfSequence));
+                jvResult["contractAddress"] = "0x" + to_string(uint160(newAddress));
+            }
+            jvResult["logs"] = Json::arrayValue;
+            jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
+            jvResult["root"] = "0x" + to_string(uint256());
+            jvResult[jss::status] =  meta->getResultTER() == tesSUCCESS ? 1 : 0;
+        }
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
     }
-    return jvResult;
+    Json::Value ret;
+    ret[jss::result] = jvResult;
+    return ret;
 }
 
 Json::Value
@@ -276,14 +350,62 @@ doEthGetTransactionByHash(RPC::JsonContext& context)
     {
         std::string txHash =
             context.params["realParams"][0u].asString().substr(2);
+        auto hash = from_hex_text<uint256>(txHash);
+        auto txn = context.app.getMasterTransaction().fetch(hash);
+        if (!txn)
+            return jvResult;
+        auto tx =
+            std::dynamic_pointer_cast<STETx const>(txn->getSTransaction());
+        if (!tx)
+            return jvResult;
 
-        jvResult[jss::result] = "0x0";
+        auto ledger =
+            context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
+        jvResult["hash"] = "0x" + txHash;
+        jvResult["transactionIndex"] = 0;
+        if (txn->getLedger() == 0)
+        {
+            jvResult["blockHash"] = Json::nullValue;
+            jvResult["blockNumber"] = Json::nullValue;
+        }
+        else
+        {
+            jvResult["blockHash"] = "0x" + to_string(ledger->info().hash);
+            jvResult["blockNumber"] = txn->getLedger();
+        }
+        auto accountID = tx->getAccountID(sfAccount);
+        uint160 fromAccount = uint160(accountID);
+        jvResult["from"] = "0x" + to_string(fromAccount);
+        if (tx->isFieldPresent(sfContractAddress))
+        {
+            uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
+            jvResult["to"] = "0x" + to_string(toAccount);
+        }
+        else
+            jvResult["to"] = Json::nullValue;
+        jvResult["nonce"] = tx->getFieldU32(sfSequence);
+        jvResult["input"] = "0x" + strHex(tx->getFieldVL(sfContractData));
+        jvResult["gas"] = tx->getFieldU32(sfGas);
+
+        auto rlpData = tx->getRlpData();
+        RLP const rlp(bytesConstRef(rlpData.data(), rlpData.size()));
+        auto gasPrice = rlp[1].toInt<u256>();
+        auto value = rlp[4].toInt<u256>();
+        auto v = rlp[6].toInt<u256>();
+        auto r = rlp[7].toInt<u256>();
+        auto s = rlp[8].toInt<u256>();
+        jvResult["value"] = (boost::format("0x%x") % (value)).str();
+        jvResult["gasPrice"] = (boost::format("0x%x") % (gasPrice)).str();
+        jvResult["v"] = (boost::format("0x%x") % (v)).str();
+        jvResult["r"] = (boost::format("0x%x") % (r)).str();
+        jvResult["s"] = (boost::format("0x%x") % (s)).str();
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
     }
-    return jvResult;
+    Json::Value ret;
+    ret[jss::result] = jvResult;
+    return ret;
 }
 
 Json::Value

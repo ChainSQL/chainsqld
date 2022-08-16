@@ -25,6 +25,7 @@
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/format.hpp>
 #include <memory>
 
@@ -41,8 +42,9 @@ convertBlobsToTxResult(
     Blob const& rawMeta,
     Schema& app)
 {
-    SerialIter it(makeSlice(rawTxn));
-    auto txn = std::make_shared<STTx const>(it);
+    //SerialIter it(makeSlice(rawTxn));
+    //auto txn = std::make_shared<STTx const>(it);
+    auto txn = makeSTTx(makeSlice(rawTxn));
     std::string reason;
 
     auto tr = std::make_shared<Transaction>(txn, reason, app);

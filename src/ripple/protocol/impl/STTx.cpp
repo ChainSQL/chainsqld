@@ -45,7 +45,7 @@
 
 namespace ripple {
 
-static auto
+const KnownFormats<TxType>::Item*
 getTxFormat(TxType type)
 {
     auto format = TxFormats::getInstance().findByType(type);

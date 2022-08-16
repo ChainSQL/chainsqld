@@ -70,7 +70,7 @@ bytes
 ContractABI::serialise(const u256& _in)
 {
     bytes retBlob(32);
-    ripple::toBigEndian(_in, retBlob);
+    eth::toBigEndian(_in, retBlob);
     return retBlob;
 }
 
@@ -80,7 +80,7 @@ ContractABI::serialise(const s256& _in)
 {
     u256 data = _in.convert_to<u256>();
     bytes retBlob(32);
-    ripple::toBigEndian(data, retBlob);
+    eth::toBigEndian(data, retBlob);
     return retBlob;
 }
 
@@ -128,7 +128,7 @@ ContractABI::deserialise(s256& out, std::size_t _offset)
 {
     validOffset(_offset + MAX_BYTE_LENGTH - 1);
 
-    u256 u = fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
+    u256 u = eth::fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
     if (u > u256("0x8fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))
     {
         auto r = (u256("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") - u) +
@@ -146,7 +146,7 @@ ContractABI::deserialise(u256& _out, std::size_t _offset)
 {
     validOffset(_offset + MAX_BYTE_LENGTH - 1);
 
-    _out = fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
+    _out = eth::fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
 }
 
 void
@@ -154,7 +154,7 @@ ContractABI::deserialise(bool& _out, std::size_t _offset)
 {
     validOffset(_offset + MAX_BYTE_LENGTH - 1);
 
-    u256 ret = fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
+    u256 ret = eth::fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
     _out = ret > 0 ? true : false;
 }
 
@@ -180,7 +180,7 @@ ContractABI::deserialise(std::string& _out, std::size_t _offset)
 {
     validOffset(_offset + MAX_BYTE_LENGTH - 1);
 
-    u256 len = fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
+    u256 len = eth::fromBigEndian<u256>(data.cropped(_offset, MAX_BYTE_LENGTH));
     validOffset(_offset + MAX_BYTE_LENGTH + (std::size_t)len - 1);
     auto result =
         data.cropped(_offset + MAX_BYTE_LENGTH, static_cast<size_t>(len));

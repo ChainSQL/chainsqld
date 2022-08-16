@@ -55,6 +55,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -490,8 +491,9 @@ Ledger::addSLE(SLE const& sle)
 std::shared_ptr<STTx const>
 deserializeTx(SHAMapItem const& item)
 {
-    SerialIter sit(item.slice());
-    return std::make_shared<STTx const>(sit);
+    //SerialIter sit(item.slice());
+    //return std::make_shared<STTx const>(sit);
+    return makeSTTx(item.slice());
 }
 
 std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
@@ -501,8 +503,9 @@ deserializeTxPlusMeta(SHAMapItem const& item)
         result;
     SerialIter sit(item.slice());
     {
-        SerialIter s(sit.getSlice(sit.getVLDataLength()));
-        result.first = std::make_shared<STTx const>(s);
+        //SerialIter s(sit.getSlice(sit.getVLDataLength()));
+        //result.first = std::make_shared<STTx const>(s);
+        result.first = makeSTTx(sit.getSlice(sit.getVLDataLength()));
     }
     {
         SerialIter s(sit.getSlice(sit.getVLDataLength()));
