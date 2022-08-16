@@ -89,7 +89,7 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     {
         Json::Value chainsqlParams;
         std::string ledgerIndexStr = context.params["realParams"][0u].asString().substr(2);
-        chainsqlParams[jss::ledger_index] = beast::lexicalCastThrow<std::uint64_t>(ledgerIndexStr);
+        chainsqlParams[jss::ledger_index] = std::stoll(ledgerIndexStr, 0, 16);
         chainsqlParams[jss::transactions] = true;
         chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
         context.params = chainsqlParams;
@@ -318,19 +318,7 @@ doEthGetTransactionCount(RPC::JsonContext& context)
 Json::Value
 doEthEstimateGas(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
-    try
-    {
-        std::string txHash =
-            context.params["realParams"][0u].asString().substr(2);
-
-        jvResult[jss::result] = "0x0";
-    }
-    catch (std::exception&)
-    {
-        jvResult[jss::result] = "0x0";
-    }
-    return jvResult;
+    return doEstimateGas(context);
 }
 
 Json::Value

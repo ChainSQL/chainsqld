@@ -23,6 +23,9 @@ namespace eth {
     using s256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256,
         boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 
+    u256 constexpr Invalid256 = u256(-1);
+    static const int64_t c_maxGasEstimate = 50000000;
+
     struct Exception : virtual std::exception, virtual boost::exception
     {
         const char *what() const noexcept override { return boost::diagnostic_information_what(*this); }

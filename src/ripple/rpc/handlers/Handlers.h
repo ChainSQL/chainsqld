@@ -205,6 +205,7 @@ Json::Value doMonitorStatis(RPC::JsonContext&);
 
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);
+Json::Value doEstimateGas(RPC::JsonContext&);
 
 Json::Value doGenCsr(RPC::JsonContext&); // for humans
 
