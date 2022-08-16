@@ -42,6 +42,8 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	Json::Value jvResult;
 	try
 	{
+        std::string detailMethod = originJson[jss::command].asString();
+        
 		jvResult[jss::request] = originJson;
 
 		if (temUNCERTAIN != terResult)
@@ -53,7 +55,10 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 			}
 			else
 			{
-				jvResult[jss::contract_call_result] = exeResult;
+                if(detailMethod == "eth_call")
+                    jvResult["result"] = exeResult;
+                else
+                    jvResult[jss::contract_call_result] = exeResult;
 			}
 		}
 	}
@@ -121,6 +126,32 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
+Json::Value checkEthJsonFields(Json::Value originJson)
+{
+    Json::Value ret = Json::Value();
+
+    if (!originJson.isObject())
+    {
+        ret = RPC::object_field_error(jss::params);
+    }
+
+    if (!originJson.isMember("from"))
+    {
+        ret = RPC::missing_field_error("from");
+    }
+
+    if (!originJson.isMember("to"))
+    {
+        ret = RPC::missing_field_error("to");
+    }
+
+    if (!originJson.isMember("data"))
+    {
+        ret = RPC::missing_field_error("data");
+    }
+    return ret;
+}
+
 Json::Value
 doContractCall(RPC::JsonContext& context)
 {
@@ -129,18 +160,39 @@ doContractCall(RPC::JsonContext& context)
 
     // Json::Value jsonRpcObj = context.params[jss::tx_json];
     Json::Value jsonParams = context.params;
+    Json::Value ethParams = jsonParams["realParams"][0u];
 
-    auto checkResult = checkJsonFields(jsonParams);
+    std::string detailMethod = jsonParams[jss::command].asString();
+    Json::Value checkResult;
+    if(detailMethod == "eth_call")
+        checkResult = checkEthJsonFields(ethParams);
+    else
+        checkResult = checkJsonFields(jsonParams);
+    
     if (isRpcError(checkResult))
         return checkResult;
-
-    std::string accountStr = jsonParams[jss::account].asString();
+    
     AccountID accountID;
-    auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
-    if (jvAccepted)
+    if(detailMethod == "eth_call")
     {
-        return jvAccepted;
+        std::string addrStrHex = ethParams["from"].asString().substr(2);
+        auto addrHex = *(strUnHex(addrStrHex));
+        
+        if (addrHex.size() != accountID.size())
+            return rpcError(rpcDST_ACT_MALFORMED);
+        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
     }
+    else
+    {
+        std::string accountStr = jsonParams[jss::account].asString();
+        AccountID accountID;
+        auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+        if (jvAccepted)
+        {
+            return jvAccepted;
+        }
+    }
+    
     std::shared_ptr<ReadView const> ledger;
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
@@ -148,18 +200,32 @@ doContractCall(RPC::JsonContext& context)
     if (!ledger->exists(keylet::account(accountID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
     AccountID contractAddrID;
-    auto jvAcceptedCtrAddr =
-        RPC::accountFromString(contractAddrID, ctrAddrStr, true);
-    if (jvAcceptedCtrAddr)
+    if(detailMethod == "eth_call")
     {
-        return jvAcceptedCtrAddr;
+        std::string addrStrHex = ethParams["to"].asString().substr(2);
+        auto addrHex = *(strUnHex(addrStrHex));
+        
+        if (addrHex.size() != contractAddrID.size())
+            return rpcError(rpcDST_ACT_MALFORMED);
+        std::memcpy(contractAddrID.data(), addrHex.data(), addrHex.size());
     }
+    else
+    {
+        std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+        
+        auto jvAcceptedCtrAddr =
+            RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+        if (jvAcceptedCtrAddr)
+        {
+            return jvAcceptedCtrAddr;
+        }
+    }
+    
     if (!ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
+    auto strUnHexRes = strUnHex(detailMethod == "eth_call" ? ethParams["data"].asString().substr(2) : jsonParams[jss::contract_data].asString());
     if (!strUnHexRes)
     {
         errMsgStr = "contract_data is not in hex";
