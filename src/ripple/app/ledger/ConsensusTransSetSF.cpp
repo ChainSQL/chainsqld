@@ -27,6 +27,7 @@
 #include <ripple/nodestore/Database.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/digest.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -58,8 +59,8 @@ ConsensusTransSetSF::gotNode(
         {
             // skip prefix
             Serializer s(nodeData.data() + 4, nodeData.size() - 4);
-            SerialIter sit(s.slice());
-            auto stx = std::make_shared<STTx const>(std::ref(sit));
+            //SerialIter sit(s.slice());
+            auto stx = makeSTTx(s.slice());
             assert(stx->getTransactionID() == nodeHash.as_uint256());
             auto const pap = &app_;
             app_.getJobQueue().addJob(

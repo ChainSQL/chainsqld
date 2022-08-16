@@ -42,6 +42,13 @@ extern const KnownFormats<TxType>::Item* getTxFormat(TxType type);
 class STETx final : public STTx
 {
 public:
+    static char const*
+    getCountedObjectName()
+    {
+        return "STTx";
+    }
+
+public:
     STETx() = delete;
     STETx&
     operator=(STETx const& other) = delete;
@@ -64,8 +71,11 @@ public:
     add(Serializer& s) const override
     {
         s.add8(0);
-        s.addRaw(Blob(m_rlpData.begin(), m_rlpData.end()));
+        s.addRaw(m_rlpData);
     }
+
+    Blob const&
+    getRlpData() const;
 
 private:
     struct RlpDecoded
@@ -99,7 +109,7 @@ private:
     sha3(RlpDecoded const& _decoded, IncludeSignature _sig);
 
 private:
-    Slice m_rlpData;
+    Blob m_rlpData;
     ContractOpType m_type;
 };
 

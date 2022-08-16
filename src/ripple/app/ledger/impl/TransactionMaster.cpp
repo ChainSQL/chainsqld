@@ -26,6 +26,7 @@
 #include <peersafe/schema/Schema.h>
 #include <ripple/protocol/STTx.h>
 #include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -179,14 +180,15 @@ TransactionMaster::fetch(
     {
         if (type == SHAMapTreeNode::tnTRANSACTION_NM)
         {
-            SerialIter sit(item->slice());
-            txn = std::make_shared<STTx const>(std::ref(sit));
+            //SerialIter sit(item->slice());
+            txn = makeSTTx(item->slice());
         }
         else if (type == SHAMapTreeNode::tnTRANSACTION_MD)
         {
-            auto blob = SerialIter{item->data(), item->size()}.getVL();
-            txn = std::make_shared<STTx const>(
-                SerialIter{blob.data(), blob.size()});
+            //auto blob = SerialIter{item->data(), item->size()}.getVL();
+            //txn = std::make_shared<STTx const>(
+            //    SerialIter{blob.data(), blob.size()});
+            txn = makeSTTx(Slice(item->data(), item->size()));
         }
     }
     else

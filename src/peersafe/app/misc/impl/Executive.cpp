@@ -44,7 +44,7 @@ void Executive::initialize() {
 		g += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
 	m_baseGasRequired = g;
 
-	// Avoid unaffordable transactions.
+	// Avoid unfordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
 	int64_t gasCost = int64_t(gas * m_gasPrice);
 	m_gasCost = gasCost;
@@ -82,12 +82,6 @@ bool Executive::execute() {
 	else
 	{
 		AccountID receive_address = tx.getAccountID(sfContractAddress);
-        if (isEthTx(tx))
-        {
-			//Payment between account.
-            if (receive_address == beast::zero && tx.isFieldPresent(sfDestination))
-                receive_address = tx.getAccountID(sfDestination);
-        }
 		return call(receive_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
 	}
 }

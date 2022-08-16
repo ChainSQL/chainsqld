@@ -16,7 +16,7 @@
 namespace ripple {
 
 STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false) 
-: m_rlpData(sit)
+: m_rlpData(sit.begin(),sit.end())
 {
     setFName(sfTransaction);
     int length = sit.size();
@@ -35,7 +35,6 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
 
     if (!rlp[3].isData())
         throw std::exception("recipient RLP must be a byte array");
-    m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
     decoded.receiveAddress =
         rlp[3].isEmpty() ? h160() : rlp[3].toHash<h160>(RLP::VeryStrict);
 
@@ -50,12 +49,16 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
     decoded.r = rlp[7].toInt<u256>();
     decoded.s = rlp[8].toInt<u256>();
 
+    m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+
     // Check signature and get sender.
     auto sender = getSender(decoded);
     if (!sender.first)
         throw std::exception("check signature failed when get sender");
 
-    u256 drops = decoded.value / u256(1e+12);
+    uint64_t drops = uint64_t(decoded.value / u256(1e+12));
+    if (decoded.value > 0 && drops == 0)
+        throw std::exception("value too small to divide by 1e+12.");
 
     uint160 receive = fromH160(decoded.receiveAddress);
     auto realOpType = (receive == beast::zero) ? ContractCreation : MessageCall;
@@ -72,16 +75,14 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
     setFieldU32(sfSequence, (uint32_t)decoded.nonce);
     setFieldU32(sfGas, (uint32_t)decoded.gas);
     setFieldU16(sfContractOpType, realOpType);
-    setFieldVL(sfContractData, decoded.data);
-    setFieldAmount(sfContractValue, ZXCAmount((uint64_t)drops));
     setFieldVL(sfSigningPubKey, Blob{});
     setFieldAmount(sfFee, ZXCAmount(10));
+    if (!decoded.data.empty())
+        setFieldVL(sfContractData, decoded.data);
+    if (drops > 0)
+        setFieldAmount(sfContractValue, ZXCAmount(drops));
     if (receiveAddress != beast::zero)
-    {
         setAccountID(sfContractAddress, receiveAddress);
-        if (drops > 0 && decoded.data.empty())
-            setAccountID(sfDestination, receiveAddress);
-    }
 
     auto str = getJson().toStyledString();
 
@@ -185,6 +186,12 @@ STETx::checkSign(RequireFullyCanonicalSig requireCanonicalSig) const
         ret = {false, "Internal signature check failure."};
     }
     return ret;
+}
+
+Blob const&
+STETx::getRlpData() const
+{
+    return m_rlpData;
 }
 
 bool

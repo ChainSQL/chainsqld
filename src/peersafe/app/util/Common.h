@@ -23,6 +23,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <unordered_set>
 #include <ripple/basics/base_uint.h>
+#include <ripple/protocol/STTx.h>
+#include <ripple/basics/Slice.h>
 
 namespace ripple {
 
@@ -36,6 +38,9 @@ utcTime();
 bool
 isHexID(std::string const& txid);
 
+
+std::shared_ptr<STTx const>
+makeSTTx(Slice& sit);
 
 }
 
