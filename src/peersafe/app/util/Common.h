@@ -25,6 +25,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/STTx.h>
 #include <ripple/basics/Slice.h>
+#include <boost/format.hpp>
 
 namespace ripple {
 
