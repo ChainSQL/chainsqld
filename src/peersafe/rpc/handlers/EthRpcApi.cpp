@@ -519,4 +519,31 @@ doEthFeeHistory(RPC::JsonContext& context)
     return jvResult;
 }
 
+Json::Value
+doEthGetCode(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        auto accDataRet = getAccountData(context);
+
+        if (accDataRet.second == rpcSUCCESS && accDataRet.first)
+        {
+            auto sle = *(accDataRet.first);
+
+            if (sle.isFieldPresent(sfContractCode))
+            {
+                jvResult[jss::result] = strCopy(sle.getFieldVL(sfContractCode));
+            }
+        }
+        else
+            jvResult[jss::result] = "";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "";
+    }
+    return jvResult;
+}
+
 } // ripple
