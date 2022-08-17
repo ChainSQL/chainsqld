@@ -225,6 +225,8 @@ Json::Value doEthSendRawTransaction(RPC::JsonContext&);
 Json::Value doEthGetTransactionReceipt(RPC::JsonContext&);
 Json::Value doEthGetTransactionByHash(RPC::JsonContext&);
 Json::Value doEthGetTransactionCount(RPC::JsonContext&);
+Json::Value doEthGasPrice(RPC::JsonContext&);
+Json::Value doEthGasHistory(RPC::JsonContext&);
 
 }  // namespace ripple
 

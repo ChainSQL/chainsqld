@@ -461,4 +461,39 @@ doEthCall(RPC::JsonContext& context)
     return jvResult;
 }
 
+
+Json::Value
+doEthGasPrice(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        jvResult[jss::result] = "718";
+    }
+    catch (std::exception&)
+    {
+        //        jvResult = RPC::make_error(rpcINTERNAL,
+        //            "Exception occurred during JSON handling.");
+        jvResult[jss::result] = "0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGasHistory(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        jvResult[jss::result] = "718";
+    }
+    catch (std::exception&)
+    {
+        //        jvResult = RPC::make_error(rpcINTERNAL,
+        //            "Exception occurred during JSON handling.");
+        jvResult[jss::result] = "0";
+    }
+    return jvResult;
+}
+
 } // ripple
