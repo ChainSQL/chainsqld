@@ -42,6 +42,13 @@ isHexID(std::string const& txid);
 std::shared_ptr<STTx const>
 makeSTTx(Slice sit);
 
+template <class T>
+std::string
+inline toHexString(T value)
+{
+    return (boost::format("0x%x") % value).str();
+}
+
 }
 
 #endif
