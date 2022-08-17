@@ -21,10 +21,19 @@
 #define RIPPLE_SHAMAP_TREENODECACHE_H_INCLUDED
 
 #include <ripple/shamap/SHAMapTreeNode.h>
+#include <shared_mutex>
 
 namespace ripple {
 
-using TreeNodeCache = TaggedCache<uint256, SHAMapAbstractNode>;
+using TreeNodeCache = TaggedCache<
+    uint256, 
+    SHAMapAbstractNode,
+    hardened_hash<>,
+    std::equal_to<uint256>,
+    std::shared_mutex,
+    std::shared_lock<std::shared_mutex>,
+    std::unique_lock<std::shared_mutex>
+>;
 
 }  // namespace ripple
 

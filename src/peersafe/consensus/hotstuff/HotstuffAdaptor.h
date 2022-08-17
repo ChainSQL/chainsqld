@@ -83,7 +83,7 @@ public:
 
     TrustChanges
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         Ledger_t previousLedger,
         uint64_t newRound) override final;
 

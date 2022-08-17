@@ -212,7 +212,7 @@ private:
     checkLoadContractRoots();
 
     clock_type& m_clock;
-    clock_type::time_point mLastAction;
+    std::atomic<clock_type::time_point> mLastAction;
 
     std::shared_ptr<Ledger> mLedger;
     bool mHaveHeader;

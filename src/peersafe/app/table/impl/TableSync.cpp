@@ -418,7 +418,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
 
     uint256 checkHash, uLashFindHash, lastTxChangeHash;
     if(m->has_ledgerhash())
-        checkHash = from_hex_text<uint256>(m->ledgerhash().data());
+        checkHash = uint256(m->ledgerhash());
     uLashFindHash = checkHash;
     
     //check the seq and the hash is valid
@@ -428,7 +428,7 @@ void TableSync::SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& 
     AccountID ownerID(*ripple::parseBase58<AccountID>(m->account()));
 
     lastTxChangeIndex = m->ledgercheckseq();
-    lastTxChangeHash = from_hex_text<uint256>(m->ledgercheckhash());
+    lastTxChangeHash = uint256(m->ledgercheckhash());
 
     //find from the next one
     checkIndex++;
@@ -519,6 +519,7 @@ TableSync::IsInitTable()
         return true;
     }
 
+    std::lock_guard lock(mutexlistTable_);
     return bInitTableItems_;
 }
 
@@ -526,11 +527,12 @@ TableSync::IsInitTable()
 bool
 TableSync::InitTableItems()
 {
-    std::lock_guard lock(mutexlistTable_);
     if (IsInitTable())
         return true;
+
     if (app_.getLedgerMaster().getValidatedLedger() != nullptr)
     {
+        std::lock_guard lock(mutexlistTable_);
         CreateTableItems();
         bInitTableItems_ = true;
         return true;
@@ -974,30 +976,34 @@ TableSync::isSync(std::list<std::shared_ptr<TableSyncItem>> listTableInfo_, std:
     return true;
 }
 
-bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr <protocol::TMTableData> const& m)
+bool
+TableSync::SendData(
+    std::shared_ptr<TableSyncItem> pItem,
+    std::shared_ptr<protocol::TMTableData> const& m)
 {
-    if (pItem == NULL)  return false;
+    if (pItem == NULL)
+        return false;
 
     protocol::TMTableData& data = *m;
 
-    uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
-    auto ledgerSeq = data.ledgerseq();
-    auto ledgerHash = from_hex_text<uint256>(data.lastledgerhash());
+    auto preLedgerSeq = data.lastledgerseq();
+    uint256 preLedgerHash(data.lastledgerhash());
 
     LedgerIndex iCurSeq, iTxSeq;
     uint256 iCurHash, iTxHash;
     pItem->GetSyncLedger(iCurSeq, iCurHash);
     pItem->GetSyncTxLedger(iTxSeq, iTxHash);
-    //consecutive
+    // consecutive
+    auto ledgerSeq = data.ledgerseq();
     auto tmp = std::make_pair(ledgerSeq, data);
     if (data.txnodes().size() > 0)
     {
-        if (data.lastledgerseq() == iTxSeq && ledgerHash == iTxHash)
-        {  
+        if (preLedgerSeq == iTxSeq && preLedgerHash == iTxHash)
+        {
             pItem->PushDataToWholeDataQueue(tmp);
             if (!data.seekstop())
             {
-                pItem->TransBlock2Whole(ledgerSeq, uhash);
+                pItem->TransBlock2Whole(ledgerSeq);
             }
             pItem->TryOperateSQL();
         }
@@ -1008,7 +1014,7 @@ bool TableSync::SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr 
     }
     else
     {
-        if (data.lastledgerseq() == iCurSeq && ledgerHash == iCurHash)
+        if (preLedgerSeq == iCurSeq && preLedgerHash == iCurHash)
         {
             pItem->PushDataToWholeDataQueue(tmp);
             pItem->TryOperateSQL();
@@ -1027,7 +1033,7 @@ bool TableSync::GotSyncReply(std::shared_ptr <protocol::TMTableData> const& m, s
     protocol::TMTableData& data = *m;
 
     AccountID accountID(*ripple::parseBase58<AccountID>(data.account()));
-    uint256 uhash = from_hex_text<uint256>(data.ledgerhash());
+    uint256 uhash(data.ledgerhash());
     auto ledgerSeq = data.ledgerseq();
     
     std::string sNickName = data.has_nickname() ? data.nickname() : "";
@@ -1441,7 +1447,7 @@ void TableSync::TableSyncThread()
             {
                 pItem->SetLedgerState(TableSyncItem::SYNC_GOT_LEDGER);
                 pItem->DealWithWaitCheckQueue([pItem, this](TableSyncItem::sqldata_type const& pairData) {
-                    uint256 ledgerHash = from_hex_text<uint256>(pairData.second.ledgerhash());
+                    uint256 ledgerHash(pairData.second.ledgerhash());
                     auto ledgerSeq = pairData.second.ledgerseq();
                     uint256 uLocalHash = GetLocalHash(ledgerSeq);
                     if (uLocalHash == ledgerHash)
