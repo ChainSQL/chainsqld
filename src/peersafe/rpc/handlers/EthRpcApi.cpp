@@ -472,8 +472,9 @@ doEthGasPrice(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] =
-            toHexString(context.app.openLedger().current()->fees().gas_price);
+        boost::multiprecision::uint128_t gasPrice;
+        gasPrice = boost::multiprecision::multiply(gasPrice, context.app.openLedger().current()->fees().gas_price, std::uint64_t(1e12));
+        jvResult[jss::result] = toHexString(gasPrice);
     }
     catch (std::exception&)
     {
