@@ -40,7 +40,7 @@ isHexID(std::string const& txid);
 
 
 std::shared_ptr<STTx const>
-makeSTTx(Slice& sit);
+makeSTTx(Slice sit);
 
 }
 

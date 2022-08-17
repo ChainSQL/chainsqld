@@ -50,11 +50,11 @@ isHexID(std::string const& txid)
 }
 
 std::shared_ptr<STTx const>
-makeSTTx(Slice& sit)
+makeSTTx(Slice sit)
 {
     if (*sit.begin() == 0)
     {
-        sit.remove_prefix(1);
+//        sit.remove_prefix(1);
         return std::make_shared<STETx const>(sit);
     }
     else
