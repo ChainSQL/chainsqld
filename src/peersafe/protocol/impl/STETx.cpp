@@ -34,14 +34,14 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
     decoded.gas = rlp[2].toInt<u256>();
 
     if (!rlp[3].isData())
-        throw std::exception("recipient RLP must be a byte array");
+        Throw<std::runtime_error>("recipient RLP must be a byte array");
     decoded.receiveAddress =
         rlp[3].isEmpty() ? h160() : rlp[3].toHash<h160>(RLP::VeryStrict);
 
     decoded.value = rlp[4].toInt<u256>();
 
     if (!rlp[5].isData())
-        throw std::exception("transaction data RLP must be a byte array");
+        Throw<std::runtime_error>("transaction data RLP must be a byte array");
 
     decoded.data = rlp[5].toBytes();
 
@@ -54,11 +54,11 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
     // Check signature and get sender.
     auto sender = getSender(decoded);
     if (!sender.first)
-        throw std::exception("check signature failed when get sender");
+        Throw<std::runtime_error>("check signature failed when get sender");
 
     uint64_t drops = uint64_t(decoded.value / u256(1e+12));
     if (decoded.value > 0 && drops == 0)
-        throw std::exception("value too small to divide by 1e+12.");
+        Throw<std::runtime_error>("value too small to divide by 1e+12.");
 
     uint160 receive = fromH160(decoded.receiveAddress);
     auto realOpType = (receive == beast::zero) ? ContractCreation : MessageCall;
