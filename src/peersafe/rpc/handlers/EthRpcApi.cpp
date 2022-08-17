@@ -17,6 +17,7 @@
 #include <ripple/app/tx/apply.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/ledger/TransactionMaster.h>
+#include <ripple/app/ledger/OpenLedger.h>
 
 namespace ripple {
 
@@ -468,7 +469,7 @@ doEthGasPrice(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "718";
+        jvResult[jss::result] = context.app.openLedger().current()->fees().gas_price;
     }
     catch (std::exception&)
     {
@@ -480,7 +481,7 @@ doEthGasPrice(RPC::JsonContext& context)
 }
 
 Json::Value
-doEthGasHistory(RPC::JsonContext& context)
+doEthFeeHistory(RPC::JsonContext& context)
 {
     Json::Value jvResult;
     try
