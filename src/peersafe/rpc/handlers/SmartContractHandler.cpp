@@ -42,6 +42,8 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	Json::Value jvResult;
 	try
 	{
+        std::string detailMethod = originJson[jss::command].asString();
+        
 		jvResult[jss::request] = originJson;
 
 		if (temUNCERTAIN != terResult)
@@ -53,7 +55,10 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 			}
 			else
 			{
-				jvResult[jss::contract_call_result] = exeResult;
+                if(detailMethod == "eth_call")
+                    jvResult["result"] = exeResult;
+                else
+                    jvResult[jss::contract_call_result] = exeResult;
 			}
 		}
 	}
@@ -121,6 +126,32 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
+Json::Value checkEthJsonFields(Json::Value originJson)
+{
+    Json::Value ret = Json::Value();
+
+    if (!originJson.isObject())
+    {
+        ret = RPC::object_field_error(jss::params);
+    }
+
+    if (!originJson.isMember("from"))
+    {
+        ret = RPC::missing_field_error("from");
+    }
+
+    if (!originJson.isMember("to"))
+    {
+        ret = RPC::missing_field_error("to");
+    }
+
+    if (!originJson.isMember("data"))
+    {
+        ret = RPC::missing_field_error("data");
+    }
+    return ret;
+}
+
 Json::Value
 doContractCall(RPC::JsonContext& context)
 {
@@ -129,18 +160,39 @@ doContractCall(RPC::JsonContext& context)
 
     // Json::Value jsonRpcObj = context.params[jss::tx_json];
     Json::Value jsonParams = context.params;
+    Json::Value ethParams = jsonParams["realParams"][0u];
 
-    auto checkResult = checkJsonFields(jsonParams);
+    std::string detailMethod = jsonParams[jss::command].asString();
+    Json::Value checkResult;
+    if(detailMethod == "eth_call")
+        checkResult = checkEthJsonFields(ethParams);
+    else
+        checkResult = checkJsonFields(jsonParams);
+
     if (isRpcError(checkResult))
         return checkResult;
 
-    std::string accountStr = jsonParams[jss::account].asString();
     AccountID accountID;
-    auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
-    if (jvAccepted)
+    if(detailMethod == "eth_call")
     {
-        return jvAccepted;
+        std::string addrStrHex = ethParams["from"].asString().substr(2);
+        auto addrHex = *(strUnHex(addrStrHex));
+
+        if (addrHex.size() != accountID.size())
+            return rpcError(rpcDST_ACT_MALFORMED);
+        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
     }
+    else
+    {
+        std::string accountStr = jsonParams[jss::account].asString();
+        AccountID accountID;
+        auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+        if (jvAccepted)
+        {
+            return jvAccepted;
+        }
+    }
+
     std::shared_ptr<ReadView const> ledger;
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
@@ -148,18 +200,32 @@ doContractCall(RPC::JsonContext& context)
     if (!ledger->exists(keylet::account(accountID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
     AccountID contractAddrID;
-    auto jvAcceptedCtrAddr =
-        RPC::accountFromString(contractAddrID, ctrAddrStr, true);
-    if (jvAcceptedCtrAddr)
+    if(detailMethod == "eth_call")
     {
-        return jvAcceptedCtrAddr;
+        std::string addrStrHex = ethParams["to"].asString().substr(2);
+        auto addrHex = *(strUnHex(addrStrHex));
+
+        if (addrHex.size() != contractAddrID.size())
+            return rpcError(rpcDST_ACT_MALFORMED);
+        std::memcpy(contractAddrID.data(), addrHex.data(), addrHex.size());
     }
+    else
+    {
+        std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+
+        auto jvAcceptedCtrAddr =
+            RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+        if (jvAcceptedCtrAddr)
+        {
+            return jvAcceptedCtrAddr;
+        }
+    }
+
     if (!ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
+    auto strUnHexRes = strUnHex(detailMethod == "eth_call" ? ethParams["data"].asString().substr(2) : jsonParams[jss::contract_data].asString());
     if (!strUnHexRes)
     {
         errMsgStr = "contract_data is not in hex";
@@ -210,5 +276,157 @@ doContractCall(RPC::JsonContext& context)
     return ContractLocalCallResultImpl(
         jsonParams, localCallRet.first, localCallRet.second);
 }
+
+Json::Value
+doEstimateGas(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        Schema& appTemp = context.app;
+        Json::Value jsonParams = context.params;
+        Json::Value ethParams = jsonParams["realParams"][0u];
+        
+        AccountID accountID;
+        std::string addrStrHex = ethParams["from"].asString().substr(2);
+        auto addrHex = *(strUnHex(addrStrHex));
+
+        if (addrHex.size() != accountID.size())
+            return rpcError(rpcDST_ACT_MALFORMED);
+        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+        
+        std::shared_ptr<ReadView const> ledger;
+        auto result = RPC::lookupLedger(ledger, context);
+        if (!ledger)
+            return result;
+        if (!ledger->exists(keylet::account(accountID)))
+            return rpcError(rpcACT_NOT_FOUND);
+        
+        AccountID contractAddrID;
+        bool isCreation = true;
+        if(ethParams.isMember("to"))
+        {
+            std::string ctrAddrStrHex = ethParams["to"].asString().substr(2);
+            auto ctrAddrHex = *(strUnHex(ctrAddrStrHex));
+
+            if (ctrAddrHex.size() != contractAddrID.size())
+                return rpcError(rpcDST_ACT_MALFORMED);
+            std::memcpy(contractAddrID.data(), ctrAddrHex.data(), ctrAddrHex.size());
+            isCreation = false;
+        }
+        
+        
+        auto strUnHexRes = strUnHex(ethParams["data"].asString().substr(2));
+        if (!strUnHexRes)
+        {
+            std::string errMsgStr = "contract_data is not in hex";
+            return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+        }
+        Blob contractDataBlob = *strUnHexRes;
+        if (contractDataBlob.size() == 0)
+        {
+            return RPC::invalid_field_error(jss::contract_data);
+        }
+        
+        std::int64_t value = 0;
+        if(ethParams.isMember("value"))
+        {
+            std::string valueStrHex = ethParams["value"].asString().substr(2);
+            value = std::stoll(valueStrHex, 0, 16);
+        }
+        
+        
+        std::shared_ptr<OpenView> openViewTemp =
+            std::make_shared<OpenView>(ledger.get());
+
+//        boost::optional<PreclaimContext const> pcctx;
+//        pcctx.emplace(
+//            appTemp,
+//            *openViewTemp,
+//            tesSUCCESS,
+//            contractTx,
+//            tapNONE,
+//            appTemp.journal("ContractLocalCall"));
+//        if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
+//            return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
+        
+        int64_t upperBound = 0;
+        if(ethParams.isMember("gas"))
+        {
+            std::string gasStrHex = ethParams["gas"].asString().substr(2);
+            upperBound = std::stoll(gasStrHex, 0, 16);
+        }
+        if (upperBound == 0 || upperBound == eth::Invalid256 || upperBound > eth::c_maxGasEstimate)
+            upperBound = eth::c_maxGasEstimate;
+        
+        int64_t lowerBound = Executive::baseGasRequired(isCreation, &contractDataBlob);
+        
+//        uint64_t gasPrice = _gasPrice == eth::Invalid256 ? 1 : _gasPrice;
+        while (upperBound != lowerBound)
+        {
+            int64_t mid = (lowerBound + upperBound) / 2;
+            STTx contractTx(
+                ttCONTRACT,
+                [&accountID, &contractAddrID, &value, &contractDataBlob, &mid, &isCreation](
+                    auto& obj) {
+                    obj.setAccountID(sfAccount, accountID);
+                    obj.setAccountID(sfContractAddress, contractAddrID);
+                    obj.setFieldVL(sfContractData, contractDataBlob);
+                    obj.setFieldU16(sfContractOpType, isCreation ? ContractCreation : MessageCall);
+                    if(value != 0) obj.setFieldAmount(sfAmount, ZXCAmount(value));
+                    obj.setFieldU32(sfGas, mid);
+                });
+            ApplyContext applyContext(
+                appTemp,
+                *openViewTemp,
+                contractTx,
+                tesSUCCESS,
+                FeeUnit64{(std::uint64_t)openViewTemp->fees().base.drops()},
+                tapNO_CHECK_SIGN,
+                appTemp.journal("EstimateGas"));
+            
+            SleOps ops(applyContext);
+            auto pInfo = std::make_shared<EnvInfoImpl>(applyContext.view().info().seq, mid,
+                                                       applyContext.view().fees().drops_per_byte,
+                                                       applyContext.app.getPreContractFace());
+            Executive e(ops, *pInfo, INITIAL_DEPTH);
+            e.initialize();
+            
+            TER execRet = tesSUCCESS;
+            if (!e.execute())
+            {
+                e.go();
+                execRet = e.getException();
+            }
+            else
+                execRet = e.getException();
+
+//          tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+            std::string errMsg;
+            if(execRet != tesSUCCESS)
+                errMsg = e.takeOutput().toString();
+                
+            if (execRet == tefGAS_INSUFFICIENT ||
+                errMsg == "OutOfGas" ||
+                errMsg == "BadJumpDestination")
+                    lowerBound = lowerBound == mid ? upperBound : mid;
+            else
+            {
+                upperBound = upperBound == mid ? lowerBound : mid;
+            }
+        }
+        std::int64_t estimatedGas = upperBound + (std::uint64_t)openViewTemp->fees().base.drops();
+        jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+        return jvResult;
+    }
+    catch (...)
+    {
+        // TODO: Some sort of notification of failure.
+        jvResult["result"] = (boost::format("0x%x") % (eth::u256())).str();
+        return jvResult;
+    }
+}
+
+
 
 } // ripple

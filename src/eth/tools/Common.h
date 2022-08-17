@@ -112,6 +112,9 @@ using u160s = std::vector<u160>;
 using u256Set = std::set<u256>;
 using u160Set = std::set<u160>;
 
+u256 constexpr Invalid256 = u256(-1);
+static const int64_t c_maxGasEstimate = 50000000;
+
 // Map types.
 using StringMap = std::map<std::string, std::string>;
 using BytesMap = std::map<bytes, bytes>;

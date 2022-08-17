@@ -26,6 +26,13 @@ Executive::Executive(
 {
 }
 
+uint64_t Executive::getCurGasPrice(ApplyContext& ctx)
+{
+    return scaleGasLoad(
+        ctx.app.getFeeTrack(),
+        ctx.view().fees());
+}
+
 void Executive::initGasPrice()
 {
     m_gasPrice = scaleGasLoad(
@@ -33,16 +40,22 @@ void Executive::initGasPrice()
 		m_s.ctx().view().fees());
 }
 
+
+int64_t Executive::baseGasRequired(bool isCreation, eth::bytesConstRef const& data) {
+    int64_t baseGas = isCreation ? TX_CREATE_GAS : TX_GAS;
+    for (auto i : data)
+        baseGas += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
+    return baseGas;
+}
+
 void Executive::initialize() {
-	initGasPrice();
+//	initGasPrice();
+    m_gasPrice = getCurGasPrice(m_s.ctx());
 
 	auto& tx = m_s.ctx().tx;
 	auto data = tx.getFieldVL(sfContractData);
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
-	int g = isCreation ? TX_CREATE_GAS : TX_GAS;
-	for (auto i : data)
-		g += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
-	m_baseGasRequired = g;
+    m_baseGasRequired = baseGasRequired(isCreation, &data);
 
 	// Avoid unfordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
