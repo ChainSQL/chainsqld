@@ -135,11 +135,6 @@ Json::Value checkEthJsonFields(Json::Value originJson)
         ret = RPC::object_field_error(jss::params);
     }
 
-    if (!originJson.isMember("from"))
-    {
-        ret = RPC::missing_field_error("from");
-    }
-
     if (!originJson.isMember("to"))
     {
         ret = RPC::missing_field_error("to");
