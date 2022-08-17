@@ -142,10 +142,10 @@ STETx::getSender(RlpDecoded const& decoded)
     {
         chainId = (v - 35) / 2;
         if (chainId > std::numeric_limits<uint64_t>::max())
-            throw std::exception("Invalid signature");
+            Throw<std::runtime_error>("Invalid signature");
     }
     else if (v != 27 && v != 28)
-        throw std::exception("Invalid signature");
+        Throw<std::runtime_error>("Invalid signature");
 
     auto const recoveryID = chainId.has_value()
         ? byte(v - (uint64_t{*chainId} * 2 + 35))
