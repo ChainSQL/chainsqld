@@ -175,12 +175,15 @@ doContractCall(RPC::JsonContext& context)
     AccountID accountID;
     if(detailMethod == "eth_call")
     {
-        std::string addrStrHex = ethParams["from"].asString().substr(2);
-        auto addrHex = *(strUnHex(addrStrHex));
+        if(ethParams.isMember("from"))
+        {
+            std::string addrStrHex = ethParams["from"].asString().substr(2);
+            auto addrHex = *(strUnHex(addrStrHex));
 
-        if (addrHex.size() != accountID.size())
-            return rpcError(rpcDST_ACT_MALFORMED);
-        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+            if (addrHex.size() != accountID.size())
+                return rpcError(rpcDST_ACT_MALFORMED);
+            std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+        }
     }
     else
     {
@@ -197,8 +200,8 @@ doContractCall(RPC::JsonContext& context)
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
         return result;
-    if (!ledger->exists(keylet::account(accountID)))
-        return rpcError(rpcACT_NOT_FOUND);
+//    if (!ledger->exists(keylet::account(accountID)))
+//        return rpcError(rpcACT_NOT_FOUND);
 
     AccountID contractAddrID;
     if(detailMethod == "eth_call")
@@ -209,6 +212,11 @@ doContractCall(RPC::JsonContext& context)
         if (addrHex.size() != contractAddrID.size())
             return rpcError(rpcDST_ACT_MALFORMED);
         std::memcpy(contractAddrID.data(), addrHex.data(), addrHex.size());
+        
+        if(!ethParams.isMember("from"))
+        {
+            std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+        }
     }
     else
     {
@@ -251,16 +259,16 @@ doContractCall(RPC::JsonContext& context)
     std::shared_ptr<OpenView> openViewTemp =
         std::make_shared<OpenView>(ledger.get());
 
-    boost::optional<PreclaimContext const> pcctx;
-    pcctx.emplace(
-        appTemp,
-        *openViewTemp,
-        tesSUCCESS,
-        contractTx,
-        tapNONE,
-        appTemp.journal("ContractLocalCall"));
-    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
-        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
+//    boost::optional<PreclaimContext const> pcctx;
+//    pcctx.emplace(
+//        appTemp,
+//        *openViewTemp,
+//        tesSUCCESS,
+//        contractTx,
+//        tapNONE,
+//        appTemp.journal("ContractLocalCall"));
+//    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
+//        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
 
     ApplyContext applyContext(
         appTemp,
