@@ -50,7 +50,10 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 		{
 			if (tesSUCCESS != terResult)
 			{
-				return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
+                if(detailMethod == "eth_call")
+                    jvResult["result"] = "0x";
+                else
+                    return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
 				//jvResult[jss::error] = exeResult;
 			}
 			else
@@ -225,7 +228,7 @@ doContractCall(RPC::JsonContext& context)
         }
     }
 
-    if (!ledger->exists(keylet::account(contractAddrID)))
+    if (detailMethod != "eth_call" && !ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
     auto strUnHexRes = strUnHex(detailMethod == "eth_call" ? ethParams["data"].asString().substr(2) : jsonParams[jss::contract_data].asString());
@@ -305,8 +308,12 @@ doEstimateGas(RPC::JsonContext& context)
         if (!ledger->exists(keylet::account(accountID)))
             return rpcError(rpcACT_NOT_FOUND);
         
+        std::shared_ptr<OpenView> openViewTemp =
+            std::make_shared<OpenView>(ledger.get());
+        
         AccountID contractAddrID;
         bool isCreation = true;
+        bool isCtrAddr = false;
         if(ethParams.isMember("to"))
         {
             std::string ctrAddrStrHex = ethParams["to"].asString().substr(2);
@@ -316,19 +323,49 @@ doEstimateGas(RPC::JsonContext& context)
                 return rpcError(rpcDST_ACT_MALFORMED);
             std::memcpy(contractAddrID.data(), ctrAddrHex.data(), ctrAddrHex.size());
             isCreation = false;
+            
+            //check if the new openLedger not created.
+            auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+            if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
+                ledger = ledgerVal;
+            
+            if (ledger->exists(keylet::account(contractAddrID)))
+            {
+                auto ctrSle = *(ledger->read(keylet::account(contractAddrID)));
+
+                if (ctrSle.isFieldPresent(sfContractCode))
+                {
+                    isCtrAddr = true;
+                }
+            }
         }
         
-        
-        auto strUnHexRes = strUnHex(ethParams["data"].asString().substr(2));
-        if (!strUnHexRes)
+        Blob contractDataBlob;
+        if(ethParams.isMember("data") && ethParams["data"].asString() != "")
         {
-            std::string errMsgStr = "contract_data is not in hex";
-            return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+            auto strUnHexRes = strUnHex(ethParams["data"].asString().substr(2));
+            if (!strUnHexRes)
+            {
+                std::string errMsgStr = "contract_data is not in hex";
+                return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+            }
+            contractDataBlob = *strUnHexRes;
+            if (contractDataBlob.size() == 0)
+            {
+                return RPC::invalid_field_error(jss::contract_data);
+            }
         }
-        Blob contractDataBlob = *strUnHexRes;
-        if (contractDataBlob.size() == 0)
+        else if(isCreation)
         {
-            return RPC::invalid_field_error(jss::contract_data);
+            std::int64_t estimatedGas = TX_CREATE_GAS + (std::uint64_t)openViewTemp->fees().base.drops();
+            jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+            return jvResult;
+        }
+        else if(!isCtrAddr)
+        {
+            std::int64_t estimatedGas = TX_GAS + (std::uint64_t)openViewTemp->fees().base.drops();
+            jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+            return jvResult;
         }
         
         std::int64_t value = 0;
@@ -337,10 +374,6 @@ doEstimateGas(RPC::JsonContext& context)
             std::string valueStrHex = ethParams["value"].asString().substr(2);
             value = std::stoll(valueStrHex, 0, 16);
         }
-        
-        
-        std::shared_ptr<OpenView> openViewTemp =
-            std::make_shared<OpenView>(ledger.get());
 
 //        boost::optional<PreclaimContext const> pcctx;
 //        pcctx.emplace(

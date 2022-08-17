@@ -159,6 +159,8 @@ getAccountData(RPC::JsonContext& context)
         
         //check if the new openLedger not created.
         auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+        if(ledger == nullptr)
+            return std::make_pair(nullptr, rpcINTERNAL);
         if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
             ledger = ledgerVal;
 
@@ -537,11 +539,11 @@ doEthGetCode(RPC::JsonContext& context)
             }
         }
         else
-            jvResult[jss::result] = "";
+            jvResult[jss::result] = "0x";
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "";
+        jvResult[jss::result] = "0x";
     }
     return jvResult;
 }

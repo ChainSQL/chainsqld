@@ -609,6 +609,11 @@ Json::Int constexpr forbidden = -32605;
 Json::Int constexpr wrong_version = -32606;
 //Json::Int constexpr schema_not_found  = -32608;
 
+bool checkIfEthApi(std::string strMethod)
+{
+    return strMethod.find("eth_") != std::string::npos || strMethod.find("net_") != std::string::npos;
+}
+
 void
 ServerHandlerImp::processRequest(
     Port const& port,
@@ -820,7 +825,7 @@ ServerHandlerImp::processRequest(
             
             else if (
                 params.isArray() &&
-                (params.size() != 1 || (params.size() == 1 && !params[0u].isObject())))
+                (params.size() != 1 || (params.size() == 1 && checkIfEthApi(strMethod))))
             {
                 Json::Value paramsTemp;
                 paramsTemp["realParams"] = params;
@@ -981,7 +986,7 @@ ServerHandlerImp::processRequest(
                 result[jss::status]  = jss::success;
             }
 
-            if(strMethod.find("eth_") != std::string::npos || strMethod.find("net_") != std::string::npos)
+            if(checkIfEthApi(strMethod))
             {
                 r[jss::result] = result[jss::result];
                 r["id"] = jsonRPC["id"];
