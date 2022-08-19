@@ -86,8 +86,8 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
 
     auto str = getJson().toStyledString();
 
-    pTxs_ = nullptr;
-    paJsonLog_ = nullptr;
+    pTxs_ = std::make_shared<std::vector<STTx>>();
+    paJsonLog_ = std::make_shared<Json::Value>();
 }
 
 void

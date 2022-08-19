@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_set>
 #include <ripple/basics/base_uint.h>
 #include <ripple/protocol/STTx.h>
+#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/basics/Slice.h>
 #include <boost/format.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -32,6 +33,8 @@ namespace ripple {
 
 
 using H256Set = std::unordered_set<uint256>;
+
+const int defaultEthErrorCode = -32000;
 
 // Get the current time in seconds since the epoch in UTC(ms)
 uint64_t
@@ -58,6 +61,13 @@ inline dropsToWeiHex(uint64_t drops)
     boost::multiprecision::multiply(balance, drops, std::uint64_t(1e12));
     return toHexString(balance);
 }
+
+Json::Value 
+formatEthError(int code, std::string const& msg);
+
+Json::Value
+formatEthError(int code, error_code_i rpcCode);
+
 
 }
 

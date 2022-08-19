@@ -27,12 +27,15 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/util/Common.h>
 #include <iostream> 
 
 namespace ripple {
@@ -294,19 +297,18 @@ doEstimateGas(RPC::JsonContext& context)
         Json::Value ethParams = jsonParams["realParams"][0u];
         
         AccountID accountID;
-        std::string addrStrHex = ethParams["from"].asString().substr(2);
-        auto addrHex = *(strUnHex(addrStrHex));
+        auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+        if (!optID)
+            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
 
-        if (addrHex.size() != accountID.size())
-            return rpcError(rpcDST_ACT_MALFORMED);
-        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+        accountID = *optID;
         
         std::shared_ptr<ReadView const> ledger;
         auto result = RPC::lookupLedger(ledger, context);
         if (!ledger)
             return result;
         if (!ledger->exists(keylet::account(accountID)))
-            return rpcError(rpcACT_NOT_FOUND);
+            return formatEthError(defaultEthErrorCode, rpcACT_NOT_FOUND);
         
         std::shared_ptr<OpenView> openViewTemp =
             std::make_shared<OpenView>(ledger.get());
@@ -316,12 +318,12 @@ doEstimateGas(RPC::JsonContext& context)
         bool isCtrAddr = false;
         if(ethParams.isMember("to"))
         {
-            std::string ctrAddrStrHex = ethParams["to"].asString().substr(2);
-            auto ctrAddrHex = *(strUnHex(ctrAddrStrHex));
+            auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+            if (!optID)
+                return formatEthError(
+                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
 
-            if (ctrAddrHex.size() != contractAddrID.size())
-                return rpcError(rpcDST_ACT_MALFORMED);
-            std::memcpy(contractAddrID.data(), ctrAddrHex.data(), ctrAddrHex.size());
+            contractAddrID = *optID;
             isCreation = false;
             
             //check if the new openLedger not created.
@@ -346,8 +348,8 @@ doEstimateGas(RPC::JsonContext& context)
             auto strUnHexRes = strUnHex(ethParams["data"].asString().substr(2));
             if (!strUnHexRes)
             {
-                std::string errMsgStr = "contract_data is not in hex";
-                return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+                return formatEthError(
+                    defaultEthErrorCode, "contract_data is not in hex");
             }
             contractDataBlob = *strUnHexRes;
             if (contractDataBlob.size() == 0)
@@ -374,17 +376,6 @@ doEstimateGas(RPC::JsonContext& context)
             std::string valueStrHex = ethParams["value"].asString().substr(2);
             value = std::stoll(valueStrHex, 0, 16);
         }
-
-//        boost::optional<PreclaimContext const> pcctx;
-//        pcctx.emplace(
-//            appTemp,
-//            *openViewTemp,
-//            tesSUCCESS,
-//            contractTx,
-//            tapNONE,
-//            appTemp.journal("ContractLocalCall"));
-//        if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
-//            return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
         
         int64_t upperBound = 0;
         if(ethParams.isMember("gas"))
@@ -397,7 +388,6 @@ doEstimateGas(RPC::JsonContext& context)
         
         int64_t lowerBound = Executive::baseGasRequired(isCreation, &contractDataBlob);
         
-//        uint64_t gasPrice = _gasPrice == eth::Invalid256 ? 1 : _gasPrice;
         while (upperBound != lowerBound)
         {
             int64_t mid = (lowerBound + upperBound) / 2;
@@ -437,21 +427,34 @@ doEstimateGas(RPC::JsonContext& context)
             else
                 execRet = e.getException();
 
-//          tempState.addBalance(_from, (u256)(t.gas() * t.gasPrice() + t.value()));
+            //Clear contract storage cache
+            context.app.getContractHelper().clearDirty();
             std::string errMsg;
             if(execRet != tesSUCCESS)
                 errMsg = e.takeOutput().toString();
-                
-            if (execRet == tefGAS_INSUFFICIENT ||
-                errMsg == "OutOfGas" ||
-                errMsg == "BadJumpDestination")
-                    lowerBound = lowerBound == mid ? upperBound : mid;
-            else
+            
+            if (execRet == tesSUCCESS)
             {
                 upperBound = upperBound == mid ? lowerBound : mid;
             }
+            else if (execRet == tefGAS_INSUFFICIENT ||
+                errMsg == "OutOfGas" ||
+                errMsg == "BadJumpDestination")
+            {
+                lowerBound = lowerBound == mid ? upperBound : mid;
+            }
+            else
+            { 
+                return formatEthError(defaultEthErrorCode, errMsg);
+            }
+            
+            //JLOG(context.j.warn())
+            //    << "eth_estimateGas execRet=" << execRet << ",errMsg="<<errMsg<<",bound=["
+            //    << lowerBound << "," << upperBound << "]";
         }
-        std::int64_t estimatedGas = upperBound + (std::uint64_t)openViewTemp->fees().base.drops();
+        std::int64_t estimatedGas = upperBound +
+            (std::uint64_t)openViewTemp->fees().base.drops() /
+                openViewTemp->fees().gas_price;
         jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
         return jvResult;
     }

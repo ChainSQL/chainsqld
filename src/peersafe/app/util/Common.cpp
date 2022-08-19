@@ -61,4 +61,23 @@ makeSTTx(Slice sit)
         return std::make_shared<STTx const>(sit);
 }
 
+Json::Value
+formatEthError(int code, std::string const& msg)
+{
+    Json::Value jvResult;
+    Json::Value jvError;
+    jvError["code"] = code;
+    jvError["message"] = msg;
+    jvError["data"] = {};
+    jvResult["error"] = jvError;
+
+    return jvResult;
+}
+
+Json::Value
+formatEthError(int code, error_code_i rpcCode)
+{
+    return formatEthError(code, RPC::get_error_info(rpcCode).message.c_str());
+}
+
 }
