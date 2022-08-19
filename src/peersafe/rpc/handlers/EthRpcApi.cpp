@@ -11,7 +11,6 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <ripple/rpc/handlers/LedgerHandler.h>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <peersafe/protocol/STETx.h>
 #include <peersafe/protocol/Contract.h>
 #include <ripple/app/tx/apply.h>
@@ -34,7 +33,6 @@ doEthChainId(RPC::JsonContext& context)
     try
     {
         jvResult[jss::result] = "0x2ce";
-
     }
     catch (std::exception&)
     {
@@ -56,7 +54,7 @@ doNetVersion(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "718";
+        jvResult[jss::result] = "6777";
 
     }
     catch (std::exception&)
@@ -85,6 +83,33 @@ doEthBlockNumber(RPC::JsonContext& context)
     return jvResult;
 }
 
+void
+formatLedgerFields(Json::Value& ethRetFormat,Json::Value  const& jvResultTemp)
+{
+    // ethRetFormat["baseFeePerGas"] = "0x0";
+    ethRetFormat["difficulty"] = "0x0";
+    ethRetFormat["extraData"] = "0x0";
+    ethRetFormat["gasLimit"] = "0x6691b7";
+    ethRetFormat["gasUsed"] = "0x5208";
+    ethRetFormat["hash"] = "0x" + jvResultTemp["ledger_hash"].asString();
+    ethRetFormat["logsBloom"] = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    ethRetFormat["miner"] = "0x0000000000000000000000000000000000000000";
+    ethRetFormat["mixHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    ethRetFormat["nonce"] = "0x0000000000000000";
+    ethRetFormat["number"] = toHexString(jvResultTemp["ledger_index"].asUInt64());
+    ethRetFormat["parentHash"] = "0x" + jvResultTemp["ledger"]["parent_hash"].asString();
+    ethRetFormat["receiptsRoot"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    ethRetFormat["sha3Uncles"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
+    ethRetFormat["size"] = "0x2e1";
+    ethRetFormat["stateRoot"] = "0x" + jvResultTemp["ledger"]["account_hash"].asString();
+    ethRetFormat["timestamp"] = toHexString(jvResultTemp["ledger"]["close_time"].asUInt64());
+    ethRetFormat["totalDifficulty"] = "0x0";
+    ethRetFormat["transactions"] = jvResultTemp["ledger"]["transactions"];
+    ethRetFormat["transactionsRoot"] =
+        "0x" + jvResultTemp["ledger"]["transaction_hash"].asString();
+    ethRetFormat["uncles"] = Json::arrayValue;
+}
+
 Json::Value
 doEthGetBlockByNumber(RPC::JsonContext& context)
 {
@@ -106,33 +131,41 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
         else
             lgHandler.writeResult(jvResultTemp);
         
-//        return status;
-//        std::string addrStrHex = context.params["realParams"][0u].asString().substr(2);
-//        Json::Value jvResultDetail;
-//        auto validatedLedgerIndex = context.ledgerMaster.getValidLedgerIndex();
-//        jvResult[jss::result] = (boost::format("0x%x") % validatedLedgerIndex).str();
         Json::Value ethRetFormat;
-        ethRetFormat["baseFeePerGas"] = "0x0";
-        ethRetFormat["difficulty"] = "0x2";
-        ethRetFormat["extraData"] = "0x0";
-        ethRetFormat["gasLimit"] = "0x0";
-        ethRetFormat["gasUsed"] = "0x0";
-        ethRetFormat["hash"] = jvResultTemp["ledger_hash"];
-        ethRetFormat["logsBloom"] = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-        ethRetFormat["miner"] = "0x0000000000000000000000000000000000000000";
-        ethRetFormat["mixHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        ethRetFormat["nonce"] = "0x0000000000000000";
-        ethRetFormat["number"] = toHexString(jvResultTemp["ledger_index"].asUInt64());
-        ethRetFormat["parentHash"] = jvResultTemp["ledger"]["parent_hash"];
-        ethRetFormat["receiptsRoot"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        ethRetFormat["sha3Uncles"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
-        ethRetFormat["size"] = "0x2e1";
-        ethRetFormat["stateRoot"] = jvResultTemp["ledger"]["account_hash"];
-        ethRetFormat["timestamp"] = toHexString(jvResultTemp["ledger"]["close_time"].asUInt64());
-        ethRetFormat["totalDifficulty"] = "0x7";
-        ethRetFormat["transactions"] = jvResultTemp["ledger"]["transactions"];
-        ethRetFormat["transactionsRoot"] = jvResultTemp["ledger"]["transaction_hash"];
-        ethRetFormat["uncles"] = Json::arrayValue;
+        formatLedgerFields(ethRetFormat, jvResultTemp);
+        jvResult[jss::result] = ethRetFormat;
+        
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGetBlockByHash(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        Json::Value chainsqlParams;
+        std::string ledgerHashStr = context.params["realParams"][0u].asString().substr(2);
+        chainsqlParams[jss::ledger_hash] = ledgerHashStr;
+        chainsqlParams[jss::transactions] = true;
+        chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
+        context.params = chainsqlParams;
+        
+        Json::Value jvResultTemp;
+        RPC::LedgerHandler lgHandler(context);
+        auto status = lgHandler.check();
+        if (status)
+            status.inject(jvResultTemp);
+        else
+            lgHandler.writeResult(jvResultTemp);
+        
+        Json::Value ethRetFormat;
+        formatLedgerFields(ethRetFormat, jvResultTemp);
         jvResult[jss::result] = ethRetFormat;
         
     }
@@ -185,9 +218,8 @@ doEthGetBalance(RPC::JsonContext& context)
                 
             if(jvAccepted.isMember("Balance"))
             {
-                boost::multiprecision::uint128_t balance;
-                balance = boost::multiprecision::multiply(balance, jvAccepted["Balance"].asUInt64(), std::uint64_t(1e12));
-                jvResult[jss::result] = toHexString(balance);
+                jvResult[jss::result] =
+                    dropsToWeiHex(jvAccepted["Balance"].asUInt64());
             }
         }
         else if(accDataRet.second == rpcDST_ACT_MALFORMED)
@@ -470,18 +502,14 @@ Json::Value
 doEthGasPrice(RPC::JsonContext& context)
 {
     Json::Value jvResult;
+    uint64_t gasPrice = 0;
     try
     {
-        boost::multiprecision::uint128_t gasPrice;
-        gasPrice = boost::multiprecision::multiply(gasPrice, context.app.openLedger().current()->fees().gas_price, std::uint64_t(1e12));
-        jvResult[jss::result] = toHexString(gasPrice);
+        gasPrice = context.app.openLedger().current()->fees().gas_price;
     }
     catch (std::exception&)
-    {
-        //        jvResult = RPC::make_error(rpcINTERNAL,
-        //            "Exception occurred during JSON handling.");
-        jvResult[jss::result] = "0xa";
-    }
+    {}
+    jvResult[jss::result] = dropsToWeiHex(gasPrice);
     return jvResult;
 }
 
@@ -489,36 +517,37 @@ Json::Value
 doEthFeeHistory(RPC::JsonContext& context)
 {
     Json::Value jvResult;
-    try
-    {
-        auto blockCount = (int64_t) std::stoll(
-            context.params["realParams"][0u].asString().substr(2), 0, 16);
-        auto gasPrice =
-            toHexString(context.app.openLedger().current()->fees().gas_price);
+    jvResult[jss::result] = "0x";
+    //try
+    //{
+    //    auto blockCount = (int64_t) std::stoll(
+    //        context.params["realParams"][0u].asString().substr(2), 0, 16);
+    //    auto gasPrice =
+    //        dropsToWeiHex(context.app.openLedger().current()->fees().gas_price);
 
-        auto maxVal = context.app.getLedgerMaster().getValidLedgerIndex(); 
-        Json::Value& jvBaseFeePerGas =
-            (jvResult[jss::result]["baseFeePerGas"] = Json::arrayValue);
-        for (int i = 0; i <= blockCount && maxVal-i>0; i++)
-        {
-            jvBaseFeePerGas.append(gasPrice);
-        }
+    //    auto maxVal = context.app.getLedgerMaster().getValidLedgerIndex(); 
+    //    Json::Value& jvBaseFeePerGas =
+    //        (jvResult[jss::result]["baseFeePerGas"] = Json::arrayValue);
+    //    for (int i = 0; i <= blockCount && maxVal-i>0; i++)
+    //    {
+    //        jvBaseFeePerGas.append(gasPrice);
+    //    }
 
-        Json::Value& jvGasUsedRatio =
-            (jvResult[jss::result]["gasUsedRatio"] = Json::arrayValue);
-        for (int i = 0; i < blockCount && maxVal - i > 0; i++)
-        {
-            jvGasUsedRatio.append(0.99);
-        }
-        auto oldest = maxVal - blockCount > 0 ? maxVal - blockCount : 1;
-        jvResult[jss::result]["oldestBlock"] = toHexString(oldest);
-    }
-    catch (std::exception&)
-    {
-        //        jvResult = RPC::make_error(rpcINTERNAL,
-        //            "Exception occurred during JSON handling.");
-        jvResult[jss::result] = "0x0";
-    }
+    //    Json::Value& jvGasUsedRatio =
+    //        (jvResult[jss::result]["gasUsedRatio"] = Json::arrayValue);
+    //    for (int i = 0; i < blockCount && maxVal - i > 0; i++)
+    //    {
+    //        jvGasUsedRatio.append(0.99);
+    //    }
+    //    auto oldest = maxVal - blockCount > 0 ? maxVal - blockCount : 1;
+    //    jvResult[jss::result]["oldestBlock"] = toHexString(oldest);
+    //}
+    //catch (std::exception&)
+    //{
+    //    //        jvResult = RPC::make_error(rpcINTERNAL,
+    //    //            "Exception occurred during JSON handling.");
+    //    jvResult[jss::result] = "0x";
+    //}
     return jvResult;
 }
 
@@ -528,6 +557,7 @@ doEthGetCode(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
+        jvResult[jss::result] = "0x";
         auto accDataRet = getAccountData(context);
 
         if (accDataRet.second == rpcSUCCESS && accDataRet.first)
@@ -539,12 +569,9 @@ doEthGetCode(RPC::JsonContext& context)
                 jvResult[jss::result] = strCopy(sle.getFieldVL(sfContractCode));
             }
         }
-        else
-            jvResult[jss::result] = "0x";
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x";
     }
     return jvResult;
 }

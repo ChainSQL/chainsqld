@@ -26,6 +26,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/protocol/STTx.h>
 #include <ripple/basics/Slice.h>
 #include <boost/format.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 namespace ripple {
 
@@ -48,6 +49,14 @@ std::string
 inline toHexString(T value)
 {
     return (boost::format("0x%x") % value).str();
+}
+
+std::string
+inline dropsToWeiHex(uint64_t drops)
+{
+    boost::multiprecision::uint128_t balance;
+    boost::multiprecision::multiply(balance, drops, std::uint64_t(1e12));
+    return toHexString(balance);
 }
 
 }

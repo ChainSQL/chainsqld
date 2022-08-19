@@ -218,6 +218,7 @@ Json::Value doEthChainId(RPC::JsonContext&);
 Json::Value doNetVersion(RPC::JsonContext&);
 Json::Value doEthBlockNumber(RPC::JsonContext&);
 Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByHash(RPC::JsonContext&);
 Json::Value doEthGetBalance(RPC::JsonContext&);
 Json::Value doEthCall(RPC::JsonContext&);
 Json::Value doEthEstimateGas(RPC::JsonContext&);

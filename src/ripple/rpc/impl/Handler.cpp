@@ -229,6 +229,7 @@ Handler const ethHandlerArray[]{
     {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
     {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
     {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
     {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
     {"eth_call", byRef(&doContractCall), Role::USER, NO_CONDITION},
     {"eth_estimateGas", byRef(&doEthEstimateGas), Role::USER, NO_CONDITION},
