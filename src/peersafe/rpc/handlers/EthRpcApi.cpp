@@ -474,31 +474,6 @@ doEthGetTransactionCount(RPC::JsonContext& context)
 }
 
 Json::Value
-doEthEstimateGas(RPC::JsonContext& context)
-{
-    return doEstimateGas(context);
-}
-
-Json::Value
-doEthCall(RPC::JsonContext& context)
-{
-    Json::Value jvResult;
-    try
-    {
-        std::string txHash =
-            context.params["realParams"][0u].asString().substr(2);
-
-        jvResult[jss::result] = "0x0";
-    }
-    catch (std::exception&)
-    {
-        jvResult[jss::result] = "0x0";
-    }
-    return jvResult;
-}
-
-
-Json::Value
 doEthGasPrice(RPC::JsonContext& context)
 {
     Json::Value jvResult;

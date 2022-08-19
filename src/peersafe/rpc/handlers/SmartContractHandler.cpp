@@ -297,7 +297,7 @@ doEstimateGas(RPC::JsonContext& context)
         Json::Value ethParams = jsonParams["realParams"][0u];
         
         AccountID accountID;
-        auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+        auto optID = parseHex<AccountID>(ethParams["to"].asString());
         if (!optID)
             return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
 
@@ -318,7 +318,7 @@ doEstimateGas(RPC::JsonContext& context)
         bool isCtrAddr = false;
         if(ethParams.isMember("to"))
         {
-            auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+            auto optID = parseHex<AccountID>(ethParams["to"].asString());
             if (!optID)
                 return formatEthError(
                     defaultEthErrorCode, rpcDST_ACT_MALFORMED);

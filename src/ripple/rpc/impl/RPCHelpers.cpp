@@ -46,15 +46,7 @@ accountFromStringStrict(std::string const& account)
         result = calcAccountID(*publicKey);
     else
     {
-        if (account.substr(0, 2) == "0x")
-        {
-            AccountID id;
-            auto addrHex = *(strUnHex(account.substr(2)));
-            std::memcpy(id.data(), addrHex.data(), addrHex.size());
-            result = id;
-        }
-        else
-            result = parseBase58<AccountID>(account);
+        result = parseHexOrBase58<AccountID>(account);
     }
 
     return result;
