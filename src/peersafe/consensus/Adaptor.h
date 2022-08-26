@@ -409,7 +409,7 @@ public:
 
     virtual TrustChanges
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         Ledger_t previousLedger,
         uint64_t curTurn);
 
@@ -437,7 +437,7 @@ public:
     void
     set(ConsensusMode mode, Adaptor& a)
     {
-        a.onModeChange(mode_, mode);
+        a.onModeChange(a.mode(), mode);
         mode_ = mode;
     }
 };

@@ -19,7 +19,9 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/shamap/SHAMap.h>
-#include "ripple.pb.h"
+#include "ripple.pb.h" 
+#include <peersafe/app/util/Common.h>
+
 
 namespace ripple {
 
@@ -401,11 +403,10 @@ SHAMap::fetchNodeNT(SHAMapHash const& hash, SHAMapSyncFilter* filter) const
         node = fetchNodeFromDB(hash);
         if (node)
         {
-            canonicalize(hash, node);
+            //canonicalize(hash, node);
             return node;
         }
     }
-
     if (filter)
         node = checkFilter(hash, filter);
 

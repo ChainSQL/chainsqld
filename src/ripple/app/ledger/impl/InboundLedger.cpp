@@ -82,6 +82,7 @@ InboundLedger::InboundLedger(
     clock_type& clock)
     : PeerSet(app, hash, ledgerAcquireTimeout, app.journal("InboundLedger"))
     , m_clock(clock)
+    , mLastAction(m_clock.now())
     , mHaveHeader(false)
     , mHaveState(false)
     , mHaveTransactions(false)
@@ -196,11 +197,11 @@ InboundLedger::queueJob()
 void
 InboundLedger::update(std::uint32_t seq)
 {
-    ScopedLockType sl(mLock);
+    //ScopedLockType sl(mLock);
 
     // If we didn't know the sequence number, but now do, save it
-    if ((seq != 0) && (mSeq == 0))
-        mSeq = seq;
+    //if ((seq != 0) && (mSeq == 0))
+    //    mSeq = seq;
 
     // Prevent this from being swept
     touch();

@@ -316,12 +316,12 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
 }
 
 TrustChanges
-Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t curTurn)
+Adaptor::onConsensusReached(bool waitingConsensusReach, Ledger_t previousLedger, uint64_t curTurn)
 {
     app_.getLedgerMaster().onConsensusReached(
-        bWaitingInit, previousLedger.ledger_);
+        waitingConsensusReach, previousLedger.ledger_);
 
-    if (bWaitingInit)
+    if (waitingConsensusReach)
     {
         notify(app_, protocol::neSWITCHED_LEDGER, previousLedger, true, j_);
     }

@@ -22,6 +22,7 @@ if(secp256k1)
 
 else()
   set(INSTALL_SECP256K1 true)
+  add_definitions(-DENABLE_MODULE_RECOVERY)
 
   add_library (secp256k1 STATIC
     src/secp256k1/src/secp256k1.c)

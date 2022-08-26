@@ -249,7 +249,7 @@ void TableAssistant::TableCheckHashThread()
 		if (uCheckHash == iter->second->uTxBackupHash)
 		{	
 			auto itFind = std::find_if(pListTx.begin(), pListTx.end(),
-				[uCheckHash,ledger, this](std::shared_ptr<txInfo> const &pItem) {				
+				[ledger, this](std::shared_ptr<txInfo> const &pItem) {				
 				return !ledger->txMap().hasItem(pItem->uTxHash) && pItem->uTxLedgerVersion <= app_.getLedgerMaster().getValidLedgerIndex();
 			});
 

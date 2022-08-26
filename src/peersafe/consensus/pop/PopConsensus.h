@@ -79,7 +79,7 @@ private:
     // Transaction hashes that have packaged in packaging block.
     std::vector<uint256> transactions_;
 
-    bool bWaitingInit_ = true;
+    bool waitingConsensusReach_ = true;
     bool extraTimeOut_ = false;
 
     // Count for timeout that didn't reach consensus
@@ -164,6 +164,8 @@ public:
     void
     onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted) override final;
 
+    std::chrono::milliseconds 
+    getConsensusTimeOut() const override final;
 private:
     inline uint64_t
     timeSinceOpen() const

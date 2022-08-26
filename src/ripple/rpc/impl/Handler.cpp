@@ -220,6 +220,7 @@ Handler const handlerArray[]{
     {"schema_start", byRef (&doSchemaStart), Role::ADMIN, NO_CONDITION },
     {"tx_in_pool", byRef (&doTxInPool), Role::USER,  NO_CONDITION },
     {"sync_info", byRef (&doSyncInfo), Role::USER,  NO_CONDITION },
+    {"monitor_statis", byRef (&doMonitorStatis), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

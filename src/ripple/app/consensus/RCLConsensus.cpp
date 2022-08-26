@@ -264,4 +264,10 @@ RCLConsensus::conMsgTypeToStr(ConsensusMessageType t)
     return "UNKNOWN";
 }
 
+
+std::chrono::milliseconds 
+RCLConsensus::getConsensusTimeOut() const
+{
+    return consensus_->getConsensusTimeOut();
+}
 }  // namespace ripple

@@ -314,7 +314,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     auto const id = ctx.tx.getAccountID(sfAccount);
 
     std::uint32_t const t_seq = ctx.tx.getSequence();
-    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id,ctx.view);
+    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountCheckSeq(id,ctx.view);
     if (a_seq == 0)
     {
         JLOG(ctx.j.info())

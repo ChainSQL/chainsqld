@@ -254,7 +254,7 @@ PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair)
 
 void
 PopAdaptor::onViewChanged(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     Ledger_t previousLedger,
     uint64_t newView)
 {
@@ -275,7 +275,7 @@ PopAdaptor::onViewChanged(
     }
 
     TrustChanges const changes = onConsensusReached(
-        bWaitingInit, previousLedger, newView);
+        waitingConsensusReach, previousLedger, newView);
 
     ConsensusMode mode = preStartRound(previousLedger, changes.added)
         ? ConsensusMode::proposing
@@ -377,7 +377,6 @@ PopAdaptor::doAccept(
         result.roundTime.read(),
         failed);
     JLOG(j_.info()) << "buildLCL time used:" << utcTime() - timeStart << "ms";
-    timeStart = utcTime();
 
     auto const newLCLHash = built.id();
     JLOG(j_.debug()) << "Built ledger #" << built.seq() << ": " << newLCLHash;
@@ -385,32 +384,13 @@ PopAdaptor::doAccept(
     // Tell directly connected peers that we have a new LCL
     notify(app_, protocol::neACCEPTED_LEDGER, built, haveCorrectLCL, j_);
 
-    if (validating_)
-        validating_ = ledgerMaster_.isCompatible(
-            *built.ledger_, j_.warn(), "Not validating");
-
-    if (validating_ && !consensusFail &&
-        app_.getValidations().canValidateSeq(built.seq()))
-    {
-        validate(built, result.txns, proposing);
-        JLOG(j_.info()) << "CNF Val " << newLCLHash;
-    }
-    else
-        JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
-
-    updatePoolAvoid(built.ledger_->txMap(), built.seq());
-
-    // See if we can accept a ledger as fully-validated
-    consensusBuilt(built.ledger_, result.txns.id(), std::move(consensusJson));
-
-    ledgerMaster_.updateConsensusTime();
-
     //-------------------------------------------------------------------------
-    {
+    {    
+        timeStart = utcTime();
         // Build new open ledger
-        std::unique_lock lock {app_.getMasterMutex(), std::defer_lock};
-        std::unique_lock sl {ledgerMaster_.peekMutex(), std::defer_lock};
-        std::lock(lock, sl);
+        //std::unique_lock lock{app_.getMasterMutex(), std::defer_lock};
+        //std::unique_lock sl{ledgerMaster_.peekMutex(), std::defer_lock};
+        //std::lock(lock, sl);
 
         auto const lastVal = ledgerMaster_.getValidatedLedger();
         boost::optional<Rules> rules;
@@ -437,6 +417,27 @@ PopAdaptor::doAccept(
     }
     JLOG(j_.info()) << "openLedger().accept time used:" << utcTime() - timeStart
                     << "ms";
+    //-------------------------------------------------------------------------
+    if (validating_)
+        validating_ = ledgerMaster_.isCompatible(
+            *built.ledger_, j_.warn(), "Not validating");
+
+    if (validating_ && !consensusFail &&
+        app_.getValidations().canValidateSeq(built.seq()))
+    {
+        validate(built, result.txns, proposing);
+        JLOG(j_.info()) << "CNF Val " << newLCLHash;
+    }
+    else
+        JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
+
+    updatePoolAvoid(built.ledger_->txMap(), built.seq());
+
+    // See if we can accept a ledger as fully-validated
+    consensusBuilt(built.ledger_, result.txns.id(), std::move(consensusJson));
+
+    ledgerMaster_.updateConsensusTime();
+
     //-------------------------------------------------------------------------
     {
         ledgerMaster_.switchLCL(built.ledger_);

@@ -131,6 +131,8 @@ public:
     {
     }
 
+    virtual std::chrono::milliseconds 
+    getConsensusTimeOut() const =0;
     // Rpca specific
     virtual void
     simulate(

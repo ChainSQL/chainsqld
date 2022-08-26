@@ -733,6 +733,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/precompiled/TableOpPrecompiled.cpp
   src/peersafe/precompiled/ToolsPrecompiled.cpp
   src/peersafe/precompiled/Utils.cpp
+  src/peersafe/precompiled/ripemd160.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
@@ -783,6 +784,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/LedgerObjects.cpp
   src/peersafe/rpc/handlers/MallocTrim.cpp
   src/peersafe/rpc/handlers/NodeSize.cpp
+  src/peersafe/rpc/handlers/MonitorStatis.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp

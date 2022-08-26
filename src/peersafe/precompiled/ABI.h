@@ -12,22 +12,6 @@
 using namespace eth;
 namespace ripple{
 
-// unsigned int256
-using u256 =
-    boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-        256,
-        256,
-        boost::multiprecision::unsigned_magnitude,
-        boost::multiprecision::unchecked,
-        void>>;
-// signed int256
-using s256 =
-    boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-        256,
-        256,
-        boost::multiprecision::signed_magnitude,
-        boost::multiprecision::unchecked,
-        void>>;
 using string32 = std::array<char, 32>;
 using Address = base_uint<160, detail::AccountIDTag>;
 
@@ -433,20 +417,22 @@ public:
         const std::vector<std::string>& _allTypes,
         std::vector<std::string>& _out);
 
-    // template <class... T>
-    // bytes
-    // abiIn(const std::string& _sig, T const&... _t)
-    // {
-    //     offset = Offset<T...>::value * MAX_BYTE_LENGTH;
-    //     fixed.clear();
-    //     dynamic.clear();
+     template <class... T>
+     bytes
+     abiIn(const std::string& _sig, T const&... _t)
+     {
+         offset = Offset<T...>::value * MAX_BYTE_LENGTH;
+         fixed.clear();
+         dynamic.clear();
 
-    //     abiInAux(_t...);
+         abiInAux(_t...);
 
-    //     return _sig.empty() ? fixed + dynamic
-    //                         : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
-    //             fixed + dynamic;
-    // }
+         //return _sig.empty() ? fixed + dynamic
+         //                    : crypto::Hash(_sig).ref().cropped(0, 4).toBytes() +
+         //        fixed + dynamic;
+         (void)_sig;
+         return fixed + dynamic;
+     }
 
     // template <class... T>
     // std::string
