@@ -26,6 +26,7 @@
 #include <peersafe/consensus/pop/PopConsensus.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
 #include <ripple/protocol/STValidationSet.h>
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 

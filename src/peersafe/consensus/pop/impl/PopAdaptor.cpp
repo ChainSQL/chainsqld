@@ -29,6 +29,7 @@
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/PeerManagerImp.h>
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 

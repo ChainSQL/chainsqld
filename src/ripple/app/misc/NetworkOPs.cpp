@@ -79,6 +79,7 @@
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>

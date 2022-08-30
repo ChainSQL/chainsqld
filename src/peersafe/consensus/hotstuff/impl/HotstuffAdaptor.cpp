@@ -27,6 +27,7 @@
 #include <peersafe/serialization/hotstuff/ExecutedBlock.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 

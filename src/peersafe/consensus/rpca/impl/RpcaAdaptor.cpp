@@ -26,7 +26,7 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/rpca/RpcaAdaptor.h>
-
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 

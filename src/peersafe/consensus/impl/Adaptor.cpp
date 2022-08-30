@@ -35,7 +35,7 @@
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
-
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 
