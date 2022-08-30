@@ -254,4 +254,32 @@ OpenView::rawTxInsert(
         LogicError("rawTxInsert: duplicate TX id" + to_string(key));
 }
 
+boost::optional<ContractValueType>
+OpenView::fetchFromStateCache(
+    AccountID const& contract, 
+    uint256 const& key)
+{
+    if (mStateCache.find(contract) != mStateCache.end() &&
+        mStateCache[contract].find(key) != mStateCache[contract].end())
+    {
+        return mStateCache[contract][key];
+    }
+    return boost::none;
+}
+
+void
+OpenView::setStateCache(
+    AccountID const& contract,
+    uint256 const& key,
+    ContractValueType const& value)
+{
+    mStateCache[contract][key] = value;
+}
+
+std::map<AccountID, map256Contract> const&
+OpenView::getStateCache()
+{
+    return mStateCache;
+}
+
 }  // namespace ripple

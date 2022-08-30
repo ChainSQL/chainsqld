@@ -39,7 +39,6 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/STETx.h>
@@ -912,9 +911,7 @@ Transactor::operator()()
 	}
 	if (terResult.ter == tesSUCCESS)
     {
-        ctx_.app.getContractHelper().clearDirty();
 		terResult = apply();
-        ctx_.app.getContractHelper().flushDirty(terResult.ter);
 	}
 
     // No transaction can return temUNKNOWN from apply,

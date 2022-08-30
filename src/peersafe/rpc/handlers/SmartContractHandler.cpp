@@ -34,7 +34,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
-#include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/util/Common.h>
 #include <iostream> 
 
@@ -421,8 +420,6 @@ doEstimateGas(RPC::JsonContext& context)
             else
                 execRet = e.getException();
 
-            //Clear contract storage cache
-            context.app.getContractHelper().clearDirty();
             std::string errMsg;
             if(execRet != tesSUCCESS)
                 errMsg = e.takeOutput().toString();

@@ -25,6 +25,7 @@
 #include <ripple/ledger/RawView.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/detail/RawStateTable.h>
+#include <peersafe/app/misc/ContractHelper.h>
 #include <functional>
 #include <utility>
 
@@ -76,6 +77,7 @@ private:
     detail::RawStateTable items_;
     std::shared_ptr<void const> hold_;
     bool open_ = true;
+    std::map<AccountID, map256Contract> mStateCache;
 
 public:
     OpenView() = delete;
@@ -235,6 +237,18 @@ public:
         key_type const& key,
         std::shared_ptr<Serializer const> const& txn,
         std::shared_ptr<Serializer const> const& metaData) override;
+
+    boost::optional<ContractValueType>
+    fetchFromStateCache(AccountID const& contract, uint256 const& key);
+
+    void
+    setStateCache(
+        AccountID const& contract, 
+        uint256 const& key,
+        ContractValueType const& value);
+
+    std::map<AccountID, map256Contract> const&
+    getStateCache();
 };
 
 }  // namespace ripple

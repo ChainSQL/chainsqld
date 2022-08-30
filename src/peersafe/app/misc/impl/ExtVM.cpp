@@ -132,7 +132,7 @@ ExtVM::store(evmc_uint256be const& key)
         bool bQuery =
             (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
         auto value =
-            helper.fetchValue(contract, mapStore.rootHash(), uKey, bQuery);
+            helper.fetchValue(oSle_.ctx(),contract, mapStore.rootHash(), uKey, bQuery);
         if (value)
             return toEvmC(*value);
         return toEvmC(uint256(0));
@@ -163,7 +163,8 @@ ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
     uint256 uValue = fromEvmC(value);
     if (useNewStorage(mapStore, oSle_))
     {
-        helper.setStorage(contract, mapStore.rootHash(), uKey, uValue);
+        helper.setStorage(
+            oSle_.ctx(), contract, mapStore.rootHash(), uKey, uValue);
     }
     else
     {

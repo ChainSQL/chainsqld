@@ -32,6 +32,23 @@ void
 ApplyViewImpl::apply(OpenView& to, STTx const& tx, STer ster, beast::Journal j)
 {
     items_.apply(to, tx, ster, deliver_, j);
+    applyDirty(to);
+}
+
+void
+ApplyViewImpl::applyDirty(OpenView& to)
+{
+    auto it = mDirtyCache.begin();
+    while (it != mDirtyCache.end())
+    {
+        auto iter = it->second.begin();
+        while (iter != it->second.end())
+        {
+            to.setStateCache(it->first, iter->first, iter->second);
+            iter++;
+        }
+        it++;
+    }
 }
 
 std::size_t
