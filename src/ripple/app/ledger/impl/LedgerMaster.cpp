@@ -58,6 +58,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
