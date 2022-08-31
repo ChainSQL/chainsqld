@@ -347,8 +347,8 @@ Payment::doApply()
     if (!sleDst)
     {
         std::uint32_t const seqno{
-            view().rules().enabled(featureDeletableAccounts) ? view().seq()
-                                                             : 1};
+            /*view().rules().enabled(featureDeletableAccounts) ? view().seq()
+                                                             :*/ 1};
 
         // Create the account.
         sleDst = std::make_shared<SLE>(k);
@@ -359,6 +359,8 @@ Payment::doApply()
     }
     else
     {
+        if(sleDst->isDeletedAccount())
+            return tefACCOUNT_ALREADY_DELETE;
         // Tell the engine that we are intending to change the destination
         // account.  The source account gets always charged a fee so it's always
         // marked as modified.

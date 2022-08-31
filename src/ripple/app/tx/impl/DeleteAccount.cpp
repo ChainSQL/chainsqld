@@ -199,15 +199,16 @@ DeleteAccount::preclaim(PreclaimContext const& ctx)
             return tecNO_PERMISSION;
     }
 
+    // Don't need this restriction
     // We don't allow an account to be deleted if its sequence number
     // is within 256 of the current ledger.  This prevents replay of old
     // transactions if this account is resurrected after it is deleted.
     //
     // We look at the account's Sequence rather than the transaction's
     // Sequence in preparation for Tickets.
-    constexpr std::uint32_t seqDelta{255};
-    if ((*sleAccount)[sfSequence] + seqDelta > ctx.view.seq())
-        return tecTOO_SOON;
+//    constexpr std::uint32_t seqDelta{255};
+//    if ((*sleAccount)[sfSequence] + seqDelta > ctx.view.seq())
+//        return tecTOO_SOON;
 
     // Verify that the account does not own any objects that would prevent
     // the account from being deleted.
@@ -310,11 +311,11 @@ DeleteAccount::doApply()
 
             if (auto deleter = nonObligationDeleter(nodeType))
             {
-                TER const result{
-                    deleter(ctx_.app, view(), account_, dirEntry, sleItem, j_)};
-
-                if (!isTesSuccess(result))
-                    return result;
+//                TER const result{
+//                    deleter(ctx_.app, view(), account_, dirEntry, sleItem, j_)};
+//
+//                if (!isTesSuccess(result))
+//                    return result;
             }
             else
             {
@@ -362,19 +363,26 @@ DeleteAccount::doApply()
 
     // If there's still an owner directory associated with the source account
     // delete it.
-    if (view().exists(ownerDirKeylet) && !view().emptyDirDelete(ownerDirKeylet))
-    {
-        JLOG(j_.error()) << "DeleteAccount cannot delete root dir node of "
-                         << toBase58(account_);
-        return tecHAS_OBLIGATIONS;
-    }
+    // cause it doesn't delete before, so emptyDirDelete will detect it remain
+    // has non empty entry, so we don't need to call emptyDirDelete.
+//    if (view().exists(ownerDirKeylet) && !view().emptyDirDelete(ownerDirKeylet))
+//    {
+//        JLOG(j_.error()) << "DeleteAccount cannot delete root dir node of "
+//                         << toBase58(account_);
+//        return tecHAS_OBLIGATIONS;
+//    }
 
     // Re-arm the password change fee if we can and need to.
     if (mSourceBalance > ZXCAmount(0) && dst->isFlag(lsfPasswordSpent))
         dst->clearFlag(lsfPasswordSpent);
 
+    std::uint32_t uFlagsIn = src->getFieldU32(sfFlags);
+    uFlagsIn |= lsfAccountDeleted;
+    src->setFieldU32(sfFlags, uFlagsIn);
+    
     view().update(dst);
-    view().erase(src);
+    view().update(src);
+//    view().erase(src);
 
     return tesSUCCESS;
 }

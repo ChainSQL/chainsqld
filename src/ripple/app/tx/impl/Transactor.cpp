@@ -379,6 +379,40 @@ Transactor::checkUserCert(PreclaimContext const& ctx)
 }
 
 TER
+Transactor::checkDeleted(PreclaimContext const& ctx)
+{
+    auto const srcId = ctx.tx.getAccountID(sfAccount);
+
+    //actually when a tx comes here, the src will be normal
+    auto const sle = ctx.view.read(keylet::account(srcId));
+    if (!sle)
+    {
+        return tefINTERNAL;
+    }
+    else if(sle->isDeletedAccount())
+    {
+        return tefACCOUNT_ALREADY_DELETE;
+    }
+    
+    if(ctx.tx.isFieldPresent(sfDestination))
+    {
+        auto const dstId = ctx.tx.getAccountID(sfDestination);
+        auto const dstSle = ctx.view.read(keylet::account(dstId));
+        if (!dstSle)
+        {
+            //active a new account
+            return tesSUCCESS;
+        }
+        else if(dstSle->isDeletedAccount())
+        {
+            return tefACCOUNT_ALREADY_DELETE;
+        }
+    }
+    
+    return tesSUCCESS;
+}
+
+TER
 Transactor::checkFrozen(PreclaimContext const& ctx)
 {
     auto const id = ctx.tx.getAccountID(sfAccount);

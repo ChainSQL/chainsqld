@@ -318,8 +318,12 @@ void
 AccountRootsNotDeleted::visitEntry(
     bool isDelete,
     std::shared_ptr<SLE const> const& before,
-    std::shared_ptr<SLE const> const&)
+    std::shared_ptr<SLE const> const& after)
 {
+    if((*after)[sfFlags] & lsfAccountDeleted)
+    {
+        isDelete = true;
+    }
     if (isDelete && before && before->getType() == ltACCOUNT_ROOT)
         accountsDeleted_++;
 }
@@ -503,7 +507,7 @@ ValidNewAccountRoot::finalize(
         && result == tesSUCCESS)
     {
         std::uint32_t const startingSeq{
-            view.rules().enabled(featureDeletableAccounts) ? view.seq() : 1};
+            /*view.rules().enabled(featureDeletableAccounts) ? view.seq() : */1};
 
         if (accountSeq_ != startingSeq)
         {

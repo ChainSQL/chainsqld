@@ -202,7 +202,7 @@ namespace ripple {
 			sleDst = std::make_shared<SLE>(k);
 			sleDst->setAccountID(sfAccount, _to);
             std::uint32_t const seqno{
-				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
+				/*ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): */1};
 			sleDst->setFieldU32(sfSequence, seqno);
 			ctx_.view().insert(sleDst);
 		}

@@ -1051,7 +1051,11 @@ ServerHandlerImp::processRequest(
             reply.append(std::move(r));
         else
             reply = std::move(r);
+        
+        JLOG(m_journal.trace())
+            << "doRpcCommand:" << strMethod << ":" << reply;
     }
+    
     auto response = to_string(reply);
 
     rpc_time_.notify(std::chrono::duration_cast<std::chrono::milliseconds>(

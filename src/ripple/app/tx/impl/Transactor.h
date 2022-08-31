@@ -144,6 +144,9 @@ public:
 
     static TER
     checkFrozen(PreclaimContext const& ctx);
+    
+    static TER
+    checkDeleted(PreclaimContext const& ctx);
 
     static TER
     checkAuthority(

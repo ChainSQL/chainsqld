@@ -297,7 +297,8 @@ doEstimateGas(RPC::JsonContext& context)
         Json::Value ethParams = jsonParams["realParams"][0u];
         
         AccountID accountID;
-        auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+        
+        auto optID = RPC::accountFromStringStrict(ethParams["from"].asString());
         if (!optID)
             return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
 
@@ -359,14 +360,16 @@ doEstimateGas(RPC::JsonContext& context)
         }
         else if(isCreation)
         {
-            std::int64_t estimatedGas = TX_CREATE_GAS + (std::uint64_t)openViewTemp->fees().base.drops();
-            jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+            std::int64_t estimatedGas = TX_CREATE_GAS +
+                            (std::uint64_t)openViewTemp->fees().base.drops()/openViewTemp->fees().gas_price;
+            jvResult["result"] = toHexString(estimatedGas);
             return jvResult;
         }
         else if(!isCtrAddr)
         {
-            std::int64_t estimatedGas = TX_GAS + (std::uint64_t)openViewTemp->fees().base.drops();
-            jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+            std::int64_t estimatedGas = TX_GAS +
+                            (std::uint64_t)openViewTemp->fees().base.drops()/openViewTemp->fees().gas_price;
+            jvResult["result"] = toHexString(estimatedGas);
             return jvResult;
         }
         
@@ -455,13 +458,13 @@ doEstimateGas(RPC::JsonContext& context)
         std::int64_t estimatedGas = upperBound +
             (std::uint64_t)openViewTemp->fees().base.drops() /
                 openViewTemp->fees().gas_price;
-        jvResult["result"] = (boost::format("0x%x") % (estimatedGas)).str();
+        jvResult["result"] = toHexString(estimatedGas);
         return jvResult;
     }
     catch (...)
     {
         // TODO: Some sort of notification of failure.
-        jvResult["result"] = (boost::format("0x%x") % (eth::u256())).str();
+        jvResult["result"] = toHexString(eth::u256());
         return jvResult;
     }
 }

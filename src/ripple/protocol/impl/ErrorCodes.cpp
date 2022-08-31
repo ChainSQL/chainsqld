@@ -148,7 +148,8 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
     { rpcUNRELIABLE_LEDGER_HEADER, "unreliableLedgerHeader",    "Verify ledger hash failed."},
     { rpcTX_HASH_NOT_MATCH,        "txHashNotMatch",            "Verify tx hash failed."},
     { rpcTX_NODEHASH_NOT_MATCH,    "txNodeHashNotMatch",        "Verify tx node hash failed."},
-    { rpcBAD_PROOF,                "badProof",                  "Verify proof failed."}
+    { rpcBAD_PROOF,                "badProof",                  "Verify proof failed."},
+    { rpcACCOUNT_ALREADY_DELETED,  "accountAlreadyDeleted",     "The account was already deleted."}
 
     // add (rpcACT_EXISTS,            "actExists",         "Account already exists.");
     // add (rpcBAD_BLOB,              "badBlob",           "Blob must be a non-empty hex string.");

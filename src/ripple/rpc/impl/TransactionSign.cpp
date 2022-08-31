@@ -422,6 +422,30 @@ transactionPreProcessImpl(
 
         return rpcError(rpcSRC_ACT_NOT_FOUND);
     }
+    else if(sle->isDeletedAccount())
+    {
+        return rpcError(rpcACCOUNT_ALREADY_DELETED);
+    }
+    
+    if(tx_json.isMember(jss::Destination))
+    {
+        auto const dstID =
+            parseHexOrBase58<AccountID>(tx_json[jss::Destination].asString());
+
+        if (!dstID)
+        {
+            return RPC::make_error(
+                rpcDST_ACT_MALFORMED,
+                RPC::invalid_field_message("tx_json.Destination"));
+        }
+        std::shared_ptr<SLE const> dstSle =
+            ledger->read(keylet::account(*dstID));
+
+        if(dstSle && dstSle->isDeletedAccount())
+        {
+            return RPC::make_error(rpcACCOUNT_ALREADY_DELETED, "Destination was already deleted.");
+        }
+    }
 
     {
         Json::Value err = checkFee(

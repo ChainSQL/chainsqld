@@ -187,7 +187,9 @@ enum error_code_i {
     rpcTX_NODEHASH_NOT_MATCH    = 131,
     rpcBAD_PROOF                = 132,
     
-    rpcLAST = rpcBAD_PROOF  // rpcLAST should always equal the last code.=
+    rpcACCOUNT_ALREADY_DELETED  = 133,
+    
+    rpcLAST = rpcACCOUNT_ALREADY_DELETED  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.
