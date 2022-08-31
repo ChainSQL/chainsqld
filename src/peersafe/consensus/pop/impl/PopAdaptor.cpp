@@ -122,7 +122,7 @@ PopAdaptor::onCollectFinish(
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
-    std::map<AccountID, int> mapAccount2Seq;
+    std::map<AccountID, int> mapTxAccount2Seq;
     std::map<AccountID, int> mapSleAccount2Seq;
     for (auto const& txID : transactions)
     {
@@ -138,9 +138,9 @@ PopAdaptor::onCollectFinish(
         auto act = tx->getSTransaction()->getAccountID(sfAccount);
         auto seq = tx->getSTransaction()->getFieldU32(sfSequence);
         //save smallest account-sequence
-        if (mapAccount2Seq.find(act) == mapAccount2Seq.end())
+        if (mapTxAccount2Seq.find(act) == mapTxAccount2Seq.end())
         {
-            mapAccount2Seq[act] = seq;
+            mapTxAccount2Seq[act] = seq;
 
             auto sle = prevLedger->read(keylet::account(act));
             if (!sle)
@@ -148,9 +148,9 @@ PopAdaptor::onCollectFinish(
             std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
             mapSleAccount2Seq[act] = a_seq;
         }
-        else if (seq < mapAccount2Seq[act])
+        else if (seq < mapTxAccount2Seq[act])
         {
-            mapAccount2Seq[act] = seq;
+            mapTxAccount2Seq[act] = seq;
         }
 
         if (mapSleAccount2Seq[act] > seq)
@@ -160,6 +160,7 @@ PopAdaptor::onCollectFinish(
                 << toBase58(act) << " a_seq=" << mapSleAccount2Seq[act]
                 << " t_seq=" << seq;
             app_.getTxPool().removeTx(txID);
+            continue;
         }
 
         JLOG(j_.trace()) << "Adding open ledger TX " << txID;
@@ -168,10 +169,10 @@ PopAdaptor::onCollectFinish(
         initialSet->addItem(SHAMapItem(tx->getID(), std::move(s)), true, false);
     }
     //check empty tx-set
-    if(mapAccount2Seq.size() > 0 && parms_.omitEMPTY)
+    if(mapTxAccount2Seq.size() > 0 && parms_.omitEMPTY)
     {
         bool bHasSeqOk = false;
-        for (auto it = mapAccount2Seq.begin(); it != mapAccount2Seq.end(); it++)
+        for (auto it = mapTxAccount2Seq.begin(); it != mapTxAccount2Seq.end(); it++)
         {
             std::uint32_t const a_seq = mapSleAccount2Seq[it->first];
             if (a_seq == it->second)
