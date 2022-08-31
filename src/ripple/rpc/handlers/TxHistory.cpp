@@ -122,7 +122,7 @@ doTxHistory(RPC::JsonContext& context)
     }
 
     {
-        auto db = context.app.getTxnDBCHECK().checkoutDbRead();
+        auto db = context.app.getTxnDB().checkoutDbRead();
 
         boost::optional<std::string> stxnHash;
         boost::optional<std::string> stxnResult;

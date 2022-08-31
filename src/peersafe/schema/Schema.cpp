@@ -800,8 +800,9 @@ public:
         return *txQ_;
     }
 
+    // Need to judge useTxTables
     TxnDBCon&
-    getTxnDBCHECK() override
+    getTxnDB() override
     {
         assert(mTxnDB.get() != nullptr);
         return *mTxnDB;
@@ -831,17 +832,17 @@ public:
         try
         {
             auto setup = setup_DatabaseCon(*config_, m_journal);
-
-            if (config_->useTxTables())
-            {
-                // transaction database
-                mTxnDB = std::make_unique<TxnDBCon>(
+            mTxnDB = std::make_unique<TxnDBCon>(
                     setup,
                     TxDBName,
                     TxDBPragma,
                     TxDBInit,
                     DatabaseCon::CheckpointerSetup{
                         &app_.getJobQueue(),&doJobCounter(), &logs()});
+            if (config_->useTxTables())
+            {
+                // transaction database
+                
                 mTxnDB->getSession() << boost::str(
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));

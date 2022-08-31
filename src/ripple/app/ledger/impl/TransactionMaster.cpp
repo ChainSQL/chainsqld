@@ -79,7 +79,7 @@ TransactionMaster::getTxCount(bool chainsql, int ledgerIndex)
 
 	boost::optional<int> txCount;
 	{
-		auto db = mApp.getTxnDBCHECK().checkoutDbRead();
+		auto db = mApp.getTxnDB().checkoutDbRead();
 		*db << sql,
 			soci::into(txCount);
 

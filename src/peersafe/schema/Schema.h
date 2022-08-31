@@ -244,7 +244,7 @@ public:
     cachedSLEs() = 0;
 
     virtual TxnDBCon&
-    getTxnDBCHECK() = 0;
+    getTxnDB() = 0;
     virtual DatabaseCon&
     getLedgerDB() = 0;
     virtual DatabaseCon&

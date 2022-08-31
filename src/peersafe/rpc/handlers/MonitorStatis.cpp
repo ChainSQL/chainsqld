@@ -52,7 +52,7 @@ doMonitorStatis(RPC::JsonContext& context)
         }
         else
         {
-            TxnDBCon& connection = context.app.getTxnDBCHECK();
+            TxnDBCon& connection = context.app.getTxnDB();
             
             auto countSucc = LedgerAdjust::getTxSucessCount(connection.checkoutDbRead());
             auto countFail = LedgerAdjust::getTxFailCount(connection.checkoutDb());

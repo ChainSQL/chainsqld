@@ -116,7 +116,7 @@ LedgerAdjust::createSle(Schema& app)
         return;
     }
 
-    TxnDBCon& connection = app.getTxnDBCHECK();
+    TxnDBCon& connection = app.getTxnDB();
     auto countSle = app.getPrometheusClient().getPromethSle();
     countSle->setFieldU32(sfTxSuccessCountField, getTxSucessCount(connection.checkoutDbRead()));
     countSle->setFieldU32(sfTxFailureCountField, getTxFailCount(connection.checkoutDbRead()));

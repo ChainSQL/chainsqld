@@ -144,7 +144,7 @@ class SHAMapStore_test : public beast::unit_test::suite
     void
     transactionCheck(jtx::Env& env, int const rows)
     {
-        auto db = env.app().getTxnDBCHECK().checkoutDbRead();
+        auto db = env.app().getTxnDB().checkoutDbRead();
 
         int actualRows;
         *db << "SELECT count(*) AS rows "
@@ -157,7 +157,7 @@ class SHAMapStore_test : public beast::unit_test::suite
     void
     accountTransactionCheck(jtx::Env& env, int const rows)
     {
-        auto db = env.app().getTxnDBCHECK().checkoutDbRead();
+        auto db = env.app().getTxnDB().checkoutDbRead();
 
         int actualRows;
         *db << "SELECT count(*) AS rows "

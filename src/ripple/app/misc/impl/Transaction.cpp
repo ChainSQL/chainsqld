@@ -229,7 +229,7 @@ Transaction::load(
 		Blob rawTxn;
         Blob txnMeta;
 		{
-			auto db = app.getTxnDBCHECK().checkoutDbRead();
+			auto db = app.getTxnDB().checkoutDbRead();
 			soci::blob sociRawTxnBlob(*db);
             soci::blob sociTxnMetaBlob(*db);
 			soci::indicator rti;
@@ -255,7 +255,7 @@ Transaction::load(
 		sql.append("';");
 
 		{
-			auto db = app.getTxnDBCHECK().checkoutDbRead();
+			auto db = app.getTxnDB().checkoutDbRead();
 
 			*db << sql, soci::into(ledgerSeq), soci::into(status);
 			if (!db->got_data())

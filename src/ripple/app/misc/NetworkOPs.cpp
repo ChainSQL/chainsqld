@@ -3079,7 +3079,7 @@ NetworkOPsImp::getAccountTxs(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDBCHECK().checkoutDbRead();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> status;
@@ -3152,7 +3152,7 @@ NetworkOPsImp::getAccountTxsB(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDBCHECK().checkoutDbRead();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> transID;
@@ -3224,7 +3224,7 @@ NetworkOPsImp::getTxsAccount(
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDBCHECK().connRead(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3241,7 +3241,7 @@ NetworkOPsImp::getTxsAccount(
     {
         accountTxPage(
             app_,
-            app_.getTxnDBCHECK().connRead(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3284,7 +3284,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDBCHECK().connRead(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3301,7 +3301,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPage(
             app_,
-            app_.getTxnDBCHECK().connRead(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
