@@ -23,8 +23,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <unordered_set>
 #include <ripple/basics/base_uint.h>
 #include <ripple/app/consensus/RCLCxLedger.h>
-#include <ripple/app/ledger/LedgerMaster.h>
-#include <peersafe/schema/PeerManagerImp.h>
 #include <ripple/overlay/predicates.h>
 namespace ripple {
 class Schema;

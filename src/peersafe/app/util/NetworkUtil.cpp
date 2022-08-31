@@ -21,6 +21,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <cctype>
 #include <chrono>
 #include <peersafe/app/util/NetworkUtil.h>
+#include <ripple/app/ledger/LedgerMaster.h>
+#include <peersafe/schema/PeerManagerImp.h>
 namespace ripple {
 
 void
