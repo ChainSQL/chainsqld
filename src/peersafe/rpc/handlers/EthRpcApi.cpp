@@ -24,11 +24,6 @@ namespace ripple {
 Json::Value
 doEthChainId(RPC::JsonContext& context)
 {
-//    Schema& appTemp = context.app;
-
-    // Json::Value jsonRpcObj = context.params[jss::tx_json];
-//    Json::Value jsonParams = context.params;
-
     Json::Value jvResult;
     try
     {
@@ -36,8 +31,6 @@ doEthChainId(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-//        jvResult = RPC::make_error(rpcINTERNAL,
-//            "Exception occurred during JSON handling.");
         jvResult[jss::result] = "0x0";
     }
     return jvResult;
@@ -46,11 +39,6 @@ doEthChainId(RPC::JsonContext& context)
 Json::Value
 doNetVersion(RPC::JsonContext& context)
 {
-//    Schema& appTemp = context.app;
-
-    // Json::Value jsonRpcObj = context.params[jss::tx_json];
-//    Json::Value jsonParams = context.params;
-
     Json::Value jvResult;
     try
     {
@@ -59,8 +47,6 @@ doNetVersion(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-//        jvResult = RPC::make_error(rpcINTERNAL,
-//            "Exception occurred during JSON handling.");
         jvResult[jss::result] = "0";
     }
     return jvResult;
@@ -180,12 +166,11 @@ std::pair<std::shared_ptr<SLE const>, int>
 getAccountData(RPC::JsonContext& context)
 {
     try {
-        std::string addrStrHex = context.params["realParams"][0u].asString().substr(2);
-        auto addrHex = *(strUnHex(addrStrHex));
-        AccountID accountID;
-        if (addrHex.size() != accountID.size())
+        auto optID =
+            parseHex<AccountID>(context.params["realParams"][0u].asString());
+        if (!optID)
             return std::make_pair(nullptr, rpcDST_ACT_MALFORMED);
-        std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+        AccountID accountID = *optID;
         
         std::shared_ptr<ReadView const> ledger;
         auto result = RPC::lookupLedger(ledger, context);
@@ -207,6 +192,7 @@ Json::Value
 doEthGetBalance(RPC::JsonContext& context)
 {
     Json::Value jvResult;
+    jvResult[jss::result] = "0x0";
     try
     {
         auto accDataRet = getAccountData(context);
@@ -222,13 +208,9 @@ doEthGetBalance(RPC::JsonContext& context)
                     dropsToWeiHex(jvAccepted["Balance"].asUInt64());
             }
         }
-        else if(accDataRet.second == rpcDST_ACT_MALFORMED)
-            return rpcError(rpcDST_ACT_MALFORMED);
-        else jvResult[jss::result] = "0x0";
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
     }
     return jvResult;
 }
@@ -245,11 +227,11 @@ doEthSendRawTransaction(RPC::JsonContext& context)
         // 500KB
         if (ret->size() > RPC::Tuning::max_txn_size)
         {
-            return rpcError(rpcTXN_BIGGER_THAN_MAXSIZE);
+            return formatEthError(defaultEthErrorCode,rpcTXN_BIGGER_THAN_MAXSIZE);
         }
 
         if (!ret || !ret->size())
-            return rpcError(rpcINVALID_PARAMS);
+            return formatEthError(defaultEthErrorCode, rpcINVALID_PARAMS);
 
         //Construct STETx
         auto stpTrans = std::make_shared<STETx>(makeSlice(*ret));
@@ -264,8 +246,7 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             context.app.config());
         if (validity != Validity::Valid)
         {
-
-            return jvResult;
+            return formatEthError(defaultEthErrorCode, "Check validity failed.");
         }
 
         std::string reason2;
@@ -389,11 +370,11 @@ doEthGetTransactionByHash(RPC::JsonContext& context)
         auto hash = from_hex_text<uint256>(txHash);
         auto txn = context.app.getMasterTransaction().fetch(hash);
         if (!txn)
-            return jvResult;
+            return formatEthError(defaultEthErrorCode, rpcTXN_NOT_FOUND);
         auto tx =
             std::dynamic_pointer_cast<STETx const>(txn->getSTransaction());
         if (!tx)
-            return jvResult;
+            return formatEthError(defaultEthErrorCode, "Not a eth tx.");
 
         auto ledger =
             context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
@@ -448,6 +429,7 @@ Json::Value
 doEthGetTransactionCount(RPC::JsonContext& context)
 {
     Json::Value jvResult;
+    jvResult[jss::result] = "0x0";
     try
     {
         auto accDataRet = getAccountData(context);
@@ -461,42 +443,13 @@ doEthGetTransactionCount(RPC::JsonContext& context)
             {
                 jvResult[jss::result] = toHexString(jvAccepted["Sequence"].asUInt64());
             }
-        }
-        else if(accDataRet.second == rpcDST_ACT_MALFORMED)
-            return rpcError(rpcDST_ACT_MALFORMED);
-        else jvResult[jss::result] = "0x0";
+        }            
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
     }
     return jvResult;
 }
-
-Json::Value
-doEthEstimateGas(RPC::JsonContext& context)
-{
-    return doEstimateGas(context);
-}
-
-Json::Value
-doEthCall(RPC::JsonContext& context)
-{
-    Json::Value jvResult;
-    try
-    {
-        std::string txHash =
-            context.params["realParams"][0u].asString().substr(2);
-
-        jvResult[jss::result] = "0x0";
-    }
-    catch (std::exception&)
-    {
-        jvResult[jss::result] = "0x0";
-    }
-    return jvResult;
-}
-
 
 Json::Value
 doEthGasPrice(RPC::JsonContext& context)

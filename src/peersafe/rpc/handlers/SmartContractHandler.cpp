@@ -34,7 +34,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
-#include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/util/Common.h>
 #include <iostream> 
 
@@ -42,26 +41,24 @@ namespace ripple {
 
 Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, std::string exeResult)
 {
-	Json::Value jvResult;
+    Json::Value jvResult;
+    std::string detailMethod = originJson[jss::command].asString();
+    bool isEthCall = (detailMethod == "eth_call");
+    jvResult[jss::request] = originJson;
 	try
 	{
-        std::string detailMethod = originJson[jss::command].asString();
-        
-		jvResult[jss::request] = originJson;
-
 		if (temUNCERTAIN != terResult)
 		{
 			if (tesSUCCESS != terResult)
 			{
-                if(detailMethod == "eth_call")
+                if (isEthCall)
                     jvResult["result"] = "0x";
                 else
                     return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
-				//jvResult[jss::error] = exeResult;
 			}
 			else
 			{
-                if(detailMethod == "eth_call")
+                if(isEthCall)
                     jvResult["result"] = exeResult;
                 else
                     jvResult[jss::contract_call_result] = exeResult;
@@ -70,8 +67,11 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	}
 	catch (std::exception&)
 	{
-		jvResult = RPC::make_error(rpcINTERNAL,
-			"Exception occurred during JSON handling.");
+        auto errMsg = "Exception occurred during JSON handling.";
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, "Exception occurred during JSON handling.");
+        else
+            return RPC::make_error(rpcINTERNAL, errMsg);
 	}
 	return jvResult;
 }
@@ -164,32 +164,35 @@ doContractCall(RPC::JsonContext& context)
     Json::Value ethParams = jsonParams["realParams"][0u];
 
     std::string detailMethod = jsonParams[jss::command].asString();
+    bool isEthCall = (detailMethod == "eth_call");
     Json::Value checkResult;
-    if(detailMethod == "eth_call")
+    if (isEthCall)
         checkResult = checkEthJsonFields(ethParams);
     else
         checkResult = checkJsonFields(jsonParams);
 
     if (isRpcError(checkResult))
+    {
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, checkResult[jss::error_message].asString());
         return checkResult;
+    }
 
     AccountID accountID;
-    if(detailMethod == "eth_call")
+    if (isEthCall)
     {
         if(ethParams.isMember("from"))
         {
-            std::string addrStrHex = ethParams["from"].asString().substr(2);
-            auto addrHex = *(strUnHex(addrStrHex));
-
-            if (addrHex.size() != accountID.size())
-                return rpcError(rpcDST_ACT_MALFORMED);
-            std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
+            auto accId = parseHex<AccountID>(ethParams["from"].asString());
+            if (!accId)
+                return formatEthError(
+                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+            accountID = *accId;
         }
     }
     else
     {
         std::string accountStr = jsonParams[jss::account].asString();
-        AccountID accountID;
         auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
         if (jvAccepted)
         {
@@ -200,24 +203,24 @@ doContractCall(RPC::JsonContext& context)
     std::shared_ptr<ReadView const> ledger;
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
+    {
+        if (isEthCall && result.isMember(jss::error_message))
+            return formatEthError(
+                defaultEthErrorCode, result[jss::error_message].asString());
         return result;
-//    if (!ledger->exists(keylet::account(accountID)))
-//        return rpcError(rpcACT_NOT_FOUND);
+    }
+
 
     AccountID contractAddrID;
-    if(detailMethod == "eth_call")
+    if (isEthCall)
     {
-        std::string addrStrHex = ethParams["to"].asString().substr(2);
-        auto addrHex = *(strUnHex(addrStrHex));
-
-        if (addrHex.size() != contractAddrID.size())
-            return rpcError(rpcDST_ACT_MALFORMED);
-        std::memcpy(contractAddrID.data(), addrHex.data(), addrHex.size());
+        auto optID = parseHex<AccountID>(ethParams["to"].asString());
+        if (!optID)
+            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+        contractAddrID = *optID;
         
         if(!ethParams.isMember("from"))
-        {
-            std::memcpy(accountID.data(), addrHex.data(), addrHex.size());
-        }
+            accountID = *optID;
     }
     else
     {
@@ -231,20 +234,21 @@ doContractCall(RPC::JsonContext& context)
         }
     }
 
-    if (detailMethod != "eth_call" && !ledger->exists(keylet::account(contractAddrID)))
+    if (!isEthCall && !ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    auto strUnHexRes = strUnHex(detailMethod == "eth_call" ? ethParams["data"].asString().substr(2) : jsonParams[jss::contract_data].asString());
-    if (!strUnHexRes)
+    auto strUnHexRes = strUnHex(
+        isEthCall ? ethParams["data"].asString().substr(2)
+                  : jsonParams[jss::contract_data].asString());
+    if (!strUnHexRes || (*strUnHexRes).empty())
     {
-        errMsgStr = "contract_data is not in hex";
+        errMsgStr = "contract_data is invalid.";
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, errMsgStr);
         return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
     }
-    Blob contractDataBlob = *strUnHexRes;
-    if (contractDataBlob.size() == 0)
-    {
-        return RPC::invalid_field_error(jss::contract_data);
-    }
+    auto contractDataBlob = *strUnHexRes;
+
     // int64_t txValue = 0;
     STTx contractTx(
         ttCONTRACT,
@@ -259,17 +263,6 @@ doContractCall(RPC::JsonContext& context)
 
     std::shared_ptr<OpenView> openViewTemp =
         std::make_shared<OpenView>(ledger.get());
-
-//    boost::optional<PreclaimContext const> pcctx;
-//    pcctx.emplace(
-//        appTemp,
-//        *openViewTemp,
-//        tesSUCCESS,
-//        contractTx,
-//        tapNONE,
-//        appTemp.journal("ContractLocalCall"));
-//    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
-//        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
 
     ApplyContext applyContext(
         appTemp,
@@ -319,7 +312,7 @@ doEstimateGas(RPC::JsonContext& context)
         bool isCtrAddr = false;
         if(ethParams.isMember("to"))
         {
-            auto optID = RPC::accountFromStringStrict(ethParams["to"].asString());
+            auto optID = parseHex<AccountID>(ethParams["to"].asString());
             if (!optID)
                 return formatEthError(
                     defaultEthErrorCode, rpcDST_ACT_MALFORMED);
@@ -430,8 +423,6 @@ doEstimateGas(RPC::JsonContext& context)
             else
                 execRet = e.getException();
 
-            //Clear contract storage cache
-            context.app.getContractHelper().clearDirty();
             std::string errMsg;
             if(execRet != tesSUCCESS)
                 errMsg = e.takeOutput().toString();

@@ -232,7 +232,7 @@ Handler const ethHandlerArray[]{
     {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
     {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
     {"eth_call", byRef(&doContractCall), Role::USER, NO_CONDITION},
-    {"eth_estimateGas", byRef(&doEthEstimateGas), Role::USER, NO_CONDITION},
+    {"eth_estimateGas", byRef(&doEstimateGas), Role::USER, NO_CONDITION},
     {"eth_sendRawTransaction", byRef(&doEthSendRawTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
     {"eth_getTransactionReceipt", byRef(&doEthGetTransactionReceipt), Role::USER, NO_CONDITION},
     {"eth_getTransactionByHash", byRef(&doEthGetTransactionByHash), Role::USER, NO_CONDITION},

@@ -7,27 +7,32 @@
 #include <ripple/basics/TaggedCache.h>
 #include <ripple/json/json_value.h>
 #include <ripple/basics/base_uint.h>
-#include <ripple/shamap/SHAMap.h>
-#include <ripple/ledger/OpenView.h>
 #include <ripple/protocol/TER.h>
-#include <peersafe/schema/Schema.h>
 
 namespace ripple {
+
+struct ContractValueType
+{
+    uint256 value;
+    bool existInDB;
+
+    ContractValueType() : value(uint256(0)), existInDB(false)
+    {
+    }
+};
+
+using map256Contract = std::map<uint256, ContractValueType>;
+
+class Schema;
+class ApplyContext;
+class SHAMap;
+class OpenView;
 
 class ContractHelper
 {
 public:
     enum class ValueOpType { invalid = 0, insert = 1, modify = 2, erase = 3 };
-    struct ValueType
-    {
-        uint256 value;
-        bool existInDB;
 
-        ValueType() : value(uint256(0)), existInDB(false)
-        {}
-    };
-
-	using map256 = std::map<uint256, ValueType>;
 	ContractHelper(Schema& app);
 
 	//new tx when smart contract executing
@@ -42,6 +47,7 @@ public:
 
     boost::optional<uint256>
     fetchFromCache(
+        ApplyContext& ctx,
         AccountID const& contract,
         uint256 const& key,
         bool bQuery = false);
@@ -55,6 +61,7 @@ public:
 
     boost::optional<uint256>
     fetchValue(
+        ApplyContext& ctx,
         AccountID const& contract,
         boost::optional<uint256> const& root,
         uint256 const& key,
@@ -70,21 +77,19 @@ public:
 	//set storage to dirty
 	void
     setStorage(
+        ApplyContext& ctx,
         AccountID const& contract,
         boost::optional<uint256> root,
         uint256 const& key,
         uint256 const& value);
-	//clear dirty before tx apply
-    void clearDirty();
-	//merge dirty to main cache
-    void flushDirty(TER code);
+
     void clearCache();
 
     //apply cached modification to SHAMap and modify storage_overlay in contract SLE
     void apply(OpenView& openView);
 
     ValueOpType 
-    getOpType(ValueType const& value);
+    getOpType(ContractValueType const& value);
 
 private:
 	Schema&									app_;
@@ -92,9 +97,6 @@ private:
 	TaggedCache<uint256, std::vector<std::vector<Json::Value>>>		
 											mRecordCache;
 
-	//LedgerIndex						mCurSeq;
-    std::map<AccountID, map256>     mDirtyCache;
-    std::map<AccountID, map256>     mStateCache;
     std::map<AccountID, std::shared_ptr<SHAMap>> mShaMapCache;
     beast::Journal                  mJournal;
 };
