@@ -256,7 +256,7 @@ namespace ripple {
 		if(!OperationRule::hasOperationRule(view,tx))
 			return tesSUCCESS;
 		//
-		if (!ctx_.app.checkGlobalConnection())
+		if (!app.checkGlobalConnection())
 		{
 			return tefDBNOTCONFIGURED;
 		}
@@ -268,11 +268,6 @@ namespace ripple {
 
 		try
 		{
-			if (!app.checkGlobalConnection())
-			{
-				return tefDBNOTCONFIGURED;
-			}
-
 			TxStoreTransaction stTran(envPair.first);
 			TxStore& txStore = *envPair.second;
 			//

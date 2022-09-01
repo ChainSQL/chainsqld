@@ -1126,13 +1126,6 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
             continue;
         }
 
-        //if (!getTxStoreDBConn().GetDBConn())
-        //{
-        //    JLOG(journal_.error()) << "Get db connection failed, maybe max-connections too small";
-
-        //    SetSyncState(SYNC_STOP);
-        //    break;
-        //}
         // Make ledger-txs to slices,every slice will run a soci::transaction.
         auto vecTxSlices = fetchLedgerTxSlices(*iter);
         int countTry = 0;
