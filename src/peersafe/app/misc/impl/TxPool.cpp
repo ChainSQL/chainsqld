@@ -18,7 +18,6 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
-#include <ripple/app/ledger/TransactionMaster.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/StateManager.h>
 
@@ -116,7 +115,6 @@ TxPool::removeTxs(
 {
     int count = 0;
     TransactionSet::iterator iterSet;
-    std::vector<uint256> vecHash;
     try
     {
         for (auto const& item : cSet)
@@ -125,7 +123,6 @@ TxPool::removeTxs(
             if (mTxsHash.count(item.key()) <= 0)
             {
                 mInLedgerCache.insert(item.key());
-                vecHash.push_back(item.key());
             }
             else
             {
@@ -138,36 +135,6 @@ TxPool::removeTxs(
             }
         }
 
-        //If there are too many transactions in the transaction pool, it will take a long time to traverse mTxsSet; 
-        //some expired transactions are cleaned up according to sfLastLedgerSequence
-        /*if (!vecHash.empty() && mTxsSet.size() < 10000)
-        {
-            auto timeStart = utcTime();
-            for (auto txID : vecHash)
-            {
-                auto tx = app_.getMasterTransaction().fetch(txID);
-                if (tx)
-                {
-                    auto iter = std::find_if(
-                        mTxsSet.begin(),
-                        mTxsSet.end(),
-                        [&tx](std::shared_ptr<Transaction> txLocal)
-                            {
-                            return (tx->getSTransaction()->getAccountID(sfAccount) ==
-                                    txLocal->getSTransaction()->getAccountID(sfAccount)) &&
-                                (tx->getSTransaction()->getSequence() <
-                                txLocal->getSTransaction()->getSequence());
-                            });
-                    if (iter != mTxsSet.end())
-                    {
-                        mTxsHash.erase((*iter)->getID());
-                        mTxsSet.erase(iter);
-                        count++;
-                    }
-                }
-            }
-            JLOG(j_.warn()) << "Time to remove expired transactions:" << utcTime() - timeStart << "ms";
-        }*/
         // remove avoid set.
         clearAvoid(ledgerSeq);
     }
@@ -285,7 +252,6 @@ TxPool::clearAvoid()
 bool
 TxPool::isAvailable()
 {
-    std::shared_lock<std::shared_mutex> read_lock_set{mutexSet_};
     return mSyncStatus.max_advance_seq <= mSyncStatus.pool_start_seq;
 }
 

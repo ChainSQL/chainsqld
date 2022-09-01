@@ -141,7 +141,6 @@ public:
     inline Json::Value
     syncStatusJson() const
     {
-        std::shared_lock read_lock{mutexMapSynced_};
         return mSyncStatus.getJson();
     }
 
