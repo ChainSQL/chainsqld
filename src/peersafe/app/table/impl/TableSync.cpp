@@ -1862,13 +1862,13 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                                 auto msg = "";
                                 if (TableSyncUtil::IsMysqlConnectionErr(app_.getTxStoreDBConn().GetDBConn()))
                                 {
-                                    dbErr = std::string(jss::db_error);
-                                    msg = "Connection lost.";
+                                    dbErr = std::string(jss::db_lostConnection);
+                                    msg = "Database connection lost.";
                                 }
                                 app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
                                     std::make_tuple(dbErr, "", msg), false);
                                 break;
-                            }
+                            }                     
 
                             bool bDBTableSync = false;
                             if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())

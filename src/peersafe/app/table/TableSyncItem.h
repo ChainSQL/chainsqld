@@ -296,7 +296,7 @@ private:
     fetchLedgerTxSlices(const protocol::TMTableData& tableData);
 
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
-    bool WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce);
+    bool WaitChildThread(std::condition_variable &cv, bool const& bCheck, bool bForce);
 
     std::pair<bool, bool>
     DealWithEveryTx(
@@ -347,7 +347,7 @@ private:
     std::list <sqldata_type>                                     aWaitCheckData_;
     std::mutex                                                   mutexWaitCheckQueue_;
     
-    bool                                                         bOperateSQL_;
+    std::atomic_bool                                             bOperateSQL_;
 
     bool                                                         bGetLocalData_;
 

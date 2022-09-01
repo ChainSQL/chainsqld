@@ -675,9 +675,7 @@ void  TableSyncItem::SetTableNameInDB(std::string sNameInDB)
 
 void TableSyncItem::TryOperateSQL()
 {
-    if (bOperateSQL_)    return;
-
-    bOperateSQL_ = true;
+    if (bOperateSQL_.exchange(true))    return;
 
     app_.getJobQueue().addJob(jtOPERATESQL, "operateSQL", [this](Job&) { OperateSQLThread(); },app_.doJobCounter());
 }
@@ -1192,8 +1190,8 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                     // If connection error, break to retry loops
                     if (connectionErr)
                     {
-                        if (stTran.GetTransaction())
-                            stTran.GetTransaction()->setHandled();
+                        // if (stTran.GetTransaction())
+                        //     stTran.GetTransaction()->setHandled();
                         OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
                         break;
                     }
@@ -1447,7 +1445,7 @@ void TableSyncItem::SetPeer(std::shared_ptr<Peer> peer)
     uPeerAddr_ = peer->getRemoteAddress();
 }
 
-bool TableSyncItem::WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce)
+bool TableSyncItem::WaitChildThread(std::condition_variable &cv, bool const& bCheck, bool bForce)
 {
     bool bRet = false;
     std::unique_lock<std::mutex> lock(mutexWaitStop_);
@@ -1521,7 +1519,8 @@ TableSyncItem::OnConnectionError(bool bSleep)
     RemoveConnectionUnit();
     if (bSleep)
     {
-        JLOG(journal_.warn()) << "Before retry sleep for 5 seconds.";
+        JLOG(journal_.warn())
+            << "Before retry sleep for 5 seconds when sync table " << sTableName_;
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }    
 }
