@@ -168,6 +168,31 @@ public:
 };
 
 //------------------------------------------------------------------------------
+std::shared_ptr<SLE>
+createFeesSle(Config const& config)
+{
+    auto const k = keylet::fees();
+
+    auto sle = std::make_shared<SLE>(k);
+    if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
+        sle->setFieldU64(sfBaseFee, *f);
+
+    sle->setFieldU32(
+        sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
+
+    if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(sfReserveBase, *f);
+
+    if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(
+            sfReserveIncrement, *f);
+
+    sle->setFieldU64(
+        sfDropsPerByte, config.DROPS_PER_BYTE);
+
+    sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
+    return sle;
+}
 
 Ledger::Ledger(
     create_genesis_t,
@@ -218,27 +243,7 @@ Ledger::Ledger(
     
 
     {
-        auto const k = keylet::fees();
-
-        auto sle = std::make_shared<SLE>(k);
-        if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
-            sle->setFieldU64(sfBaseFee, *f);
-
-        sle->setFieldU32(
-            sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
-
-        if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
-            sle->setFieldU32(sfReserveBase, *f);
-
-        if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
-            sle->setFieldU32(
-                sfReserveIncrement, *f);
-
-        sle->setFieldU64(
-            sfDropsPerByte, config.DROPS_PER_BYTE);
-
-        sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
-
+        auto sle = createFeesSle(config);
         rawInsert(sle);
     }
 
@@ -419,27 +424,7 @@ Ledger::Ledger(Ledger const& ledger, Family& f, Config const& config)
     
 
     {
-        auto const k = keylet::fees();
-
-        auto sle = std::make_shared<SLE>(k);
-        if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
-            sle->setFieldU64(sfBaseFee, *f);
-
-        sle->setFieldU32(
-            sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
-
-        if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
-            sle->setFieldU32(sfReserveBase, *f);
-
-        if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
-            sle->setFieldU32(
-                sfReserveIncrement, *f);
-
-        sle->setFieldU64(
-            sfDropsPerByte, config.DROPS_PER_BYTE);
-
-        sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
-
+        auto sle = createFeesSle(config);
         rawInsert(sle);
     }
 
