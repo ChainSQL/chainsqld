@@ -35,7 +35,8 @@ STViewChange::STViewChange(
     prevSeq_ = getFieldU32(sfSequence);
     prevHash_ = getFieldH256(sfParentHash);
     toView_ = getFieldU64(sfView);
-    validatedSeq_ = getFieldU32(sfValidatedSequence);
+    if(getFieldIndex(sfValidatedSequence) != -1);
+        validatedSeq_ = getFieldU32(sfValidatedSequence);
 }
 
 STViewChange::STViewChange(
@@ -80,7 +81,7 @@ STViewChange::getJson(bool withView) const
 
     ret[jss::PreviousHash] = to_string(prevHash_);
     ret[jss::PreviousSeq] = prevSeq_;
-    ret[jss::public_key] = toBase58(TokenType::NodePublic, nodePublic_);
+    ret[jss::PublicKey] = toBase58(TokenType::NodePublic, nodePublic_);
     ret[jss::ValidatedSeq] = validatedSeq_;
     return ret;
 }
