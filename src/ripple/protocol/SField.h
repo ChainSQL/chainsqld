@@ -92,7 +92,7 @@ enum SerializedTypeID {
     STI_VOTE        = 10008,
     STI_INITANNOUNCE= 10009,
     STI_EPOCHCHANGE = 10010,
-    STI_VALIDAYIONSET = 10011
+    STI_VALIDATIONSET = 10011
 };
 
 // constexpr

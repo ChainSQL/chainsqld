@@ -45,7 +45,7 @@ SField const sfGeneric          (access, 0);
 SField const sfLedgerEntry      (access, STI_LEDGERENTRY,   257, "LedgerEntry");
 SField const sfTransaction      (access, STI_TRANSACTION,   257, "Transaction");
 SField const sfValidation       (access, STI_VALIDATION,    257, "Validation");
-SField const sfValidationSet    (access, STI_VALIDAYIONSET, 257, "ValidationSet");
+SField const sfValidationSet    (access, STI_VALIDATIONSET, 257, "ValidationSet");
 SField const sfMetadata         (access, STI_METADATA,      257, "Metadata");
 SField const sfProposeSet       (access, STI_PROPOSESET,    257, "ProposeSet");
 SField const sfViewChange       (access, STI_VIEWCHANGE,    257, "ViewChange");
