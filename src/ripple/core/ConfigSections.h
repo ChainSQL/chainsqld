@@ -70,6 +70,11 @@ struct ConfigSection
     {
         return "prometheus";
     }
+    static std::string
+    remoteSync()
+    {
+        return "remote_sync";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.

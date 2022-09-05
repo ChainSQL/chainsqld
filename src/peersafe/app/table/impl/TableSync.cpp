@@ -66,6 +66,16 @@ TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
 		bAutoLoadTable_ = false;
 	}
       
+    auto remote_sync_section = cfg_.section(ConfigSection::remoteSync());
+    if (remote_sync_section.values().size() > 0)
+    {
+        auto value = remote_sync_section.values().at(0);
+        bRemoteSync_ = atoi(value.c_str());
+    }
+    else
+    {
+        bRemoteSync_ = false;
+    }
 
 	auto press_switch = cfg_.section(ConfigSection::pressSwitch());
 	if (press_switch.values().size() > 0)
@@ -1388,8 +1398,8 @@ void TableSync::TableSyncThread()
 					bNeedLocalSync = true;
 				}
             }            
-            else
-            { 
+            else if (bRemoteSync_)
+            {
                 LedgerIndex refIndex = getCandidateLedger(stItem.u32SeqLedger+1);
                 refIndex = std::min(refIndex, app_.getLedgerMaster().getValidLedgerIndex());
                 

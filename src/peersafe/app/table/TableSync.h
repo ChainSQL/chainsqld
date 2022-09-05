@@ -162,6 +162,7 @@ private:
     bool                                        bAutoLoadTable_;
 
     bool                                        bIsHaveSync_;
+    bool                                        bRemoteSync_;
 
     bool bInitTableItems_{false};
     // if the sync thread is running
