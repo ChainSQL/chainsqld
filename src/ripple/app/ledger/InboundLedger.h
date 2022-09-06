@@ -48,7 +48,6 @@ public:
     using PeerDataPairType =
         std::pair<std::weak_ptr<Peer>, std::shared_ptr<protocol::TMLedgerData>>;
 
-    using ShamapInfo = std::pair<std::shared_ptr<SHAMap>,bool>;
 
     // These are the reasons we might acquire a ledger
     enum class Reason {
@@ -191,7 +190,7 @@ private:
     std::vector<uint256>
     neededTxHashes(int max, SHAMapSyncFilter* filter) const;
 
-    std::pair<std::vector<uint256>, std::set<uint256>>
+    std::vector<uint256>
     neededStateHashes(int max, SHAMapSyncFilter* filter) const;
 
     std::vector<uint256>
@@ -206,8 +205,11 @@ private:
     bool
     checkComplete();
 
-    void
-    insertContractRoots(std::set<uint256>& setHashes);
+    //void
+    //insertContractRoots(std::set<uint256>& setHashes);
+
+    bool
+    checkLoadContractRoots();
 
     clock_type& m_clock;
     std::atomic<clock_type::time_point> mLastAction;
@@ -216,6 +218,7 @@ private:
     bool mHaveHeader;
     bool mHaveState;
     bool mHaveTransactions;
+    bool mHaveContracts;
     bool mSignaled;
     bool mByHash;
     std::uint32_t mSeq;
@@ -229,7 +232,9 @@ private:
     std::mutex mReceivedDataLock;
     std::vector<PeerDataPairType> mReceivedData;
     bool mReceiveDispatched;
-    std::map<uint256, ShamapInfo> mContractMapInfo;
+    std::atomic_bool mContractRootLoaded;
+    std::map<uint256, std::shared_ptr<SHAMap>> mContractMapInfo;
+    std::atomic_bool mCheckingContract{false};
 };
 
 /** Deserialize a ledger header from a byte array. */

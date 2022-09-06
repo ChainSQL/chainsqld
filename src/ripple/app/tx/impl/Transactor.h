@@ -152,6 +152,10 @@ public:
         LedgerSpecificFlags flag,
         boost::optional<AccountID> dst = {});
 
+    static
+    TER
+    cleanUpDirOnDeleteAccount(ApplyContext& ctx, AccountID const& acc);
+
     static 
     void
     setSeq(OpenView &view, ApplyFlags &flags, STTx const& tx);
@@ -185,6 +189,7 @@ public:
 
 	//set extra message for error
 	void setExtraMsg(std::string msg);
+
     /////////////////////////////////////////////////////
 protected:
 	STer apply();

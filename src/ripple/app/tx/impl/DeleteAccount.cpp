@@ -277,7 +277,15 @@ DeleteAccount::doApply()
 
     if (dst->isFieldPresent(sfContractCode))
     {
+        if (auto ter = cleanUpDirOnDeleteAccount(ctx_, ctx_.tx[sfDestination]);
+            ter != tesSUCCESS)
+            return ter;
         return contractDelete(ctx_, ctx_.tx[sfDestination], account_);
+    }
+
+    if (auto ter = cleanUpDirOnDeleteAccount(ctx_, account_); ter != tesSUCCESS)
+    {
+        return ter;
     }
 
     // Delete all of the entries in the account directory.

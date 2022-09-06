@@ -589,6 +589,7 @@ extern SF_Vec256 const sfSchemaIndexes;
 
 // map of 256-bit
 extern SF_Map256 const sfStorageOverlay;
+extern SF_Map256 const sfStorageExtension;
 
 // inner object
 // OBJECT/1 is reserved for end of object
