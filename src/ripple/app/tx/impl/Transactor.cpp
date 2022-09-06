@@ -386,7 +386,7 @@ Transactor::checkDeleted(PreclaimContext const& ctx)
     auto const sle = ctx.view.read(keylet::account(srcId));
     if (!sle)
     {
-        return tefINTERNAL;
+        return terNO_ACCOUNT;
     }
     else if(sle->isDeletedAccount())
     {
@@ -450,7 +450,7 @@ Transactor::checkAuthority(
 {
     auto const sle = ctx_.view.read(keylet::account(acc));
     if (!sle)
-        return tefINTERNAL;
+        return terNO_ACCOUNT;
 
     if (ctx_.app.config().ADMIN && acc == *ctx_.app.config().ADMIN)
         return tesSUCCESS;

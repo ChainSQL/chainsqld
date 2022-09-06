@@ -42,7 +42,7 @@ doNetVersion(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "6777";
+        jvResult[jss::result] = "718";
 
     }
     catch (std::exception&)
@@ -329,7 +329,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                 uint64_t value = 0;
                 if (tx->isFieldPresent(sfContractValue))
                     value = tx->getFieldAmount(sfContractValue).zxc().drops();
-                auto gasUsed = (preBalance - finalBalance - fee - value) / ledger->fees().gas_price;
+                auto gasUsed = (preBalance - finalBalance - fee - value) * std::uint64_t(1e3) / ledger->fees().gas_price ;
                 jvResult["cumulativeGasUsed"] = toHexString(gasUsed);
                 jvResult["gasUsed"] = toHexString(gasUsed);
             }
@@ -337,19 +337,20 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             {
             }
 
-            if (!tx->isFieldPresent(sfContractAddress) &&
-                tx->isFieldPresent(sfContractData))
-            {
-                // calculate contract address
-                auto newAddress = Contract::calcNewAddress(
-                    accountID, tx->getFieldU32(sfSequence));
-                jvResult["contractAddress"] = "0x" + to_string(uint160(newAddress));
-            }
-            jvResult["logs"] = Json::arrayValue;
-            jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
-            jvResult["root"] = "0x" + to_string(uint256());
             jvResult[jss::status] =  meta->getResultTER() == tesSUCCESS ? "0x1" : "0x0";
         }
+        
+        if (!tx->isFieldPresent(sfContractAddress) &&
+            tx->isFieldPresent(sfContractData))
+        {
+            // calculate contract address
+            auto newAddress = Contract::calcNewAddress(
+                accountID, tx->getFieldU32(sfSequence));
+            jvResult["contractAddress"] = "0x" + ethAddrChecksum(to_string(uint160(newAddress)));
+        }
+        jvResult["logs"] = Json::arrayValue;
+        jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
+        jvResult["root"] = "0x" + to_string(uint256());
     }
     catch (std::exception&)
     {
@@ -462,7 +463,7 @@ doEthGasPrice(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {}
-    jvResult[jss::result] = dropsToWeiHex(gasPrice);
+    jvResult[jss::result] = compressDrops2Str(gasPrice);
     return jvResult;
 }
 
@@ -519,7 +520,7 @@ doEthGetCode(RPC::JsonContext& context)
 
             if (sle.isFieldPresent(sfContractCode))
             {
-                jvResult[jss::result] = strCopy(sle.getFieldVL(sfContractCode));
+                jvResult[jss::result] = "0x" + strHex(strCopy(sle.getFieldVL(sfContractCode)));
             }
         }
     }

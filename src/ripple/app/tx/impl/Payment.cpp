@@ -359,8 +359,6 @@ Payment::doApply()
     }
     else
     {
-        if(sleDst->isDeletedAccount())
-            return tefACCOUNT_ALREADY_DELETE;
         // Tell the engine that we are intending to change the destination
         // account.  The source account gets always charged a fee so it's always
         // marked as modified.

@@ -10,6 +10,7 @@
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
 #include <peersafe/protocol/STETx.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -26,11 +27,14 @@ Executive::Executive(
 {
 }
 
-uint64_t Executive::getCurGasPrice(ApplyContext& ctx)
+double Executive::getCurGasPrice(ApplyContext& ctx)
 {
-    return scaleGasLoad(
-        ctx.app.getFeeTrack(),
-        ctx.view().fees());
+    std::uint64_t scaledGasPrice = scaleGasLoad(ctx.app.getFeeTrack(), ctx.view().fees());
+    
+    double curGasPrice;
+    curGasPrice = (double)scaledGasPrice/std::uint64_t(1e3);
+
+    return curGasPrice;
 }
 
 void Executive::initGasPrice()
@@ -59,8 +63,9 @@ void Executive::initialize() {
 
 	// Avoid unfordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
-	int64_t gasCost = int64_t(gas * m_gasPrice);
-	m_gasCost = gasCost;
+    double gasCost = gas * m_gasPrice;
+    if(gasCost < 1) gasCost = 1;
+	m_gasCost = (int64_t)gasCost;
 }
 
 bool Executive::execute() {

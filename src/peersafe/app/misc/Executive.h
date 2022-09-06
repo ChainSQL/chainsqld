@@ -43,7 +43,7 @@ public:
 	void operator=(Executive) = delete;
     
     static int64_t baseGasRequired(bool isCreation, eth::bytesConstRef const& code);
-    static uint64_t getCurGasPrice(ApplyContext& ctx);
+    static double getCurGasPrice(ApplyContext& ctx);
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
 	//void initialize(BlobRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
@@ -133,7 +133,7 @@ private:
 
 	//std::shared_ptr<const STTx> m_t;        ///< The original transaction.
 	int64_t m_gasCost;
-	uint64_t m_gasPrice;
+    double m_gasPrice;
 
 	bool m_isCreation = false;
 	AccountID m_newAddress;

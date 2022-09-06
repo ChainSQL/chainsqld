@@ -61,6 +61,36 @@ makeSTTx(Slice sit)
         return std::make_shared<STTx const>(sit);
 }
 
+std::string
+ethAddrChecksum(std::string addr)
+{
+    std::string addrTemp = (addr.substr(0,2) == "0x")? addr.substr(2) : addr;
+    if(addrTemp.length() != 40)
+        return std::string("");
+    
+    transform(addrTemp.begin(),addrTemp.end(),addrTemp.begin(),::tolower);
+    
+    Blob addrSha3;
+    addrSha3.resize(32);
+    eth::sha3((const uint8_t*)addrTemp.data(), addrTemp.size(), addrSha3.data());
+    std::string addrSha3Str = strHex(addrSha3.begin(), addrSha3.end());
+    std::string ret;
+    
+    for(int i=0; i< addrTemp.length(); i++)
+    {
+        if(charUnHex(addrSha3Str[i]) >= 8)
+        {
+            ret += toupper(addrTemp[i]);
+        }
+        else
+        {
+            ret += addrTemp[i];
+        }
+    }
+    
+    return ret;
+}
+
 Json::Value
 formatEthError(int code, std::string const& msg)
 {

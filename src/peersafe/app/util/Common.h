@@ -28,6 +28,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <ripple/basics/Slice.h>
 #include <boost/format.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <eth/vm/utils/keccak.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
@@ -35,6 +37,8 @@ namespace ripple {
 using H256Set = std::unordered_set<uint256>;
 
 const int defaultEthErrorCode = -32000;
+const std::uint64_t weiPerDrop = std::uint64_t(1e12);
+const std::uint64_t compressDrop = std::uint64_t(1e4);
 
 // Get the current time in seconds since the epoch in UTC(ms)
 uint64_t
@@ -57,10 +61,23 @@ inline toHexString(T value)
 std::string
 inline dropsToWeiHex(uint64_t drops)
 {
-    boost::multiprecision::uint128_t balance;
-    boost::multiprecision::multiply(balance, drops, std::uint64_t(1e12));
-    return toHexString(balance);
+    boost::multiprecision::uint128_t wei;
+    boost::multiprecision::multiply(wei, drops, weiPerDrop);
+    return toHexString(wei);
 }
+
+std::string
+inline compressDrops2Str(uint64_t drops)
+{
+    boost::multiprecision::uint128_t cDrops;
+    //1e9 = 1e(-3) * weiPerDrop
+    boost::multiprecision::multiply(cDrops, drops, std::uint64_t(1e9));
+    
+    return toHexString(cDrops);
+}
+
+std::string
+ethAddrChecksum(std::string addr);
 
 Json::Value 
 formatEthError(int code, std::string const& msg);
