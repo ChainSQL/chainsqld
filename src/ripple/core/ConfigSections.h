@@ -75,6 +75,11 @@ struct ConfigSection
     {
         return "voting";
     }
+    static std::string
+    remoteSync()
+    {
+        return "remote_sync";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.

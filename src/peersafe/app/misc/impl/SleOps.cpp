@@ -13,10 +13,12 @@
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/core/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/protocol/STMap256.h>
 #include <eth/vm/VMFace.h>
 
 namespace ripple {
@@ -204,7 +206,21 @@ namespace ripple {
             std::uint32_t const seqno{
 				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
 			sleDst->setFieldU32(sfSequence, seqno);
-			ctx_.view().insert(sleDst);
+
+			//Add to directory
+            auto viewJ = ctx_.app.journal("Executive");
+            auto result = dirAdd(
+                ctx_.view(),
+                keylet::contract_index(),
+                k.key,
+                false,
+                [](std::shared_ptr<SLE> const& sle) {},
+                viewJ);
+            STMap256& mapExtension = sleDst->peekFieldM256(sfStorageExtension);
+            mapExtension[NODE_TYPE_CONTRACTKEY] = uint256(*result);
+            if (!result)
+                return tecDIR_FULL;
+            ctx_.view().insert(sleDst);
 		}
 
 		if (_value != uint256(0))
@@ -692,7 +708,7 @@ namespace ripple {
 	void	SleOps::releaseResource()
 	{
 		resetTransactionCache();
-		for(auto handle : handleList_)
+		for(auto const& handle : handleList_)
 			ctx_.app.getContractHelper().releaseHandle(handle);
 	}
 

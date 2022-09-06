@@ -404,9 +404,8 @@ public:
                     ++it;
                 }
                 else if (
-                    (it->second->getLastAction() + std::chrono::minutes(1)) < now &&
-                    (it->second->isComplete() || it->second->isFailed())
-                )
+                    (it->second->getLastAction() + std::chrono::minutes(1)) <
+                    now)
                 {
                     stuffToSweep.push_back(it->second);
                     // shouldn't cause the actual final delete

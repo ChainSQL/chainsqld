@@ -1,3 +1,4 @@
+#include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/Executive.h>
 #include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
@@ -9,6 +10,7 @@
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -433,6 +435,12 @@ TER Executive::finalize() {
     {
         for (auto a : m_ext->sub.selfdestruct)
         {
+            if (auto ter = Transactor::cleanUpDirOnDeleteAccount(m_s.ctx(), a);
+                ter != tesSUCCESS)
+            {
+                return ter;
+            }
+
             m_s.kill(a);
             LedgerAdjust::updateContractCount(
                 m_s.ctx().app, m_s.ctx().view(), CONTRACT_DESTORY);
