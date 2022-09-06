@@ -1,3 +1,4 @@
+#include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/Executive.h>
 #include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
@@ -9,6 +10,7 @@
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -54,7 +56,7 @@ bool Executive::execute() {
 	// Entry point for a user-executed transaction.
 	
 	// Pay...
-	JLOG(j.info()) << "Paying " << m_gasCost << " from sender";
+	JLOG(j.debug()) << "Paying " << m_gasCost << " from sender";
 	auto& tx = m_s.ctx().tx;
 	auto sender = tx.getAccountID(sfAccount);
 	auto ter = m_s.subBalance(sender, m_gasCost);
@@ -197,7 +199,10 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         }
         auto output = get<1>(retPre);
         if (output.size() > 0)
-			m_output = eth::owning_bytes_ref{std::move(output), 0, output.size()};
+        {
+            size_t outputSize = output.size();
+            m_output = eth::owning_bytes_ref{std::move(output), 0, outputSize};
+        }
 	}
     else
     {
@@ -430,6 +435,12 @@ TER Executive::finalize() {
     {
         for (auto a : m_ext->sub.selfdestruct)
         {
+            if (auto ter = Transactor::cleanUpDirOnDeleteAccount(m_s.ctx(), a);
+                ter != tesSUCCESS)
+            {
+                return ter;
+            }
+
             m_s.kill(a);
             LedgerAdjust::updateContractCount(
                 m_s.ctx().app, m_s.ctx().view(), CONTRACT_DESTORY);

@@ -847,7 +847,7 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app
 	if (tx_json.isMember(jss::Owner) && tx_json[jss::Owner].asString().size() != 0)
 	{
 		AccountID ownerID;
-		std::string ownerStr = tx_json[jss::Account].asString();
+            std::string ownerStr = tx_json[jss::Owner].asString();
 		auto jvAccepted = RPC::accountFromString(ownerID, ownerStr, true);
 		if (jvAccepted)
 		{

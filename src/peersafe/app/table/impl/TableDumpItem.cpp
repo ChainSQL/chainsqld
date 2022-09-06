@@ -268,8 +268,8 @@ bool TableDumpItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
     {     
 		uCurSynPos = iter->ledgerseq();
 
-        std::string sLedgerHash = iter->ledgerhash();
-        std::string sLedgerCheckHash = iter->ledgercheckhash();
+        std::string sLedgerHash = to_string(uint256(iter->ledgerhash()));
+        std::string sLedgerCheckHash = to_string(uint256(iter->ledgercheckhash()));
         LedgerIndex uLedgerSeq = iter->ledgerseq();
         std::string PreviousCommit;
         

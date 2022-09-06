@@ -40,21 +40,21 @@ public:
     struct Setup
     {
         /** The cost of a reference transaction in drops. */
-        ZXCAmount reference_fee{10};
+        ZXCAmount reference_fee;
 
         /** The cost of a reference transaction in fee units. */
-        static constexpr FeeUnit32 reference_fee_units{10};
+        FeeUnit32 reference_fee_units;
 
         /** The account reserve requirement in drops. */
-        ZXCAmount account_reserve{5 * DROPS_PER_ZXC};
+        ZXCAmount account_reserve;
 
         /** The per-owned item reserve requirement in drops. */
-        ZXCAmount owner_reserve { 1 * DROPS_PER_ZXC};
+        ZXCAmount owner_reserve;
 
 		/** The cost of a byte in drops. */
-		std::uint64_t drops_per_byte = (1000000 / 1024);
+		std::uint64_t drops_per_byte;
 
-        std::uint64_t gas_price = {10};
+        std::uint64_t gas_price;
     };
 
     virtual ~FeeVote() = default;
@@ -81,7 +81,7 @@ public:
 
 /** Build FeeVote::Setup from a config section. */
 FeeVote::Setup
-setup_FeeVote(Section const& section);
+setup_FeeVote(Config const& config);
 
 /** Create an instance of the FeeVote logic.
     @param setup The fee schedule to vote for.

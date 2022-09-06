@@ -315,14 +315,14 @@ namespace ripple {
 
 	TER SchemaModify::doApply()
 	{
-		auto j = ctx_.app.journal("schemaModifyApply");
+//		auto j = ctx_.app.journal("schemaModifyApply");
 		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
 		if (sleSchema == nullptr)
 		{
 			return tefBAD_SCHEMAID;
 		}
 
-		auto const account = ctx_.tx[sfAccount];
+//		auto const account = ctx_.tx[sfAccount];
 		if (!ctx_.tx.getSigningPubKey().empty())
 		{
 			if (!sleSchema->isFieldPresent(sfSchemaAdmin))

@@ -76,6 +76,7 @@ STValidation::validationFormat()
         { sfServerVersion,      soeOPTIONAL},
         { sfDropsPerByte,       soeOPTIONAL},
         { sfGasPrice,           soeOPTIONAL},
+        { sfSigningPubKey,      soeOPTIONAL},
     };
 
     return format;

@@ -38,8 +38,8 @@ TxPool::topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set)
 {
     uint64_t txCnt = 0;
 
-    std::shared_lock read_lock_set{mutexSet_};
-    std::shared_lock read_lock_avoid{mutexAvoid_};
+    std::shared_lock<std::shared_mutex> read_lock_set{mutexSet_};
+    std::shared_lock<std::shared_mutex> read_lock_avoid{mutexAvoid_};
 
     JLOG(j_.info()) << "Currently mTxsSet size: " << mTxsSet.size()
                     << ", mAvoid size: " << mAvoidByHash.size();
@@ -62,14 +62,14 @@ TxPool::insertTx(
     std::shared_ptr<Transaction> transaction,
     LedgerIndex ledgerSeq)
 {
+    std::unique_lock<std::shared_mutex> lock(mutexSet_);
+
     if (mTxsSet.size() >= mMaxTxsInPool)
     {
         JLOG(j_.warn()) << "Txs pool is full, insert failed, Tx hash: "
                         << transaction->getID();
         return telTX_POOL_FULL;
     }
-
-    std::unique_lock<std::shared_mutex> lock(mutexSet_);
 
     if (mInLedgerCache.count(transaction->getID()) > 0)
     {
@@ -102,7 +102,7 @@ TxPool::insertTx(
         }
     }
 
-    JLOG(j_.info()) << "Inserting a exist Tx: " << transaction->getID();
+    JLOG(j_.info()) << "Inserting an exist Tx: " << transaction->getID();
 
     return tefPAST_SEQ;
 }
@@ -131,9 +131,8 @@ TxPool::removeTxs(
                 // remove from Tx pool.
                 mTxsHash.erase(item.key());
                 mTxsSet.erase(iterSet);
+                count++;
             }
-
-            count++;
         }
 
         // remove avoid set.
@@ -206,14 +205,14 @@ TxPool::checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash)
 void
 TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 {
+    std::unique_lock<std::shared_mutex> lock(mutexAvoid_);
+
     if (mAvoidBySeq.find(seq) != mAvoidBySeq.end() &&
         mAvoidBySeq[seq].size() > 0)
     {
         JLOG(j_.warn()) << "TxPool updateAvoid already "
                         << mAvoidBySeq[seq].size() << " txs for Seq:" << seq;
     }
-
-    std::unique_lock lock(mutexAvoid_);
 
     if (app_.getLedgerMaster().getValidLedgerIndex() >= seq)
     {
@@ -233,7 +232,7 @@ TxPool::updateAvoid(SHAMap const& map, LedgerIndex seq)
 void
 TxPool::clearAvoid(LedgerIndex seq)
 {
-    std::unique_lock lock(mutexAvoid_);
+    std::unique_lock<std::shared_mutex> lock(mutexAvoid_);
 
     for (auto const& hash : mAvoidBySeq[seq])
     {
@@ -245,7 +244,7 @@ TxPool::clearAvoid(LedgerIndex seq)
 void
 TxPool::clearAvoid()
 {
-    std::unique_lock lock(mutexAvoid_);
+    std::unique_lock<std::shared_mutex> lock(mutexAvoid_);
     mAvoidByHash.clear();
     mAvoidBySeq.clear();
 }
@@ -289,23 +288,23 @@ void
 TxPool::removeTx(uint256 hash)
 {
     {
-        std::unique_lock lock(mutexSet_);
-        if (mTxsHash.find(hash) != mTxsHash.end())
+        std::unique_lock<std::shared_mutex> lock_set(mutexSet_);
+        auto iter = mTxsHash.find(hash);
+        if ( iter != mTxsHash.end())
         {
             // remove from Tx pool.
-            auto iter = mTxsHash.at(hash);
             mTxsHash.erase(hash);
-            mTxsSet.erase(iter);
+            mTxsSet.erase(iter->second);
         }
     }
     
     // remove from avoid set.
-    std::unique_lock lock(mutexAvoid_);
+    std::unique_lock<std::shared_mutex> lock_avoid(mutexAvoid_);
     if (mAvoidByHash.find(hash) != mAvoidByHash.end())
     {
         LedgerIndex seq = mAvoidByHash[hash];
         mAvoidBySeq[seq].erase(hash);
-        if (mAvoidBySeq[seq].size())
+        if (mAvoidBySeq[seq].size() == 0)
         {
             mAvoidBySeq.erase(seq);
         }
@@ -318,7 +317,7 @@ TxPool::txInPool()
 {
     Json::Value ret(Json::objectValue);
     {
-        std::shared_lock read_lock_avoid{mutexAvoid_};
+        std::shared_lock<std::shared_mutex> read_lock_avoid{mutexAvoid_};
 
         for (auto iter = mAvoidByHash.begin(); iter != mAvoidByHash.end();
              ++iter)
@@ -331,7 +330,7 @@ TxPool::txInPool()
     }
 
     {
-        std::shared_lock read_lock_set{mutexSet_};
+        std::shared_lock<std::shared_mutex> read_lock_set{mutexSet_};
         for (auto it = mTxsHash.begin(); it != mTxsHash.end(); it++)
         {
             if (mAvoidByHash.find(it->first) == mAvoidByHash.end())
@@ -355,8 +354,7 @@ TxPool::removeExpired()
     uint64_t txCnt = 0;
     auto seq = app_.getLedgerMaster().getValidLedgerIndex();
 
-    std::shared_lock read_lock_set{mutexSet_};
-    std::shared_lock read_lock_avoid{mutexAvoid_};
+    std::unique_lock<std::shared_mutex> lock_set{mutexSet_};
 
     auto iter = mTxsSet.begin();
     std::set<AccountID> setAccounts;
@@ -375,16 +373,6 @@ TxPool::removeExpired()
                     pTx->getSTransaction()->getAccountID(sfAccount));
                 iter = mTxsSet.erase(iter);
                 mTxsHash.erase(hash);
-                if (mAvoidByHash.find(hash) != mAvoidByHash.end())
-                {
-                    LedgerIndex seq = mAvoidByHash[hash];
-                    mAvoidBySeq[seq].erase(hash);
-                    if (mAvoidBySeq[seq].size() == 0)
-                    {
-                        mAvoidBySeq.erase(seq);
-                    }
-                    mAvoidByHash.erase(hash);
-                }
                 txCnt++;
                 continue;
             }
@@ -397,6 +385,8 @@ TxPool::removeExpired()
     }
 
     // sweep avoid
+    std::unique_lock<std::shared_mutex> lock_avoid{mutexAvoid_};
+
     auto it = mAvoidByHash.begin();
     while (it != mAvoidByHash.end())
     {
@@ -404,8 +394,7 @@ TxPool::removeExpired()
         {
             auto seqTmp = it->second;
             it = mAvoidByHash.erase(it);
-            if (mAvoidBySeq.find(seqTmp) != mAvoidBySeq.end())
-                mAvoidBySeq.erase(seqTmp);
+            mAvoidBySeq.erase(seqTmp);
         }
         else
             it++;

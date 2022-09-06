@@ -202,9 +202,9 @@ featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage"),
 featureTableSleChange = *getRegisteredFeature("TableSLEChange"),
 featureContractStorage = *getRegisteredFeature("ContractStorage"),
 featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta"),
-featureTableGrant = *getRegisteredFeature("TableGrant");
+featureTableGrant = *getRegisteredFeature("TableGrant"),
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
-// uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
+featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");
 // uint256 const featureSHAMapV2 = *getRegisteredFeature("SHAMapV2");
     
@@ -227,4 +227,27 @@ uint256 const
 
 // clang-format on
 
+std::vector<std::string> const
+getSupportedAmendments()
+{
+    auto const& sa = detail::supportedAmendments();
+    std::vector<std::string> saHashes;
+    saHashes.reserve(sa.size());
+    for (auto const& name : sa)
+    {
+        auto const f = getRegisteredFeature(name);
+        BOOST_ASSERT(f);
+        if (f)
+            saHashes.push_back(to_string(*f) + " " + name);
+    }
+    return saHashes;
+}
+
+
+std::vector<uint256> const
+getDefaultEnabledFeature()
+{
+    std::vector<uint256> const enabled{featureMultiSign, featureTableSleChange, featureContractStorage, featurePromethSLEHideInMeta, featureTableGrant};
+    return enabled;
+}
 }  // namespace ripple

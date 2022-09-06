@@ -463,7 +463,8 @@ transactionPreProcessImpl(
             }
 			//use new consensus
             tx_json[jss::Sequence] =
-                app.getStateManager().getAccountSeq(srcAddressID, *ledger);
+                app.getStateManager().getAndIncSignSeq(
+                srcAddressID, *ledger);
 			//use old consensus
 			/*
             auto seq = (*sle)[sfSequence];
@@ -848,7 +849,7 @@ transactionSign(
 /** Returns a Json::objectValue. */
 Json::Value
 transactionSubmit(
-    Json::Value jvRequest,
+    Json::Value& jvRequest,
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,

@@ -125,7 +125,6 @@ private:
     PendingSaves pendingSaves_;
     AccountIDCache accountIDCache_;
     boost::optional<OpenLedger> openLedger_;
-    boost::optional<OpenLedger> checkedOpenLedger_;
 
     // These are not Stoppable-derived
     NodeCache m_tempNodeCache;
@@ -780,18 +779,7 @@ public:
     virtual OpenLedger&
     checkedOpenLedger() override
     {
-        // check if the new openLedger not created.
-        if ((*openLedger_).current()->seq() <=
-            getLedgerMaster().getValidLedgerIndex())
-        {
-            JLOG(m_journal.warn()) << "checkedOpenLedger openLedger is stale.";
-            checkedOpenLedger_.reset();
-            checkedOpenLedger_.emplace(
-                getLedgerMaster().getValidatedLedger(),
-                cachedSLEs(),
-                m_journal);
-            return *checkedOpenLedger_;
-        }
+        m_ledgerMaster->checkUpdateOpenLedger();
         return *openLedger_;
     }
 
@@ -808,6 +796,7 @@ public:
         return *txQ_;
     }
 
+    // Need to judge useTxTables
     TxnDBCon&
     getTxnDB() override
     {
@@ -839,17 +828,17 @@ public:
         try
         {
             auto setup = setup_DatabaseCon(*config_, m_journal);
-
-            if (config_->useTxTables())
-            {
-                // transaction database
-                mTxnDB = std::make_unique<TxnDBCon>(
+            mTxnDB = std::make_unique<TxnDBCon>(
                     setup,
                     TxDBName,
                     TxDBPragma,
                     TxDBInit,
                     DatabaseCon::CheckpointerSetup{
                         &app_.getJobQueue(),&doJobCounter(), &logs()});
+            if (config_->useTxTables())
+            {
+                // transaction database
+                
                 mTxnDB->getSession() << boost::str(
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
@@ -1246,21 +1235,12 @@ SchemaImp::setup()
     }
 
     // Configure the amendments the server supports
-    {
-        auto const& sa = detail::supportedAmendments();
-        std::vector<std::string> saHashes;
-        saHashes.reserve(sa.size());
-        for (auto const& name : sa)
-        {
-            auto const f = getRegisteredFeature(name);
-            BOOST_ASSERT(f);
-            if (f)
-                saHashes.push_back(to_string(*f) + " " + name);
-        }
+    {        
         Section supportedAmendments("Supported Amendments");
-        supportedAmendments.append(saHashes);
+        supportedAmendments.append(getSupportedAmendments());
 
-        Section enabledAmendments = config_->section(SECTION_AMENDMENTS);
+        Section enabledAmendments("enable Amendments");
+
 
         m_amendmentTable = make_AmendmentTable(
             config().AMENDMENT_MAJORITY_TIME,
@@ -1564,12 +1544,8 @@ SchemaImp::setup()
 void
 SchemaImp::startGenesisLedger()
 {
-    std::vector<uint256> initialAmendments =
-        (config_->START_UP == Config::FRESH) ? m_amendmentTable->getDesired()
-                                             : std::vector<uint256>{};
-
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
-        create_genesis, *config_, initialAmendments, nodeFamily_);
+        create_genesis, *config_, nodeFamily_);
     m_ledgerMaster->storeLedger(genesis);
 
     genesis->setImmutable(*config_);
@@ -1967,8 +1943,8 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         JLOG(m_journal.fatal()) << "Ledger is not sane.";
         return false;
     }
-
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_);
+    
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_);
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));

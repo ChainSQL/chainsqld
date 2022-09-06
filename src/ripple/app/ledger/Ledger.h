@@ -108,7 +108,6 @@ public:
     Ledger(
         create_genesis_t,
         Config const& config,
-        std::vector<uint256> const& amendments,
         Family& family);
 
     Ledger(LedgerInfo const& info, Config const& config, Family& family);
@@ -136,7 +135,8 @@ public:
 	/** Create a new ledger from an exist ledger
 	*/
 	Ledger(Ledger const& ledger,
-		Family& f);
+		Family& f,
+        Config const& config);
 
     // used for database ledgers
     Ledger(

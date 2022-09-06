@@ -161,6 +161,12 @@ featureToBitsetIndex(uint256 const& f);
 uint256
 bitsetIndexToFeature(size_t i);
 
+std::vector<uint256> const
+getDefaultEnabledFeature();
+
+std::vector<std::string> const
+getSupportedAmendments();
+
 class FeatureBitset
     : private std::bitset<detail::FeatureCollections::numFeatures()>
 {
@@ -396,6 +402,7 @@ extern uint256 const featureTableSleChange;
 extern uint256 const featureContractStorage;
 extern uint256 const featureTableGrant;
 extern uint256 const featurePromethSLEHideInMeta;
+extern uint256 const featureFeeEscalation;
 
 }  // namespace ripple
 

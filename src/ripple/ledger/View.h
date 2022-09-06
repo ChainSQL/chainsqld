@@ -106,6 +106,12 @@ forEachItem(
     AccountID const& id,
     std::function<void(std::shared_ptr<SLE const> const&)> f);
 
+void
+forEachItem(
+    ReadView const& view,
+    Keylet const key,
+    std::function<void(std::shared_ptr<SLE const> const&)> f);
+
 /** Iterate all items after an item in an owner directory.
     @param after The key of the item to start after
     @param hint The directory page containing `after`

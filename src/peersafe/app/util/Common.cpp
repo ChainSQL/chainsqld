@@ -21,7 +21,6 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <cctype>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
-
 namespace ripple {
 
 
@@ -47,6 +46,5 @@ isHexID(std::string const& txid)
 
     return (ret == txid.end());
 }
-
 
 }

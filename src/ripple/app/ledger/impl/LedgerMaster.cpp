@@ -58,6 +58,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
@@ -277,12 +278,12 @@ LedgerMaster::getPublishedLedgerAge()
 
 void
 LedgerMaster::onConsensusReached(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     std::shared_ptr<Ledger const> previousLedger)
 {
     updateConsensusTime();
 
-    if (bWaitingInit &&
+    if (waitingConsensusReach &&
         previousLedger &&
         previousLedger->info().seq != mValidLedgerSeq)
     {
@@ -1332,7 +1333,7 @@ LedgerMaster::checkLoadLedger()
 {
     if (ledgerLoadInited.exchange(true))
         return;
-    if (app_.getInboundLedgers().getInfo().size() == 0)
+    if (app_.getInboundLedgers().getCount() <= 0)
     {
         app_.getJobQueue().addJob(
             jtCheckLoadLedger, "LedgerMaster.checkLoadLedger", [this](Job&) {
@@ -1379,7 +1380,7 @@ LedgerMaster::checkLoadLedger()
                             InboundLedger::Reason::GENERIC);
                     }                    
                 }
-            });
+            }, app_.doJobCounter());
     }
 }
 
@@ -1394,6 +1395,9 @@ LedgerMaster::checkUpdateOpenLedger()
 {
     if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
     {
+        JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
+                               << app_.openLedger().current()->seq()
+                               << "<= mValidLedgerSeq:" << mValidLedgerSeq;
         auto const lastVal = getValidatedLedger();
         boost::optional<Rules> rules;
         if (lastVal)
@@ -2102,7 +2106,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
-
+    notify(app_, protocol::neVALID_LEDGER, ledger, false, m_journal);
     checkSubChains();
 
     app_.getTxPool().removeTxs(
@@ -2154,8 +2158,8 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
         // The variable upgradeWarningPrevTime_ will be set when and only when
         // the warning is printed.
         if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
-        {
-            // Have not printed the warning before, check if need to print.
+        {     
+            // Have not printed the warning before, check if need to print.           
             auto const vals = app_.getValidations().getTrustedForLedger(
                 ledger->info().parentHash);
             std::size_t higherVersionCount = 0;
@@ -2515,7 +2519,7 @@ LedgerMaster::minSqlSeq()
 {
     boost::optional<LedgerIndex> seq;
     auto db = app_.getLedgerDB().checkoutDb();
-    *db << "SELECT MIN(LedgerSeq) FROM Ledgers", soci::into(seq);
+    *db << "SELECT MIN(LedgerSeq) FROM Ledgers WHERE LedgerSeq > 1", soci::into(seq);
     return seq;
 }
 

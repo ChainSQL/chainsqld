@@ -4,6 +4,10 @@
 #include <eth/evmc/include/evmc/evmc.h>
 #include <eth/vm/Common.h>
 #include <eth/vm/utils/keccak.h>
+#include <peersafe/precompiled/picosha2.h>
+#include <ripple/basics/Slice.h>
+#include <ripple/basics/base_uint.h>
+#include <ripple/basics/Blob.h>
 
 using namespace eth;
 namespace ripple {
@@ -43,5 +47,12 @@ toHex(T const& _data)
 {
     return toHex(_data.begin(), _data.end(), "");
 }
+
+uint256
+eth_sha256(Slice const& slice);
+
+Blob
+eth_ripemd160(Slice const& slice);
+
 }  // namespace ripple
 #endif

@@ -706,6 +706,8 @@ JSS ( TableChain );                  // out:
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
 JSS (PreviousSeq);                  // out:
+JSS (PublicKey);
+JSS (ValidatedSeq);    
 JSS ( NextHash );                   // out: 
 JSS ( log );
 

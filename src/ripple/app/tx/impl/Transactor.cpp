@@ -42,6 +42,9 @@
 #include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/basics/TypeTransform.h>
+#include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/STMap256.h>
 
 
 namespace ripple {
@@ -314,7 +317,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     auto const id = ctx.tx.getAccountID(sfAccount);
 
     std::uint32_t const t_seq = ctx.tx.getSequence();
-    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id,ctx.view);
+    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountCheckSeq(id,ctx.view);
     if (a_seq == 0)
     {
         JLOG(ctx.j.info())
@@ -432,6 +435,55 @@ Transactor::checkAuthority(
     {
         if (sle->getFlags() & flag)
             return tecNO_PERMISSION;
+    }
+
+    return tesSUCCESS;
+}
+
+TER
+Transactor::cleanUpDirOnDeleteAccount(ApplyContext& ctx, AccountID const& acc)
+{
+    auto src = ctx.view().peek(keylet::account(acc));
+
+    if (!src->isFieldPresent(sfStorageExtension))
+        return tesSUCCESS;
+
+    boost::optional<AccountID> authOwner = boost::none;
+    boost::optional<uint64_t> authPage = boost::none;
+
+    auto ter =
+        src->getFieldM256(sfStorageExtension)
+            .forEach([&](uint256 const& k, uint256 const& v) {
+                if (k == NODE_TYPE_CONTRACTKEY)
+                {
+                    uint64_t page = fromUint256(v);
+                    if (!ctx.view().dirRemove(
+                            keylet::contract_index(), page, src->key(), true))
+                    {
+                        return TER{tefBAD_LEDGER};
+                    }
+                }
+                else if (k == NODE_TYPE_AUTHORIZE)
+                {
+                    authPage = fromUint256(v);
+                }
+                else if (k == NODE_TYPE_AUTHORIZER)
+                {
+                    authOwner = AccountID::fromVoid(v.data());
+                }
+
+                return TER{tesSUCCESS};
+            });
+    if (ter != tesSUCCESS)
+        return ter;
+
+    if (authOwner && authPage)
+    {
+        if (!ctx.view().dirRemove(
+                keylet::ownerDir(*authOwner), *authPage, src->key(), true))
+        {
+            return tefBAD_LEDGER;
+        }
     }
 
     return tesSUCCESS;

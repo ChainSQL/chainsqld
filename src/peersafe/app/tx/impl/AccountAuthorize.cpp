@@ -24,6 +24,9 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/st.h>
 #include <peersafe/app/tx/AccountAuthorize.h>
+#include <peersafe/basics/TypeTransform.h>
+#include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -195,47 +198,61 @@ AccountAuthorize::doApply()
         auto admin = ctx_.app.config().ADMIN;
         if (!admin)
         {
-            assert(srcSle->isFieldPresent(sfAuthorize));
-            if (!srcSle->isFieldPresent(sfAuthorize))
+            STMap256 const& mapExtension = srcSle->getFieldM256(sfStorageExtension);
+            assert(mapExtension.has(NODE_TYPE_AUTHORIZER));
+            if (!mapExtension.has(NODE_TYPE_AUTHORIZER))
                 Throw<std::logic_error>("supper admin not configed.");
-            admin = srcSle->getAccountID(sfAuthorize);
+            admin = AccountID::fromVoid(mapExtension.at(NODE_TYPE_AUTHORIZER).data());
         }
 
-        if (!dstSle->isFieldPresent(sfAuthorize) ||
-            dstSle->getAccountID(sfAuthorize) != admin)
+        STMap256& mapExtension = dstSle->peekFieldM256(sfStorageExtension);
+        if (!mapExtension.has(NODE_TYPE_AUTHORIZER) ||
+            AccountID::fromVoid(mapExtension[NODE_TYPE_AUTHORIZER].data()) !=
+                admin)
         {
             auto page = dirAdd(
                 ctx_.view(),
                 keylet::ownerDir(*admin),
                 dstSle->key(),
                 false,
-                describeOwnerDir(*admin),
+                [](std::shared_ptr<SLE> const& sle) {},
                 ctx_.app.journal("View"));
             if (!page)
                 return tecDIR_FULL;
-            if (dstSle->isFieldPresent(sfAuthorize))
+
+            if (mapExtension.has(NODE_TYPE_AUTHORIZER))
                 ctx_.view().dirRemove(
-                    keylet::ownerDir(dstSle->getAccountID(sfAuthorize)),
-                    dstSle->getFieldU64(sfOwnerNode),
+                    keylet::ownerDir(AccountID::fromVoid(
+                        mapExtension[NODE_TYPE_AUTHORIZER].data())),
+                    fromUint256(mapExtension[NODE_TYPE_AUTHORIZE]),
                     dstSle->key(),
                     true);
-            (*dstSle)[sfOwnerNode] = *page;
-            (*dstSle)[sfAuthorize] = *admin;
+            mapExtension[NODE_TYPE_AUTHORIZE] = uint256(*page);
+            mapExtension[NODE_TYPE_AUTHORIZER] = *admin;
         }
     }
     else
     {
-        if (dstSle->isFieldPresent(sfAuthorize))
+        // note: this may make field sfStorageExtension present
+        STMap256& mapExtension = dstSle->peekFieldM256(sfStorageExtension);
+
+        if (mapExtension.has(NODE_TYPE_AUTHORIZER))
         {
-            AccountID const admin = dstSle->getAccountID(sfAuthorize);
-            auto const page = dstSle->getFieldU64(sfOwnerNode);
+            AccountID const admin =
+                AccountID::fromVoid(mapExtension[NODE_TYPE_AUTHORIZER].data());
+            auto const page = fromUint256(mapExtension[NODE_TYPE_AUTHORIZE]);
             if (!ctx_.view().dirRemove(
                     keylet::ownerDir(admin), page, dstSle->key(), true))
             {
                 return tefBAD_LEDGER;
             }
-            dstSle->makeFieldAbsent(sfOwnerNode);
-            dstSle->makeFieldAbsent(sfAuthorize);
+            mapExtension.erase(NODE_TYPE_AUTHORIZER);
+            mapExtension.erase(NODE_TYPE_AUTHORIZE);
+        }
+
+        if (mapExtension.size() <= 0)
+        {
+            dstSle->makeFieldAbsent(sfStorageExtension);
         }
     }
 

@@ -228,11 +228,13 @@ public:
     void DealWithWaitCheckQueue(std::function<bool(sqldata_type const&)>);
 
     bool GetRightRequestRange(TableSyncItem::BaseInfo &stRange);
-    void PushDataToBlockDataQueue(sqldata_type &sqlData);
-    bool TransBlock2Whole(LedgerIndex iSeq, uint256 uHash);
 
-    void PushDataToWholeDataQueue(sqldata_type &sqlData);
-    void PushDataToWholeDataQueue(std::list <sqldata_type>  &aSqlData);
+    void
+    PushDataToWholeDataQueue(sqldata_type& sqlData);
+    void
+    PushDataToBlockDataQueue(sqldata_type& sqlData);
+    bool
+    TransBlock2Whole(LedgerIndex iSeq);
 
     bool IsNameInDBExist(std::string TableName, std::string Owner, bool delCheck, std::string &TableNameInDB);
 

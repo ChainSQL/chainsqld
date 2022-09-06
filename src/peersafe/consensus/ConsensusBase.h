@@ -47,7 +47,10 @@ enum ConsensusMessageType {
     mtACQUIREBLOCK = 5,  // acquire hotstuff block
     mtBLOCKDATA = 6,     // provide hotstuff block
     mtINITANNOUNCE = 7,
-    mtEPOCHCHANGE = 8
+    mtEPOCHCHANGE = 8,
+    mtACQUIRVALIDATIONSET = 9,
+    mtVALIDATIONSETDATA = 10
+
 };
 
 class PeerImp;
@@ -128,6 +131,8 @@ public:
     {
     }
 
+    virtual std::chrono::milliseconds 
+    getConsensusTimeOut() const =0;
     // Rpca specific
     virtual void
     simulate(

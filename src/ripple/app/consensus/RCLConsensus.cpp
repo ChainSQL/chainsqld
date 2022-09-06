@@ -83,6 +83,7 @@ RCLConsensus::RCLConsensus(
                 localTxs);
             consensus_ =
                 std::make_shared<RpcaConsensus>(*adaptor_, clock, journal);
+            app.getValidations().setValSeqExpires((*(RpcaAdaptor*)&*adaptor_).parms().ledgerMAX_CONSENSUS);
             break;
         case ConsensusType::POP:
             adaptor_ = std::make_shared<PopAdaptor>(
@@ -96,6 +97,7 @@ RCLConsensus::RCLConsensus(
                 parms_);
             consensus_ =
                 std::make_shared<PopConsensus>(*adaptor_, clock, journal);
+            app.getValidations().setValSeqExpires((*(PopAdaptor*)&*adaptor_).parms().timeoutCOUNT_ROLLBACK * (*(PopAdaptor*)&*adaptor_).parms().consensusTIMEOUT);
             break;
         case ConsensusType::HOTSTUFF:
             adaptor_ = std::make_shared<HotstuffAdaptor>(
@@ -109,6 +111,7 @@ RCLConsensus::RCLConsensus(
                 parms_);
             consensus_ =
                 std::make_shared<HotstuffConsensus>(*adaptor_, clock, journal);
+            app.getValidations().setValSeqExpires((*(HotstuffAdaptor*)&*adaptor_).parms().timeoutCOUNT_ROLLBACK * (*(HotstuffAdaptor*)&*adaptor_).parms().consensusTIMEOUT);
             break;
         default:
             Throw<std::runtime_error>("bad consensus type");
@@ -261,4 +264,10 @@ RCLConsensus::conMsgTypeToStr(ConsensusMessageType t)
     return "UNKNOWN";
 }
 
+
+std::chrono::milliseconds 
+RCLConsensus::getConsensusTimeOut() const
+{
+    return consensus_->getConsensusTimeOut();
+}
 }  // namespace ripple

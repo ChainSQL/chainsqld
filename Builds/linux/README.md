@@ -7,7 +7,7 @@
 |-----------|-----------------------|
 | gcc | 7.4.0+ |
 | cmake | 3.12+ |
-| boost | 1.70.0+ |
+| boost | 1.73.0+ |
 
 
 ## 安装开发环境依赖
@@ -41,9 +41,9 @@ apt-get install -y gcc g++ wget git cmake pkg-config protobuf-compiler libprotob
 ### Boost安装
 - 进入编译目录
 ```bash
-wget https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.gz
-tar -xzf boost_1_70_0.tar.gz
-cd boost_1_70_0
+wget https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz
+tar -xzf boost_1_73_0.tar.gz
+cd boost_1_73_0
 ./bootstrap.sh
 ./b2 headers
 ./b2 -j<Num Parallel>
@@ -52,7 +52,7 @@ cd boost_1_70_0
 - 在 ~/.bashrc 文件中保存 BOOST_ROOT 环境变量
 
 ```bash
-export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_70_0
+export BOOST_ROOT=/home/dbliu/work/chainSQL/Builds/Ubuntu/boost_1_73_0
 ```
 - 让 BOOST_ROOT 环境变量生效
 ```bash

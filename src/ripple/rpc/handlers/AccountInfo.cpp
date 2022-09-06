@@ -106,11 +106,13 @@ doAccountInfo(RPC::JsonContext& context)
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
 
-        auto seq = std::max(
-                    context.app.getStateManager().getAccountSeq(accountID, sleAccepted),
+        //Bug: non-validator node response tefPAST_SEQ when send tx???
+        if(ledger->open())
+            jvAccepted[jss::Sequence] = std::max(
+                    context.app.getStateManager().getAccountCheckSeq(accountID, sleAccepted),
                     jvAccepted[jss::Sequence].asUInt());
 
-        jvAccepted[jss::Sequence] = seq;
+
         result[jss::account_data] = jvAccepted;
 
         // Return SignerList(s) if that is requested.

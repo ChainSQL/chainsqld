@@ -61,11 +61,11 @@ brew install git cmake pkg-config protobuf openssl mysql-client@5.7
 
 ### Build Boost
 
-Boost 1.70 or later is required.
+Boost 1.73 or later is required.
 
 We want to compile boost with clang/libc++
 
-Download [a release](https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2)
+Download [a release](https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz)
 
 Extract it to a folder, making note of where, open a terminal, then:
 
@@ -87,11 +87,11 @@ If you didn't persistently set the `BOOST_ROOT` environment variable to the
 root of the extracted directory above, then you should set it temporarily.
 
 For example, assuming your username were `Abigail` and you extracted Boost
-1.70.0 in `/Users/Abigail/Downloads/boost_1_70_0`, you would do for any
+1.73.0 in `/Users/Abigail/Downloads/boost_1_73_0`, you would do for any
 shell in which you want to build:
 
 ```
-echo 'export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_70_0' >> ~/.zshrc
+echo 'export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_73_0' >> ~/.zshrc
 ```
 
 You need to specify the mysql-client lib path for `MYSQL_DIR` environment variable.

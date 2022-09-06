@@ -222,7 +222,7 @@ public:
     boost::optional<beast::IP::Endpoint> rpc_ip;
 
     std::unordered_set<uint256, beast::uhash<>> features;
-
+    std::vector<uint256> amendments;
 
 	// schema
 	std::string					 SCHEMA_PATH;

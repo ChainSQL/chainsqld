@@ -121,16 +121,20 @@ public:
     inline bool
     isEmpty() const
     {
+        std::shared_lock read_lock{mutexSet_};
         return mTxsSet.size() == 0;
     }
     inline std::size_t
     getTxCountInPool() const
     {
+        std::shared_lock read_lock{mutexSet_};
         return mTxsSet.size();
     }
     inline std::size_t
     getQueuedTxCountInPool() const
     {
+        std::shared_lock read_lock_set{mutexSet_};
+        std::shared_lock read_lock_avoid{mutexAvoid_};
         return mTxsSet.size() - mAvoidByHash.size();
     }
 

@@ -35,7 +35,7 @@ namespace ripple {
         // for (unsigned i = 1; i <= 4; ++i)
         //     genesisState[AccountID(i)] = Account(0, 1);
         // Setup default precompiled contracts as equal to genesis of Frontier.
-        // precompiled.insert(make_pair(Address(1), PrecompiledOrigin("ecrecover")));
+        precompiled.insert(std::make_pair(AccountID(1), PrecompiledOrigin("ecrecover")));
         precompiled.insert(std::make_pair(AccountID(2), PrecompiledOrigin("sha256")));
         precompiled.insert(std::make_pair(AccountID(3), PrecompiledOrigin("ripemd160")));
         precompiled.insert(std::make_pair(AccountID(4), PrecompiledOrigin("identity")));

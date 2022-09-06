@@ -91,7 +91,8 @@ enum SerializedTypeID {
     STI_PROPOSAL    = 10007,
     STI_VOTE        = 10008,
     STI_INITANNOUNCE= 10009,
-    STI_EPOCHCHANGE = 10010
+    STI_EPOCHCHANGE = 10010,
+    STI_VALIDATIONSET = 10011
 };
 
 // constexpr
@@ -350,6 +351,7 @@ extern SField const sfGeneric;
 extern SField const sfLedgerEntry;
 extern SField const sfTransaction;
 extern SField const sfValidation;
+extern SField const sfValidationSet;
 extern SField const sfMetadata;
 extern SField const sfProposeSet;
 extern SField const sfViewChange;
@@ -429,7 +431,7 @@ extern SF_U32 const sfContractCallCountField;
 extern SF_U32 const sfTxSuccessCountField;
 extern SF_U32 const sfTxFailureCountField;
 extern SF_U32 const sfAccountCountField;
-
+extern SF_U32 const sfValidatedSequence;
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
 extern SF_U64 const sfIndexPrevious;
@@ -589,6 +591,7 @@ extern SF_Vec256 const sfSchemaIndexes;
 
 // map of 256-bit
 extern SF_Map256 const sfStorageOverlay;
+extern SF_Map256 const sfStorageExtension;
 
 // inner object
 // OBJECT/1 is reserved for end of object
@@ -632,7 +635,7 @@ extern SField const sfPeerList;
 extern SField const sfTransactions;
 extern SField const sfWhiteLists;
 extern SField const sfFrozenAccounts;
-
+extern SField const sfValidations;
 
 // certificate
 extern SF_Blob const sfCertificate;

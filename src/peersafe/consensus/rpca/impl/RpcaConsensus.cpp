@@ -406,6 +406,12 @@ RpcaConsensus::getJson(bool full) const
     return ret;
 }
 
+std::chrono::milliseconds 
+RpcaConsensus::getConsensusTimeOut() const
+{
+    return std::chrono::milliseconds{0};
+}
+
 void
 RpcaConsensus::simulate(
     NetClock::time_point const& now,

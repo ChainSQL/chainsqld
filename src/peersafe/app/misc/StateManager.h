@@ -2,6 +2,7 @@
 #define CHAINSQL_APP_MISC_STATE_MANAGER_H_INCLUDED
 
 #include <map>
+#include <set>
 #include <ripple/protocol/AccountID.h>
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STLedgerEntry.h>
@@ -13,7 +14,9 @@ class StateManager
 {
 	struct State
 	{
-		uint32_t sequence;
+		uint32_t signSeq;
+        uint32_t checkSeq;
+        std::set<uint32_t> setFailedSeq;
 	};
 public:
 	StateManager(Schema& app, beast::Journal j)
@@ -22,12 +25,17 @@ public:
 	{
 	}
 
-	uint32_t getAccountSeq(AccountID const& id,ReadView const& view);
-    uint32_t getAccountSeq(AccountID const& id,std::shared_ptr<const SLE> const sle);
+	uint32_t getAndIncSignSeq(AccountID const& id, ReadView const& view);
+    uint32_t getAccountCheckSeq(AccountID const& id, ReadView const& view);
+    uint32_t getAccountCheckSeq(
+        AccountID const& id,
+        std::shared_ptr<const SLE> const sle);
 
 	void resetAccountSeq(AccountID const& id);
 
-	void incrementSeq(AccountID const& id);
+    void onTxCheckSuccess(AccountID const& id);
+
+	void addFailedSeq(AccountID const& id, uint32_t seq);
 
 	void clear();
 
