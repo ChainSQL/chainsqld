@@ -168,7 +168,7 @@ public:
     static bool
     checkChainsqlContractType(TxType txType)
     {
-        return txType == ttCONTRACT;
+        return txType == ttCONTRACT || txType == ttETH_TX;
     }
 
     static std::pair<std::shared_ptr<STTx>, std::string>

@@ -18,6 +18,7 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <peersafe/app/util/Common.h>
+#include <ripple/json/json_reader.h>
 
 namespace ripple {
 
@@ -312,6 +313,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         else
             jvResult["to"] = Json::nullValue;
 
+        jvResult["logs"] = Json::arrayValue;
         if (!txn->getMeta().empty())
         {
             auto meta = std::make_shared<TxMeta>(
@@ -332,6 +334,37 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                 auto gasUsed = (preBalance - finalBalance - fee - value) * std::uint64_t(1e3) / ledger->fees().gas_price ;
                 jvResult["cumulativeGasUsed"] = toHexString(gasUsed);
                 jvResult["gasUsed"] = toHexString(gasUsed);
+                
+                Blob ctrLogData = meta->getContractLogData();
+                if(!ctrLogData.empty())
+                {
+                    std::string ctrLogDataStr = std::string(ctrLogData.begin(), ctrLogData.end());
+                    Json::Value jvLogs;
+                    Json::Reader().parse(ctrLogDataStr, jvLogs);
+                    for(auto it = jvLogs.begin(); it != jvLogs.end(); it++)
+                    {
+                        Json::Value jvLogItem;
+                        jvLogItem["logIndex"] = toHexString(it.index());
+                        jvLogItem["transactionIndex"] = jvResult["transactionIndex"];
+                        jvLogItem["transactionHash"] = jvResult["transactionHash"];
+                        jvLogItem["blockHash"] = jvResult["blockHash"];
+                        jvLogItem["blockNumber"] = jvResult["blockNumber"];
+                        jvLogItem["address"] = jvResult["to"];
+                        jvLogItem["data"] = "0x" + (*it)["contract_data"].asString();
+                        Json::Value jvLogItemTopics;
+                        Json::Value jvLogTopics = (*it)["contract_topics"];
+                        for(auto iter = jvLogTopics.begin(); iter != jvLogTopics.end(); iter++)
+                        {
+                            std::string topicStr = (*iter).asString();
+                            transform(topicStr.begin(),topicStr.end(),topicStr.begin(),::tolower);
+                            Json::Value jvTopic("0x" + topicStr);
+                            jvLogItemTopics.append(jvTopic);
+                        }
+                        jvLogItem["topics"] = jvLogItemTopics;
+                        jvLogItem["type"] = "mined";
+                        jvResult["logs"].append(jvLogItem);
+                    }
+                }
             }
             catch (...)
             {
@@ -348,7 +381,6 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                 accountID, tx->getFieldU32(sfSequence));
             jvResult["contractAddress"] = "0x" + ethAddrChecksum(to_string(uint160(newAddress)));
         }
-        jvResult["logs"] = Json::arrayValue;
         jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
         jvResult["root"] = "0x" + to_string(uint256());
     }
@@ -402,7 +434,9 @@ doEthGetTransactionByHash(RPC::JsonContext& context)
         else
             jvResult["to"] = Json::nullValue;
         jvResult["nonce"] = toHexString(tx->getFieldU32(sfSequence));
-        jvResult["input"] = "0x" + strHex(tx->getFieldVL(sfContractData));
+        std::string txInputStr = strHex(tx->getFieldVL(sfContractData));
+        transform(txInputStr.begin(),txInputStr.end(),txInputStr.begin(),::tolower);
+        jvResult["input"] = "0x" + txInputStr;
         jvResult["gas"] = toHexString(tx->getFieldU32(sfGas));
 
         auto rlpData = tx->getRlpData();

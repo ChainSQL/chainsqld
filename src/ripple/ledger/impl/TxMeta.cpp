@@ -291,7 +291,6 @@ TxMeta::addRaw(Serializer& s, STer result, std::uint32_t index)
     //log
     if (!contractLogData.empty())
     {
-        obj.setFieldVL(sfContractLogs, contractLogData);
         contractLogData.clear();
     }
     obj.add (s);
