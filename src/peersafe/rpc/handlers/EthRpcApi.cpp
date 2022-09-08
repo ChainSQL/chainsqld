@@ -74,8 +74,8 @@ void
 formatLedgerFields(Json::Value& ethRetFormat,Json::Value  const& jvResultTemp)
 {
     // ethRetFormat["baseFeePerGas"] = "0x0";
-    ethRetFormat["difficulty"] = "0x0";
-    ethRetFormat["extraData"] = "0x0";
+    ethRetFormat["difficulty"] = "0x00";
+    ethRetFormat["extraData"] = "0x00";
     ethRetFormat["gasLimit"] = "0x6691b7";
     ethRetFormat["gasUsed"] = "0x5208";
     ethRetFormat["hash"] = "0x" + jvResultTemp["ledger_hash"].asString();
@@ -90,7 +90,7 @@ formatLedgerFields(Json::Value& ethRetFormat,Json::Value  const& jvResultTemp)
     ethRetFormat["size"] = "0x2e1";
     ethRetFormat["stateRoot"] = "0x" + jvResultTemp["ledger"]["account_hash"].asString();
     ethRetFormat["timestamp"] = toHexString(jvResultTemp["ledger"]["close_time"].asUInt64());
-    ethRetFormat["totalDifficulty"] = "0x0";
+    ethRetFormat["totalDifficulty"] = "0x00";
     ethRetFormat["transactions"] = jvResultTemp["ledger"]["transactions"];
     ethRetFormat["transactionsRoot"] =
         "0x" + jvResultTemp["ledger"]["transaction_hash"].asString();
@@ -104,8 +104,16 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     try
     {
         Json::Value chainsqlParams;
-        std::string ledgerIndexStr = context.params["realParams"][0u].asString().substr(2);
-        chainsqlParams[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
+        std::string ledgerIndexStr = context.params["realParams"][0u].asString();
+        if(ledgerIndexStr == "latest")
+        {
+            chainsqlParams[jss::ledger_index] = "validated";
+        }
+        else
+        {
+            ledgerIndexStr = ledgerIndexStr.substr(2);
+            chainsqlParams[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
+        }
         chainsqlParams[jss::transactions] = true;
         chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
         context.params = chainsqlParams;
@@ -125,7 +133,7 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
+        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
@@ -158,7 +166,7 @@ doEthGetBlockByHash(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
+        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
@@ -172,6 +180,12 @@ getAccountData(RPC::JsonContext& context)
         if (!optID)
             return std::make_pair(nullptr, rpcDST_ACT_MALFORMED);
         AccountID accountID = *optID;
+        
+        std::string ledgerIndexStr = context.params["realParams"][1u].asString();
+        if(ledgerIndexStr != "latest")
+        {
+            context.params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr.substr(2), 0, 16);
+        }
         
         std::shared_ptr<ReadView const> ledger;
         auto result = RPC::lookupLedger(ledger, context);
@@ -193,7 +207,7 @@ Json::Value
 doEthGetBalance(RPC::JsonContext& context)
 {
     Json::Value jvResult;
-    jvResult[jss::result] = "0x0";
+    jvResult[jss::result] = "0x00";
     try
     {
         auto accDataRet = getAccountData(context);
@@ -255,19 +269,21 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             std::make_shared<Transaction>(stpTrans, reason2, context.app);
         if (tpTrans->getStatus() != NEW)
         {
-            jvResult[jss::result] = "0x0";
+            jvResult[jss::result] = "0x00";
             return jvResult;
         }
 
         context.netOps.processTransaction(
             tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
 
-        jvResult[jss::result] = "0x" + to_string(stpTrans->getTransactionID());
+        std::string txIdStr = to_string(stpTrans->getTransactionID());
+        transform(txIdStr.begin(),txIdStr.end(),txIdStr.begin(),::tolower);
+        jvResult[jss::result] = "0x" + txIdStr;
     }
     catch (std::exception& e)
     {
         JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
-        jvResult[jss::result] = "0x0";
+        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
@@ -284,7 +300,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         auto txn = context.app.getMasterTransaction().fetch(hash);
         if (!txn)
         {
-            jvResult[jss::status] = "0x0";
+            jvResult[jss::status] = "0x00";
             return jvResult;
         }
         auto tx = txn->getSTransaction();

@@ -167,7 +167,14 @@ doContractCall(RPC::JsonContext& context)
     bool isEthCall = (detailMethod == "eth_call");
     Json::Value checkResult;
     if (isEthCall)
+    {
+        std::string ledgerIndexStr = context.params["realParams"][1u].asString();
+        if(ledgerIndexStr != "latest")
+        {
+            context.params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr.substr(2), 0, 16);
+        }
         checkResult = checkEthJsonFields(ethParams);
+    }
     else
         checkResult = checkJsonFields(jsonParams);
 
