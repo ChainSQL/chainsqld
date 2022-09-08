@@ -110,4 +110,26 @@ formatEthError(int code, error_code_i rpcCode)
     return formatEthError(code, RPC::get_error_info(rpcCode).message.c_str());
 }
 
+void
+ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr)
+{
+    if(ledgerIndexStr == "latest")
+    {
+        params[jss::ledger_index] = "validated";
+    }
+    else if(ledgerIndexStr == "pending")
+    {
+        params[jss::ledger_index] = "closed";
+    }
+    else if(ledgerIndexStr == "earliest")
+    {
+        params[jss::ledger_index] = 1;
+    }
+    else
+    {
+        ledgerIndexStr = ledgerIndexStr.substr(2);
+        params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
+    }
+}
+
 }

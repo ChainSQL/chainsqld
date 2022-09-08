@@ -85,6 +85,8 @@ formatEthError(int code, std::string const& msg);
 Json::Value
 formatEthError(int code, error_code_i rpcCode);
 
+void
+ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
 
 }
 

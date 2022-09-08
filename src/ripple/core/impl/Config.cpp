@@ -631,6 +631,23 @@ Config::loadFromString(std::string const& fileContents)
             GM_SELF_CHECK = *gmSelfCheck;
         }
     }
+    
+    auto genesisSection = section( SECTION_GENESIS );
+    if (!genesisSection.empty ())
+    {
+        if(genesisSection.exists("chainID"))
+        {
+            auto opChainID = genesisSection.get<std::uint64_t>("chainID");
+            if(opChainID)
+                CHAINID = *opChainID;
+            else
+                Throw<std::runtime_error> ("chainID is invalid in genesis section");
+        }
+    }
+    else
+    {
+        Throw<std::runtime_error> ("genesis section is empty in config file");
+    }
 
     {
         std::string dbPath;

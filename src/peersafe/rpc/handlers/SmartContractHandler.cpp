@@ -169,10 +169,7 @@ doContractCall(RPC::JsonContext& context)
     if (isEthCall)
     {
         std::string ledgerIndexStr = context.params["realParams"][1u].asString();
-        if(ledgerIndexStr != "latest")
-        {
-            context.params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr.substr(2), 0, 16);
-        }
+        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
         checkResult = checkEthJsonFields(ethParams);
     }
     else

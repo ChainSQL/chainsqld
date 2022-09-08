@@ -105,15 +105,8 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     {
         Json::Value chainsqlParams;
         std::string ledgerIndexStr = context.params["realParams"][0u].asString();
-        if(ledgerIndexStr == "latest")
-        {
-            chainsqlParams[jss::ledger_index] = "validated";
-        }
-        else
-        {
-            ledgerIndexStr = ledgerIndexStr.substr(2);
-            chainsqlParams[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
-        }
+        ethLdgIndex2chainsql(chainsqlParams, ledgerIndexStr);
+        
         chainsqlParams[jss::transactions] = true;
         chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
         context.params = chainsqlParams;
@@ -182,10 +175,7 @@ getAccountData(RPC::JsonContext& context)
         AccountID accountID = *optID;
         
         std::string ledgerIndexStr = context.params["realParams"][1u].asString();
-        if(ledgerIndexStr != "latest")
-        {
-            context.params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr.substr(2), 0, 16);
-        }
+        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
         
         std::shared_ptr<ReadView const> ledger;
         auto result = RPC::lookupLedger(ledger, context);
