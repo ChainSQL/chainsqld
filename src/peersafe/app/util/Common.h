@@ -30,6 +30,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/multiprecision/cpp_int.hpp>
 #include <eth/vm/utils/keccak.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/app/ledger/OpenLedger.h>
 
 namespace ripple {
 
@@ -87,6 +88,9 @@ formatEthError(int code, error_code_i rpcCode);
 
 void
 ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
+
+uint64_t
+getChainID(std::shared_ptr<OpenView const> const& ledger);
 
 }
 

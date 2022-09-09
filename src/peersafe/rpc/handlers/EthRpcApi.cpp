@@ -28,7 +28,7 @@ doEthChainId(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "0x2ce";
+        jvResult[jss::result] = toHexString(getChainID(context.app.openLedger().current()));
     }
     catch (std::exception&)
     {
@@ -43,8 +43,7 @@ doNetVersion(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "718";
-
+        jvResult[jss::result] = std::to_string(getChainID(context.app.openLedger().current()));
     }
     catch (std::exception&)
     {

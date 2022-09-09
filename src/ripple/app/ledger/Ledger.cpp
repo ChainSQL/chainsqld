@@ -207,6 +207,11 @@ Ledger::Ledger(
     rootSle->setFieldU32(sfSequence, 1);
     rootSle->setFieldAmount(sfBalance, info_.drops);
     rawInsert(rootSle);
+    
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    uint256 hash(config.CHAINID);
+    sleChainID->setFieldH256(sfChainId, hash);
+    rawInsert(sleChainID);
 
     if (!amendments.empty())
     {

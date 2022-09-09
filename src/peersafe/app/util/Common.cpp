@@ -132,4 +132,14 @@ ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr)
     }
 }
 
+uint64_t
+getChainID(std::shared_ptr<OpenView const> const& ledger)
+{
+    std::shared_ptr<SLE const> sleChainID = ledger->read(keylet::chainId());
+    uint256 chainID = sleChainID->getFieldH256(sfChainId);
+    std::string chainIDStr = to_string(chainID).substr(42);
+    uint64_t realChainID = (uint64_t)std::stoll(chainIDStr, 0, 16);
+    return realChainID;
+}
+
 }
