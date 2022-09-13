@@ -142,4 +142,12 @@ getChainID(std::shared_ptr<OpenView const> const& ledger)
     return realChainID;
 }
 
+std::string
+toLowerStr(std::string inStr)
+{
+//    std::string txIdStr = inStr;
+    transform(inStr.begin(),inStr.end(),inStr.begin(),::tolower);
+    return inStr;
+}
+
 }

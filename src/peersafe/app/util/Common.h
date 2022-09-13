@@ -92,6 +92,8 @@ ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
 uint64_t
 getChainID(std::shared_ptr<OpenView const> const& ledger);
 
+std::string
+toLowerStr(std::string inStr);
 }
 
 #endif

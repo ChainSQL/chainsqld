@@ -69,15 +69,76 @@ doEthBlockNumber(RPC::JsonContext& context)
     return jvResult;
 }
 
+Json::Value
+getTxByHash(std::string txHash, Schema& app)
+{
+    Json::Value jvResult;
+    try {
+        auto hash = from_hex_text<uint256>(txHash);
+        auto txn = app.getMasterTransaction().fetch(hash);
+        if (!txn)
+            return formatEthError(defaultEthErrorCode, rpcTXN_NOT_FOUND);
+        
+        auto tx =
+            std::dynamic_pointer_cast<STETx const>(txn->getSTransaction());
+        if (!tx)
+            return formatEthError(defaultEthErrorCode, "Not a eth tx.");
+
+        auto ledger = app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
+        jvResult["hash"] = "0x" + txHash;
+        jvResult["transactionIndex"] = "0x1";
+        if (txn->getLedger() == 0)
+        {
+            jvResult["blockHash"] = Json::nullValue;
+            jvResult["blockNumber"] = Json::nullValue;
+        }
+        else
+        {
+            jvResult["blockHash"] = "0x" + to_string(ledger->info().hash);
+            jvResult["blockNumber"] = toHexString(txn->getLedger());
+        }
+        auto accountID = tx->getAccountID(sfAccount);
+        uint160 fromAccount = uint160(accountID);
+        jvResult["from"] = "0x" + to_string(fromAccount);
+        if (tx->isFieldPresent(sfContractAddress))
+        {
+            uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
+            jvResult["to"] = "0x" + to_string(toAccount);
+        }
+        else
+            jvResult["to"] = Json::nullValue;
+        jvResult["nonce"] = toHexString(tx->getFieldU32(sfSequence));
+        jvResult["input"] = "0x" + toLowerStr(strHex(tx->getFieldVL(sfContractData)));
+        jvResult["gas"] = toHexString(tx->getFieldU32(sfGas));
+
+        auto rlpData = tx->getRlpData();
+        RLP const rlp(bytesConstRef(rlpData.data(), rlpData.size()));
+        auto gasPrice = rlp[1].toInt<u256>();
+        auto value = rlp[4].toInt<u256>();
+        auto v = rlp[6].toInt<u256>();
+        auto r = rlp[7].toInt<u256>();
+        auto s = rlp[8].toInt<u256>();
+        jvResult["value"] = toHexString(value);
+        jvResult["gasPrice"] = toHexString(gasPrice);
+        jvResult["v"] = toHexString(v);
+        jvResult["r"] = toHexString(r);
+        jvResult["s"] = toHexString(s);
+    } catch (std::exception& ex) {
+        return formatEthError(defaultEthErrorCode, ex.what());
+    }
+    
+    return jvResult;
+}
+
 void
-formatLedgerFields(Json::Value& ethRetFormat,Json::Value  const& jvResultTemp)
+formatLedgerFields(Json::Value& ethRetFormat, Json::Value  const& jvResultTemp, bool isExpend, Schema& app)
 {
     // ethRetFormat["baseFeePerGas"] = "0x0";
     ethRetFormat["difficulty"] = "0x00";
     ethRetFormat["extraData"] = "0x00";
     ethRetFormat["gasLimit"] = "0x6691b7";
     ethRetFormat["gasUsed"] = "0x5208";
-    ethRetFormat["hash"] = "0x" + jvResultTemp["ledger_hash"].asString();
+    ethRetFormat["hash"] = "0x" + toLowerStr(jvResultTemp["ledger_hash"].asString());
     ethRetFormat["logsBloom"] = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
     ethRetFormat["miner"] = "0x0000000000000000000000000000000000000000";
     ethRetFormat["mixHash"] = "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -90,10 +151,39 @@ formatLedgerFields(Json::Value& ethRetFormat,Json::Value  const& jvResultTemp)
     ethRetFormat["stateRoot"] = "0x" + jvResultTemp["ledger"]["account_hash"].asString();
     ethRetFormat["timestamp"] = toHexString(jvResultTemp["ledger"]["close_time"].asUInt64());
     ethRetFormat["totalDifficulty"] = "0x00";
-    ethRetFormat["transactions"] = jvResultTemp["ledger"]["transactions"];
+    Json::Value jvTxArray = jvResultTemp["ledger"]["transactions"];
+    for(auto it = jvTxArray.begin(); it != jvTxArray.end(); it++)
+    {
+        Json::Value jvTxItem;
+        if(isExpend)
+        {
+            jvTxItem = getTxByHash((*it).asString(), app);
+        }
+        else
+        {
+            jvTxItem = "0x" + toLowerStr((*it).asString());
+        }
+        ethRetFormat["transactions"].append(jvTxItem);
+    }
     ethRetFormat["transactionsRoot"] =
         "0x" + jvResultTemp["ledger"]["transaction_hash"].asString();
     ethRetFormat["uncles"] = Json::arrayValue;
+}
+
+Json::Value
+getBlock(RPC::JsonContext& context, bool isExpand)
+{
+    Json::Value jvResultTemp;
+    RPC::LedgerHandler lgHandler(context);
+    auto status = lgHandler.check();
+    if (status)
+        status.inject(jvResultTemp);
+    else
+        lgHandler.writeResult(jvResultTemp);
+    
+    Json::Value ethRetFormat;
+    formatLedgerFields(ethRetFormat, jvResultTemp, isExpand, context.app);
+    return ethRetFormat;
 }
 
 Json::Value
@@ -107,20 +197,10 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
         ethLdgIndex2chainsql(chainsqlParams, ledgerIndexStr);
         
         chainsqlParams[jss::transactions] = true;
-        chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
+        bool isExpand = context.params["realParams"][1u].asBool();
         context.params = chainsqlParams;
         
-        Json::Value jvResultTemp;
-        RPC::LedgerHandler lgHandler(context);
-        auto status = lgHandler.check();
-        if (status)
-            status.inject(jvResultTemp);
-        else
-            lgHandler.writeResult(jvResultTemp);
-        
-        Json::Value ethRetFormat;
-        formatLedgerFields(ethRetFormat, jvResultTemp);
-        jvResult[jss::result] = ethRetFormat;
+        jvResult[jss::result] = getBlock(context, isExpand);
         
     }
     catch (std::exception&)
@@ -140,20 +220,10 @@ doEthGetBlockByHash(RPC::JsonContext& context)
         std::string ledgerHashStr = context.params["realParams"][0u].asString().substr(2);
         chainsqlParams[jss::ledger_hash] = ledgerHashStr;
         chainsqlParams[jss::transactions] = true;
-        chainsqlParams[jss::expand] = context.params["realParams"][1u].asBool();
+        bool isExpand = context.params["realParams"][1u].asBool();
         context.params = chainsqlParams;
         
-        Json::Value jvResultTemp;
-        RPC::LedgerHandler lgHandler(context);
-        auto status = lgHandler.check();
-        if (status)
-            status.inject(jvResultTemp);
-        else
-            lgHandler.writeResult(jvResultTemp);
-        
-        Json::Value ethRetFormat;
-        formatLedgerFields(ethRetFormat, jvResultTemp);
-        jvResult[jss::result] = ethRetFormat;
+        jvResult[jss::result] = getBlock(context, isExpand);
         
     }
     catch (std::exception&)
@@ -266,8 +336,7 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
 
         std::string txIdStr = to_string(stpTrans->getTransactionID());
-        transform(txIdStr.begin(),txIdStr.end(),txIdStr.begin(),::tolower);
-        jvResult[jss::result] = "0x" + txIdStr;
+        jvResult[jss::result] = "0x" + toLowerStr(txIdStr);
     }
     catch (std::exception& e)
     {
@@ -360,9 +429,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                         Json::Value jvLogTopics = (*it)["contract_topics"];
                         for(auto iter = jvLogTopics.begin(); iter != jvLogTopics.end(); iter++)
                         {
-                            std::string topicStr = (*iter).asString();
-                            transform(topicStr.begin(),topicStr.end(),topicStr.begin(),::tolower);
-                            Json::Value jvTopic("0x" + topicStr);
+                            Json::Value jvTopic("0x" + toLowerStr((*iter).asString()));
                             jvLogItemTopics.append(jvTopic);
                         }
                         jvLogItem["topics"] = jvLogItemTopics;
@@ -400,68 +467,18 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
 Json::Value
 doEthGetTransactionByHash(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
+    Json::Value ret;
     try
     {
         std::string txHash =
             context.params["realParams"][0u].asString().substr(2);
-        auto hash = from_hex_text<uint256>(txHash);
-        auto txn = context.app.getMasterTransaction().fetch(hash);
-        if (!txn)
-            return formatEthError(defaultEthErrorCode, rpcTXN_NOT_FOUND);
-        auto tx =
-            std::dynamic_pointer_cast<STETx const>(txn->getSTransaction());
-        if (!tx)
-            return formatEthError(defaultEthErrorCode, "Not a eth tx.");
-
-        auto ledger =
-            context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
-        jvResult["hash"] = "0x" + txHash;
-        jvResult["transactionIndex"] = "0x1";
-        if (txn->getLedger() == 0)
-        {
-            jvResult["blockHash"] = Json::nullValue;
-            jvResult["blockNumber"] = Json::nullValue;
-        }
-        else
-        {
-            jvResult["blockHash"] = "0x" + to_string(ledger->info().hash);
-            jvResult["blockNumber"] = toHexString(txn->getLedger());
-        }
-        auto accountID = tx->getAccountID(sfAccount);
-        uint160 fromAccount = uint160(accountID);
-        jvResult["from"] = "0x" + to_string(fromAccount);
-        if (tx->isFieldPresent(sfContractAddress))
-        {
-            uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
-            jvResult["to"] = "0x" + to_string(toAccount);
-        }
-        else
-            jvResult["to"] = Json::nullValue;
-        jvResult["nonce"] = toHexString(tx->getFieldU32(sfSequence));
-        std::string txInputStr = strHex(tx->getFieldVL(sfContractData));
-        transform(txInputStr.begin(),txInputStr.end(),txInputStr.begin(),::tolower);
-        jvResult["input"] = "0x" + txInputStr;
-        jvResult["gas"] = toHexString(tx->getFieldU32(sfGas));
-
-        auto rlpData = tx->getRlpData();
-        RLP const rlp(bytesConstRef(rlpData.data(), rlpData.size()));
-        auto gasPrice = rlp[1].toInt<u256>();
-        auto value = rlp[4].toInt<u256>();
-        auto v = rlp[6].toInt<u256>();
-        auto r = rlp[7].toInt<u256>();
-        auto s = rlp[8].toInt<u256>();
-        jvResult["value"] = toHexString(value);
-        jvResult["gasPrice"] = toHexString(gasPrice);
-        jvResult["v"] = toHexString(v);
-        jvResult["r"] = toHexString(r);
-        jvResult["s"] = toHexString(s);
+        ret[jss::result] = getTxByHash(txHash, context.app);
     }
     catch (std::exception&)
     {
+        ret[jss::result] = Json::objectValue;
     }
-    Json::Value ret;
-    ret[jss::result] = jvResult;
+    
     return ret;
 }
 
