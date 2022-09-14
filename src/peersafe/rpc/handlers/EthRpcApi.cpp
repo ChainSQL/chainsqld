@@ -151,6 +151,7 @@ formatLedgerFields(Json::Value& ethRetFormat, Json::Value  const& jvResultTemp, 
     ethRetFormat["stateRoot"] = "0x" + jvResultTemp["ledger"]["account_hash"].asString();
     ethRetFormat["timestamp"] = toHexString(jvResultTemp["ledger"]["close_time"].asUInt64());
     ethRetFormat["totalDifficulty"] = "0x00";
+    ethRetFormat["transactions"] = Json::arrayValue;
     Json::Value jvTxArray = jvResultTemp["ledger"]["transactions"];
     for(auto it = jvTxArray.begin(); it != jvTxArray.end(); it++)
     {
@@ -163,7 +164,8 @@ formatLedgerFields(Json::Value& ethRetFormat, Json::Value  const& jvResultTemp, 
         {
             jvTxItem = "0x" + toLowerStr((*it).asString());
         }
-        ethRetFormat["transactions"].append(jvTxItem);
+        if(!jvTxItem.isMember(jss::error))
+            ethRetFormat["transactions"].append(jvTxItem);
     }
     ethRetFormat["transactionsRoot"] =
         "0x" + jvResultTemp["ledger"]["transaction_hash"].asString();
