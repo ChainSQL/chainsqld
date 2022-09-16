@@ -386,6 +386,11 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
             count++;
         }
     }
+    
+//    uint256 hash;
+//    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+//    sleChainID->setFieldH256(sfChainId, hash);
+//    rawInsert(sleChainID);
 
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);

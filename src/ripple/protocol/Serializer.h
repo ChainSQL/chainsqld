@@ -37,6 +37,8 @@
 
 namespace ripple {
 
+const int ethTxPrefix = 0;
+
 class Serializer
 {
 private:
