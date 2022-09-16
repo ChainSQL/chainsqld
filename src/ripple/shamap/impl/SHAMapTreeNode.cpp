@@ -407,8 +407,16 @@ SHAMapTreeNode::updateHash(CommonKey::HashType hashType)
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        nh =
-            sha512Half(HashPrefix::transactionID, makeSlice(mItem->peekData()));
+        auto dataSlice = makeSlice(mItem->peekData());
+        if((dataSlice.begin())[0] == 0)
+        {
+            dataSlice.remove_prefix(1);
+            nh = sha512Half<CommonKey::sha3>(dataSlice);
+        }
+        else
+        {
+            nh = sha512Half(HashPrefix::transactionID, dataSlice);
+        }
     }
     else if (mType == tnACCOUNT_STATE)
     {

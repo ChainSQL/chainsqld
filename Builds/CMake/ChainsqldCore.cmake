@@ -713,6 +713,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/crypto/impl/ECIES.cpp
   src/peersafe/crypto/impl/X509.cpp
   src/peersafe/crypto/impl/LibSnark.cpp
+  src/peersafe/crypto/impl/sha3.cpp
   src/peersafe/gmencrypt/impl/GmEncrypt.cpp
   src/peersafe/gmencrypt/impl/GmEncryptObj.cpp
   src/peersafe/gmencrypt/impl/GmCheck.cpp
