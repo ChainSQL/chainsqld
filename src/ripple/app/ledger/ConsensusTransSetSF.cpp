@@ -89,11 +89,23 @@ ConsensusTransSetSF::getNode(SHAMapHash const& nodeHash) const
     {
         // this is a transaction, and we have it
         JLOG(j_.trace()) << "Node in our acquiring TX set is TXN we have";
-        Serializer s;
-        s.add32(HashPrefix::transactionID);
-        txn->getSTransaction()->add(s);
-        assert(sha512Half(s.slice()) == nodeHash.as_uint256());
-        nodeData = s.peekData();
+        Serializer sTmp;
+        txn->getSTransaction()->add(sTmp);
+        auto sTmpSlice = sTmp.slice();
+        if((sTmpSlice.begin())[0] == 0)
+        {
+            sTmpSlice.remove_prefix(1);
+            assert(sha512Half<CommonKey::sha3>(sTmpSlice) == nodeHash.as_uint256());
+            nodeData = sTmp.peekData();
+        }
+        else
+        {
+            Serializer s;
+            s.add32(HashPrefix::transactionID);
+            txn->getSTransaction()->add(s);
+            assert(sha512Half(s.slice()) == nodeHash.as_uint256());
+            nodeData = s.peekData();
+        }
         return nodeData;
     }
 
