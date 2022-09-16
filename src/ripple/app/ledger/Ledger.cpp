@@ -342,7 +342,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, Family& f)
+Ledger::Ledger(Ledger const& ledger, Family& f, uint256 schemaID)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -387,10 +387,9 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
         }
     }
     
-//    uint256 hash;
-//    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
-//    sleChainID->setFieldH256(sfChainId, hash);
-//    rawInsert(sleChainID);
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    sleChainID->setFieldH256(sfChainId, schemaID);
+    rawInsert(sleChainID);
 
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);

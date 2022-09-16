@@ -1951,7 +1951,7 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         return false;
     }
 
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_);
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, schema_params_.schemaId());
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));
