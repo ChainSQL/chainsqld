@@ -20,10 +20,8 @@ public:
         store_ = nullptr;
         locked_ = false;
         conn_ = std::make_shared<TxStoreDBConn>(app.config());
-        if (conn_ == nullptr)
-            return;
         store_ = std::make_shared<TxStore>(
-            conn_->GetDBConn(), app.config(), app.journal("RPCHandler"));
+            conn_->GetDBConn(), app.config(), app.journal("TxStore"));
         last_access_ = stopwatch().now();
     }
     
@@ -61,6 +59,27 @@ private:
         return stopwatch().now() > whenExpire;
     }
 
+    bool
+    testConnection()
+    {
+        if (!conn_ || !conn_->GetDBConn())
+            return false;
+
+        try
+        {
+            LockedSociSession sql_session = conn_->GetDBConn()->checkoutDb();
+            std::string sSql = "SELECT * FROM SyncTableState LIMIT 1";
+            boost::optional<std::string> r;
+            soci::statement st = (sql_session->prepare << sSql, soci::into(r));
+            st.execute(true);
+            return true;
+        }
+        catch (std::exception const& /* e */)
+        {
+            return false;
+        }
+    }
+
     clock_type::time_point last_access_;
     bool locked_;
 };
@@ -73,24 +92,37 @@ public:
     }
 
     std::shared_ptr<ConnectionUnit>
-    getAvailable()
+    getAvailable(bool bTestConnection = false)
     {
         std::lock_guard lock(mtx_);
-        for (auto unit : vecPool_)
+        auto iter = vecPool_.begin();
+        while (iter != vecPool_.end())
         {
+            auto unit = *iter;
             if (!unit->islocked())
             {
+                if (bTestConnection && !unit->testConnection())
+                {
+                    iter = vecPool_.erase(iter);
+                    continue;
+                }     
                 unit->lock();
                 unit->touch();
                 return unit;
             }  
+            iter++;
         }
+
         auto unit = std::make_shared<ConnectionUnit>(app_);
-        unit->lock();
-        if (count () < MAX_CONNECTION_IN_POOL)
+        if(unit->conn_ != nullptr)
         {
-            vecPool_.push_back(unit);
+            unit->lock();
+            if (count() < MAX_CONNECTION_IN_POOL)
+            {
+                vecPool_.push_back(unit);
+            }
         }
+
         return unit;
     }
     
@@ -99,6 +131,15 @@ public:
         if (conn && conn->islocked()) {
             conn->unlock();
         }
+    }
+
+    void
+    removeConnection(const std::shared_ptr<ConnectionUnit>& conn)
+    {
+        std::lock_guard lock(mtx_);
+        auto it = std::find(vecPool_.begin(), vecPool_.end(), conn);
+        if (it != vecPool_.end())
+            vecPool_.erase(it);
     }
 
     void

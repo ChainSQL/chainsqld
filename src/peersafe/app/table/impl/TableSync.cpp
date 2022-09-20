@@ -49,8 +49,7 @@ TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
 	, checkSkipNode_("SkipNode", 65536, std::chrono::seconds{ 450 }, stopwatch(),
         app_.journal("TaggedCache"))
 {
-    if (app.getTxStoreDBConn().GetDBConn() == nullptr || 
-		app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+    if (!app.checkGlobalConnection())
         bIsHaveSync_ = false;
     else
         bIsHaveSync_ = true;
@@ -905,7 +904,7 @@ void TableSync::CreateTableItems()
         AccountID accountID;
         try
         {
-            if (auto pOwner = ripple::parseBase58<AccountID>(trim_whitespace(owner));
+            if (auto pOwner = ripple::parseBase58<AccountID>(owner);
                 pOwner)
             {
                 accountID = *pOwner;
@@ -1310,6 +1309,9 @@ void TableSync::TableSyncThread()
 						std::string localNameInDB;
 						if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, localNameInDB))
 						{
+                            JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT IsNameInDBExist got nameInDB="
+                                                        << localNameInDB
+                                                        << " set deleted = 1 and delete table.";
 							pItem->DoUpdateSyncDB(to_string(stItem.accountID), localNameInDB, true, PreviousCommit);
 							pItem->DeleteTable(localNameInDB);
 						}
@@ -1348,9 +1350,15 @@ void TableSync::TableSyncThread()
 				}
 				else if(!stItem.isDeleted)
 				{
+                    JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT table "
+                                        << stItem.sTableName
+                                        << " not found in ledger:"
+                                        << app_.getLedgerMaster().getValidLedgerIndex();
 					std::string sNameInDB;
 					if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 					{
+                        JLOG(journal_.warn()) << "TableSyncThread SYNC_INIT found real nameInDB " << sNameInDB 
+                            << " in db for table:"<< stItem.sTableName;
 						if (stItem.isAutoSync)
 						{
 							//will drop on the next ledger
@@ -1861,7 +1869,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         bool bDBTableExist = false;
                         if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end())
                         {
-                            bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+                            bDBTableExist = TableSyncUtil::IsTableExist(app_, uTxDBName);                                
                             mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
                         }
                         else
@@ -1872,10 +1880,17 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         {
                             if (!bDBTableExist)
                             {
+                                auto dbErr = std::string(jss::db_noTableExistInDB);
+                                auto msg = "";
+                                if (TableSyncUtil::IsMysqlConnectionErr(app_.getTxStoreDBConn().GetDBConn()))
+                                {
+                                    dbErr = std::string(jss::db_lostConnection);
+                                    msg = "Database connection lost.";
+                                }
                                 app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
-                                    std::make_tuple(std::string(jss::db_noTableExistInDB), "", ""), false);
+                                    std::make_tuple(dbErr, "", msg), false);
                                 break;
-                            }
+                            }                     
 
                             bool bDBTableSync = false;
                             if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())

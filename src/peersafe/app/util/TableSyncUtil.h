@@ -21,13 +21,17 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <ripple/ledger/ReadView.h>
 #include <peersafe/protocol/STEntry.h>
+#include <ripple/core/DatabaseCon.h>
 
 namespace ripple {
 	//table sync tool class
+	class Schema;
 	class TableSyncUtil {
 	public:
 		static uint256 GetChainId(const ReadView * pView);
 		static std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, std::string sTableName, bool bStrictEqual);
+		static bool IsMysqlConnectionErr(DatabaseCon* conn);
+        static bool IsTableExist(Schema& app, uint160 nameInDB);
 	};
 
 	struct SyncParam

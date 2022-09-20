@@ -38,8 +38,7 @@ namespace ripple {
         , journal_(journal)
         , cfg_(cfg)
     {
-		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		if (!app.checkGlobalConnection())
 			m_IsHaveStorage = false;
 		else
 			m_IsHaveStorage = true;

@@ -242,6 +242,8 @@ public:
 
     bool UpdateStateDB(const std::string & owner, const std::string & tablename, const bool &isAutoSync);
 
+    bool UpdateSyncDB(bool bLastOne, uint256 const& updateHash,const protocol::TMTableData& tableData);
+    bool UpdateSyncDB(const protocol::TMTableData& tableData,uint256 const& updateHash);
     //bool DoUpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &PreviousCommit);
 
     bool DoUpdateSyncDB(const std::string &Owner, const std::string &TableName, const std::string &TxnLedgerHash, const std::string &TxnLedgerSeq, const std::string &LedgerHash, const std::string &LedgerSeq, const std::string &TxHash, const std::string &cond, const std::string &PreviousCommit);
@@ -272,6 +274,9 @@ protected:
     std::string GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedgerHash, LedgerIndex iCurLedger, std::string sCurLedgerHash, bool bStop, std::string sMsg);
 
     void ReleaseConnectionUnit();
+    void RemoveConnectionUnit();
+    void OnConnectionError(bool bSleep);
+
 private:
     bool GetIsChange();
     void PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData);
@@ -289,9 +294,19 @@ private:
             std::uint32_t seq,
             std::uint32_t closeTime);
 
-	void InsertPressData(const STTx& tx, uint32_t ledgerSeq,uint32_t ledgerTime);
+    std::vector<std::vector<std::shared_ptr<STTx>>>
+    fetchLedgerTxSlices(const protocol::TMTableData& tableData);
+
 	virtual bool DealWithEveryLedgerData(const std::vector<protocol::TMTableData> &aData);
-    bool WaitChildThread(std::condition_variable &cv, bool &bCheck, bool bForce);
+    bool WaitChildThread(std::condition_variable &cv, bool const& bCheck, bool bForce);
+
+    std::pair<bool, bool>
+    DealWithEveryTx(
+        STTx& tx, 
+        std::vector<protocol::TMTableData>::const_iterator iter,
+        std::map<uint256, std::tuple<STTx, int, std::pair<bool, std::string>>>&
+            tmpPubMap);
+
 public:
     LedgerIndex                                                  u32SeqLedger_;  //seq of ledger, last syned ledger seq 
     LedgerIndex                                                  uTxSeq_;
@@ -334,7 +349,7 @@ private:
     std::list <sqldata_type>                                     aWaitCheckData_;
     std::mutex                                                   mutexWaitCheckQueue_;
     
-    bool                                                         bOperateSQL_;
+    std::atomic_bool                                             bOperateSQL_;
 
     bool                                                         bGetLocalData_;
 
