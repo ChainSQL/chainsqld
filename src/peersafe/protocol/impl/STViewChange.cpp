@@ -35,7 +35,7 @@ STViewChange::STViewChange(
     prevSeq_ = getFieldU32(sfSequence);
     prevHash_ = getFieldH256(sfParentHash);
     toView_ = getFieldU64(sfView);
-    if(getFieldIndex(sfValidatedSequence) != -1);
+    if(getFieldIndex(sfValidatedSequence) != -1)
         validatedSeq_ = getFieldU32(sfValidatedSequence);
 }
 
@@ -55,7 +55,7 @@ STViewChange::STViewChange(
 {
     // This is our own public key and it should always be valid.
     if (!publicKeyType(nodePublic))
-        LogicError("Invalid proposeset public key");
+        LogicError("Invalid proposal-set public key");
 
     setFieldU32(sfSequence, prevSeq);
     setFieldH256(sfParentHash, prevHash);

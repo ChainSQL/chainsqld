@@ -1945,7 +1945,7 @@ bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> co
 	auto insertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
 	if (isPubErrInfo && !insertRes.first)
 	{
-		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
+            JLOG(journal_.error()) << insertRes.second;
 
 		std::tuple<std::string, std::string, std::string> result = std::make_tuple(std::string(jss::db_error), "", insertRes.second);
 		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);
