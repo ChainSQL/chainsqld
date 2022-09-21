@@ -610,18 +610,8 @@ Json::Value TxPrepareBase::prepareForCreate()
     }
     else
     {
-        //boost::optional<PublicKey> oPublic_key;
-//        auto oPublic_key = ripple::getPublicKey(secret_);
         auto oSecKey = ripple::getSecretKey(secret_);
         public_key = ripple::derivePublicKey(oSecKey->keyTypeInt_, *oSecKey);
-//        if (!oPublic_key)
-//        {
-//			return RPC::make_error(rpcINVALID_PARAMS, "Secret error,please checkout!");
-//        }
-//        else
-//        {
-//            public_key = *oPublic_key;
-//        }
     }
 
     std::string raw = tx_json_[jss::Raw].toStyledString();

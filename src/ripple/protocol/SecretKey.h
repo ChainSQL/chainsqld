@@ -185,7 +185,6 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key);
 
 boost::optional<SecretKey> getSecretKey(const std::string& secret);
-boost::optional<PublicKey> getPublicKey(const std::string& secret);
 
 /** Encode a Secret in RFC1751 format */
 std::string
