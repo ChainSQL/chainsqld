@@ -121,8 +121,7 @@ walletPropose(Json::Value const& params)
                 {
                     return rpcError(rpcINVALID_PARAMS);
                 }
-                SecretKey secKey(Slice(priKeyStrDe58.c_str(), priKeyStrDe58.size()));
-                secKey.keyTypeInt_ = KeyType::gmalg;
+                SecretKey secKey(Slice(priKeyStrDe58.c_str(), priKeyStrDe58.size()), keyType);
                 auto pubKey = derivePublicKey(keyType, secKey);
                 pubKeyOut = pubKey;
                 obj[jss::master_seed] = gmPriStr;

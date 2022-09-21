@@ -603,9 +603,8 @@ TableSync::ParseSecret(std::string secret, std::string user)
             // SecretKey tempSecKey(Slice(nullptr, 0));
             char* temp4Secret = new char[32];
             memset(temp4Secret, index, 32);
-            SecretKey tempSecKey(Slice(temp4Secret, 32));
+            SecretKey tempSecKey(Slice(temp4Secret, 32), KeyType::gmInCard);
             tempSecKey.encrytCardIndex_ = index;
-            tempSecKey.keyTypeInt_ = KeyType::gmInCard;
             hEObj->getPrivateKeyRight(index);
             secret_key = tempSecKey;
             delete[] temp4Secret;
@@ -618,8 +617,7 @@ TableSync::ParseSecret(std::string secret, std::string user)
                 return std::make_tuple(beast::zero, SecretKey(), false);
             
             SecretKey tempSecKey(
-                Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-            tempSecKey.keyTypeInt_ = KeyType::gmalg;
+                Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
             secret_key = tempSecKey;
             public_key = derivePublicKey(KeyType::gmalg, tempSecKey);
             userAccountId = calcAccountID(public_key);

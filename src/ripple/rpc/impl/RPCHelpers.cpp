@@ -796,10 +796,8 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
                 rpcBAD_SEED, "Specified secret derive key-pair failed.");
             return {};
         }
-		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
+		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
         auto publicKey = derivePublicKey(KeyType::gmalg, secretkeyTemp);
-        //std::string pubHex = strHex(publicKey.begin(), publicKey.end());
 
         return std::make_pair(publicKey, secretkeyTemp);
     }

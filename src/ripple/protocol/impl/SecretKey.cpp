@@ -40,16 +40,18 @@ SecretKey::~SecretKey()
     secure_erase(buf_, sizeof(buf_));
 }
 
-SecretKey::SecretKey(std::array<std::uint8_t, 32> const& key)
+SecretKey::SecretKey(std::array<std::uint8_t, 32> const& key, KeyType keyT)
 {
     std::memcpy(buf_, key.data(), key.size());
+    keyTypeInt_ = keyT;
 }
 
-SecretKey::SecretKey(Slice const& slice)
+SecretKey::SecretKey(Slice const& slice, KeyType keyT)
 {
     if (slice.size() != sizeof(buf_))
         LogicError("SecretKey::SecretKey: invalid size");
     std::memcpy(buf_, slice.data(), sizeof(buf_));
+    keyTypeInt_ = keyT;
 }
 
 std::string
@@ -253,7 +255,7 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
     if ('p' == secret[0])
     {
         std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
-        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
     }
     else if('x' == secret[0])
     {
@@ -409,10 +411,8 @@ generateKeyPair(KeyType type, Seed const& seed)
             bool isRoot = strRootSeed != strSeed ? false : true;
             hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey, isRoot);
 
-            SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-            secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
             return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
-                secretkeyTemp);
+                                  SecretKey(Slice(tempPrivatekey.data(), tempPrivatekey.size()), KeyType::gmalg));
         }
         
     }
@@ -434,10 +434,8 @@ randomKeyPair(KeyType type)
         std::vector<unsigned char> tempPrivatekey;
         hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 
-		SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
         return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
-			secretkeyTemp);
+                              SecretKey(Slice(tempPrivatekey.data(), tempPrivatekey.size()), type));
     }
     else
     {
