@@ -49,8 +49,8 @@ public:
 
     ~SecretKey();
 
-    SecretKey(std::array<std::uint8_t, 32> const& data);
-    SecretKey(Slice const& slice);
+    SecretKey(std::array<std::uint8_t, 32> const& data, KeyType keyT = KeyType::secp256k1);
+    SecretKey(Slice const& slice, KeyType keyT = KeyType::secp256k1);
 
     std::uint8_t const*
     data() const
