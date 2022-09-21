@@ -275,29 +275,6 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
 	}
 }
 
-boost::optional<PublicKey> getPublicKey(const std::string& secret)
-{
-    //tx_secret is acturally masterseed
-    boost::optional<PublicKey> oPublic_key;
-    if (secret.size() > 0)
-    {
-        KeyType keyType = KeyType::secp256k1;
-        // if (GmEncryptObj::getInstance())
-        if ('p' == secret[0])
-        {
-            keyType = KeyType::gmalg;
-            Seed seed = randomSeed();
-            oPublic_key = generateKeyPair(keyType, seed).first;
-        }
-        else if ('x' == secret[0])
-        {
-            auto seed = parseBase58<Seed>(secret);
-            oPublic_key = generateKeyPair(keyType, *seed).first;
-        }
-    }
-    return oPublic_key;
-}
-
 SecretKey
 randomSecretKey()
 {
