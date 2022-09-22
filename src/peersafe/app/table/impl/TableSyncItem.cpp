@@ -701,8 +701,8 @@ TableSyncItem::UpdateSyncDB(
     const protocol::TMTableData& tableData,
     uint256 const& updateHash)
 {
-    std::string LedgerHash = tableData.ledgerhash();
-    std::string LedgerCheckHash = tableData.ledgercheckhash();
+    std::string LedgerHash = to_string(uint256(tableData.ledgerhash()));
+    std::string LedgerCheckHash = to_string(uint256(tableData.ledgercheckhash()));
     std::string PreviousCommit;
     std::uint32_t closeTime = tableData.closetime();
     std::uint32_t seq = tableData.ledgerseq();
