@@ -25,6 +25,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/st.h>
+#include <ripple/core/ConfigSections.h>
 
 namespace ripple {
 
@@ -314,13 +315,38 @@ FeeVote::Setup
 setup_FeeVote(Config const& config)
 {
     FeeVote::Setup setup;
-        
-    setup.reference_fee = config.FEE_DEFAULT;
+
     setup.reference_fee_units = config.TRANSACTION_FEE_BASE;
-    setup.account_reserve = config.FEE_ACCOUNT_RESERVE;
-    setup.owner_reserve = config.FEE_OWNER_RESERVE;
-    setup.drops_per_byte = config.DROPS_PER_BYTE;
-    setup.gas_price = config.GAS_PRICE;
+    auto section = config.section(ConfigSection::voting());
+    {
+        std::uint64_t temp;
+        if (set(temp, "reference_fee", section) &&
+            temp <= std::numeric_limits<ZXCAmount::value_type>::max())
+            setup.reference_fee = temp;
+    }
+    {
+        std::uint32_t temp;
+        if (set(temp, "account_reserve", section))
+            setup.account_reserve = temp;
+        if (set(temp, "owner_reserve", section))
+            setup.owner_reserve = temp;
+    }
+    {
+        std::uint32_t temp;
+        if (set(temp, "drops_per_byte", section))
+            setup.drops_per_byte = temp;
+
+        // drops_per_byte range in [0,10^6]
+        if (setup.drops_per_byte > 1000000)
+        {
+            setup.drops_per_byte = (1000000 / 1024);
+        }
+    }
+    {
+        std::uint64_t temp;
+        if (set(temp, "gas_price", section))
+            setup.gas_price = temp;
+    }
     return setup;
 }
 

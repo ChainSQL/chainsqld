@@ -735,38 +735,6 @@ Config::loadFromString(std::string const& fileContents)
     if (getSingleSection(secConfig, SECTION_NETWORK_QUORUM, strTemp, j_))
         NETWORK_QUORUM = beast::lexicalCastThrow<std::size_t>(strTemp);
 
-    auto votingSection = section( ConfigSection::voting() );
-    if (!votingSection.empty())
-    {
-        if (votingSection.exists(SECTION_FEE_ACCOUNT_RESERVE))
-        {
-            FEE_ACCOUNT_RESERVE = *votingSection.get<std::uint64_t>(SECTION_FEE_ACCOUNT_RESERVE);
-        }
-        if (votingSection.exists(SECTION_FEE_OWNER_RESERVE))
-        {
-            FEE_OWNER_RESERVE = *votingSection.get<std::uint64_t>(SECTION_FEE_OWNER_RESERVE);
-        }
-        if (votingSection.exists(SECTION_FEE_DEFAULT))
-        {
-            auto temp = *votingSection.get<std::uint64_t>(SECTION_FEE_DEFAULT);
-            if (temp <= std::numeric_limits<ZXCAmount::value_type>::max())
-            {
-                FEE_DEFAULT = temp;
-            }
-        }
-        if (votingSection.exists(SECTION_DROPS_PER_BYTE))
-        {
-            DROPS_PER_BYTE = *votingSection.get<std::uint64_t>(SECTION_DROPS_PER_BYTE);
-            // drops_per_byte range in [0,10^6]
-            if (DROPS_PER_BYTE > 1000000)
-                DROPS_PER_BYTE = (1000000 / 1024);
-        }
-        if (votingSection.exists(SECTION_GAS_PRICE))
-        {
-            GAS_PRICE = *votingSection.get<std::uint64_t>(SECTION_GAS_PRICE);
-        }
-    }
-
     if (getSingleSection(secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
         if (boost::iequals(strTemp, "full"))
