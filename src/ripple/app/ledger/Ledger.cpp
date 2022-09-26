@@ -1381,7 +1381,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
 
     if (!db->got_data())
     {
-        auto stream = app.journal("Ledger").info();
+        auto stream = app.journal("Ledger").debug();
         JLOG(stream) << "Ledger not found: " << sqlSuffix;
         return std::make_tuple(
             std::shared_ptr<Ledger>(), ledgerSeq, ledgerHash);

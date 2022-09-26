@@ -619,8 +619,8 @@ PopConsensus::checkCache()
         for (auto iter = proposalCache_.begin(); iter != proposalCache_.end();)
         {
             /**
-             * Maybe prosoal seq meet curSeq, but view is feture,
-             * so don't remove propal which seq meet curSeq at this moment
+             * Maybe proposal seq meet curSeq, but view is future,
+             * so don't remove proposal which seq meet curSeq at this moment
              */
             if (iter->first < curSeq)
             {
