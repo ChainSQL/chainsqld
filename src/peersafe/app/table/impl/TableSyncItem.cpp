@@ -1070,7 +1070,7 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         {
             if (getTableStatusDB().GetDatabaseConn() == nullptr)
             {
-                for (int countTry = 0; countTry < MAX_CONN_RETRY_COUNT + 1; countTry++)
+                for (int countTry = 0; countTry <= MAX_CONN_RETRY_COUNT; countTry++)
                 {
                     if (getTableStatusDB().GetDatabaseConn() == nullptr)
                         OnConnectionError(countTry < MAX_CONN_RETRY_COUNT);
@@ -1095,9 +1095,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
         // Make ledger-txs to slices,every slice will run a soci::transaction.
         auto vecTxSlices = fetchLedgerTxSlices(*iter);
         int countTry = 0;
-        for (countTry = 0; countTry < MAX_CONN_RETRY_COUNT + 1; countTry++)
+        for (countTry = 0; countTry <= MAX_CONN_RETRY_COUNT; countTry++)
         {
-            bool bFindLastSuccessTx = uTxDBUpdateHash_.isZero() ? true : false;
+            bool bFoundLastSuccessTx = uTxDBUpdateHash_.isZero() ? true : false;
             int countProcessed = 0;
             bool rollback = false;
             bool connectionErr = false;
@@ -1124,11 +1124,11 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
 
                         // if a ledger have many txs,first handles some
                         // txs,then stop rippled,must jump those txs
-                        if (!bFindLastSuccessTx)
+                        if (!bFoundLastSuccessTx)
                         {
                             if (tx.getTransactionID() == uTxDBUpdateHash_)
                             {
-                                bFindLastSuccessTx = true;
+                                bFoundLastSuccessTx = true;
                             }
                             countProcessed++;
                             continue;
@@ -1146,6 +1146,9 @@ bool TableSyncItem::DealWithEveryLedgerData(const std::vector<protocol::TMTableD
                             break;
                         countProcessed++;
                     }
+                    if (!bFoundLastSuccessTx)
+                        continue;
+
                     // If connection error, break to retry loops
                     if (connectionErr)
                     {
