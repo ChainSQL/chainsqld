@@ -110,7 +110,7 @@ InboundLedger::init(ScopedLockType& collectionLock)
     ScopedLockType sl(mLock);
     collectionLock.unlock();
 
-    tryDB(app_.getNodeFamily().db());
+        tryDB(app_.getNodeFamily().db());
     if (mFailed)
         return;
 
@@ -465,6 +465,10 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
                     break;
             }
             mHaveContracts = haveContractNodes();
+
+            if (!mHaveContracts)
+                JLOG(m_journal.trace())
+                    << "In tryDB, still " << mContractMapInfo.size() << " contracts needs to sync."; 
         }
     }
     
@@ -626,7 +630,8 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             stream << "complete=" << mComplete << " failed=" << mFailed;
         else
             stream << "header=" << mHaveHeader << " tx=" << mHaveTransactions
-                   << " as=" << mHaveState << " contracts=" <<mHaveContracts;
+                   << " as=" << mHaveState << " contracts=" <<mHaveContracts
+                   << " contract needs:" << mContractMapInfo.size();
     }
 
     if (!mHaveHeader)
@@ -700,6 +705,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
                 mHaveHeader = true;
                 mHaveTransactions = true;
                 mHaveState = true;
+                mHaveContracts = true;
                 if (checkComplete())
                     mComplete = true;
             }
@@ -929,8 +935,10 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
 
                     // Release the lock while we process the large state map
                     sl.unlock();
+                    mWaitingRead = true;
                     auto nodes =
                         pMap->getMissingNodes(missingNodesFind, &filter);
+                    mWaitingRead = false;
                     sl.lock();
 
                     // Make sure nothing happened while we released the lock
@@ -1623,7 +1631,10 @@ InboundLedger::getJson(int)
     }
 
     if (mHaveState)
+    {
         ret[jss::have_contracts] = haveContractNodes();
+        ret["contract_counts"] = (int)mContractMapInfo.size();
+    }
 
     ret[jss::timeouts] = mTimeouts;
 
