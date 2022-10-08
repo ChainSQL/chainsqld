@@ -646,16 +646,6 @@ bool TableSyncItem::IsNameInDBExist(std::string TableName, std::string Owner, bo
     return app_.getTableStatusDB().isNameInDBExist(TableName, Owner, delCheck, TableNameInDB);
 }
 
-bool TableSyncItem::DeleteRecord(AccountID accountID, std::string TableName)
-{
-    return app_.getTableStatusDB().DeleteRecord(accountID, TableName);
-}
-
-bool TableSyncItem::GetMaxTxnInfo(std::string TableName, std::string Owner, LedgerIndex &TxnLedgerSeq, uint256 &TxnLedgerHash)
-{
-    return app_.getTableStatusDB().GetMaxTxnInfo(TableName, Owner, TxnLedgerSeq, TxnLedgerHash);
-}
-
 bool TableSyncItem::DeleteTable(std::string nameInDB)
 {
     auto ret = app_.getTxStore().DropTable(nameInDB);
@@ -665,12 +655,6 @@ bool TableSyncItem::DeleteTable(std::string nameInDB)
 bool TableSyncItem::RenameRecord(AccountID accountID, std::string TableNameInDB, std::string TableName)
 {
     return app_.getTableStatusDB().RenameRecord(accountID, TableNameInDB, TableName);
-}
-
-bool TableSyncItem::UpdateSyncDB(AccountID accountID, std::string TableName, std::string TableNameInDB)
-{    
-    auto ret = app_.getTableStatusDB().UpdateSyncDB(accountID, TableName, TableNameInDB);
-	return ret == soci_success;
 }
 
 bool
@@ -718,11 +702,6 @@ TableSyncItem::UpdateSyncDB(
         std::to_string(closeTime),
         PreviousCommit);
     return true;
-}
-
-bool TableSyncItem::UpdateStateDB(const std::string & owner, const std::string & tablename, const bool &isAutoSync)
-{
-    return app_.getTableStatusDB().UpdateStateDB(owner, tablename, isAutoSync);
 }
 
 bool TableSyncItem::DoUpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB, bool bDel,

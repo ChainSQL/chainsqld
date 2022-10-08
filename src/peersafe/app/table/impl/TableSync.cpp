@@ -511,11 +511,15 @@ bool TableSync::SendSyncRequest(AccountID accountID, std::string sNameInDB, Ledg
 
 bool TableSync::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner,LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time,uint256 chainId)
 {
+    if (!app_.checkGlobalConnection())
+        return false;
     return app_.getTableStatusDB().InsertSnycDB(TableName, TableNameInDB, Owner, LedgerSeq, LedgerHash, IsAutoSync, time, chainId);
 }
 
 bool TableSync::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash)
 {
+    if (!app_.checkGlobalConnection())
+        return false;
     return app_.getTableStatusDB().ReadSyncDB(nameInDB, txnseq, txnhash, seq, hash, txnupdatehash);
 }
 
@@ -890,6 +894,11 @@ void TableSync::CreateTableItems()
 	uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
 
     std::list<std::tuple<std::string, std::string, std::string, bool> > list;
+    if (!app_.checkGlobalConnection())
+    {
+        JLOG(journal_.error()) << "checkGlobalConnection failed in TableSync::CreateTableItems";
+        return;
+    }
     app_.getTableStatusDB().GetAutoListFromDB(chainId, list);
 
     std::string owner, tablename, time;
@@ -1247,7 +1256,9 @@ void TableSync::TableSyncThread()
             LedgerIndex TxnLedgerSeq = 0, LedgerSeq = 1;
             uint256 TxnLedgerHash, LedgerHash, TxnUpdateHash;
 
-            ReadSyncDB(stItem.sTableNameInDB, TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash);
+            bool ret = ReadSyncDB(stItem.sTableNameInDB, TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash);
+            if (!ret)
+                continue;
 
 			pItem->SetPara(stItem.sTableNameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 			pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
@@ -1257,6 +1268,12 @@ void TableSync::TableSyncThread()
 		{
 			//delete a table
 			std::string sNameInDB;
+            if (!app_.checkGlobalConnection())
+            {
+                JLOG(journal_.info()) << "TableSyncThread SYNC_DELETING "
+                                         "checkGlobalConnection failed.";
+                continue;
+            }
 			if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 			{
 				//pItem->DeleteTable(sNameInDB);
@@ -1277,6 +1294,11 @@ void TableSync::TableSyncThread()
             
 			if (stItem.eTargetType == TableSyncItem::SyncTarget_db)
 			{
+                if (!app_.checkGlobalConnection())
+                {
+                    JLOG(journal_.info()) << "TableSyncThread SYNC_INIT checkGlobalConnection failed.";
+                    continue;
+                }
 				if (stBaseInfo.nameInDB.isNonZero()) //local read nameInDB is not zero
 				{
                     LedgerIndex TxnLedgerSeq = 0, LedgerSeq = 1;

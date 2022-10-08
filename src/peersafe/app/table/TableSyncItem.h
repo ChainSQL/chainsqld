@@ -202,11 +202,7 @@ public:
     void SetSyncTxLedger(LedgerIndex iSeq, uint256 uHash);
 
     bool IsExist(AccountID accountID, std::string TableNameInDB);
-
-    bool DeleteRecord(AccountID accountID, std::string TableName);
     bool DeleteTable(std::string nameInDB);
-
-    bool GetMaxTxnInfo(std::string TableName, std::string Owner, LedgerIndex &TxnLedgerSeq, uint256 &TxnLedgerHash);
 
     bool RenameRecord(AccountID accountID, std::string TableNameInDB,std::string TableName);
 
@@ -237,10 +233,6 @@ public:
     TransBlock2Whole(LedgerIndex iSeq);
 
     bool IsNameInDBExist(std::string TableName, std::string Owner, bool delCheck, std::string &TableNameInDB);
-
-    bool UpdateSyncDB(AccountID accountID, std::string tableName, std::string nameInDB);
-
-    bool UpdateStateDB(const std::string & owner, const std::string & tablename, const bool &isAutoSync);
 
     bool UpdateSyncDB(bool bLastOne, uint256 const& updateHash,const protocol::TMTableData& tableData);
     bool UpdateSyncDB(const protocol::TMTableData& tableData,uint256 const& updateHash);
