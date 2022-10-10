@@ -111,6 +111,10 @@ public:
         gl_asn_share,
         gl_asn_get,
 
+        // TMGetLedger: contract storage node
+        gl_ctn_share,
+        gl_ctn_get,
+
         // TMGetLedger: generic
         gl_share,
         gl_get,
@@ -130,6 +134,10 @@ public:
         // TMGetObjectByHash: account state node
         share_hash_asnode,
         get_hash_asnode,
+
+        // TMGetObjectByHash: contract state node
+        share_hash_ctnode,
+        get_hash_ctnode,
 
         // TMGetObjectByHash: CAS
         share_cas_object,
@@ -213,6 +221,8 @@ protected:
         {"ledger_Transaction_node_get"},             // category::gl_txn_get
         {"ledger_Account_State_node_share"},         // category::gl_asn_share
         {"ledger_Account_State_node_get"},           // category::gl_asn_get
+        {"ledger_Contract_Storage_node_share"},         // category::gl_ctn_share
+        {"ledger_Contract_Storage_node_get"},           // category::gl_ctn_get
         {"ledger_share"},                            // category::gl_share
         {"ledger_get"},                              // category::gl_get
         {"getobject_Ledger_share"},              // category::share_hash_ledger
@@ -223,6 +233,8 @@ protected:
         {"getobject_Transaction_node_get"},      // category::get_hash_txnode
         {"getobject_Account_State_node_share"},  // category::share_hash_asnode
         {"getobject_Account_State_node_get"},    // category::get_hash_asnode
+        {"getobject_Contract_Storage_node_share"},  // category::share_hash_ctnode
+        {"getobject_Contract_Storage_node_get"},    // category::get_hash_ctnode
         {"getobject_CAS_share"},                 // category::share_cas_object
         {"getobject_CAS_get"},                   // category::get_cas_object
         {"getobject_Fetch_Pack_share"},          // category::share_fetch_pack

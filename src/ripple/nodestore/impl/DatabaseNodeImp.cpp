@@ -67,6 +67,8 @@ DatabaseNodeImp::sweep()
 {
     pCache_->sweep();
     nCache_->sweep();
+    
+    //backend_->printUsage();
 }
 
 }  // namespace NodeStore

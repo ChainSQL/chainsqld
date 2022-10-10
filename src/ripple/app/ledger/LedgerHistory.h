@@ -75,6 +75,9 @@ public:
     LedgerHash
     getLedgerHash(LedgerIndex ledgerIndex);
 
+    LedgerHash
+    getClosedLedgerHash(LedgerIndex ledgerIndex);
+
     /** Set the history cache's parameters
         @param size The target size of the cache
         @param age The target age of the cache, in seconds
@@ -161,7 +164,10 @@ private:
     ConsensusValidated m_consensus_validated;
 
     // Maps ledger indexes to the corresponding hash.
-    std::map<LedgerIndex, LedgerHash> mLedgersByIndex;  // validated ledgers
+    // validated ledgers
+    std::map<LedgerIndex, LedgerHash> mLedgersByIndex;
+    // closed and not validated ledgers
+    std::map<LedgerIndex, LedgerHash> mClosedLedgersByIndex;
 
     beast::Journal j_;
 };

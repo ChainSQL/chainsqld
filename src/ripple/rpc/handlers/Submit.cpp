@@ -18,10 +18,12 @@
 //==============================================================================
 
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/main/Application.h>
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/tx/apply.h>
 #include <ripple/net/RPCErr.h>
+#include <ripple/protocol/AccountID.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/resource/Fees.h>
 #include <ripple/rpc/Context.h>
@@ -29,9 +31,9 @@
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/rpc/impl/TransactionSign.h>
-#include <ripple/app/main/Application.h>
-#include <peersafe/schema/Schema.h>
 #include <ripple/rpc/impl/Tuning.h>
+#include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/Schema.h>
 
 namespace ripple {
 
@@ -54,6 +56,14 @@ doSubmit(RPC::JsonContext& context)
 
     if (!context.params.isMember(jss::tx_blob))
     {
+        if (!context.params.isMember(jss::tx_json))
+            return RPC::missing_field_error(jss::tx_json);
+
+        bool bSelfContainedSeq = false;
+        Json::Value const& tx_json(context.params[jss::tx_json]);
+        if (tx_json.isMember(jss::Sequence))
+            bSelfContainedSeq = true;
+
         auto const failType = getFailHard(context);
 
         if (context.role != Role::ADMIN && !context.app.config().canSign())
@@ -73,6 +83,22 @@ doSubmit(RPC::JsonContext& context)
         //     "deprecated and will be removed in a future version "
         //     "of the server. Please migrate to a standalone "
         //     "signing tool.";
+
+        if ((RPC::contains_error(ret) ||
+             ret[jss::engine_result_code] == temBAD_PUT) &&
+            !bSelfContainedSeq && tx_json.isMember(jss::Sequence))
+        {
+            context.j.info() << "sign-and-submit mode, return "
+                             << RPC::contains_error(ret)
+                ? "non engine errors"
+                : "engine temBAD_PUT error";
+
+            auto const srcAccountID =
+                parseBase58<AccountID>(tx_json[jss::Account].asString());
+            if (srcAccountID)
+                context.app.getStateManager().addFailedSeq(
+                    *srcAccountID, tx_json[jss::Sequence].asUInt());
+        }
 
         return ret;
     }
@@ -108,12 +134,33 @@ doSubmit(RPC::JsonContext& context)
 
     {
 		//check publicKey type
-		auto keyType = publicKeyType(makeSlice(stpTrans->getFieldVL(sfSigningPubKey)));
+        boost::optional<KeyType> keyType;
+        if (!stpTrans->getFieldVL(sfSigningPubKey).empty())
+        {
+            keyType = publicKeyType(makeSlice(stpTrans->getFieldVL(sfSigningPubKey)));
+        }
+        else if (stpTrans->isFieldPresent(sfSigners) && stpTrans->getFieldArray(sfSigners).size() > 0)
+        {
+            auto& signers = stpTrans->getFieldArray(sfSigners);
+            if (signers[0].isFieldPresent(sfSigningPubKey))
+            {
+                keyType = publicKeyType(
+                    makeSlice(signers[0].getFieldVL(sfSigningPubKey)));
+            }            
+        }
+
+		if (!keyType)
+        {
+            jvResult[jss::error] = "invalidTransaction";
+			jvResult[jss::error_message] = "fails local checks: get signingPublicKey type failed";
+            return jvResult;
+        }
 		if (*keyType != CommonKey::chainAlgTypeG)
 		{
 			jvResult[jss::error] = "invalidTransaction";
 			jvResult[jss::error_message] = "fails local checks: signingPublicKey type is " \
 				"not consistent with the node.";
+            return jvResult;
 		}
 
         if (!context.app.checkSigs())

@@ -280,7 +280,7 @@ to_string(ValStatus m)
 
     @tparam Adaptor Provides type definitions and callbacks
 */
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations
 {
     using Mutex = typename Adaptor::Mutex;
@@ -341,6 +341,8 @@ class Validations
     // Adaptor instance
     // Is NOT managed by the mutex_ above
     Adaptor adaptor_;
+
+    StalePolicy stalePolicy_;
 
 private:
     // Remove support of a validated ledger
@@ -569,6 +571,7 @@ public:
         , bySequence_(c)
         , parms_(p)
         , adaptor_(std::forward<Ts>(ts)...)
+        , stalePolicy_(std::forward<Ts>(ts)...)
     {
     }
 
@@ -613,6 +616,8 @@ public:
     ValStatus
     add(NodeID const& nodeID, Validation const& val)
     {
+        boost::optional<Validation> maybeStaleValidation;
+
         if (!isCurrent(parms_, adaptor_.now(), val.signTime(), val.seenTime()))
             return ValStatus::stale;
 
@@ -685,6 +690,9 @@ public:
                 updateTrie(lock, nodeID, val, boost::none);
             }
         }
+
+        maybeStaleValidation.emplace(std::move(val));
+        stalePolicy_.onStale(std::move(*maybeStaleValidation));
 
         return ValStatus::current;
     }
@@ -1056,14 +1064,19 @@ public:
     void
     flush()
     {
-        std::lock_guard lock{mutex_};
-
-        for (auto& [nodeId, validation] : current_)
         {
-            removeTrie(lock, nodeId, validation);
+            std::lock_guard lock{mutex_};
+
+            for (auto& [nodeId, validation] : current_)
+            {
+                removeTrie(lock, nodeId, validation);
+            }
+
+            current_.clear();
         }
 
-        current_.clear();
+        hash_map<NodeKey, Validation> flushed;
+        stalePolicy_.flush(std::move(flushed));
     }
 
     /** Return quantity of lagging proposers, and remove online proposers

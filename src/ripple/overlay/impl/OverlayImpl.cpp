@@ -290,6 +290,23 @@ OverlayImpl::onHandoff(
         auto publicKey = *retPair.first;
         auto publicValidate = retPair.second;
         {
+            // check publicValidate duplicate
+            for (auto const& peer : getActivePeers())
+            {
+                if (peer->getValPublic() == publicValidate)
+                {
+                    m_peerFinder->on_closed(slot);
+                    JLOG(journal.debug()) << "Peer " << remote_endpoint
+                                          << " redirected, slots full,result="
+                                          << (int)PeerFinder::Result::duplicate;
+                    handoff.moved = false;
+                    handoff.response = makeRedirectResponse(
+                        slot, request, remote_endpoint.address());
+                    handoff.keep_alive = false;
+                    return handoff;
+                }
+            }
+
             // The node gets a reserved slot if it is in our cluster
             // or if it has a reservation.
             bool const reserved =
@@ -301,7 +318,7 @@ OverlayImpl::onHandoff(
             {
                 m_peerFinder->on_closed(slot);
                 JLOG(journal.debug())
-                    << "Peer " << remote_endpoint << " redirected, slots full";
+                    << "Peer " << remote_endpoint << " redirected, slots full,result="<<(int)result;
                 handoff.moved = false;
                 handoff.response = makeRedirectResponse(
                     slot, request, remote_endpoint.address());
@@ -340,7 +357,7 @@ OverlayImpl::onHandoff(
     }
     catch (std::exception const& e)
     {
-        JLOG(journal.debug()) << "Peer " << remote_endpoint
+        JLOG(journal.warn()) << "Peer " << remote_endpoint
                               << " fails handshake (" << e.what() << ")";
 
         m_peerFinder->on_closed(slot);

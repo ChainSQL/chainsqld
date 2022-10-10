@@ -65,6 +65,16 @@ struct ConfigSection
     {
         return "crypto_alg";
     }
+    static std::string
+    prometheus()
+    {
+        return "prometheus";
+    }
+    static std::string
+    remoteSync()
+    {
+        return "remote_sync";
+    }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.
@@ -122,7 +132,7 @@ struct ConfigSection
 
 #define SECTION_CONSENSUS               "consensus"
 
-#define SECTION_PATH_X509               "x509_crt_path"
+#define SECTION_USER_X509_ROOT_PATH     "x509_crt_path"
 
 #define SECTION_SCHEMAS					"schemas"
 #define SECTION_SCHEMA					"schema"
@@ -130,6 +140,12 @@ struct ConfigSection
 #define LEDGER_TXS_TABLES               "ledger_tx_tables"
 
 #define SECTION_GOVERNANCE              "governance"
+
+#define SECTION_PEER_X509_ROOT_PATH     "peer_x509_root_path"
+#define SECTION_PEER_X509_CRED_PATH     "peer_x509_cred_path"
+
+#define SECTOIN_TRUSTED_CA_LIST         "trusted_ca_list"
+#define SECTION_CMD_SSL_CERT            "cmd_ssl_cert"
 
 }  // namespace ripple
 

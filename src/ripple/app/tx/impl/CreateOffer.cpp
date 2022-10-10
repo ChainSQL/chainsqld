@@ -129,7 +129,9 @@ TER
 CreateOffer::preclaim(PreclaimContext const& ctx)
 {
     auto const id = ctx.tx[sfAccount];
-
+    auto checkRet = checkAuthority(ctx, id, lsfPaymentAuth);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
     auto saTakerPays = ctx.tx[sfTakerPays];
     auto saTakerGets = ctx.tx[sfTakerGets];
 

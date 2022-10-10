@@ -97,20 +97,12 @@ conditionMet(Condition condition_required, T& context)
 
     if (condition_required & NEEDS_CURRENT_LEDGER)
     {
-        auto const& consensusInfo = context.netOps.getConsensusInfo(false);
-        bool initialized = consensusInfo.get("initialized", true).asBool();
-        if (!initialized)
+        if (!context.app.config().standalone())
         {
-            JLOG(context.j.info()) << "Waitint for init";
-            return rpcNO_CURRENT;
-        }
-
-        if (!context.app.config().standalone() &&
-            condition_required & NEEDS_CURRENT_LEDGER)
-        {
-            if (context.ledgerMaster.getValidatedLedgerAge() >
-                Tuning::maxValidatedLedgerAge)
+            auto const& serverStatus = context.netOps.getServerStatus();
+            if (serverStatus != "normal")
             {
+                JLOG(context.j.info()) << "Server is abnormal";
                 if (context.apiVersion == 1)
                     return rpcNO_CURRENT;
                 return rpcNOT_SYNCED;
@@ -121,9 +113,21 @@ conditionMet(Condition condition_required, T& context)
 
             if (cID + 10 < vID)
             {
-                JLOG(context.j.debug())
+                JLOG(context.j.info())
                     << "Current ledger ID(" << cID
                     << ") is less than validated ledger ID(" << vID << ")";
+                if (context.apiVersion == 1)
+                    return rpcNO_CURRENT;
+                return rpcNOT_SYNCED;
+            }
+        }
+        else
+        {
+            auto const& consensusInfo = context.netOps.getConsensusInfo(false);
+            bool initialized = consensusInfo.get("initialized", true).asBool();
+            if (!initialized)
+            {
+                JLOG(context.j.info()) << "Waitint for init";
                 if (context.apiVersion == 1)
                     return rpcNO_CURRENT;
                 return rpcNOT_SYNCED;

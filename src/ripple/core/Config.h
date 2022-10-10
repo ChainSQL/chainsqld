@@ -130,8 +130,12 @@ public:
     std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
     std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
 
-	std::vector<std::string>    ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
-	std::vector <std::string>	SCHEMA_IDS;
+    std::vector<std::string>    TRUSTED_CA_LIST;
+	std::vector<std::string>    USER_ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+	std::vector<std::string>	SCHEMA_IDS;
+
+    std::vector<std::string> PEER_ROOT_CERTIFICATES;
+    std::string PEER_X509_CRED;
 
     enum StartUpType
     {
@@ -199,6 +203,8 @@ public:
     bool SSL_VERIFY = true;
     std::string SSL_VERIFY_FILE;
     std::string SSL_VERIFY_DIR;
+    std::string CMD_SSL_KEY;
+    std::string CMD_SSL_CERT;
 
     // Compression
     bool COMPRESSION = false;
@@ -227,6 +233,8 @@ public:
 
     //governance
     bool                        OPEN_ACCOUNT_DELAY = false;
+    boost::optional<AccountID>  ADMIN;
+    bool                        DEFAULT_AUTHORITY_ENABLED = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}
@@ -331,6 +339,9 @@ public:
     int
     getValueFor(SizedItem item, boost::optional<std::size_t> node = boost::none)
         const;
+
+    bool
+    checkCertificates() const;
 };
 
 }  // namespace ripple

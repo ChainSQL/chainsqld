@@ -170,12 +170,14 @@ public:
     updateGiveItem(
         std::shared_ptr<SHAMapItem const>,
         bool isTransaction,
-        bool hasMeta);
+        bool hasMeta,
+        boost::optional<uint256> const& storageRoot = boost::none);
     bool
     addGiveItem(
         std::shared_ptr<SHAMapItem const>,
         bool isTransaction,
-        bool hasMeta);
+        bool hasMeta,
+        boost::optional<uint256> const& storageRoot = boost::none);
 
     // Save a copy if you need to extend the life
     // of the SHAMapItem beyond this SHAMap
@@ -299,8 +301,11 @@ public:
     void
     invariants() const;
 
-    Blob
+    std::pair<uint256, Blob>
     genNodeProof(uint256 key) const;
+
+    std::shared_ptr<SHAMapInnerNode>
+    getContractRootNode(boost::optional<uint256> root) const;
 
 private:
     using SharedPtrNodeStack = std::stack<
@@ -315,6 +320,12 @@ private:
     void
     canonicalize(SHAMapHash const& hash, std::shared_ptr<SHAMapAbstractNode>&)
         const;
+
+    std::shared_ptr<SHAMapAbstractNode>
+    canonicalizeChild(
+        std::shared_ptr<SHAMapAbstractNode>,
+        SHAMapInnerNode* parent, 
+        int branch)const;
 
     // database operations
     std::shared_ptr<SHAMapAbstractNode>
@@ -440,7 +451,6 @@ private:
         // nodes we have discovered to be missing
         std::vector<std::pair<SHAMapNodeID, uint256>> missingNodes_;
         std::set<SHAMapHash> missingHashes_;
-
         // nodes we are in the process of traversing
         using StackEntry = std::tuple<
             SHAMapInnerNode*,  // pointer to the node

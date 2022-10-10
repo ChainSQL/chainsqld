@@ -60,12 +60,12 @@ getTxFormat(TxType type)
     return format;
 }
 
-STTx::STTx (STObject&& object) noexcept (false)
+STTx::STTx(STObject&& object, CommonKey::HashType hashType) noexcept(false)
     : STObject (std::move (object))
 {
     tx_type_ = safe_cast<TxType> (getFieldU16 (sfTransactionType));
     applyTemplate (getTxFormat (tx_type_)->getSOTemplate());  //  may throw
-    tid_ = getHash(HashPrefix::transactionID);
+    tid_ = getHash(HashPrefix::transactionID, hashType);
 
 	pTxs_      = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();    
@@ -128,7 +128,7 @@ std::pair<std::shared_ptr<STTx>, std::string> STTx::parseSTTx(Json::Value& obj, 
 	return std::make_pair(std::move(stpTrans), err_message);
 }
 
-STTx::STTx (SerialIter& sit) noexcept (false)
+STTx::STTx(SerialIter& sit, CommonKey::HashType hashType) noexcept(false)
     : STObject (sfTransaction)
 {
     int length = sit.getBytesLeft();
@@ -142,7 +142,7 @@ STTx::STTx (SerialIter& sit) noexcept (false)
     tx_type_ = safe_cast<TxType>(getFieldU16(sfTransactionType));
 
     applyTemplate(getTxFormat(tx_type_)->getSOTemplate());  // May throw
-    tid_ = getHash(HashPrefix::transactionID);
+    tid_ = getHash(HashPrefix::transactionID, hashType);
 
 	pTxs_ = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();
@@ -764,34 +764,36 @@ STTx::checkMultiSign(RequireFullyCanonicalSig requireCanonicalSig) const
     return {true, ""};
 }
 
-std::pair<bool, std::string> STTx::checkCertSign() const
+std::pair<bool, std::string>
+STTx::checkCertificate() const
 {
-	bool validSig = false;
-	try
-	{
-		auto const spk                 = getFieldVL(sfSigningPubKey);
-		auto const certificate       = getFieldVL(sfCertificate);
-		std::string sCertificate      = std::string(certificate.begin(), certificate.end());
-		PublicKey certPublicKey  = getPublicKeyFromX509(sCertificate);
+    if (!isFieldPresent(sfCertificate))
+    {
+        return {true, ""};
+    }
 
-		if (certPublicKey == PublicKey(makeSlice(spk)) ){
-			return{ true, sCertificate };
-		}
+    try
+    {
+        auto const spk = getFieldVL(sfSigningPubKey);
+        auto const certificate = getFieldVL(sfCertificate);
+        std::string sCertificate = 
+            std::string(certificate.begin(), certificate.end());
+        PublicKey certPublicKey = getPublicKeyFromX509(sCertificate);
 
-	}
-	catch (std::exception const& e)
-	{
-		std::string sExcept(e.what());
-		sExcept = "checkCertSign()  exception :" + sExcept;
+        if (certPublicKey == PublicKey(makeSlice(spk)))
+        {
+            return {true, sCertificate};
+        }
+    }
+    catch (std::exception const& e)
+    {
+        std::string sExcept(e.what());
+        sExcept = "checkCertificate() exception :" + sExcept;
 
-		LogicError(sExcept);
-		return{ false," Failed to get the X509 certificate public key" };
-	}
+        return {false, sExcept};
+    }
 
-	if (validSig == false)
-		return{ false, "Cert signature and Tx signature not match ." };
-
-	return{ true, "" };
+    return {false, "certificate public key and signing public key not match"};
 }
 
 //------------------------------------------------------------------------------

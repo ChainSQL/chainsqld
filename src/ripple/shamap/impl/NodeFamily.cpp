@@ -41,6 +41,7 @@ NodeFamily::NodeFamily(Schema& app, CollectorManager& cm)
               app.config().getValueFor(SizedItem::treeCacheAge)),
           stopwatch(),
           j_))
+    , stateNodeHashSet_(std::make_shared<StateNodeHashSet>())
 {
 }
 

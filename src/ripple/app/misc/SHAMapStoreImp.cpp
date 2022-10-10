@@ -25,6 +25,7 @@
 #include <ripple/nodestore/impl/DatabaseRotatingImp.h>
 #include <ripple/nodestore/impl/DatabaseShardImp.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 
@@ -248,7 +249,7 @@ SHAMapStoreImp::makeNodeStore(std::string const& name, std::int32_t readThreads)
             name,
             scheduler_,
             readThreads,
-            app_.getJobQueue(),
+            app_.getStoppable(),
             std::move(writableBackend),
             std::move(archiveBackend),
             app_.config().section(ConfigSection::nodeDatabase()),
@@ -263,7 +264,7 @@ SHAMapStoreImp::makeNodeStore(std::string const& name, std::int32_t readThreads)
             name,
             scheduler_,
             readThreads,
-            app_.getJobQueue(),
+            app_.getStoppable(),
             app_.config().section(ConfigSection::nodeDatabase()),
             app_.journal(nodeStoreName_));
         fdRequired_ += db->fdRequired();
@@ -324,7 +325,7 @@ SHAMapStoreImp::run()
     fullBelowCache_ = &(*app_.getNodeFamily().getFullBelowCache(0));
     treeNodeCache_ = &(*app_.getNodeFamily().getTreeNodeCache(0));
     if (app_.config().useTxTables())
-        transactionDb_ = &app_.getTxnDB();
+        transactionDb_ = &app_.getTxnDB().connWrite();
     ledgerDb_ = &app_.getLedgerDB();
 
     if (advisoryDelete_)
@@ -684,6 +685,16 @@ SHAMapStoreImp::clearPrior(LedgerIndex lastRotated)
         lastRotated,
         "SELECT MIN(LedgerSeq) FROM AccountTransactions;",
         "DELETE FROM AccountTransactions WHERE LedgerSeq < %u;");
+    if (health())
+        return;
+
+    if (!app_.config().USE_TRACE_TABLE)
+        return;
+    clearSql(
+        *transactionDb_,
+        lastRotated,
+        "SELECT MIN(LedgerSeq) FROM TraceTransactions;",
+        "DELETE FROM TraceTransactions WHERE LedgerSeq < %u;");
     if (health())
         return;
 }

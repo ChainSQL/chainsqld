@@ -81,9 +81,11 @@ public:
         return app_.getIOService();
     }
 
-    void
-    onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t newRound)
-        override final;
+    TrustChanges
+    onConsensusReached(
+        bool waitingConsensusReach,
+        Ledger_t previousLedger,
+        uint64_t newRound) override final;
 
     // Overwrite ProposerElection interfaces.
     Author

@@ -208,6 +208,8 @@ isValidatedOld(LedgerMaster& ledgerMaster, bool standalone)
     return ledgerMaster.getValidatedLedgerAge() > Tuning::maxValidatedLedgerAge;
 }
 
+}  // namespace
+
 template <class T>
 Status
 ledgerFromRequest(T& ledger, JsonContext& context)
@@ -265,7 +267,6 @@ ledgerFromRequest(T& ledger, JsonContext& context)
 
     return Status::OK;
 }
-}  // namespace
 
 template <class T>
 Status
@@ -787,11 +788,14 @@ keypairForSignature(Json::Value const& params, Json::Value& error)
         }
         
         std::string privateKeyStrDe58 = decodeBase58Token(privateKeyStr, tokenType);
-        
-		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
+        if (privateKeyStrDe58.empty())
+        {
+            error = RPC::make_error(
+                rpcBAD_SEED, "Specified secret derive key-pair failed.");
+            return {};
+        }
+		SecretKey secretkeyTemp(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
         auto publicKey = derivePublicKey(KeyType::gmalg, secretkeyTemp);
-        //std::string pubHex = strHex(publicKey.begin(), publicKey.end());
 
         return std::make_pair(publicKey, secretkeyTemp);
     }

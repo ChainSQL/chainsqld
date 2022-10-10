@@ -54,7 +54,7 @@ TransactionAcquire::queueJob()
     app_.getJobQueue().addJob(
         jtTXN_DATA, "TransactionAcquire", [ptr = shared_from_this()](Job&) {
             ptr->invokeOnTimer();
-        });
+        }, app_.doJobCounter());
 }
 
 void
@@ -82,7 +82,7 @@ TransactionAcquire::done()
         app_.getJobQueue().addJob(
             jtTXN_DATA, "completeAcquire", [pap, hash, map](Job&) {
                 pap->getInboundTransactions().giveSet(hash, map, true);
-            });
+            }, app_.doJobCounter());
     }
 }
 

@@ -276,6 +276,12 @@ public:
     {
         app_.getTxPool().clearAvoid(seq);
     }
+    inline Json::Value
+    getSyncStatusJson()
+    {
+        return app_.getTxPool().syncStatusJson();
+    }
+
 
     /** Share the given tx set to peers.
 
@@ -401,6 +407,7 @@ public:
     doValidLedger(std::shared_ptr<Ledger const> const& ledger)
     {
         ledgerMaster_.doValid(ledger);
+        ledgerMaster_.onConsensusReached(false, nullptr);
     }
 
     /** Notified of change in consensus mode
@@ -411,9 +418,9 @@ public:
     void
     onModeChange(ConsensusMode before, ConsensusMode after);
 
-    virtual void
+    virtual TrustChanges
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         Ledger_t previousLedger,
         uint64_t curTurn);
 
@@ -441,7 +448,7 @@ public:
     void
     set(ConsensusMode mode, Adaptor& a)
     {
-        a.onModeChange(mode_, mode);
+        a.onModeChange(a.mode(), mode);
         mode_ = mode;
     }
 };

@@ -29,6 +29,7 @@
 #include <ripple/protocol/STLedgerEntry.h>
 #include <ripple/protocol/SecretKey.h>
 #include <peersafe/app/table/TokenProcess.h>
+#include <peersafe/app/misc/ConnectionPool.h>
 
 namespace ripple {
 
@@ -158,6 +159,7 @@ public:
     TableSyncItem(Schema& app, beast::Journal journal,Config& cfg, SyncTargetType eTargetType = SyncTarget_db);
     virtual ~TableSyncItem();
 
+    ConnectionUnit& getConnectionUnit();
     TxStoreDBConn& getTxStoreDBConn();
     TxStore& getTxStore();
 
@@ -226,11 +228,13 @@ public:
     void DealWithWaitCheckQueue(std::function<bool(sqldata_type const&)>);
 
     bool GetRightRequestRange(TableSyncItem::BaseInfo &stRange);
-    void PushDataToBlockDataQueue(sqldata_type &sqlData);
-    bool TransBlock2Whole(LedgerIndex iSeq, uint256 uHash);
 
-    void PushDataToWholeDataQueue(sqldata_type &sqlData);
-    void PushDataToWholeDataQueue(std::list <sqldata_type>  &aSqlData);
+    void
+    PushDataToWholeDataQueue(sqldata_type& sqlData);
+    void
+    PushDataToBlockDataQueue(sqldata_type& sqlData);
+    bool
+    TransBlock2Whole(LedgerIndex iSeq);
 
     bool IsNameInDBExist(std::string TableName, std::string Owner, bool delCheck, std::string &TableNameInDB);
 
@@ -267,6 +271,7 @@ protected:
     bool isJumpThisTx(uint256 txid);
     std::string GetPosInfo(LedgerIndex iTxLedger, std::string sTxLedgerHash, LedgerIndex iCurLedger, std::string sCurLedgerHash, bool bStop, std::string sMsg);
 
+    void ReleaseConnectionUnit();
 private:
     bool GetIsChange();
     void PushDataByOrder(std::list <sqldata_type> &aData, sqldata_type &sqlData);
@@ -340,8 +345,8 @@ private:
     bool                                                         bIsAutoSync_;
 
     std::unique_ptr <TxStoreDBConn>                              conn_;
-    std::unique_ptr <TxStore>                                    pObjTxStore_;
     std::unique_ptr <TableStatusDB>                              pObjTableStatusDB_;
+    std::shared_ptr<ConnectionUnit>                              pConnectionUnit_;
   
     cond                                                         sCond_;    
 

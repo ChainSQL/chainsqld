@@ -5,6 +5,7 @@
 
 namespace ripple {
 	const AccountID TABLE_OPERATION_ADDR = AccountID(0x1001); //zzzzzzzzzzzzzzzzzzz3yHctrGe
+	const AccountID TOOLS_PRE_ADDR		 = AccountID(0x1002);
 
 	// preCompiledContract address for function
 	const AccountID SM3_ADDR = AccountID(0x4000);

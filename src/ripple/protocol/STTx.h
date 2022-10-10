@@ -60,12 +60,21 @@ public:
 
     STTx(STTx const& other) = default;
 
-    explicit STTx(SerialIter& sit) noexcept(false);
-    explicit STTx(SerialIter&& sit) noexcept(false) : STTx(sit)
+    explicit STTx(
+        SerialIter& sit,
+        CommonKey::HashType hashType =
+            CommonKey::chainHashTypeG) noexcept(false);
+    explicit STTx(
+        SerialIter&& sit,
+        CommonKey::HashType hashType =
+            CommonKey::chainHashTypeG) noexcept(false)
+        : STTx(sit, hashType)
     {
     }
 
-    explicit STTx(STObject&& object);
+    explicit STTx(
+        STObject&& object,
+        CommonKey::HashType hashType = CommonKey::chainHashTypeG);
     explicit STTx(Json::Value& o0bj, AccountID accountID);
 
     /** Constructs a transaction.
@@ -222,7 +231,7 @@ public:
 
     // certificate sign
     std::pair<bool, std::string>
-    checkCertSign() const;
+    checkCertificate() const;
 
     // SQL Functions with metadata.
     static std::string const&

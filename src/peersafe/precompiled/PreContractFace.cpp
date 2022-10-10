@@ -1,6 +1,7 @@
 #include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/precompiled/Define.h>
 #include <peersafe/precompiled/TableOpPrecompiled.h>
+#include <peersafe/precompiled/ToolsPrecompiled.h>
 #include <ripple/protocol/digest.h>
 #include <peersafe/precompiled/Utils.h>
 
@@ -34,7 +35,7 @@ namespace ripple {
         // for (unsigned i = 1; i <= 4; ++i)
         //     genesisState[AccountID(i)] = Account(0, 1);
         // Setup default precompiled contracts as equal to genesis of Frontier.
-        // precompiled.insert(make_pair(Address(1), PrecompiledOrigin("ecrecover")));
+        precompiled.insert(std::make_pair(AccountID(1), PrecompiledOrigin("ecrecover")));
         precompiled.insert(std::make_pair(AccountID(2), PrecompiledOrigin("sha256")));
         precompiled.insert(std::make_pair(AccountID(3), PrecompiledOrigin("ripemd160")));
         precompiled.insert(std::make_pair(AccountID(4), PrecompiledOrigin("identity")));
@@ -52,10 +53,7 @@ namespace ripple {
         //-----------------------------------------------------------------------------
         precompiledDiy.insert(std::make_pair(
             TABLE_OPERATION_ADDR, std::make_shared<TableOpPrecompiled>()));
-        AccountID id(TABLE_OPERATION_ADDR);
-        auto str = to_string(id);
-        if (str != "")
-        {
-        }
+        precompiledDiy.insert(std::make_pair(
+            TOOLS_PRE_ADDR, std::make_shared<ToolsPrecompiled>()));
     }
 }

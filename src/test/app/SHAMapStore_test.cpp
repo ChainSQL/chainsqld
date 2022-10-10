@@ -23,6 +23,7 @@
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/SociDB.h>
 #include <ripple/protocol/jss.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <test/jtx.h>
 #include <test/jtx/envconfig.h>
 
@@ -143,7 +144,7 @@ class SHAMapStore_test : public beast::unit_test::suite
     void
     transactionCheck(jtx::Env& env, int const rows)
     {
-        auto db = env.app().getTxnDB().checkoutDb();
+        auto db = env.app().getTxnDB().checkoutDbRead();
 
         int actualRows;
         *db << "SELECT count(*) AS rows "
@@ -156,7 +157,7 @@ class SHAMapStore_test : public beast::unit_test::suite
     void
     accountTransactionCheck(jtx::Env& env, int const rows)
     {
-        auto db = env.app().getTxnDB().checkoutDb();
+        auto db = env.app().getTxnDB().checkoutDbRead();
 
         int actualRows;
         *db << "SELECT count(*) AS rows "

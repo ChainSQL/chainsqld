@@ -76,6 +76,12 @@ public:
     std::shared_ptr<TreeNodeCache>
     getTreeNodeCache(std::uint32_t ledgerSeq) override;
 
+    std::shared_ptr<StateNodeHashSet>
+    getStateNodeHashSet() override
+    {
+        return stateNodeHashSet_;
+    }
+
     /** Return a pair where the first item is the number of items cached
         and the second item is the number of entries in the cached
     */
@@ -110,6 +116,8 @@ private:
     std::mutex tnCacheMutex_;
     int const tnTargetSize_;
     std::chrono::seconds const tnTargetAge_;
+
+    std::shared_ptr<StateNodeHashSet> stateNodeHashSet_;
 
     // Missing node handler
     LedgerIndex maxSeq_{0};

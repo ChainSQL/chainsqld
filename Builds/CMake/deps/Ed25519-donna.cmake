@@ -18,7 +18,12 @@ target_include_directories (ed25519-donna
 #]=========================================================]
 target_link_libraries (ed25519-donna PUBLIC OpenSSL::SSL)
 add_library (NIH::ed25519-donna ALIAS ed25519-donna)
-# add_dependencies(ed25519-donna OpenSSL::SSL)
+if(openssl)
+    #add_dependencies(ed25519-donna OpenSSL::SSL)
+else()
+    add_dependencies(ed25519-donna libgmssl)
+endif()
+
 target_link_libraries (ripple_libs INTERFACE NIH::ed25519-donna)
 #[===========================[
    headers installation

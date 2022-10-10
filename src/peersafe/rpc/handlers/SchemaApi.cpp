@@ -25,6 +25,7 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/app/misc/NetworkOPs.h>
 #include <ripple/app/main/Application.h>
+#include <peersafe/schema/SchemaManager.h>
 
 namespace ripple {
 /** General RPC command that can retrieve schema list.
@@ -196,5 +197,39 @@ Json::Value doSchemaAccept(RPC::JsonContext& context)
 
 	return jvResult;
 }
+
+
+Json::Value doSchemaStart(RPC::JsonContext& context)
+{
+	if (!context.params.isMember(jss::schema))
+		return rpcError(rpcINVALID_PARAMS);
+
+	std::shared_ptr<ReadView const> ledger;
+	auto result = RPC::lookupLedger(ledger, context);
+	if (ledger == nullptr)
+		return result;
+
+	auto const schema = context.params[jss::schema].asString();
+	auto schemaID = from_hex_text<uint256>(schema);
+	auto key = Keylet(ltSCHEMA, schemaID);
+	auto sle = ledger->read(key);
+	if (!sle)
+	{
+		return rpcError(rpcNO_SCHEMA);
+	}
+	if (!context.app.getSchemaManager().contains(schemaID))
+	{
+		 auto schemaPath =
+            boost::filesystem::path(context.app.config().SCHEMA_PATH) /
+            to_string(schemaID);
+         bool bForceCreate =
+            boost::filesystem::exists(schemaPath);
+         context.app.getOPs().createSchema(sle, bForceCreate, true);
+    }
+	Json::Value jvResult(Json::objectValue);
+	jvResult[jss::status] = jss::success;
+	return jvResult;
+}
+
 
 }

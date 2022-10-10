@@ -4,6 +4,9 @@
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/protocol/TableDefines.h>
+#include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/protocol/ContractDefines.h>
+#include <ripple/protocol/Feature.h>
 
 #include <boost/thread.hpp>
 #include <eth/vm/Common.h>
@@ -105,38 +108,72 @@ ExtVM::balance(evmc_address const& addr)
     return toEvmC(uint256(drops));
 }
 
+bool
+useNewStorage(STMap256& mapStore, SleOps& oSle)
+{
+    if (mapStore.rootHash())
+        return true;
+    if (mapStore.isDefault() && oSle.ctx().view().rules().enabled(featureContractStorage))
+        return true;
+    return false;
+}
+
 evmc_uint256be
 ExtVM::store(evmc_uint256be const& key)
 {
-    SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
+    AccountID contract = fromEvmC(myAddress);
+    SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
+    ContractHelper& helper = oSle_.ctx().app.getContractHelper();
 
     uint256 uKey = fromEvmC(key);
-    try
+    if (useNewStorage(mapStore,oSle_))
     {
-        auto& uV = mapStore.at(uKey);
-        return toEvmC(uV);
-    }
-    catch (std::exception e)
-    {
+        bool bQuery =
+            (oSle_.getTx().getFieldU16(sfContractOpType) == QueryCall);
+        auto value =
+            helper.fetchValue(contract, mapStore.rootHash(), uKey, bQuery);
+        if (value)
+            return toEvmC(*value);
         return toEvmC(uint256(0));
+    }
+    else
+    {
+        try
+        {
+            auto& uV = mapStore.at(uKey);
+            return toEvmC(uV);
+        }
+        catch (std::exception const&)
+        {
+            return toEvmC(uint256(0));
+        }
     }
 }
 
 void
 ExtVM::setStore(evmc_uint256be const& key, evmc_uint256be const& value)
 {
-    SLE::pointer pSle = oSle_.getSle(fromEvmC(myAddress));
+    AccountID contract = fromEvmC(myAddress);
+    SLE::pointer pSle = oSle_.getSle(contract);
     STMap256& mapStore = pSle->peekFieldM256(sfStorageOverlay);
+    ContractHelper& helper = oSle_.ctx().app.getContractHelper();
 
     uint256 uKey = fromEvmC(key);
     uint256 uValue = fromEvmC(value);
-    if (uValue == uint256(0))
-        mapStore.erase(uKey);
+    if (useNewStorage(mapStore, oSle_))
+    {
+        helper.setStorage(contract, mapStore.rootHash(), uKey, uValue);
+    }
     else
-        mapStore[uKey] = uValue;
+    {
+        if (uValue == uint256(0))
+            mapStore.erase(uKey);
+        else
+            mapStore[uKey] = uValue;
 
-    oSle_.ctx().view().update(pSle);
+        oSle_.ctx().view().update(pSle);
+    }
 }
 
 eth::bytes const&
@@ -234,7 +271,8 @@ ExtVM::call(eth::CallParameters& oPara)
     }
     oPara.gas = e.gas();
 
-    return {terToEvmcStatusCode(e.getException()), e.takeOutput()};
+
+    return {terToEvmcStatusCode(e.getException()), e.takeOutput(), TERtoInt(e.getException())};
 }
 
 void
@@ -609,8 +647,8 @@ ExtVM::transfer_fee_set(
         return TERtoInt(res);
     }
 
-    ApplyContext const& ctx = oSle_.ctx();
-    auto j = ctx.app.journal("ExtVM");
+//    ApplyContext const& ctx = oSle_.ctx();
+//    auto j = ctx.app.journal("ExtVM");
     std::string sRate = _Rate.toString();
     std::string sMin = _Min.toString();
     std::string sMax = _Max.toString();

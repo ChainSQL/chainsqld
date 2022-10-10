@@ -83,7 +83,7 @@ RpcaPopAdaptor::onAccept(
             JLOG(j_.info())
                 << "doAccept time used:" << utcTime() - timeStart << "ms";
             this->app_.getOPs().endConsensus();
-        });
+        }, app_.doJobCounter());
 }
 
 std::shared_ptr<Ledger const>
@@ -199,6 +199,8 @@ RpcaPopAdaptor::validate(
             }
         });
 
+    v->sign(valSecret_);
+
     handleNewValidation(v, "local");
 
     Blob validation = v->getSerialized();
@@ -237,7 +239,7 @@ RpcaPopAdaptor::peerValidation(
         }
 
         JLOG(j_.info()) << "recvValidation " << val->getLedgerHash() << " from "
-                        << peer->id();
+                        << getPubIndex(val->getSignerPublic());
 
         app_.getOPs().pubValidation(val);
 
@@ -487,6 +489,7 @@ RpcaPopAdaptor::handleNewValidation(
         {
             auto result =
                 checkLedgerAccept(hash, val->getFieldU32(sfLedgerSequence));
+
             if (result.first && result.second)
             {
                 doValidLedger(result.first);
@@ -496,7 +499,7 @@ RpcaPopAdaptor::handleNewValidation(
     }
     else
     {
-        JLOG(j.debug()) << "Val for " << hash << " from "
+        JLOG(j.info()) << "Val for " << hash << " from "
                         << toBase58(TokenType::NodePublic, signingKey)
                         << " not added UNlisted";
     }

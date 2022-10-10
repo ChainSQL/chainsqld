@@ -392,7 +392,7 @@ ShardArchiveHandler::next(std::lock_guard<std::mutex> const& l)
         return onClosureFailed(
             "failed to wrap closure for starting download", l);
 
-    app_.getJobQueue().addJob(jtCLIENT, "ShardArchiveHandler", *wrapper);
+    app_.getJobQueue().addJob(jtCLIENT, "ShardArchiveHandler", *wrapper, app_.doJobCounter());
 
     return true;
 }
@@ -475,7 +475,7 @@ ShardArchiveHandler::complete(path dstPath)
     }
 
     // Process in another thread to not hold up the IO service
-    app_.getJobQueue().addJob(jtCLIENT, "ShardArchiveHandler", *wrapper);
+    app_.getJobQueue().addJob(jtCLIENT, "ShardArchiveHandler", *wrapper, app_.doJobCounter());
 }
 
 void

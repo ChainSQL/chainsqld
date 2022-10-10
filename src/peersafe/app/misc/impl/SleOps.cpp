@@ -13,10 +13,12 @@
 #include <peersafe/rpc/TableUtils.h>
 #include <ripple/rpc/handlers/Handlers.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/core/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/protocol/STMap256.h>
 #include <eth/vm/VMFace.h>
 
 namespace ripple {
@@ -113,17 +115,25 @@ namespace ripple {
         return code.size();    
 	}
 
-	TER SleOps::transferBalance(AccountID const& _from, AccountID const& _to, uint256 const& _value)
-	{
-		if (_value == uint256(0))
-			return tesSUCCESS;
+    TER
+    SleOps::transferBalance(
+        AccountID const& _from,
+        AccountID const& _to,
+        uint256 const& _value)
+    {
+        if (_value == uint256(0))
+            return tesSUCCESS;
 
-		int64_t value = fromUint256(_value);
-		auto ret = subBalance(_from, value);
-		if(ret == tesSUCCESS)
-			addBalance(_to, value);
-		return ret;
-	}
+        if (auto res = checkAuthority(_from, lsfPaymentAuth, _to);
+            res != tesSUCCESS)
+            return res;
+
+        int64_t value = fromUint256(_value);
+        auto ret = subBalance(_from, value, addressHasCode(_from));
+        if (ret == tesSUCCESS)
+            addBalance(_to, value);
+        return ret;
+    }
 
 	TER SleOps::doPayment(AccountID const& _from, AccountID const& _to, uint256 const& _value)
 	{
@@ -196,7 +206,21 @@ namespace ripple {
             std::uint32_t const seqno{
 				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
 			sleDst->setFieldU32(sfSequence, seqno);
-			ctx_.view().insert(sleDst);
+
+			//Add to directory
+            auto viewJ = ctx_.app.journal("Executive");
+            auto result = dirAdd(
+                ctx_.view(),
+                keylet::contract_index(),
+                k.key,
+                false,
+                [](std::shared_ptr<SLE> const& sle) {},
+                viewJ);
+            STMap256& mapExtension = sleDst->peekFieldM256(sfStorageExtension);
+            mapExtension[NODE_TYPE_CONTRACTKEY] = uint256(*result);
+            if (!result)
+                return tecDIR_FULL;
+            ctx_.view().insert(sleDst);
 		}
 
 		if (_value != uint256(0))
@@ -222,28 +246,34 @@ namespace ripple {
 		}
 	}
 
-	TER SleOps::subBalance(AccountID const& addr, int64_t const& amount)
-	{
-		SLE::pointer pSle = getSle(addr);
-		if (pSle)
-		{
-			// This is the total reserve in drops.
-			auto const uOwnerCount = pSle->getFieldU32(sfOwnerCount);
-			auto const reserve = ctx_.view().fees().accountReserve(uOwnerCount);
+    TER
+    SleOps::subBalance(
+        AccountID const& addr,
+        int64_t const& amount,
+        bool isContract)
+    {
+        SLE::pointer pSle = getSle(addr);
+        if (pSle)
+        {
+            // This is the total reserve in drops.
+            auto const uOwnerCount = pSle->getFieldU32(sfOwnerCount);
+            auto const reserve =
+                ctx_.view().fees().accountReserve(uOwnerCount, isContract);
 
-			auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
-			int64_t finalBanance = balance - amount;
-			//no reserve demand for contract
-			if (finalBanance >= reserve.drops() || (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
-			{
-				pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
-				ctx_.view().update(pSle);
-			}
-			else
-				return tecUNFUNDED_PAYMENT;
-		}
-		return tesSUCCESS;
-	}
+            auto balance = pSle->getFieldAmount(sfBalance).zxc().drops();
+            int64_t finalBanance = balance - amount;
+            // no reserve demand for contract
+            if (finalBanance >= reserve.drops() ||
+                (pSle->isFieldPresent(sfContractCode) && finalBanance >= 0))
+            {
+                pSle->setFieldAmount(sfBalance, ZXCAmount(finalBanance));
+                ctx_.view().update(pSle);
+            }
+            else
+                return tecUNFUNDED_PAYMENT;
+        }
+        return tesSUCCESS;
+    }
 
 	int64_t SleOps::balance(AccountID const& address)
 	{
@@ -279,7 +309,7 @@ namespace ripple {
 
         jsonLog[jss::account] = to_string(contractID);
         auto j = ctx_.app.journal("Executive");        
-        JLOG(j.info()) << "Contract log or event: " << jsonLog;
+        JLOG(j.debug()) << "Contract log or event: " << jsonLog;
 
         //getTx().
         ctx_.app.getOPs().PubContractEvents(contractID, aTopic, iTopicNum, byValue);
@@ -331,9 +361,9 @@ namespace ripple {
 			//
 			if(!nameInDB)
 			{
-				auto ledgerSeq = _ctx.app.getLedgerMaster().getValidLedgerIndex();
-				nameInDB = _ctx.app.getLedgerMaster().getNameInDB(ledgerSeq, _account, _sTableName);
-				if (!nameInDB)
+				auto tup = getTableEntry(_ctx.view(), _account, _sTableName);
+				auto pEntry = std::get<1>(tup);
+				if (!pEntry)
 				{
 					auto j = _ctx.app.journal("Executive");
 					JLOG(j.info())
@@ -343,6 +373,7 @@ namespace ripple {
 						<< _sTableName;
 					return std::make_pair(false, tables);
 				}
+				nameInDB = pEntry->getFieldH160(sfNameInDB);
 			}
 			//
 			table.setFieldH160(sfNameInDB, nameInDB);
@@ -378,7 +409,7 @@ namespace ripple {
 		if (ret != tesSUCCESS)
 		{
 			auto j = ctx_.app.journal("Executive");
-			JLOG(j.info())
+			JLOG(j.warn())
 				<< "SleOps disposeTableTx,apply result:"
 				<< transToken(ret);
 		}
@@ -392,9 +423,9 @@ namespace ripple {
 	//table operation
 	int64_t SleOps::createTable(AccountID const& _account, std::string const& _sTableName, std::string const& _raw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_raw](auto& obj)
 		{
 
 			obj.setFieldU16(sfOpType, T_CREATE);
@@ -407,9 +438,9 @@ namespace ripple {
 
 	int64_t SleOps::dropTable(AccountID const& _account, std::string const& _sTableName)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_ctx](auto& obj)
+			[&_account](auto& obj)
 		{
 			obj.setFieldU16(sfOpType, T_DROP);
 			obj.setAccountID(sfAccount, _account);
@@ -420,9 +451,9 @@ namespace ripple {
 
 	int64_t SleOps::renameTable(AccountID const& _account, std::string const& _sTableName, std::string const& _sTableNewName)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_sTableName, &_sTableNewName, &_ctx](auto& obj)
+			[&_account](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -434,25 +465,46 @@ namespace ripple {
 
 		return disposeTableTx(tx, _account, _sTableName, _sTableNewName);
 	}
-
+	
 	int64_t SleOps::grantTable(AccountID const& _account, AccountID const& _account2, std::string const& _sTableName, std::string const& _raw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttTABLELISTSET,
-			[&_account, &_account2, &_sTableName, &_raw, &_ctx](auto& obj)
+			[&_account, &_account2, &_raw](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
 			obj.setFieldU16(sfOpType, T_GRANT);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfUser, _account2);
-			std::string _sRaw = "[" + _raw + "]";
+            std::string _sRaw;
+            if (_raw[0] == '[')
+                _sRaw = _raw;     
+            else
+				_sRaw = "[" + _raw + "]";
+			
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 
 		return disposeTableTx(tx, _account, _sTableName);
 	}
+
+	int64_t SleOps::updateFieldsTable(AccountID const& _account, TableOpType& _opType, std::string const& _sTableName, std::string const& _raw)
+    {
+//		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttTABLELISTSET,
+			[&_account, &_opType, &_raw](auto& obj)
+		{
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, _opType);
+			obj.setAccountID(sfAccount, _account);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
+		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
+		return disposeTableTx(tx, _account, _sTableName);
+    }
 
 	//CRUD operation
     int64_t
@@ -463,9 +515,9 @@ namespace ripple {
             std::string const& _raw,
             std::string const& _autoFillField)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_raw,&_autoFillField, &_ctx](auto& obj)
+			[&_account, &_owner, &_raw,&_autoFillField](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -494,7 +546,12 @@ namespace ripple {
 			obj.setFieldU16(sfOpType, R_DELETE);
 			obj.setAccountID(sfAccount, _account);
 			obj.setAccountID(sfOwner, _owner);
-			std::string _sRaw = "[" + _raw + "]";
+            std::string _sRaw;
+			if (_raw[0] == '[')
+                _sRaw = _raw;     
+            else
+				_sRaw = "[" + _raw + "]";
+			
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
@@ -504,9 +561,9 @@ namespace ripple {
 
 	int64_t SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _getRaw, std::string const& _updateRaw)
 	{
-		const ApplyContext &_ctx = ctx_;
+//		const ApplyContext &_ctx = ctx_;
 		STTx tx(ttSQLSTATEMENT,
-			[&_account, &_owner, &_sTableName, &_getRaw, &_updateRaw, &_ctx](auto& obj)
+			[&_account, &_owner, &_getRaw, &_updateRaw](auto& obj)
 		{
 			SleOps::addCommonFields(obj, _account);
 			//
@@ -519,6 +576,24 @@ namespace ripple {
 			else
 				_sRaw = "[" + _updateRaw + "," + _getRaw + "]";
 			obj.setFieldVL(sfRaw, strCopy(_sRaw));
+		});
+        tx.setParentTxID(ctx_.tx.getTransactionID());
+		//
+		return disposeTableTx(tx, _account, _sTableName);
+	}
+
+	int64_t SleOps::updateData(AccountID const& _account, AccountID const& _owner, std::string const& _sTableName, std::string const& _raw)
+	{
+		const ApplyContext &_ctx = ctx_;
+		STTx tx(ttSQLSTATEMENT,
+			[&_account, &_owner, &_sTableName, &_raw, &_ctx](auto& obj)
+		{
+			SleOps::addCommonFields(obj, _account);
+			//
+			obj.setFieldU16(sfOpType, R_UPDATE);
+			obj.setAccountID(sfAccount, _account);
+			obj.setAccountID(sfOwner, _owner);
+			obj.setFieldVL(sfRaw, strCopy(_raw));
 		});
         tx.setParentTxID(ctx_.tx.getTransactionID());
 		//
@@ -633,7 +708,7 @@ namespace ripple {
 	void	SleOps::releaseResource()
 	{
 		resetTransactionCache();
-		for(auto handle : handleList_)
+		for(auto const& handle : handleList_)
 			ctx_.app.getContractHelper().releaseHandle(handle);
 	}
 
@@ -750,7 +825,7 @@ namespace ripple {
 			return tefINVALID_CURRENY;
 
 		STTx accountSetTx(ttTRUST_SET,
-			[&_value, &_sCurrency, &_issuer,&currency](auto& obj)
+			[&_value, &_issuer,&currency](auto& obj)
 		{
 			obj.setFieldAmount(sfLimitAmount, ripple::amountFromString(Issue{ currency,_issuer }, _value));
 		});
@@ -867,5 +942,37 @@ namespace ripple {
 
 		return -1;
 	}
+
+    TER
+    SleOps::checkAuthority(
+        AccountID const account,
+        LedgerSpecificFlags flag,
+        boost::optional<AccountID> dst)
+    {
+        auto const sle = ctx_.view().read(keylet::account(account));
+        if (!sle)
+            return tefINTERNAL;
+
+        if (ctx_.app.config().ADMIN && account == *ctx_.app.config().ADMIN)
+            return tesSUCCESS;
+
+		// allow payment with super admin
+		if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
+            dst == ctx_.app.config().ADMIN)
+            return tesSUCCESS;
+
+        if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+        {
+            if (!(sle->getFlags() & flag))
+                return tecNO_PERMISSION;
+        }
+        else
+        {
+            if (sle->getFlags() & flag)
+                return tecNO_PERMISSION;
+        }
+
+        return tesSUCCESS;
+    }
 
 }

@@ -45,7 +45,7 @@ inline constexpr auto LgrDBName{"ledger.db"};
 inline constexpr std::array<char const*, 1> LgrDBPragma{
     {"PRAGMA journal_size_limit=1582080;"}};
 
-inline constexpr std::array<char const*, 5> LgrDBInit{
+inline constexpr std::array<char const*, 9> LgrDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Ledgers (           \
@@ -62,8 +62,22 @@ inline constexpr std::array<char const*, 5> LgrDBInit{
     );",
      "CREATE INDEX IF NOT EXISTS SeqLedger ON Ledgers(LedgerSeq);",
 
-     // Old table and indexes no longer needed
-     "DROP TABLE IF EXISTS Validations;",
+    "CREATE TABLE IF NOT EXISTS Validations   (         \
+        LedgerSeq   BIGINT UNSIGNED,                    \
+        InitialSeq  BIGINT UNSIGNED,                    \
+        LedgerHash  CHARACTER(64),                      \
+        NodePubKey  CHARACTER(56),                      \
+        SignTime    BIGINT UNSIGNED,                    \
+        RawData     BLOB                                \
+    );",
+     "CREATE INDEX IF NOT EXISTS ValidationsByHash ON          \
+        Validations(LedgerHash);",
+     "CREATE INDEX IF NOT EXISTS ValidationsBySeq ON           \
+        Validations(LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS ValidationsByInitialSeq ON    \
+        Validations(InitialSeq, LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS ValidationsByTime ON          \
+        Validations(SignTime);",
 
      "END TRANSACTION;"}};
 
@@ -81,7 +95,7 @@ inline constexpr std::array TxDBPragma
 #endif
 };
 
-inline constexpr std::array<char const*, 12> TxDBInit{
+inline constexpr std::array<char const*, 13> TxDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Transactions (          \
@@ -94,31 +108,33 @@ inline constexpr std::array<char const*, 12> TxDBInit{
         TxResult    CHARACTER(24),                      \
         RawTxn      BLOB,                               \
         TxnMeta     BLOB                                \
-    );",
+     );",
      "CREATE INDEX IF NOT EXISTS TxLgrIndex ON           \
         Transactions(LedgerSeq);",
 
-	"CREATE TABLE IF NOT EXISTS TraceTransactions (         \
+     "CREATE TABLE IF NOT EXISTS TraceTransactions (         \
         TransID     CHARACTER(64),              \
         TransType   CHARACTER(24),              \
         TxSeq       BIGINT UNSIGNED,            \
         LedgerSeq   BIGINT UNSIGNED,            \
         Owner       CHARACTER(64),              \
         Name        CHARACTER(64)              \
-    );",
-	"CREATE INDEX IF NOT EXISTS TraceTxIndex ON                 \
-	            TraceTransactions(TransID);",
-	"CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
-		    TraceTransactions(LedgerSeq);",
-    "CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
-         TraceTransactions(TxSeq, Owner, Name);",
+     );",
+     "CREATE INDEX IF NOT EXISTS TraceTxIndex ON                 \
+	TraceTransactions(TransID);",
+     "CREATE INDEX IF NOT EXISTS TraceTxLgrIndex ON              \
+        TraceTransactions(LedgerSeq);",
+     "CREATE INDEX IF NOT EXISTS TraceMultiIndex ON              \
+        TraceTransactions(TxSeq, Owner, Name);",
+     "CREATE INDEX IF NOT EXISTS TraceMultiIndex2 ON             \
+        TraceTransactions(Owner, TransType, LedgerSeq);",
 
      "CREATE TABLE IF NOT EXISTS AccountTransactions (   \
         TransID     CHARACTER(64),                      \
         Account     CHARACTER(64),                      \
         LedgerSeq   BIGINT UNSIGNED,                    \
         TxnSeq      INTEGER                             \
-    );",
+     );",
      "CREATE INDEX IF NOT EXISTS AcctTxIDIndex ON        \
         AccountTransactions(TransID);",
      "CREATE INDEX IF NOT EXISTS AcctTxIndex ON          \
@@ -214,29 +230,6 @@ static constexpr std::array<char const*, 3> DatabaseBodyDBInit{
     );",
 
      "END TRANSACTION;"}};
-
-static constexpr std::array<char const*, 4> SyncTableStateDBInit{
-    {"BEGIN TRANSACTION;",
-
-    "CREATE TABLE IF NOT EXISTS SyncTableState (                         \
-        Owner               CHARACTER(64) ,  \
-        TableName           CHARACTER(64),   \
-        TableNameInDB       CHARACTER(64),   \
-        TxnLedgerHash       CHARACTER(64),   \
-        TxnLedgerSeq        CHARACTER(64),   \
-        LedgerHash          CHARACTER(64),   \
-        LedgerSeq           CHARACTER(64),   \
-        TxnUpdateHash       CHARACTER(64),   \
-        deleted             CHARACTER(64),   \
-        AutoSync            CHARACTER(64),   \
-		TxnLedgerTime		CHARACTER(64),   \
-        PreviousCommit      CHARACTER(64),   \
-        primary key  (Owner,TableNameInDB)   \
-    );",
-    "CREATE INDEX IF NOT EXISTS SyncSeqLedger ON SyncTableState(LedgerSeq);",
-
-    "END TRANSACTION;"}
-};
 
 }  // namespace ripple
 

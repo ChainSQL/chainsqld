@@ -39,6 +39,12 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/misc/CertList.h>
+#include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/basics/TypeTransform.h>
+#include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/STMap256.h>
 
 
 namespace ripple {
@@ -218,29 +224,17 @@ Transactor::checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee)
         return terNO_ACCOUNT;
 
     auto const balance = (*sle)[sfBalance].zxc();
+    ZXCAmount reserve =
+        ctx.view.fees().accountReserve((*sle)[sfOwnerCount]);
 	if (ctx.tx.getTxnType() == ttTABLELISTSET && ctx.tx.getFieldU16(sfOpType) == T_CREATE)
 	{
 		//If no judgment here ,tx will go into ledger and deduct expensive fee
-		auto const reserve =
-			ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
-
-        if (balance < reserve)
-			return tecINSUFFICIENT_RESERVE;
+		reserve = ctx.view.fees().accountReserve((*sle)[sfOwnerCount] + 1);
 	}
 
-    if (balance < feePaid)
+    if (balance < reserve + feePaid)
     {
-        JLOG(ctx.j.trace()) << "Insufficient balance:"
-                            << " balance=" << to_string(balance)
-                            << " paid=" << to_string(feePaid);
-
-        if ((balance > beast::zero) && !ctx.view.open())
-        {
-            // Closed ledger, non-zero balance, less than fee
-            return tecINSUFF_FEE;
-        }
-
-        return terINSUF_FEE_B;
+         return tecINSUFF_FEE;
     }
 
     return tesSUCCESS;
@@ -323,7 +317,7 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     auto const id = ctx.tx.getAccountID(sfAccount);
 
     std::uint32_t const t_seq = ctx.tx.getSequence();
-    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountSeq(id);
+    std::uint32_t const a_seq = ctx.app.getStateManager().getAccountCheckSeq(id,ctx.view);
     if (a_seq == 0)
     {
         JLOG(ctx.j.info())
@@ -365,6 +359,24 @@ Transactor::checkSeq2(PreclaimContext const& ctx)
     return tesSUCCESS;
 }
 
+STer
+Transactor::checkUserCert(PreclaimContext const& ctx)
+{
+    auto const certVerify1 = ctx.tx.checkCertificate();
+    if (!certVerify1.first)
+    {
+        return {tefBAD_USERCERT, certVerify1.second};
+    }
+
+    auto const certVerify2 =
+        ctx.app.userCertList().verifyCred(certVerify1.second);
+    if (!certVerify2.first)
+    {
+        return {tefBAD_USERCERT, certVerify2.second};
+    }
+    return {tesSUCCESS, ""};
+}
+
 TER
 Transactor::checkFrozen(PreclaimContext const& ctx)
 {
@@ -373,14 +385,104 @@ Transactor::checkFrozen(PreclaimContext const& ctx)
     auto const sle = ctx.view.read(keylet::frozen());
     if (!sle)
         return tesSUCCESS;
+
+    boost::optional<AccountID> contractAddress;
+    if (STTx::checkChainsqlContractType(ctx.tx.getTxnType()) &&
+        ctx.tx.getFieldU16(sfContractOpType) >= MessageCall)
+    {
+        contractAddress = ctx.tx.getAccountID(sfContractAddress);
+    }
+
     auto obj = sle->getFieldObject(sfFrozen);
     auto frozens = obj.getFieldArray(sfFrozenAccounts);
-    for (auto& account : frozens)
+    for (auto const& account : frozens)
     {
         auto userID = account.getAccountID(sfAccount);
-        if (userID == id)
+        if (userID == id || userID == contractAddress)
         {
             return tefACCOUNT_FROZEN;
+        }
+    }
+
+    return tesSUCCESS;
+}
+
+TER
+Transactor::checkAuthority(
+    PreclaimContext const& ctx_,
+    AccountID const acc,
+    LedgerSpecificFlags flag,
+    boost::optional<AccountID> dst)
+{
+    auto const sle = ctx_.view.read(keylet::account(acc));
+    if (!sle)
+        return tefINTERNAL;
+
+    if (ctx_.app.config().ADMIN && acc == *ctx_.app.config().ADMIN)
+        return tesSUCCESS;
+
+    // allow payment with super admin
+    if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
+        dst == ctx_.app.config().ADMIN)
+        return tesSUCCESS;
+
+    if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+    {
+        if (!(sle->getFlags() & flag))
+            return tecNO_PERMISSION;
+    }
+    else
+    {
+        if (sle->getFlags() & flag)
+            return tecNO_PERMISSION;
+    }
+
+    return tesSUCCESS;
+}
+
+TER
+Transactor::cleanUpDirOnDeleteAccount(ApplyContext& ctx, AccountID const& acc)
+{
+    auto src = ctx.view().peek(keylet::account(acc));
+
+    if (!src->isFieldPresent(sfStorageExtension))
+        return tesSUCCESS;
+
+    boost::optional<AccountID> authOwner = boost::none;
+    boost::optional<uint64_t> authPage = boost::none;
+
+    auto ter =
+        src->getFieldM256(sfStorageExtension)
+            .forEach([&](uint256 const& k, uint256 const& v) {
+                if (k == NODE_TYPE_CONTRACTKEY)
+                {
+                    uint64_t page = fromUint256(v);
+                    if (!ctx.view().dirRemove(
+                            keylet::contract_index(), page, src->key(), true))
+                    {
+                        return TER{tefBAD_LEDGER};
+                    }
+                }
+                else if (k == NODE_TYPE_AUTHORIZE)
+                {
+                    authPage = fromUint256(v);
+                }
+                else if (k == NODE_TYPE_AUTHORIZER)
+                {
+                    authOwner = AccountID::fromVoid(v.data());
+                }
+
+                return TER{tesSUCCESS};
+            });
+    if (ter != tesSUCCESS)
+        return ter;
+
+    if (authOwner && authPage)
+    {
+        if (!ctx.view().dirRemove(
+                keylet::ownerDir(*authOwner), *authPage, src->key(), true))
+        {
+            return tefBAD_LEDGER;
         }
     }
 
@@ -855,8 +957,10 @@ Transactor::operator()()
 		return { terResult, false };
 	}
 	if (terResult.ter == tesSUCCESS)
-	{
+    {
+        ctx_.app.getContractHelper().clearDirty();
 		terResult = apply();
+        ctx_.app.getContractHelper().flushDirty(terResult.ter);
 	}
 
     // No transaction can return temUNKNOWN from apply,
@@ -953,9 +1057,9 @@ Transactor::operator()()
     }
 
 	// Always apply to ledger, even if tx invalid.
-	applied = true;
+	//applied = true;
 
-    if (applied)
+    //if (applied)
     {
         // Transaction succeeded fully or (retries are not allowed and the
         // transaction could claim a fee)
@@ -979,7 +1083,7 @@ Transactor::operator()()
 
     JLOG(j_.trace()) << (applied ? "applied" : "not applied") << transToken(terResult.ter);
 
-	return std::make_pair(terResult, applied);
+	return std::make_pair(terResult, true);
 }
 
 }  // namespace ripple

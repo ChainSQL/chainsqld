@@ -86,6 +86,9 @@ struct sync_status
         prevSeq = 0;
         mapSynced.clear();
     }
+
+    Json::Value
+    getJson() const;
 };
 
 class TxPool
@@ -131,6 +134,12 @@ public:
         return mTxsSet.size() - mAvoidByHash.size();
     }
 
+    inline Json::Value
+    syncStatusJson() const
+    {
+        return mSyncStatus.getJson();
+    }
+
     // Get at most specified counts of Tx from TxPool.
     uint64_t
     topTransactions(uint64_t limit, LedgerIndex seq, H256Set& set);
@@ -151,8 +160,12 @@ public:
     // Update avoid set when receiving a Tx set from peers.
     void
     updateAvoid(SHAMap const& map, LedgerIndex seq);
+
     void
     clearAvoid(LedgerIndex seq);
+    
+    void
+    clearAvoid();
 
     bool
     isAvailable();
@@ -162,6 +175,16 @@ public:
 
     void
     checkSyncStatus(LedgerIndex ledgerSeq, uint256 const& prevHash);
+
+    Json::Value
+    txInPool();
+
+    void
+    sweep();
+
+protected:
+    void
+    removeExpired();
 
 private:
     Schema& app_;

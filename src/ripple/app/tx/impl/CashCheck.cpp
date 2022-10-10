@@ -96,6 +96,10 @@ CashCheck::preclaim(PreclaimContext const& ctx)
         return tecNO_PERMISSION;
     }
     AccountID const srcId{(*sleCheck)[sfAccount]};
+    auto checkRet = checkAuthority(ctx, srcId, lsfPaymentAuth, dstId);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
+
     if (srcId == dstId)
     {
         // They wrote a check to themselves.  This should be caught when

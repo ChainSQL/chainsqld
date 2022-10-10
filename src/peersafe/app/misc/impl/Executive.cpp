@@ -1,3 +1,4 @@
+#include <ripple/app/tx/impl/Transactor.h>
 #include <peersafe/app/misc/Executive.h>
 #include <eth/vm/VMFactory.h>
 #include <peersafe/core/Tuning.h>
@@ -8,6 +9,8 @@
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/utils/keccak.h>
+#include <peersafe/app/ledger/LedgerAdjust.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -53,7 +56,7 @@ bool Executive::execute() {
 	// Entry point for a user-executed transaction.
 	
 	// Pay...
-	JLOG(j.info()) << "Paying" << m_gasCost << "from sender";
+	JLOG(j.debug()) << "Paying " << m_gasCost << " from sender";
 	auto& tx = m_s.ctx().tx;
 	auto sender = tx.getAccountID(sfAccount);
 	auto ter = m_s.subBalance(sender, m_gasCost);
@@ -196,7 +199,10 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
         }
         auto output = get<1>(retPre);
         if (output.size() > 0)
-			m_output = eth::owning_bytes_ref{std::move(output), 0, output.size()};
+        {
+            size_t outputSize = output.size();
+            m_output = eth::owning_bytes_ref{std::move(output), 0, outputSize};
+        }
 	}
     else
     {
@@ -224,36 +230,39 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             return true;
         }
         // Transfer zxc.
-        TER ret = tesSUCCESS;
-        if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
-            !m_PreContractFace.isPrecompiledOrigin(
-                _p.receiveAddress, m_envInfo.block_number()) &&
-            !m_PreContractFace.isPrecompiledDiy(_p.receiveAddress))
-        {
-            // account not exist,activate it
-            ret = m_s.doPayment(
-                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        }
-        else
-        {
-            ret = m_s.transferBalance(
-                _p.senderAddress, _p.receiveAddress, _p.valueTransfer);
-        }
+		if(_p.valueTransfer != uint256(0))
+		{
+			TER ret = tesSUCCESS;
+			if (!_p.staticCall && m_s.getSle(_p.receiveAddress) == nullptr &&
+				!m_PreContractFace.isPrecompiledOrigin(
+					_p.receiveAddress, m_envInfo.block_number()) &&
+				!m_PreContractFace.isPrecompiledDiy(_p.receiveAddress))
+			{
+				// account not exist,activate it
+				ret = m_s.doPayment(
+					_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+			}
+			else
+			{
+				ret = m_s.transferBalance(
+					_p.senderAddress, _p.receiveAddress, _p.valueTransfer);
+			}
 
-        auto j = getJ();
-        JLOG(j.info()) << "Contract invoke , address : "
-                       << to_string(_p.codeAddress)
-                       << ", sender :" << to_string(_p.senderAddress)
-                       << ", receive :" << to_string(_p.receiveAddress)
-                       << ", amount :" << to_string(_p.valueTransfer);
+			auto j = getJ();
+			JLOG(j.info()) << "Contract invoke , address : "
+						<< to_string(_p.codeAddress)
+						<< ", sender :" << to_string(_p.senderAddress)
+						<< ", receive :" << to_string(_p.receiveAddress)
+						<< ", amount :" << to_string(_p.valueTransfer);
 
-        if (ret != tesSUCCESS)
-        {
-            m_excepted = ret;
-			//formatOutput(std::to_string(TERtoInt(ret)));
-			formatOutput(transHuman(ret));
-            return true;
-        }
+			if (ret != tesSUCCESS)
+			{
+				m_excepted = ret;
+				//formatOutput(std::to_string(TERtoInt(ret)));
+				formatOutput(transHuman(ret));
+				return true;
+			}
+		}        
     }
 
 	return !m_ext;
@@ -277,6 +286,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
 		m_excepted = ret;
 		return true;
 	}
+	LedgerAdjust::updateContractCount(m_s.ctx().app, m_s.ctx().view(),CONTRACT_CREATE);
 
     JLOG(j.info()) << "Contract create , address : "
                    << to_string(m_newAddress) << ", from sender :" << to_string(_sender);
@@ -286,7 +296,7 @@ bool Executive::executeCreate(AccountID const& _sender, uint256 const& _endowmen
     if (!_code.empty())
         m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, m_newAddress, _sender, _origin,
             value, _gasPrice, &data, _code, sha512Half(makeSlice(_code.toBytes())), m_depth, true, false);
-
+	
     return !m_ext;
 }
 
@@ -421,9 +431,23 @@ TER Executive::finalize() {
 	m_s.addBalance(sender, m_gas * m_gasPrice);
 
 	// Suicides...
-	if (m_ext) for (auto a : m_ext->sub.selfdestruct) m_s.kill(a);
+    if (m_ext)
+    {
+        for (auto a : m_ext->sub.selfdestruct)
+        {
+            if (auto ter = Transactor::cleanUpDirOnDeleteAccount(m_s.ctx(), a);
+                ter != tesSUCCESS)
+            {
+                return ter;
+            }
 
-	return m_excepted;
+            m_s.kill(a);
+            LedgerAdjust::updateContractCount(
+                m_s.ctx().app, m_s.ctx().view(), CONTRACT_DESTORY);
+        }
+    }
+
+    return m_excepted;
 }
 
 void Executive::accrueSubState(eth::SubState& _parentContext)

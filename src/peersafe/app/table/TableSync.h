@@ -50,7 +50,7 @@ public:
     void SeekTableTxLedger(std::shared_ptr <protocol::TMGetTable> const& m, std::weak_ptr<Peer> const& wPeer);
 
     //send sync request to peers        
-    bool SendSyncRequest(AccountID accountID, std::string sTableName, LedgerIndex iStartSeq, uint256 iStartHash, LedgerIndex iCheckSeq, uint256 iCheckHash, LedgerIndex iStopSeq, bool bGetLost, std::shared_ptr <TableSyncItem> pItem);
+    bool SendSyncRequest(AccountID accountID, std::string sNameInDB, LedgerIndex iStartSeq, uint256 iStartHash, LedgerIndex iCheckSeq, uint256 iCheckHash, LedgerIndex iStopSeq, bool bGetLost, std::shared_ptr <TableSyncItem> pItem);
     
     bool isExist(std::list<std::shared_ptr <TableSyncItem>>  listTableInfo_, AccountID accountID, std::string sTableName, TableSyncItem::SyncTargetType eTargeType);
 
@@ -87,9 +87,12 @@ public:
     void LocalSyncThread();
 
     void SetHaveSyncFlag(bool haveSync);
-    void sweep();
+    void Sweep();
+    bool InitTableItems();
+    bool IsInitTable();
+    Json::Value SyncInfo(std::string const& nameInDB);
+
 private:
-    bool initTableItems();
     std::tuple<AccountID, SecretKey, bool>
     ParseSecret(std::string secret, std::string user);
     std::tuple<AccountID, AccountID, SecretKey, bool> 
@@ -109,7 +112,7 @@ private:
     bool CheckSyncDataBy256thLedger(std::shared_ptr <TableSyncItem> pItem, LedgerIndex index, uint256 ledgerHash);    
     bool SendData(std::shared_ptr <TableSyncItem> pItem, std::shared_ptr <protocol::TMTableData> const& m);
     bool MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t time, std::string sNickName, TableSyncItem::SyncTargetType eTargeType, LedgerIndex TxnLgrSeq, uint256 TxnLgrHash, LedgerIndex PreviousTxnLgrSeq, uint256 PrevTxnLedgerHash, std::string sNameInDB, protocol::TMTableData &m);
-    bool MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string tablename, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply);
+    bool MakeSeekEndReply(LedgerIndex iSeq, uint256 hash, LedgerIndex iLastSeq, uint256 lastHash, uint256 checkHash, std::string account, std::string nameInDB, std::string sNickName, uint32_t time, TableSyncItem::SyncTargetType eTargeType, protocol::TMTableData &reply);
     bool
     MakeDataForTx(
         std::shared_ptr<const STTx> stTx,
@@ -159,6 +162,7 @@ private:
     bool                                        bAutoLoadTable_;
 
     bool                                        bIsHaveSync_;
+    bool                                        bRemoteSync_;
 
     bool bInitTableItems_{false};
     // if the sync thread is running

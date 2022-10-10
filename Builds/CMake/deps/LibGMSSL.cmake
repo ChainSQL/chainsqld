@@ -24,11 +24,11 @@ ExternalProject_Add(libgmssl
     PREFIX ${nih_cache_path}
     GIT_REPOSITORY https://github.com/ChainSQL/GmSSL.git
     GIT_TAG feature/updateMerge4master
+    UPDATE_COMMAND ""
     CONFIGURE_COMMAND ${GMSSL_CFG_CMD}
     BUILD_COMMAND ${GMSSL_BUILD_CMD}
-    INSTALL_COMMAND ${GMSSL_INSTALL_CMD}
     BUILD_IN_SOURCE 1
-    # BUILD_BYPRODUCTS "${libcrypto}"
+    INSTALL_COMMAND ${GMSSL_INSTALL_CMD}
 )
 
 set(OPENSSL_INCLUDE_DIRECTORIES ${libgmssl_include_dir})

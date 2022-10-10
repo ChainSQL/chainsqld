@@ -29,6 +29,7 @@
 #include <boost/regex.hpp>
 #include <algorithm>
 #include <chrono>
+#include <peersafe/app/misc/CertList.h>
 
 // VFALCO Shouldn't we have to include the OpenSSL
 // headers or something for SSL_get_finished?
@@ -148,31 +149,36 @@ buildHandshake(
                 cl->info().parentHash.begin(), cl->info().parentHash.size()));
     }
 
-    //set validate-public and proof for validator
-	if (app.getValidationPublicKey().size() != 0)
-	{
-		auto const sig2 = signDigest(
-			app.getValidatorKeys().publicKey,
-			app.getValidatorKeys().secretKey,
-			sharedValue);
-        h.insert("Validate-PublicKey",toBase58(
-				TokenType::NodePublic,
-				app.getValidationPublicKey()));
-		h.insert("Validate-Proof",base64_encode(sig2.data(), sig2.size()));
-	}
-	else
-	{
-		std::string schemaIds; 
-		for (int i = 0; i < app.config().SCHEMA_IDS.size(); i++)
-		{
-			schemaIds += app.config().SCHEMA_IDS[i];
-			if (i != app.config().SCHEMA_IDS.size() - 1)
-			{
-				schemaIds += ",";
-			}
-		}
-        h.insert("SchemaIDs",schemaIds);
-	}
+    // set validate-public and proof for validator
+    if (app.getValidationPublicKey().size() != 0)
+    {
+        auto const sig2 = signDigest(
+            app.getValidatorKeys().publicKey,
+            app.getValidatorKeys().secretKey,
+            sharedValue);
+        h.insert(
+            "Validate-PublicKey",
+            toBase58(TokenType::NodePublic, app.getValidationPublicKey()));
+        h.insert("Validate-Proof", base64_encode(sig2.data(), sig2.size()));
+    }
+    else
+    {
+        std::string schemaIds;
+        for (int i = 0; i < app.config().SCHEMA_IDS.size(); i++)
+        {
+            schemaIds += app.config().SCHEMA_IDS[i];
+            if (i != app.config().SCHEMA_IDS.size() - 1)
+            {
+                schemaIds += ",";
+            }
+        }
+        h.insert("SchemaIDs", schemaIds);
+    }
+
+    if (!app.peerCertList().getSelfCred().empty())
+    {
+        h.insert("Credential", strHex(app.peerCertList().getSelfCred()));
+    }
 }
 
 std::pair<boost::optional<PublicKey>, boost::optional<PublicKey>>
@@ -254,7 +260,7 @@ verifyHandshake(
     }();
 
     if (publicKey == app.nodeIdentity().first)
-        throw std::runtime_error("Self connection");
+        throw std::runtime_error("Self connection(same node publicKey)");
 
     // This check gets two birds with one stone:
     //
@@ -311,7 +317,8 @@ verifyHandshake(
     }
 
     PublicKey const publicValidate = [&headers] {
-        if (auto const iter = headers.find("Validate-PublicKey"); iter != headers.end())
+        if (auto const iter = headers.find("Validate-PublicKey");
+            iter != headers.end())
         {
             auto pk = parseBase58<PublicKey>(
                 TokenType::NodePublic, iter->value().to_string());
@@ -327,6 +334,10 @@ verifyHandshake(
 
         throw std::runtime_error("Bad node public key");
     }();
+
+    if (publicValidate == app.getValidationPublicKey())
+        throw std::runtime_error("Self connection(same validate publicKey)");
+
     {
         auto const iter = headers.find("Validate-Proof");
 
@@ -337,6 +348,18 @@ verifyHandshake(
 
         if (!verifyDigest(publicValidate, sharedValue, makeSlice(sig), false))
             throw std::runtime_error("Failed to verify session");
+    }
+
+    {
+        std::string peerCred = "";
+        if (auto const iter = headers.find("Credential"); iter != headers.end())
+        {
+            peerCred = strCopy(strUnHex(iter->value().to_string()).value());
+        }
+        if (auto certVerify = app.peerCertList().verifyCred(peerCred); !certVerify.first)
+        {
+            throw std::runtime_error(certVerify.second);
+        }
     }
 
     return std::make_pair(publicKey, publicValidate);

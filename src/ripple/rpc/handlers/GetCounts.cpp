@@ -34,6 +34,7 @@
 #include <ripple/rpc/Context.h>
 #include <ripple/shamap/ShardFamily.h>
 #include <peersafe/app/misc/ConnectionPool.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -104,12 +105,15 @@ getCountsJson(Schema& app, int minObjectCount)
     ret[jss::node_hit_rate] = app.getNodeStore().getCacheHitRate();
     ret[jss::ledger_hit_rate] = app.getLedgerMaster().getCacheHitRate();
     ret[jss::AL_hit_rate] = app.getAcceptedLedgerCache().getHitRate();
-    ret["Connection_Count_For_Get"] = app.getConnectionPool().count();
+    ret["Connection_Count_In_Pool"] = app.getConnectionPool().count();
     ret["AcceptedLedgerCacheSize"] =
         app.getAcceptedLedgerCache().getCacheSize();
     ret["LedgerHistorySize"] =
         app.getLedgerMaster().getLedgerHistory().getCacheSize();
-        
+    ret["HeldTransactionSize"] = app.getLedgerMaster().heldTransactionSize();
+
+    ret["state_leafset_cache_size"] =
+        static_cast<int> (app.getNodeFamily().getStateNodeHashSet()->size());
     ret[jss::fullbelow_size] =
         static_cast<int>(app.getNodeFamily().getFullBelowCache(0)->size());
     ret[jss::treenode_cache_size] =

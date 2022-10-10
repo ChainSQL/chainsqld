@@ -335,44 +335,43 @@ private:
         return jvRequest;
     }
 
-    // tx_account accountID [ledger_min [ledger_max [limit]]]] [binary] [count]
-    // [forward]
+    // account_authorized [accountID [setFlag [limit [marker]]]]
     Json::Value
-    parseTxAccount(Json::Value const& jvParams)
+    parseAccountAuthorized(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+
+        if (jvParams.size() >= 1)
+        {
+            auto const account =
+                parseBase58<AccountID>(jvParams[0u].asString());
+            if (!account)
+                return rpcError(rpcACT_MALFORMED);
+
+            jvRequest[jss::Admin] = toBase58(*account);
+        }
+        if (jvParams.size() >= 2)
+            jvRequest[jss::SetFlag] = jvParams[1u].asUInt();
+        if (jvParams.size() >= 3)
+            jvRequest[jss::limit] = jvParams[2u].asUInt();
+        if (jvParams.size() >= 4)
+            jvRequest[jss::marker] = jvParams[3u].asString();
+
+        return jvRequest;
+    }
+
+    // contract_tx contractAddress [ledger_min [ledger_max [limit]]]
+    Json::Value
+    parseContractTransactions(Json::Value const& jvParams)
     {
         Json::Value jvRequest(Json::objectValue);
         unsigned int iParams = jvParams.size();
 
-        auto const account = parseBase58<AccountID>(jvParams[0u].asString());
-        if (!account)
+        auto const contract_address = parseBase58<AccountID>(jvParams[0u].asString());
+        if (!contract_address)
             return rpcError(rpcACT_MALFORMED);
 
-        jvRequest[jss::account] = toBase58(*account);
-
-        bool bDone = false;
-
-        while (!bDone && iParams >= 2)
-        {
-            if (jvParams[iParams - 1].asString() == jss::binary)
-            {
-                jvRequest[jss::binary] = true;
-                --iParams;
-            }
-            else if (jvParams[iParams - 1].asString() == jss::count)
-            {
-                jvRequest[jss::count] = true;
-                --iParams;
-            }
-            else if (jvParams[iParams - 1].asString() == jss::forward)
-            {
-                jvRequest[jss::forward] = true;
-                --iParams;
-            }
-            else
-            {
-                bDone = true;
-            }
-        }
+        jvRequest[jss::contract_address] = toBase58(*contract_address);
 
         if (1 == iParams)
         {
@@ -400,10 +399,12 @@ private:
 
             if (iParams >= 4)
                 jvRequest[jss::limit] = jvParams[3u].asInt();
+
         }
 
         return jvRequest;
     }
+
 
     // book_offers <taker_pays> <taker_gets> [<taker> [<ledger> [<limit>
     // [<proof> [<marker>]]]]] limit: 0 = no limit proof: 0 or 1
@@ -979,6 +980,23 @@ private:
         return jvRequest;
     }
 
+    Json::Value
+    parseAccountTables(Json::Value const& jvParams)
+    {
+        std::string strIdent = jvParams[0u].asString();
+        if (!parseBase58<AccountID>(strIdent))
+            return rpcError(rpcACT_MALFORMED);
+
+        // Get info on account.
+        Json::Value jvRequest(Json::objectValue);
+        jvRequest[jss::account] = strIdent;
+        if (jvParams.size() == 2)
+        {
+            jvRequest["detail"] = (jvParams[1u].asString() == "detail");
+        }
+
+        return jvRequest;
+    }
     // TODO: Get index from an alternate syntax: rXYZ:<index>
     Json::Value
     parseAccountRaw1(Json::Value const& jvParams)
@@ -1331,7 +1349,7 @@ private:
         return jvRequest;
     }
 
-    // tx <transaction_id> [binary]
+    // tx_merkle_proof <transaction_id> [binary]
     Json::Value
     parseTxMerkleProof(Json::Value const& jvParams)
     {
@@ -1347,14 +1365,35 @@ private:
         return jvRequest;
     }
 
-    // tx_history <index>
+    // tx_merkle_verify <transaction_id> <proof>
+    Json::Value
+    parseTxMerkleVerify(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest{Json::objectValue};
+
+        jvRequest[jss::transaction_hash] = jvParams[0u].asString();
+        jvRequest[jss::proof] = jvParams[1u].asString();
+
+        return jvRequest;
+    }
+
+    // tx_history <index> [type1 [type2 [...]]]
     Json::Value
     parseTxHistory(Json::Value const& jvParams)
     {
         Json::Value jvRequest{Json::objectValue};
 
-        jvRequest[jss::start] = jvParams[0u].asUInt();
+        unsigned int index = 0;
+        const unsigned int size = jvParams.size();
 
+        jvRequest[jss::start] = jvParams[index++].asUInt();
+
+        if (index < size)
+        {
+            Json::Value& txTypes = (jvRequest[jss::types] = Json::arrayValue);
+            while (index < size)
+                txTypes.append(jvParams[index++].asString());
+        }
         return jvRequest;
     }
 
@@ -1458,10 +1497,27 @@ private:
 	{
 		if (jvParams.size() < 2)
 		{
-			return rpcError(rpcINVALID_PARAMS);
+            std::string errMsg = "at least 2 params,in format:\"seed\" \"country province city organization common\".";
+            //ret.removeMember(jss::tx_json);
+            return RPC::make_error(rpcINVALID_PARAMS, errMsg);
 		}
+        
+        Json::Value jvRequest{Json::objectValue};
+        
+        if (2 == jvParams.size ())
+        {
+            jvRequest[jss::seed] = jvParams[0u].asString ();
+            jvRequest[jss::x509_subjects]     = jvParams[1u].asString ();
+        }
+        else if (3 == jvParams.size ())
+        {
+            jvRequest[jss::key_type] = jvParams[0u].asString ();
+            jvRequest[jss::seed]     = jvParams[1u].asString ();
+            jvRequest[jss::x509_subjects] = jvParams[2u].asString ();
+        }
 
-		return TransGBKToUTF8(jvParams);
+        return jvRequest;
+//		return TransGBKToUTF8(jvParams);
 	}
 
 	Json::Value parseSchemaList(Json::Value const& jvParams)
@@ -1481,7 +1537,7 @@ private:
 				return rpcError(rpcINVALID_PARAMS);
 			}
 
-			jvRequest[jss::Account] = jvParams[0u].asString();
+			jvRequest[jss::account] = jvParams[0u].asString();
 			jvRequest[jss::running] = jvParams[1u].asBool();
 
 
@@ -1495,7 +1551,7 @@ private:
 			}
 			else
 			{
-				jvRequest[jss::Account] = jvParams[0u].asString();
+                jvRequest[jss::account] = jvParams[0u].asString();
 			}
 		}
 		else
@@ -1520,6 +1576,33 @@ private:
 
 		return jvRequest;
 	}
+
+    Json::Value parseStopSchemaID(Json::Value const& jvParams)
+	{
+		Json::Value     jvRequest(Json::objectValue);
+
+		if (jvParams.size() > 1)
+		{
+			return rpcError(rpcINVALID_PARAMS);
+        }
+        else if (jvParams.size() == 1)
+        {
+            jvRequest[jss::schema] = jvParams[0u].asString();
+        }
+		return jvRequest;
+	}
+
+    Json::Value parseSyncInfo(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+
+        if (jvParams.size() == 1)
+        {
+            jvRequest[jss::nameInDB] = jvParams[0u].asString();
+        }
+
+        return jvRequest;
+    }
 
 public:
     //--------------------------------------------------------------------------
@@ -1566,6 +1649,8 @@ public:
             {"account_objects", &RPCParser::parseAccountItems, 1, 5},
             {"account_offers", &RPCParser::parseAccountItems, 1, 4},
             {"account_tx", &RPCParser::parseAccountTransactions, 1, 8},
+            {"account_authorized", &RPCParser::parseAccountAuthorized, 0, 4},
+            {"contract_tx", &RPCParser::parseContractTransactions, 1, 6},
             {"book_offers", &RPCParser::parseBookOffers, 2, 7},
             {"can_delete", &RPCParser::parseCanDelete, 0, 1},
             {"channel_authorize", &RPCParser::parseChannelAuthorize, 3, 4},
@@ -1576,6 +1661,7 @@ public:
             {"download_shard", &RPCParser::parseDownloadShard, 2, -1},
             {"feature", &RPCParser::parseFeature, 0, 2},
             {"fetch_info", &RPCParser::parseFetchInfo, 0, 1},
+            {"g_accountTables", &RPCParser::parseAccountTables,1,2},
             {"gateway_balances", &RPCParser::parseGatewayBalances, 1, -1},
             {"get_counts", &RPCParser::parseGetCounts, 0, 1},
             {"json", &RPCParser::parseJson, 2, 2},
@@ -1588,6 +1674,7 @@ public:
             {"ledger_header", &RPCParser::parseLedgerId, 1, 1},
             {"ledger_request", &RPCParser::parseLedgerId, 1, 1},
             {"ledger_txs",     &RPCParser::parseLedgerTxs, 1, 3},
+            {"ledger_proof", &RPCParser::parseLedger, 0, 2},
             {"log_level", &RPCParser::parseLogLevel, 0, 2},
             {"logrotate", &RPCParser::parseAsIs, 0, 0},
             {"manifest", &RPCParser::parseManifest, 1, 1},
@@ -1614,13 +1701,14 @@ public:
             {"server_info", &RPCParser::parseServerInfo, 0, 1},
             {"server_state", &RPCParser::parseServerInfo, 0, 1},
             {"crawl_shards", &RPCParser::parseAsIs, 0, 2},
-            {"stop", &RPCParser::parseAsIs, 0, 0},
+            {"stop",        &RPCParser::parseStopSchemaID, 0, 1},
             {"transaction_entry", &RPCParser::parseTransactionEntry, 2, 2},
             {"tx", &RPCParser::parseTx, 1, 4},
             {"tx_merkle_proof", &RPCParser::parseTxMerkleProof, 1, 2},
-            {"tx_account", &RPCParser::parseTxAccount, 1, 7},
+            {"tx_merkle_verify", &RPCParser::parseTxMerkleVerify, 2, 2},
+            {"tx_result", &RPCParser::parseTx, 1, 1},
             {"tx_count", &RPCParser::parseLedgerId, 0, 1},
-            {"tx_history", &RPCParser::parseTxHistory, 1, 1},
+            {"tx_history", &RPCParser::parseTxHistory, 1, -1},
             {"unl_list", &RPCParser::parseAsIs, 0, 0},
             {"validation_create", &RPCParser::parseValidationCreate, 0, 2},
             // {   "validation_seed",      &RPCParser::parseValidationSeed,        0,  1   },
@@ -1656,13 +1744,16 @@ public:
             {   "g_dbname",            &RPCParser::parseGetDBName,             1,  1 },
 			{	"g_cryptraw",		   &RPCParser::parseCryptRaw,			   1,  1 },
 			{   "table_auth",		   &RPCParser::parseTableAuth,			   2,  2 },
-			{   "gen_csr",             &RPCParser::parseGenCsr,                   2,  2 },
+			{   "gen_csr",             &RPCParser::parseGenCsr,                2,  3 },
 			{	"ledger_objects",	   &RPCParser::parseLedgerId,			   1,  1 },
             {   "node_size",		   &RPCParser::parseNodeSize, 			   0,  1 },
             {   "malloc_trim",		   &RPCParser::parseAsIs, 			       0,  0 },
 			{   "schema_list",		   &RPCParser::parseSchemaList,  	       0,  2 },
 			{   "schema_info",		   &RPCParser::parseSchemaID,    	       1,  1 },
 			{   "schema_accept",	   &RPCParser::parseSchemaID,		       1,  1 },
+            {   "schema_start",	       &RPCParser::parseSchemaID,		       1,  1 },
+            {   "tx_in_pool",          &RPCParser::parseAsIs,                  0,  0 },
+            {   "sync_info",           &RPCParser::parseSyncInfo,              0,  1 },
         };
 
         auto const count = jvParams.size();

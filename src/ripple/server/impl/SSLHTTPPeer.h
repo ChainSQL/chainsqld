@@ -22,6 +22,7 @@
 
 #include <ripple/server/impl/BaseHTTPPeer.h>
 #include <ripple/server/impl/SSLWSPeer.h>
+#include <ripple/net/HTTPClientSSLContext.h>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
@@ -66,6 +67,10 @@ public:
     websocketUpgrade() override;
 
 private:
+    bool
+    verifyCertificate(bool preverified,
+                      boost::asio::ssl::verify_context& ctx);
+    
     void
     do_handshake(yield_context do_yield);
 
@@ -143,11 +148,44 @@ SSLHTTPPeer<Handler>::websocketUpgrade()
 }
 
 template <class Handler>
+bool
+SSLHTTPPeer<Handler>::verifyCertificate(bool preverified,
+      boost::asio::ssl::verify_context& ctx)
+{
+    char subject_name[256];
+    X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+    X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+    JLOG(this->journal_.debug()) << "Verifying " << subject_name;
+
+    return preverified;
+}
+
+template <class Handler>
 void
 SSLHTTPPeer<Handler>::do_handshake(yield_context do_yield)
 {
     boost::system::error_code ec;
-    stream_.set_verify_mode(boost::asio::ssl::verify_none);
+    if(this->port().ssl_verify)
+    {
+        stream_.set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert, ec);
+        if(!ec)
+        {
+            stream_.set_verify_callback(
+                        std::bind(
+                        &SSLHTTPPeer::verifyCertificate,
+                        this->shared_from_this(),
+                        std::placeholders::_1,
+                        std::placeholders::_2),
+                        ec);
+            if(ec)
+                return this->fail(ec, "verify client crt");
+        }
+    }
+    else
+    {
+        stream_.set_verify_mode(boost::asio::ssl::verify_none);
+    }
+
     this->start_timer();
     this->read_buf_.consume(stream_.async_handshake(
         stream_type::server, this->read_buf_.data(), do_yield[ec]));

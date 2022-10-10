@@ -23,226 +23,95 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <ripple/protocol/STBitString.h>
 #include <ripple/protocol/STInteger.h>
 #include <ripple/protocol/STBase.h>
+#include <ripple/protocol/TER.h>
+#include <ripple/shamap/SHAMap.h>
+#include <ripple/protocol/jss.h>
+
 
 namespace ripple {
 
-	class STMap256
-		: public STBase
-	{
-	public:
-		using value_type = std::map<uint256,uint256> const&;
+class STMap256
+	: public STBase
+{
+public:
 
-		STMap256(){};
+	STMap256();
 
-		explicit STMap256(SField const& n)
-			: STBase(n)
-		{ }
+	explicit STMap256(SField const& n)
+		: STBase(n)
+	{ }
 
-		explicit STMap256(std::map<uint256,uint256> const& map)
-			: mValue(map)
-		{ }
+	STMap256(SerialIter& sit, SField const& name);
 
-		STMap256(SField const& n, std::map<uint256, uint256> const& map)
-			: STBase(n), mValue(map)
-		{ }
+	STBase* copy(std::size_t n, void* buf) const override
+    {
+        return emplace(n, buf, *this);
+    }
 
-		STMap256(SerialIter& sit, SField const& name)
-        : STBase(name)
-        {
-            Blob data = sit.getVL();
-            auto const count = data.size() / (256 / 8) / 2;
+	STBase* move(std::size_t n, void* buf) override
+    {
+        return emplace(n, buf, std::move(*this));
+    }
 
-            Blob::iterator begin = data.begin();
-            unsigned int uStart = 0;
-            for (unsigned int i = 0; i != count; i++)
-            {
-                unsigned int uKeyEnd = uStart + (256 / 8);
-                unsigned int uValueEnd = uStart + (256 / 8) * 2;
-                // This next line could be optimized to construct a default
-                // uint256 in the map and then copy into it
-                mValue.insert(std::make_pair(uint256(Blob(begin + uStart, begin + uKeyEnd)),
-                            uint256(Blob(begin + uKeyEnd, begin + uValueEnd))));
-                uStart = uValueEnd;
-            }
-        }
+	SerializedTypeID getSType() const override
+    {
+        return STI_MAP256;
+    }
 
+    bool isEquivalent(const STBase& t) const override
+    {
+        const STMap256* v = dynamic_cast<const STMap256*>(&t);
+        return v && (mValue == v->mValue) && mRootHash == v->mRootHash;
+    }
 
-		STBase*
-			copy(std::size_t n, void* buf) const override
-		{
-			return emplace(n, buf, *this);
-		}
+    bool isDefault() const override
+    {
+        return mValue.empty() && !mRootHash;
+    }
 
-		STBase*
-			move(std::size_t n, void* buf) override
-		{
-			return emplace(n, buf, std::move(*this));
-		}
+    void
+    add(Serializer& s) const override;
 
-		SerializedTypeID
-			getSType() const override
-		{
-			return STI_MAP256;
-		}
+    void
+    setValue(const STMap256& v)
+    {
+        mValue = v.mValue;
+        mRootHash = v.mRootHash;
+    }
 
-        void
-        add(Serializer& s) const override
-        {
-            assert(fName->isBinary());
-            assert(fName->fieldType == STI_MAP256);
-			Blob blob;
-            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-            {
-				blob.insert(blob.end(), iter->first.begin(), iter->first.end());
-				blob.insert(blob.end(), iter->second.begin(), iter->second.end());
-            }
-			s.addVL(blob);
-        }
+    Json::Value
+    getJson(JsonOptions /*options*/) const override;
 
-        bool
-        isEquivalent(const STBase& t) const override
-        {
-            const STMap256* v = dynamic_cast<const STMap256*> (&t);
-            return v && (mValue == v->mValue);
-        }
+    uint256&
+    operator[](const uint256& key);
 
-        Json::Value
-        getJson(int) const
-        {
-            Json::Value ret(Json::objectValue);
+    uint256&
+    at(const uint256& key);
 
-            for (auto iter = mValue.begin(); iter != mValue.end(); iter++)
-            {
-                ret[to_string(iter->first)] = to_string(iter->second);
-            }
+    uint256 const&
+    at(const uint256& key) const;
 
-            return ret;
-        }
+    size_t erase(const uint256& key);
 
-		bool
-			isDefault() const override
-		{
-			return mValue.empty();
-		}
+    bool
+    has(const uint256& key) const;
 
-		STMap256&
-			operator= (std::map<uint256,uint256> const& v)
-		{
-			mValue = v;
-			return *this;
-		}
+    size_t
+    size() const;
 
-		STMap256&
-			operator= (std::map<uint256, uint256>&& v)
-		{
-			mValue = std::move(v);
-			return *this;
-		}
+    TER
+    forEach(std::function<TER(uint256 const&, uint256 const&)> f) const;
 
-		void
-			setValue(const STMap256& v)
-		{
-			mValue = v.mValue;
-		}
+    void updateRoot(const uint256& rootHash);
 
-		/** Retrieve a copy of the vector we contain */
-		explicit
-			operator std::map<uint256,uint256>() const
-		{
-			return mValue;
-		}
+    boost::optional<uint256> rootHash();
 
-		std::size_t
-			size() const
-		{
-			return mValue.size();
-		}
+    boost::optional<uint256> rootHash() const;
 
-		bool
-			empty() const
-		{
-			return mValue.empty();
-		}
-
-		uint256&
-			operator[] (const uint256& key)
-		{
-			return mValue[key];
-		}		
-
-		uint256 & at(const uint256& key)
-		{
-			return mValue.at(key);
-		}
-
-		std::map<uint256,uint256> const&
-			value() const
-		{
-			return mValue;
-		}
-
-		std::map<uint256, uint256>::iterator
-			insert(std::map<uint256, uint256>::const_iterator pos, uint256 const& key,uint256 const& value)
-		{
-			return mValue.insert(pos, std::make_pair(key,value));
-		}
-
-		//std::vector<uint256>::iterator
-		//	insert(std::vector<uint256>::const_iterator pos, uint256 const&& key, uint256&& value)
-		//{
-		//	return mValue.insert(pos, std::make_pair(std::move(key), std::move(value)));
-		//}
-
-		void
-			insert(uint256 const& key,uint256 const& v)
-		{
-			mValue.insert(std::make_pair(key,v));
-		}
-
-		std::map<uint256,uint256>::iterator
-			begin()
-		{
-			return mValue.begin();
-		}
-
-		std::map<uint256, uint256>::const_iterator
-			begin() const
-		{
-			return mValue.begin();
-		}
-
-		std::map<uint256, uint256>::iterator
-			end()
-		{
-			return mValue.end();
-		}
-
-		std::map<uint256, uint256>::const_iterator
-			end() const
-		{
-			return mValue.end();
-		}
-
-		std::map<uint256, uint256>::iterator
-			erase(std::map<uint256, uint256>::iterator position)
-		{
-			return mValue.erase(position);
-		}
-
-		size_t erase(const uint256& key)
-		{
-			return mValue.erase(key);
-		}
-
-		void
-			clear() noexcept
-		{
-			return mValue.clear();
-		}
-
-	private:
-		std::map<uint256,uint256> mValue;
-	};
+private:
+	std::map<uint256,uint256>	mValue;
+    boost::optional<uint256>    mRootHash;
+};
 
 } // ripple
 

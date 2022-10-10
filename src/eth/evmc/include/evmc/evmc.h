@@ -426,6 +426,8 @@ struct evmc_result
      *  Also extends the size of the evmc_result to 64 bytes (full cache line).
      */
     uint8_t padding[4];
+
+    int exception;
 };
 
 

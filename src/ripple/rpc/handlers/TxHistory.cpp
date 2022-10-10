@@ -18,6 +18,7 @@
 //==============================================================================
 
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/core/DatabaseCon.h>
@@ -32,8 +33,25 @@
 
 namespace ripple {
 
+std::vector<std::string>
+parseTypes(Json::Value const& jvArray)
+{
+    std::vector<std::string> result;
+    for (auto const& jv : jvArray)
+    {
+        if (!jv.isString())
+            return result;
+        if (jv.asString() != "EnableAmendment" &&
+            jv.asString() != "SetFee" &&
+            jv.asString() != "UNLModify")
+        result.push_back(jv.asString());
+    }
+    return result;
+}
+
 // {
-//   start: <index>
+//   "start": <index>
+//   "types": [type1, type2...]
 // }
 Json::Value
 doTxHistory(RPC::JsonContext& context)
@@ -51,35 +69,80 @@ doTxHistory(RPC::JsonContext& context)
     if ((startIndex > 10000) && (!isUnlimited(context.role)))
         return rpcError(rpcNO_PERMISSION);
 
+    std::vector<std::string> txTypes;
+    if (context.params.isMember(jss::types))
+    {
+        if (!context.params[jss::types].isArray())
+            return RPC::make_error(
+                rpcINVALID_PARAMS, "Field types is not array");
+        if (context.params[jss::types].size() > 0)
+        {
+            if (txTypes = parseTypes(context.params[jss::types]);
+                txTypes.size() <= 0)
+            {
+                return RPC::make_error(
+                    rpcINVALID_PARAMS, "Field types is malformed");
+            }
+        }
+    }
+
     Json::Value obj;
     Json::Value txs;
 
     obj[jss::index] = startIndex;
 
-    std::string sql =
-        boost::str (boost::format (
-            "SELECT TransID "
-            "FROM Transactions ORDER BY LedgerSeq desc LIMIT %u,20;")
-                    % startIndex);
+    std::string sql;
+
+    if (txTypes.size() <= 0)
+    {
+        sql = boost::str(
+            boost::format(
+                "SELECT TransID, TxResult "
+                "FROM Transactions WHERE (TransType != 'EnableAmendment' "
+                "AND TransType != 'SetFee' AND TransType != 'UNLModify') "
+                "ORDER BY LedgerSeq desc LIMIT %u,20;") %
+            startIndex);
+    }
+    else
+    {
+        std::string cond;
+        for (std::size_t idx = 0; idx < txTypes.size(); idx++)
+        {
+            cond +=
+                boost::str(boost::format("TransType = '%s'") % txTypes[idx]);
+            if (idx != txTypes.size() - 1)
+                cond += " OR ";
+        }
+
+        sql = boost::str(
+            boost::format("SELECT TransID, TxResult "
+                          "FROM Transactions WHERE (%s) "
+                          "ORDER BY LedgerSeq desc LIMIT %u,20;") %
+            cond % startIndex);
+    }
 
     {
-        auto db = context.app.getTxnDB ().checkoutDb ();
+        auto db = context.app.getTxnDB().checkoutDbRead();
 
         boost::optional<std::string> stxnHash;
-        soci::statement st = (db->prepare << sql,
-                              soci::into (stxnHash));
-        st.execute ();
+        boost::optional<std::string> stxnResult;
+        soci::statement st =
+            (db->prepare << sql, soci::into(stxnHash), soci::into(stxnResult));
+        st.execute();
 
-        while (st.fetch ())
+        while (st.fetch())
         {
+            uint256 txID = from_hex_text<uint256>(stxnHash.value());
+            auto txn = context.app.getMasterTransaction().fetch(txID);
+            if (!txn)
+            {
+                continue;
+            }
 
-			uint256 txID = from_hex_text<uint256>(stxnHash.value());
-			auto txn = context.app.getMasterTransaction().fetch(txID);
-			if (!txn) {
-				continue;
-			}
+            Json::Value obj = txn->getJson(JsonOptions::include_date);
+            obj["TransactionResult"] = stxnResult.value();
 
-			txs.append(txn->getJson(JsonOptions::none));
+            txs.append(obj);
         }
     }
 

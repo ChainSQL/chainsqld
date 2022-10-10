@@ -74,6 +74,8 @@ public:
     virtual soci_ret UpdateSyncDB(const std::string &Owner, const std::string &TableNameInDB,
         bool bDel, const std::string &PreviousCommit) = 0;
 
+    virtual DatabaseCon* GetDatabaseConn() = 0;
+
 protected:
     DatabaseCon*                                                 databasecon_;
 	Schema*		                                                 app_;

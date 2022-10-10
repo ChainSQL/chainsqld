@@ -401,7 +401,7 @@ public:
     getFlags() const;
 
     uint256
-    getHash(HashPrefix prefix) const;
+    getHash(HashPrefix prefix, CommonKey::HashType hashType = CommonKey::chainHashTypeG) const;
     uint256
     getSigningHash(HashPrefix prefix) const;
 
@@ -532,6 +532,7 @@ public:
     void setFieldV256 (SField const& field, STVector256 const& v);
     void setFieldArray (SField const& field, STArray const& v);
 	void setFieldObject(SField const& field, STObject const& v);
+    void setFieldM256(SField const& field, STMap256 const& v);
 
     template <class Tag>
     void

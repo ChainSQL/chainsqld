@@ -208,19 +208,19 @@ namespace ripple {
         try {            
             std::string sql(
                 "CREATE TABLE SyncTableState(" \
-                "Owner             CHARACTER(64) NOT NULL, " \
-                "TableName         CHARACTER(64),          " \
-                "TableNameInDB     CHARACTER(64) NOT NULL, " \
-                "TxnLedgerHash     CHARACTER(64),          " \
-                "TxnLedgerSeq      CHARACTER(64),          " \
-                "LedgerHash        CHARACTER(64),          " \
-                "LedgerSeq         CHARACTER(64),          " \
-                "TxnUpdateHash     CHARACTER(64),          " \
-                "deleted           CHARACTER(64),          " \
-                "AutoSync          CHARACTER(64),          " \
-                "TxnLedgerTime     CHARACTER(64),          " \
-                "PreviousCommit    CHARACTER(64),          " \
-				"ChainId		   CHARACTER(64),		   " \
+                "Owner             VARCHAR(64) NOT NULL, "
+                "TableName         VARCHAR(64),          "
+                "TableNameInDB     VARCHAR(64) NOT NULL, "
+                "TxnLedgerHash     VARCHAR(64),          "
+                "TxnLedgerSeq      VARCHAR(64),          "
+                "LedgerHash        VARCHAR(64),          "
+                "LedgerSeq         VARCHAR(64),          "
+                "TxnUpdateHash     VARCHAR(64),          "
+                "deleted           VARCHAR(64),          "
+                "AutoSync          VARCHAR(64),          "
+                "TxnLedgerTime     VARCHAR(64),          "
+                "PreviousCommit    VARCHAR(64),          "
+                "ChainId		   VARCHAR(64),		   " \
                 "PRIMARY KEY(Owner,TableNameInDB))         "
             );
             soci::statement st = (sql_session->prepare << sql);
@@ -629,5 +629,11 @@ namespace ripple {
         }
 
         return ret;
+    }
+
+    DatabaseCon*
+    TableStatusDBMySQL::GetDatabaseConn()
+    {
+        return databasecon_;
     }
 }

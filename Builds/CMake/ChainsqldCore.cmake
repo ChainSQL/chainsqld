@@ -28,6 +28,10 @@ else()
     set(GMALG_LIBRARIES)
 endif()
 
+if (NOT openssl)
+    add_definitions(-DSOFTENCRYPT)
+endif()
+
 file (GLOB_RECURSE rb_headers
   src/ripple/beast/*.h
   src/ripple/beast/*.hpp)
@@ -40,12 +44,12 @@ if(enableTest)
           conditions
           consensus
           core
-		  crypto
+		      crypto
           csf
           json
           jtx
           ledger
-		  net
+		      net
           nodestore
           overlay
           peerfinder
@@ -598,6 +602,7 @@ target_sources (chainsqld PRIVATE
   src/ripple/rpc/handlers/LedgerEntry.cpp
   src/ripple/rpc/handlers/LedgerHandler.cpp
   src/ripple/rpc/handlers/LedgerHeader.cpp
+  src/ripple/rpc/handlers/LedgerProof.cpp
   src/ripple/rpc/handlers/LedgerRequest.cpp
   src/ripple/rpc/handlers/LogLevel.cpp
   src/ripple/rpc/handlers/LogRotate.cpp
@@ -697,8 +702,11 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/tx/impl/SqlTransaction.cpp
   src/peersafe/app/tx/impl/TableListSet.cpp
   src/peersafe/app/tx/impl/FreezeAccount.cpp
+  src/peersafe/app/tx/impl/AccountAuthorize.cpp
   src/peersafe/app/util/Common.cpp
   src/peersafe/app/util/TableSyncUtil.cpp
+  src/peersafe/app/prometh/impl/PrometheusClient.cpp
+  src/peersafe/app/ledger/LedgerAdjust.cpp
   src/peersafe/basics/impl/characterUtilities.cpp
   src/peersafe/crypto/impl/AES.cpp
   src/peersafe/crypto/impl/ECDSAKey.cpp
@@ -721,7 +729,9 @@ target_sources (chainsqld PRIVATE
   src/peersafe/precompiled/PreContractRegister.cpp
   src/peersafe/precompiled/ABI.cpp
   src/peersafe/precompiled/TableOpPrecompiled.cpp
+  src/peersafe/precompiled/ToolsPrecompiled.cpp
   src/peersafe/precompiled/Utils.cpp
+  src/peersafe/precompiled/ripemd160.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
@@ -757,6 +767,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/consensus/hotstuff/impl/Vote.cpp
   src/peersafe/consensus/hotstuff/impl/VoteData.cpp
   src/peersafe/rpc/handlers/AccountTables.cpp
+  src/peersafe/rpc/handlers/AccountAuthorized.cpp
   src/peersafe/rpc/handlers/CryptCheck.cpp
   src/peersafe/rpc/handlers/GenCsr.cpp
   src/peersafe/rpc/handlers/LedgerTxsHandler.cpp
@@ -771,6 +782,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/LedgerObjects.cpp
   src/peersafe/rpc/handlers/MallocTrim.cpp
   src/peersafe/rpc/handlers/NodeSize.cpp
+  src/peersafe/rpc/handlers/MonitorStatis.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp
@@ -787,6 +799,12 @@ target_sources (chainsqld PRIVATE
   src/eth/vm/executor/interpreter/VMCalls.cpp
   src/eth/vm/executor/interpreter/VMOpt.cpp
   src/eth/vm/utils/keccak.cpp
+  #[===============================[
+      wasmvm sources:
+        subdir: wasmvm
+  #]===============================]
+  src/wasmvm/vm/impl/action.cc
+  src/wasmvm/vm/impl/chainsqlWasmVm.cc
   ${test_srcs}
   #[===============================[
       test sources:
@@ -1109,7 +1127,6 @@ target_include_directories (chainsqld
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/ripple>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe>
-    # $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/peersafe/gmencrypt/softencrypt/GmSSL/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/eth/evmc/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/intx/include>
     # this one is for beast/legacy files:
@@ -1138,6 +1155,8 @@ target_link_libraries (chainsqld
   libff::ff
   intx
   instructions
+  wasm3_cpp
+  m3
   )
   
 if (APPLE)

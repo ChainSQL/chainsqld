@@ -136,6 +136,8 @@ public:
         uint256 chainId,
         std::list<std::tuple<std::string, std::string, std::string, bool>>&
             list) override;
+
+    DatabaseCon* GetDatabaseConn() override;
 };
 
 }

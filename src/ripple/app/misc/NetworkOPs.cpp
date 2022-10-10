@@ -77,6 +77,8 @@
 #include <peersafe/schema/PeerManager.h>
 // #include <peersafe/app/consensus/ViewChange.h>
 #include <peersafe/app/tx/impl/Tuning.h>
+#include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -506,7 +508,7 @@ public:
     Json::Value
     getServerInfo(bool human, bool admin, bool counters) override;
     std::string
-    getServerStatus();
+    getServerStatus() override;
     void
     clearLedgerFetch() override;
     Json::Value
@@ -639,7 +641,7 @@ public:
         int iTopicNum,
         const Blob& byValue) override;
 
-	void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
+    void pubViewChange(uint32_t ledgerSeq, uint64_t view) override;
 
     bool waitingForInit() override;
 
@@ -671,8 +673,8 @@ public:
     bool
     unsubLedger(std::uint64_t uListener) override;
 
-	virtual bool subViewChange(InfoSub::ref ispListener) override;
-	virtual bool unsubViewChange(std::uint64_t uListener) override;
+    virtual bool subViewChange(InfoSub::ref ispListener) override;
+    virtual bool unsubViewChange(std::uint64_t uListener) override;
     // for all txs which changes the table
     virtual void
     subTable(
@@ -916,20 +918,20 @@ private:
     // SubMapType mSubRTTransactions;    // All proposed and accepted
     // transactions. SubMapType mSubValidations;       // Received validations.
     // SubMapType mSubPeerStatus;        // peer status changes
-	enum SubTypes
-	{
-		sLedger,                    // Accepted ledgers.
-		sManifests,                 // Received validator manifests.
-		sServer,                    // When server changes connectivity state.
-		sTransactions,              // All accepted transactions.
-		sRTTransactions,            // All proposed and accepted transactions.
-		sValidations,               // Received validations.
-		sPeerStatus,                // Peer status changes.
+    enum SubTypes
+    {
+        sLedger,                    // Accepted ledgers.
+        sManifests,                 // Received validator manifests.
+        sServer,                    // When server changes connectivity state.
+        sTransactions,              // All accepted transactions.
+        sRTTransactions,            // All proposed and accepted transactions.
+        sValidations,               // Received validations.
+        sPeerStatus,                // Peer status changes.
         sConsensusPhase,  // Consensus phase
-		sLogs,
-		sViewChange,				 // ViewChange
+        sLogs,
+        sViewChange,				 // ViewChange
 
-		sLastEntry = sViewChange			// as this name implies, any new entry must
+        sLastEntry = sViewChange			// as this name implies, any new entry must
                                     // be ADDED ABOVE this one
     };
     std::array<SubMapType, SubTypes::sLastEntry + 1> mStreamMaps;
@@ -1112,12 +1114,12 @@ NetworkOPsImp::setHeartbeatTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!m_job_queue.isStopped()))
+                    (!app_.isShutdown()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_TIMER, "NetOPs.heartbeat", [this](Job&) {
                             processHeartbeatTimer();
-                        });
+                        }, app_.doJobCounter());
                 }
                 // Recover as best we can if an unexpected error occurs.
                 if (e.value() != boost::system::errc::success &&
@@ -1143,12 +1145,12 @@ NetworkOPsImp::setClusterTimer()
     if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
             [this](boost::system::error_code const& e) {
                 if ((e.value() == boost::system::errc::success) &&
-                    (!m_job_queue.isStopped()))
+                    (!app_.isShutdown()))
                 {
                     m_job_queue.addJob(
                         jtNETOP_CLUSTER, "NetOPs.cluster", [this](Job&) {
                             processClusterTimer();
-                        });
+                        }, app_.doJobCounter());
                 }
                 // Recover as best we can if an unexpected error occurs.
                 if (e.value() != boost::system::errc::success &&
@@ -1231,7 +1233,7 @@ NetworkOPsImp::processHeartbeatTimer()
         reportConsensusStateChange(currPhase);
         mLastConsensusPhase = currPhase;
     }
-
+    app_.getPrometheusClient().timerEntry(now);
     setHeartbeatTimer();
 }
 
@@ -1243,7 +1245,7 @@ NetworkOPsImp::tryCheckSubTx()
         m_bCheckTxThread = true;
         m_job_queue.addJob(jtCheckSubTx, "NetOPs.processSubTx", [this](Job&) {
             processSubTxTimer();
-        });
+        }, app_.doJobCounter());
     }
 }
 
@@ -1286,7 +1288,7 @@ NetworkOPsImp::broadCastTxs()
                 std::make_shared<Message>(txs, protocol::mtTRANSACTIONS),
                 peer_in_set(toSkip)));       
             m_bBroadThread = false;
-        });
+        }, app_.doJobCounter());
     }
 }
 
@@ -1295,8 +1297,8 @@ NetworkOPsImp::processSubTxTimer()
 {
     std::lock_guard sl(mSubLock);
 
-    processSubTx(mSubTx, "validate_timeout");
-    processSubTx(mValidatedSubTx, "db_timeout");
+    processSubTx(mSubTx, (std::string)jss::validate_timeout);
+    processSubTx(mValidatedSubTx, (std::string)jss::db_timeout);
 
     m_bCheckTxThread = false;
 }
@@ -1376,33 +1378,47 @@ NetworkOPsImp::processAccountDelay(std::map<AccountID, int> const& map)
 void
 NetworkOPsImp::processSubTx(SubTxMapType& subTx, const std::string& status)
 {
-	auto iter = subTx.begin();
-	while (iter != subTx.end())
-	{
-		auto now = std::chrono::system_clock::now();
-		using duration_type = std::chrono::duration<double>;
-		duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
-		if (time_span.count() >= TX_TIMEOUT)
-		//if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
-		{
-			//notify time out
-			InfoSub::pointer p = iter->second.first.lock();
-			if (p)
-			{
-				Json::Value jvObj(Json::objectValue);
-				jvObj[jss::type] = "singleTransaction";
-				jvObj[jss::transaction][jss::hash] = to_string(iter->first);
-				jvObj[jss::status] = status;
-				p->send(jvObj, true);
-			}
+    auto iter = subTx.begin();
+    while (iter != subTx.end())
+    {
+        auto now = std::chrono::system_clock::now();
+        using duration_type = std::chrono::duration<double>;
+        duration_type time_span = std::chrono::duration_cast<duration_type>(now - iter->second.second);
+        if (time_span.count() >= TX_TIMEOUT)
+        //if(app_.getLedgerMaster().getValidLedgerIndex() > iter->second.second)
+        {
+            //notify time out
+            InfoSub::pointer p = iter->second.first.lock();
+            if (p)
+            {
+                Json::Value jvObj(Json::objectValue);
+                jvObj[jss::type] = "singleTransaction";
+                jvObj[jss::transaction][jss::hash] = to_string(iter->first);
+                jvObj[jss::status] = status;
+                p->send(jvObj, true);
+            }
 
-			iter = subTx.erase(iter);
-		}
-		else
-		{
-			iter++;
-		}
-	}
+            //// remove from tx-pool and reset account sequence
+            //if (status == "validate_timeout")
+            //{
+            //    auto tx =
+            //        app_.getMasterTransaction().fetch(iter->first);
+            //    if (tx)
+            //    {
+            //        auto act = tx->getSTransaction()->getAccountID(
+            //            sfAccount);
+            //        app_.getStateManager().resetAccountSeq(act);
+            //    }
+            //    app_.getTxPool().removeTx(iter->first);
+            //}
+
+            iter = subTx.erase(iter);
+        }
+        else
+        {
+            iter++;
+        }
+    }
 }
 
 void
@@ -1520,7 +1536,7 @@ NetworkOPsImp::submitTransaction(std::shared_ptr<STTx const> const& iTrans)
     m_job_queue.addJob(jtTRANSACTION, "submitTxn", [this, tx](Job&) {
         auto t = tx;
         processTransaction(t, false, false, FailHard::no);
-    });
+    }, app_.doJobCounter());
 }
 
 void
@@ -1604,8 +1620,13 @@ NetworkOPsImp::doTransactionCheck(
             return {ter, false};
         }
 
-        app_.getStateManager().incrementSeq(txCur->getAccountID(sfAccount));
+        app_.getStateManager().onTxCheckSuccess(txCur->getAccountID(sfAccount));
         return {tesSUCCESS, true};
+    }
+    else if (ter.ter != terPRE_SEQ && ter.ter != tefPAST_SEQ)
+    {
+        app_.getStateManager().addFailedSeq(
+            txCur->getAccountID(sfAccount), txCur->getSequence());
     }
 
     return {ter, false};
@@ -1676,19 +1697,19 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
 
     ter = Transactor::checkSign(*pcctx);
     if (ter.ter != tesSUCCESS)
-    {
         return ter;
-    }
 
-    ter = Transactor::checkSeq2(*pcctx);
+    ter = Transactor::checkUserCert(*pcctx);
     if (ter.ter != tesSUCCESS)
-    {
         return ter;
-    }
 
     auto const baseFee = Transactor::calculateBaseFee(pcctx->view, pcctx->tx);
-
     ter = Transactor::checkFee(*pcctx, baseFee);
+    if (ter.ter != tesSUCCESS)
+        return ter;
+
+    //Move to end,since terPreSeq code will heldTransaction
+    ter = Transactor::checkSeq2(*pcctx);
     if (ter.ter != tesSUCCESS)
     {
         return ter;
@@ -1716,7 +1737,7 @@ NetworkOPsImp::doTransactionAsync(
     {
         if (m_job_queue.addJob(jtBATCH, "transactionBatch", [this](Job&) {
                 transactionBatch();
-            }))
+            }, app_.doJobCounter()))
         {
             mDispatchState = DispatchState::scheduled;
         }
@@ -1766,7 +1787,7 @@ NetworkOPsImp::doTransactionSync(
                 if (m_job_queue.addJob(
                         jtBATCH, "transactionBatch", [this](Job&) {
                             transactionBatch();
-                        }))
+                        }, app_.doJobCounter()))
                 {
                     mDispatchState = DispatchState::scheduled;
                 }
@@ -1835,7 +1856,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 // if (mConsensus.adaptor_.getUseNewConsensus())
                 //{
                 auto const result = doTransactionCheck(
-                    e.transaction, flags, *app_.openLedger().current());
+                    e.transaction, flags, *app_.checkedOpenLedger().current());
                 //}
                 // else
                 //{
@@ -1891,7 +1912,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
             }
 #endif
 
-            bool addLocal = e.local;
+            //bool addLocal = e.local;
 
             if (e.result.ter == tesSUCCESS)
             {
@@ -1904,53 +1925,70 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                          txCur->getAccountID(sfAccount),
                          txCur->getSequence() + 1))
                 {
-                    std::string reason;
-                    auto const trans = sterilize(*tx);
-                    auto t = std::make_shared<Transaction>(trans, reason, app_);
-                    submit_held.emplace_back(t, false, false, FailHard::no);
-                    t->setApplying();
+                    //std::string reason;
+                    //auto const trans = sterilize(*tx);
+                    //auto t = std::make_shared<Transaction>(trans, reason, app_);
+                    submit_held.emplace_back(tx, false, false, FailHard::no);
+                    //app_.getMasterTransaction().canonicalize(&t, true);
+                    tx->setApplying();
                 }
             }
             else if (e.result.ter == tefPAST_SEQ)
             {
                 // duplicate or conflict
-                JLOG(m_journal.info()) << "Transaction is obsolete";
+                JLOG(m_journal.info())
+                    << "Transaction is obsolete " << e.transaction->getID()
+                    << " from " << (e.local ? "local" : "remote");
                 e.transaction->setStatus(OBSOLETE);
-            }
-            else if (e.result.ter == terQUEUED)
-            {
-                JLOG(m_journal.debug())
-                    << "Transaction is likely to claim a"
-                    << " fee, but is queued until fee drops";
-
-                e.transaction->setStatus(HELD);
-                // Add to held transactions, because it could get
-                // kicked out of the queue, and this will try to
-                // put it back.
-                m_ledgerMaster.addHeldTransaction(e.transaction);
-                e.transaction->setQueued();
-                e.transaction->setKept();
             }
             else if (isTerRetry(e.result.ter))
             {
                 if (e.failType != FailHard::yes)
                 {
-                    // transaction should be held
-                    JLOG(m_journal.info())
-                        << "Transaction should be held: " << e.result;
-                    e.transaction->setStatus(HELD);
-                    m_ledgerMaster.addHeldTransaction(e.transaction);
-                    e.transaction->setKept();
+                    auto txCur = e.transaction->getSTransaction();
+                    auto seq = app_.getStateManager().getAccountCheckSeq(
+                        txCur->getAccountID(sfAccount),
+                        *app_.checkedOpenLedger().current());
+
+                    if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
+                    {
+                        JLOG(m_journal.warn())
+                            << "Account sequence too large,accountId="
+                            << txCur->getAccountID(sfAccount)
+                            << ", curSeq = " << seq
+                            << ",tx.Sequence=" << txCur->getSequence() << ",tx.hash="<<txCur->getTransactionID();
+                        e.transaction->setResult(telSEQ_TOOLARGE);
+                        e.transaction->setStatus(REMOVED);
+                    }
+                    else
+                    {
+                        bool bForceAdd = (txCur->getSequence() <
+                            seq + MAX_ACCOUNT_HELD_COUNT);
+                        // transaction should be held
+                        bool ret = m_ledgerMaster.addHeldTransaction(e.transaction,bForceAdd);
+                        if (ret)
+                        {
+                            JLOG(m_journal.info())
+                                << "Transaction should be held: " << e.result;
+                            e.transaction->setStatus(HELD);
+                            e.transaction->setKept();
+                        }
+                        else
+                        {
+                            e.transaction->setResult(telTX_HELD_FAIL);
+                            e.transaction->setStatus(REMOVED);
+                        }
+                    }
                 }
             }
             else
             {
-                if (e.transaction->getSTransaction()->isChainSqlTableType())
-                {
-                    addLocal = false;
-                }
                 JLOG(m_journal.info())
-                    << "Status other than success " << e.result;
+                    << "Status other than success " << e.transaction->getID()
+                    << " from " << (e.local ? "local " : "remote ")
+                    << e.transaction->getSTransaction()->getAccountID(sfAccount)
+                    << " " << e.transaction->getSTransaction()->getSequence()
+                    << " " << e.result;
                 e.transaction->setStatus(INVALID);
             }
 
@@ -1968,8 +2006,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
             if ((e.applied ||
                  ((mMode != OperatingMode::FULL) &&
-                  (e.failType != FailHard::yes) && e.local) ||
-                 (e.result.ter == terQUEUED)) &&
+                  (e.failType != FailHard::yes) && e.local)) &&
                 !enforceFailHard)
             {
                 if(e.local && app_.config().BATCH_BROADCAST)
@@ -2025,8 +2062,8 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
         if (mTransactions.empty())
             mTransactions.swap(submit_held);
         else
-            for (auto& e : submit_held)
-                mTransactions.push_back(std::move(e));
+            mTransactions.insert(
+                mTransactions.begin(), submit_held.begin(), submit_held.end());
     }
 
     mCond.notify_all();
@@ -2236,6 +2273,8 @@ NetworkOPsImp::switchLastClosedLedger(
     // Update fee computations.
     app_.getTxQ().processClosedLedger(app_, *newLCL, true);
 
+    // Clear avoid when restart consensus for a ledger.
+    app_.getTxPool().clearAvoid(newLCL->seq() + 1);
     // Caller must own master lock
     {
         // Apply tx in old open ledger to new
@@ -2678,7 +2717,7 @@ NetworkOPsImp::pubServer()
         jvObj[jss::load_base] = f.loadBaseServer;
         jvObj[jss::load_factor_server] = f.loadFactorServer;
         jvObj[jss::base_fee] = f.baseFee.jsonClipped();
-		jvObj[jss::schema_id] = to_string(app_.schemaId());
+        jvObj[jss::schema_id] = to_string(app_.schemaId());
 
         if (f.em)
         {
@@ -2827,30 +2866,30 @@ NetworkOPsImp::pubValidation(std::shared_ptr<STValidation> const& val)
 
 void NetworkOPsImp::pubViewChange(uint32_t ledgerSeq, uint64_t view)
 {
-	ScopedLockType sl(mSubLock);
+    ScopedLockType sl(mSubLock);
 
-	if (!mStreamMaps[sViewChange].empty())
-	{
-		Json::Value jvObj(Json::objectValue);
+    if (!mStreamMaps[sViewChange].empty())
+    {
+        Json::Value jvObj(Json::objectValue);
 
-		jvObj[jss::type] = "viewChange";
-		jvObj[jss::ledger_index] = ledgerSeq;
-		jvObj[jss::view] = (uint32_t)view;
+        jvObj[jss::type] = "viewChange";
+        jvObj[jss::ledger_index] = ledgerSeq;
+        jvObj[jss::view] = (uint32_t)view;
 
-		for (auto i = mStreamMaps[sViewChange].begin();
-			i != mStreamMaps[sViewChange].end(); )
-		{
-			if (auto p = i->second.lock())
-			{
-				p->send(jvObj, true);
-				++i;
-			}
-			else
-			{
-				i = mStreamMaps[sViewChange].erase(i);
-			}
-		}
-	}
+        for (auto i = mStreamMaps[sViewChange].begin();
+            i != mStreamMaps[sViewChange].end(); )
+        {
+            if (auto p = i->second.lock())
+            {
+                p->send(jvObj, true);
+                ++i;
+            }
+            else
+            {
+                i = mStreamMaps[sViewChange].erase(i);
+            }
+        }
+    }
 }
 
 void NetworkOPsImp::pubPeerStatus (
@@ -3049,7 +3088,7 @@ NetworkOPsImp::getAccountTxs(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDB().checkoutDb();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> status;
@@ -3122,7 +3161,7 @@ NetworkOPsImp::getAccountTxsB(
         bUnlimited);
 
     {
-        auto db = app_.getTxnDB().checkoutDb();
+        auto db = app_.getTxnDB().checkoutDbRead();
 
         boost::optional<std::uint64_t> ledgerSeq;
         boost::optional<std::string> transID;
@@ -3185,17 +3224,16 @@ NetworkOPsImp::getTxsAccount(
 
     auto bound = [&ret, &app](
                      std::uint32_t ledger_index,
-                     std::string const& status,
                      Blob&& rawTxn,
                      Blob&& rawMeta) {
-        convertBlobsToTxResult(ret, ledger_index, status, rawTxn, rawMeta, app);
+        convertBlobsToTxResult(ret, ledger_index, rawTxn, rawMeta, app);
     };
 
     if (app_.config().SAVE_TX_RAW)
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3212,7 +3250,7 @@ NetworkOPsImp::getTxsAccount(
     {
         accountTxPage(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3246,7 +3284,6 @@ NetworkOPsImp::getTxsAccountB(
 
     auto bound = [&ret](
                      std::uint32_t ledgerIndex,
-                     std::string const& status,
                      Blob&& rawTxn,
                      Blob&& rawMeta) {
         ret.emplace_back(strHex(rawTxn), strHex(rawMeta), ledgerIndex);
@@ -3256,7 +3293,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPageSQL(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3273,7 +3310,7 @@ NetworkOPsImp::getTxsAccountB(
     {
         accountTxPage(
             app_,
-            app_.getTxnDB(),
+            app_.getTxnDB().connRead(),
             app_.accountIDCache(),
             std::bind(saveLedgerAsync, std::ref(app_), std::placeholders::_1),
             bound,
@@ -3353,8 +3390,6 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
         info[jss::network_id] = static_cast<Json::UInt>(*netid);
 
     info[jss::build_version] = BuildInfo::getVersionString();
-
-    info[jss::server_state] = strOperatingMode(admin);
 
     info[jss::server_state] = strOperatingMode(admin);
 
@@ -3640,10 +3675,7 @@ NetworkOPsImp::getServerInfo(bool human, bool admin, bool counters)
 std::string
 NetworkOPsImp::getServerStatus()
 {
-    auto const& consensusInfo = getConsensusInfo(false);
-
-    if (consensusInfo.isMember("initialized") &&
-        !consensusInfo["initialized"].asBool())
+    if (mConsensus.waitingForInit())
     {
         return "abnormal";
     }
@@ -3651,17 +3683,16 @@ NetworkOPsImp::getServerStatus()
     // Time out in milliseconds
     auto timeout = std::chrono::milliseconds(std::numeric_limits<
                   Json::Value::Int>::max());
-    if (consensusInfo.isMember("parms") &&
-        consensusInfo["parms"].isMember("time_out"))
-    {
-        timeout = 2 * std::chrono::milliseconds(
-            consensusInfo["parms"]["time_out"].asInt());
-    }
+    if (mConsensus.getConsensusTimeOut().count() > 0)
+        timeout = 2 * mConsensus.getConsensusTimeOut();
+    
 
     bool consensusValid = m_ledgerMaster.getValidatedLedgerAge() < timeout;
     auto mode = mConsensus.mode();
+    auto phase = mConsensus.phase();
 
-    if (consensusValid &&
+    if ((consensusValid ||
+        phase == ConsensusPhase::accepted) &&
         (mode == ConsensusMode::proposing ||
          mode == ConsensusMode::switchedLedger ||
          (mode == ConsensusMode::observing && !mConsensus.validating())))
@@ -3763,16 +3794,15 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             jvObj[jss::fee_base] = lpAccepted->fees().base.jsonClipped();
             jvObj[jss::drops_per_byte] =
                 Json::UInt(lpAccepted->fees().drops_per_byte);
-            jvObj[jss::gas_price] =
-                Json::UInt(lpAccepted->fees().gas_price);
+            jvObj[jss::gas_price] = Json::UInt(lpAccepted->fees().gas_price);
             jvObj[jss::reserve_base] =
                 lpAccepted->fees().accountReserve(0).jsonClipped();
             jvObj[jss::reserve_inc] =
                 lpAccepted->fees().increment.jsonClipped();
 
             jvObj[jss::txn_count] = Json::UInt(alpAccepted->getTxnCount());
-			jvObj[jss::schema_id] = to_string(app_.schemaId());
-             
+            jvObj[jss::schema_id] = to_string(app_.schemaId());
+
             int iSuccess = 0;
             int iFailure = 0;
             std::map<AccountID, int> mapFailureCount;
@@ -3786,7 +3816,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                 {
                     iFailure++;
                     if (app_.config().OPEN_ACCOUNT_DELAY)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(sfAccount)]++;
+                        mapFailureCount[vt.second->getTxn()->getAccountID(
+                            sfAccount)]++;
                 }
             }
 
@@ -3812,7 +3843,11 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
                     ++it;
                 }
                 else
+                {
+                    auto id = std::string("#") + std::to_string(it->first) + " ";
+                    JLOG(m_journal.info()) << "InfoSub" << id << "destructed, unsubLegder";
                     it = mStreamMaps[sLedger].erase(it);
+                }
             }
         }
         else if (app_.config().OPEN_ACCOUNT_DELAY)
@@ -3821,8 +3856,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             for (auto const& vt : alpAccepted->getMap())
             {
                 if (vt.second->getResult() != tesSUCCESS)
-                        mapFailureCount[vt.second->getTxn()->getAccountID(
-                            sfAccount)]++;
+                    mapFailureCount[vt.second->getTxn()->getAccountID(
+                        sfAccount)]++;
             }
             processAccountDelay(mapFailureCount);
         }
@@ -3868,7 +3903,7 @@ NetworkOPsImp::reportFeeChange()
         m_job_queue.addJob(
             jtCLIENT, "reportFeeChange->pubServer", [this](Job&) {
                 pubServer();
-            });
+            }, app_.doJobCounter());
     }
 }
 
@@ -3878,7 +3913,7 @@ NetworkOPsImp::reportConsensusStateChange(ConsensusPhase phase)
     m_job_queue.addJob(
         jtCLIENT,
         "reportConsensusStateChange->pubConsensus",
-        [this, phase](Job&) { pubConsensus(phase); });
+        [this, phase](Job&) { pubConsensus(phase); }, app_.doJobCounter());
 }
 
 // This routine should only be used to publish accepted or validated
@@ -4075,9 +4110,9 @@ NetworkOPsImp::checkSchemaTx(
             }
         }
 
-		//update validators list
-		if (!bOperatingSelf)
-		{
+        //update validators list
+        if (!bOperatingSelf)
+        {
             //Since the code is called by doAdvance,in case different node on subchain
             //execute the 'modify' in different ledger,and result in different validator
             //for subchain nodes and consensus cannot reach. Here we add a mechanism:
@@ -4096,7 +4131,7 @@ NetworkOPsImp::checkSchemaTx(
                     schemaID,
                     app_.app().peerManager(schemaID),
                     app_.app().getHashRouter(schemaID));
-		}
+        }
 
         std::vector<std::string> vecPeers;
         auto& peers = stTxn->getFieldArray(sfPeerList);
@@ -4134,11 +4169,32 @@ NetworkOPsImp::checkSchemaTx(
 
             if (bOperatingSelf)
             {
-                app_.app().getSchema(schemaID).doStop();
-                app_.getSchemaManager().removeSchema(schemaID);
+                app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaID](Job&) {
+                                app_.app().doStopSchema(schemaID);
+                            });
+                //app_.app().getSchema(schemaID).doStop();
+                //if (app_.app().getSchema(schemaID).isShutdown())
+                  //  app_.getSchemaManager().removeSchema(schemaID);
             }
             else
                 app_.app().peerManager(schemaID).remove(vecValidators);
+        }
+    }
+    else if (stTxn->getTxnType() == ttSCHEMA_DELETE)
+    {
+        auto schemaID = stTxn->getFieldH256(sfSchemaID);
+
+        if (app_.app().hasSchema(schemaID))
+        {
+            app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaID](Job&) {
+                                app_.app().doStopSchema(schemaID);
+                            });
         }
     }
 }
@@ -4212,10 +4268,12 @@ std::tuple<std::string, std::string, std::string>
 NetworkOPsImp::get_res(TER ter, std::string const& contracDetailMsg)
 {
     if (ter == tesSUCCESS)
-        return std::make_tuple("validate_success", "", "");
+        return std::make_tuple((std::string)jss::validate_success, "", "");
     if (!contracDetailMsg.empty())
-        return std::make_tuple("validate_error", contracDetailMsg, contracDetailMsg);
-    return std::make_tuple("validate_error", transToken(ter), transHuman(ter));
+        return std::make_tuple(std::string(jss::validate_error), 
+            contracDetailMsg, contracDetailMsg);
+    return std::make_tuple(
+        std::string(jss::validate_error), transToken(ter), transHuman(ter));
 }
 
 void
@@ -4437,7 +4495,7 @@ NetworkOPsImp::pubTableTxs(
     // db_success come,but validate_success not processed
     if (!bValidated && mSubTx.find(stTxn.getTransactionID()) != mSubTx.end())
     {
-        auto result = std::make_tuple("validate_success", "", "");
+        auto result = std::make_tuple(std::string(jss::validate_success), "", "");
         pubTxResult(stTxn, result, true, true);
     }
 
@@ -4453,26 +4511,26 @@ NetworkOPsImp::pubTxResult(
     bool bValidated,
     bool bForTableTx)
 {
-	ScopedLockType sl(mSubLock);
-	auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
-	if (!subTx.empty())
-	{
-		auto txId   = stTxn.getTransactionID();
-		auto simiIt	= subTx.find(txId);
-		if (simiIt != subTx.end())
-		{
-			//bool bPendErase = false;
-			InfoSub::pointer p = simiIt->second.first.lock();
-			if (p)
-			{
-				Json::Value jvObj(Json::objectValue);
-				jvObj[jss::type] = "singleTransaction";
-				jvObj[jss::transaction] = stTxn.getJson(JsonOptions::none);
-				if (jvObj[jss::transaction].isMember(jss::Raw) &&
-					jvObj[jss::transaction][jss::Raw].asString().size() > RAW_SHOW_SIZE)
-				{
-					jvObj[jss::transaction].removeMember(jss::Raw);
-				}
+    ScopedLockType sl(mSubLock);
+    auto& subTx = bValidated ? mSubTx : mValidatedSubTx;
+    if (!subTx.empty())
+    {
+        auto txId   = stTxn.getTransactionID();
+        auto simiIt	= subTx.find(txId);
+        if (simiIt != subTx.end())
+        {
+            //bool bPendErase = false;
+            InfoSub::pointer p = simiIt->second.first.lock();
+            if (p)
+            {
+                Json::Value jvObj(Json::objectValue);
+                jvObj[jss::type] = "singleTransaction";
+                jvObj[jss::transaction] = stTxn.getJson(JsonOptions::none);
+                if (jvObj[jss::transaction].isMember(jss::Raw) &&
+                    jvObj[jss::transaction][jss::Raw].asString().size() > RAW_SHOW_SIZE)
+                {
+                    jvObj[jss::transaction].removeMember(jss::Raw);
+                }
                 jvObj[jss::status] = std::get<0>(disposRes);
                 if (std::get<1>(disposRes).size() != 0)
                 {
@@ -4486,7 +4544,8 @@ NetworkOPsImp::pubTxResult(
                 p->send(jvObj, true);
 
                 // for table-related tx and validation event
-                if (bValidated && bForTableTx)
+                if (bValidated && bForTableTx && 
+                    std::get<0>(disposRes) == jss::validate_success)
                 {
                     // for chainsql type, subscribe db event
                     mValidatedSubTx[simiIt->first] =
@@ -4712,7 +4771,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
 {
     if (auto lpClosed = m_ledgerMaster.getValidatedLedger())
     {
-		jvResult[jss::type] = "ledgerClosed";
+        jvResult[jss::type] = "ledgerClosed";
         jvResult[jss::ledger_index] = lpClosed->info().seq;
         jvResult[jss::ledger_hash] = to_string(lpClosed->info().hash);
         jvResult[jss::ledger_time] = Json::Value::UInt(
@@ -4726,7 +4785,7 @@ NetworkOPsImp::subLedger(InfoSub::ref isrListener, Json::Value& jvResult)
         jvResult[jss::reserve_base] =
             lpClosed->fees().accountReserve(0).jsonClipped();
         jvResult[jss::reserve_inc] = lpClosed->fees().increment.jsonClipped();
-		jvResult[jss::schema_id] = to_string(app_.schemaId());
+        jvResult[jss::schema_id] = to_string(app_.schemaId());
     }
 
     if ((mMode >= OperatingMode::SYNCING) && !isNeedNetworkLedger())
@@ -4746,21 +4805,25 @@ bool
 NetworkOPsImp::unsubLedger(std::uint64_t uSeq)
 {
     std::lock_guard sl(mSubLock);
+
+    auto id = std::string("#") + std::to_string(uSeq) + " ";
+    JLOG(m_journal.info()) << id << "unsubLedger";
+
     return mStreamMaps[sLedger].erase(uSeq);
 }
 
 
 bool NetworkOPsImp::subViewChange(InfoSub::ref ispListener)
 {
-	ScopedLockType sl(mSubLock);
-	return mStreamMaps[sViewChange].emplace(
-		ispListener->getSeq(), ispListener).second;
+    ScopedLockType sl(mSubLock);
+    return mStreamMaps[sViewChange].emplace(
+        ispListener->getSeq(), ispListener).second;
 }
 
 bool NetworkOPsImp::unsubViewChange(std::uint64_t uSeq)
 {
-	ScopedLockType sl(mSubLock);
-	return mStreamMaps[sViewChange].erase(uSeq);
+    ScopedLockType sl(mSubLock);
+    return mStreamMaps[sViewChange].erase(uSeq);
 }
 
 //for all txs which changes the table
@@ -4871,7 +4934,7 @@ NetworkOPsImp::subServer(
     beast::rngfill(uRandom.begin(), uRandom.size(), crypto_prng());
 
     auto const& feeTrack = app_.getFeeTrack();
-	jvResult[jss::type] = "serverStatus";
+    jvResult[jss::type] = "serverStatus";
     jvResult[jss::random] = to_string(uRandom);
     jvResult[jss::server_status] = strOperatingMode(admin);
     jvResult[jss::load_base] = feeTrack.getLoadBase();
@@ -4880,7 +4943,7 @@ NetworkOPsImp::subServer(
     jvResult[jss::hostid] = getHostId(admin);
     jvResult[jss::pubkey_node] =
         toBase58(TokenType::NodePublic, app_.nodeIdentity().first);
-	jvResult[jss::schema_id] = to_string(app_.schemaId());
+    jvResult[jss::schema_id] = to_string(app_.schemaId());
 
     std::lock_guard sl(mSubLock);
     return mStreamMaps[sServer]

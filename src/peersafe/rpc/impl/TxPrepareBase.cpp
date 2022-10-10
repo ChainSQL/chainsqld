@@ -152,7 +152,11 @@ Json::Value TxPrepareBase::prepareVL(Json::Value& json)
 					strValue = value.toStyledString();
 				else
 					strValue = value.asString();
-				json[fieldName] = strHex(strValue);
+                
+                if(fieldName != "Certificate")
+                {
+                    json[fieldName] = strHex(strValue);
+                }
 			}
 			catch (std::exception const& e)
 			{
@@ -488,8 +492,9 @@ Json::Value TxPrepareBase::prepareRawEncode()
 	else if (opType == R_INSERT ||
 		opType == R_DELETE ||
 		opType == R_UPDATE ||
-		opType == T_ASSERT)
-	{		
+        opType == T_ASSERT || 
+		(opType >= T_ADD_FIELDS && opType <= T_DELETE_INDEX))
+        {		
 		if (checkConfidential(ownerID_, sTableName_))
 		{
 			auto ret = prepareForOperating();
@@ -561,7 +566,9 @@ std::pair<Blob, Json::Value> TxPrepareBase::getPassBlobBase(AccountID& ownerId, 
 
 	bool bRet = false;
 	error_code_i errCode;
-	std::tie(bRet, passBlob, errCode) = app_.getLedgerMaster().getUserToken(userId, ownerId, sTableName_);
+    auto openLedger = app_.getLedgerMaster().getCurrentLedger();
+    std::tie(bRet, passBlob, errCode) = app_.getLedgerMaster().getUserToken(
+            openLedger, userId, ownerId, sTableName_);
 
 	if (!bRet)
 	{
@@ -603,16 +610,11 @@ Json::Value TxPrepareBase::prepareForCreate()
     }
     else
     {
-        //boost::optional<PublicKey> oPublic_key;
-        auto oPublic_key = ripple::getPublicKey(secret_);
-        if (!oPublic_key)
-        {
-			return RPC::make_error(rpcINVALID_PARAMS, "Secret error,please checkout!");
-        }
+        auto oSecKey = ripple::getSecretKey(secret_);
+        if(oSecKey)
+            public_key = ripple::derivePublicKey(oSecKey->keyTypeInt_, *oSecKey);
         else
-        {
-            public_key = *oPublic_key;
-        }
+            return RPC::make_error(rpcINVALID_PARAMS, "Parse secret failed, please checkout!");
     }
 
     std::string raw = tx_json_[jss::Raw].toStyledString();
@@ -720,9 +722,7 @@ Json::Value TxPrepareBase::prepareForAssign()
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-        // GmEncrypt* hEObj = GmEncryptObj::getInstance();
-		tempSecKey.keyTypeInt_ = KeyType::gmalg;
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
         secret_key = tempSecKey;
     }
 	std::pair<Blob, Json::Value> result = getPassBlob(ownerID_, ownerID_, secret_key);
@@ -760,8 +760,7 @@ Json::Value TxPrepareBase::prepareForOperating()
         {
 			return RPC::make_error(rpcINVALID_PARAMS, "Parse secret key error,please checkout!");
         }
-        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-		tempSecKey.keyTypeInt_ = KeyType::gmalg;
+        SecretKey tempSecKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
         secret_key = tempSecKey;
     }
 
@@ -817,9 +816,7 @@ bool TxPrepareBase::checkConfidentialBase(const AccountID& owner, const std::str
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	if (ledger == NULL)  return false;
 
-	auto tup = getTableEntry(*ledger,owner,tableName);
-	auto pEntry = std::get<1>(tup);
-	return pEntry ? STEntry::isConfidential(*pEntry):false;
+	return ripple::isConfidential(*ledger,owner,tableName);
 }
 
 Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app, bool bWs)
@@ -842,7 +839,7 @@ Json::Value TxPrepareBase::checkBaseInfo(const Json::Value& tx_json, Schema& app
 	if (tx_json.isMember(jss::Owner) && tx_json[jss::Owner].asString().size() != 0)
 	{
 		AccountID ownerID;
-		std::string ownerStr = tx_json[jss::Account].asString();
+            std::string ownerStr = tx_json[jss::Owner].asString();
 		auto jvAccepted = RPC::accountFromString(ownerID, ownerStr, true);
 		if (jvAccepted)
 		{

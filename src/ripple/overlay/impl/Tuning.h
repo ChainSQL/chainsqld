@@ -50,6 +50,11 @@ enum {
         reply */
     maxReplyNodes = 8192,
 
+    /** The maximum byte size of ledger entries in a single
+        reply */
+    maxReplyByteSize = 33554432,
+
+
     /** How often we check connections (seconds) */
     checkSeconds = 32,
 

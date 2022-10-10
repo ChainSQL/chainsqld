@@ -33,8 +33,10 @@
 #include <ripple/rpc/Role.h>
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
-
+#include <ripple/app/misc/NetworkOPs.h>
 #include <grpcpp/grpcpp.h>
+#include <ripple/app/misc/impl/AccountTxPaging.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -289,6 +291,13 @@ doAccountTxHelp(RPC::Context& context, AccountTxArgs const& args)
     result.ledgerRange = std::get<LedgerRange>(lgrRange);
 
     result.marker = args.marker;
+    if (result.marker.has_value())
+    {
+        if (result.marker->ledgerSeq > result.ledgerRange.max)
+            return {result, rpcINVALID_LGR_RANGE};
+    }
+
+
     if (args.binary)
     {
         result.transactions = context.netOps.getTxsAccountB(
@@ -630,5 +639,113 @@ doAccountTxGrpc(
     auto res = doAccountTxHelp(context, args);
     return populateProtoResponse(res, args, context);
 }
+
+std::pair<AccountTxResult, RPC::Status>
+doContractTxHelp(RPC::Context& context, AccountTxArgs const& args)
+{
+    AccountTxResult result;
+    context.loadType = Resource::feeMediumBurdenRPC;
+
+    auto lgrRange = getLedgerRange(context, args.ledger);
+    if (auto stat = std::get_if<RPC::Status>(&lgrRange))
+    {
+        // An error occurred getting the requested ledger range
+        return {result, *stat};
+    }
+    static std::uint32_t const page_length(200);
+    result.ledgerRange = std::get<LedgerRange>(lgrRange);
+
+    result.marker = args.marker;
+
+    if (result.marker.has_value())
+    {
+        if (result.marker->ledgerSeq > result.ledgerRange.max)
+            return {result, rpcINVALID_LGR_RANGE};
+    }
+
+    Schema& app = context.app;
+    using AccountTx =
+        std::pair<std::shared_ptr<Transaction>, std::shared_ptr<TxMeta>>;
+    using AccountTxs = std::vector<AccountTx>;
+    AccountTxs ret;
+    //NetworkOPsImp::AccountTxs ret;
+    auto bound = [&ret, &app](
+                     std::uint32_t ledger_index,
+                     Blob&& rawTxn,
+                     Blob&& rawMeta) {
+    convertBlobsToTxResult(ret, ledger_index, rawTxn, rawMeta, app);
+    };
+
+    contractTxPage(
+            app,
+            app.getTxnDB().connRead(),
+            app.accountIDCache(),
+            bound,
+            args.account,
+            result.ledgerRange.min,
+            result.ledgerRange.max,
+            result.marker,
+            args.limit,
+            isUnlimited(context.role),
+            page_length);
+    result.transactions = ret;
+    result.limit = args.limit;
+
+    return {result, rpcSUCCESS};
+}
+
+
+Json::Value
+doContractTxJson(RPC::JsonContext& context)
+{
+    if (!context.app.config().USE_TRACE_TABLE)
+        return rpcError(rpcNOT_ENABLED);
+    auto& params = context.params;
+    AccountTxArgs args;
+    Json::Value response;
+
+    args.limit = params.isMember(jss::limit) ? params[jss::limit].asUInt() : 0;
+
+    if (!params.isMember(jss::contract_address))
+        return rpcError(rpcINVALID_PARAMS);
+
+    auto const contractAddr =
+        parseBase58<AccountID>(params[jss::contract_address].asString());
+    if (!contractAddr)
+        return rpcError(rpcACT_MALFORMED);
+
+    args.account = *contractAddr;
+
+    auto parseRes = parseLedgerArgs(params);
+    if (auto jv = std::get_if<Json::Value>(&parseRes))
+    {
+        return *jv;
+    }
+    else
+    {
+        args.ledger = std::get<std::optional<LedgerSpecifier>>(parseRes);
+    }
+
+    if (params.isMember(jss::marker))
+    {
+        auto& token = params[jss::marker];
+        if (!token.isMember(jss::ledger) || !token.isMember(jss::seq) ||
+            !token[jss::ledger].isConvertibleTo(Json::ValueType::uintValue) ||
+            !token[jss::seq].isConvertibleTo(Json::ValueType::uintValue))
+        {
+            RPC::Status status{
+                rpcINVALID_PARAMS,
+                "invalid marker. Provide ledger index via ledger field, and "
+                "transaction sequence number via seq field"};
+            status.inject(response);
+            return response;
+        }
+        args.marker = {token[jss::ledger].asUInt(), token[jss::seq].asUInt()};
+    }
+
+    auto res = doContractTxHelp(context, args);
+    return populateJsonResponse(res, args, context);
+}
+
 
 }  // namespace ripple

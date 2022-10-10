@@ -98,7 +98,6 @@ ValidatorSite::ValidatorSite(
     , pending_{false}
     , stopping_{false}
     , requestTimeout_{timeout}
-    , waitingBeginConsensus_{false}
     , j_{ j ? *j : app_.logs().journal("ValidatorSite") }
 {
 }
@@ -121,24 +120,31 @@ ValidatorSite::~ValidatorSite()
 }
 
 bool
-ValidatorSite::missingSite()
+ValidatorSite::missingSite(std::lock_guard<std::mutex>& sites_lock)
 {
     auto const sites = app_.validators().loadLists();
-    return sites.empty() || load(sites);
+    return sites.empty() || load(sites, sites_lock);
 }
 
 bool
-ValidatorSite::load(std::vector<std::string> const& siteURIs)
-{
-    // If no sites are provided, act as if a site failed to load.
-    if (siteURIs.empty())
-    {
-        return missingSite();
-    }
+ValidatorSite::load(std::vector<std::string> const& siteURIs) {
 
     JLOG(j_.debug()) << "Loading configured validator list sites";
 
     std::lock_guard lock{sites_mutex_};
+    return load(siteURIs, lock);
+}
+
+bool
+ValidatorSite::load(
+    std::vector<std::string> const& siteURIs,
+    std::lock_guard<std::mutex>& sites_lock)
+{
+    // If no sites are provided, act as if a site failed to load.
+    if (siteURIs.empty())
+    {
+        return missingSite(sites_lock);
+    }
 
     for (auto const& uri : siteURIs)
     {
@@ -394,11 +400,10 @@ ValidatorSite::parseJsonResponse(
         case ListDisposition::accepted:{
             JLOG(j_.debug()) << "Applied new validator list from " << uri;
             // begin consensus after apply success
-            if (waitingBeginConsensus_)
+            if (app_.getWaitinBeginConsensus())
             {
                 app_.getOPs().beginConsensus(
                     app_.getLedgerMaster().getClosedLedger()->info().hash);
-                waitingBeginConsensus_ = false;
             }
             else {
                 app_.validators().updateTrusted(app_.getValidations().getCurrentNodeIDs());
@@ -503,7 +508,7 @@ ValidatorSite::onSiteFetch(
 
             // See if there's a copy saved locally from last time we
             // saw the list.
-            missingSite();
+            missingSite(lock_sites);
         };
         if (ec)
         {
@@ -637,10 +642,6 @@ ValidatorSite::getJson() const
 }
 
 
- void
-ValidatorSite::setWaitinBeginConsensus()
-{
-    waitingBeginConsensus_ = true;
-}
+
 
 }  // namespace ripple

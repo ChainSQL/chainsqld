@@ -19,8 +19,19 @@
 
 #include <ripple/app/misc/CanonicalTXSet.h>
 #include <boost/range/adaptor/transformed.hpp>
+#include <peersafe/app/tx/impl/Tuning.h>
 
 namespace ripple {
+
+
+uint256
+CanonicalTXSet::accountKey(AccountID const& account)
+{
+    uint256 ret = beast::zero;
+    memcpy(ret.begin(), account.begin(), account.size());
+    ret ^= salt_;
+    return ret;
+}
 
 bool
 CanonicalTXSet::Key::operator<(Key const& rhs) const
@@ -94,23 +105,17 @@ CanonicalTXSet::Key::operator>=(Key const& rhs) const
     return mTXid >= rhs.mTXid;
 }
 
-uint256
-CanonicalTXSet::accountKey(AccountID const& account)
+bool
+CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn,bool bJudgeLimit /* = false */)
 {
-    uint256 ret = beast::zero;
-    memcpy(ret.begin(), account.begin(), account.size());
-    ret ^= salt_;
-    return ret;
-}
-
-void
-CanonicalTXSet::insert(std::shared_ptr<STTx const> const& txn)
-{
-    map_.insert(std::make_pair(
-        Key(accountKey(txn->getAccountID(sfAccount)),
+    auto accId = txn->getAccountID(sfAccount);
+    auto ret = map_.insert(std::make_pair(
+        Key(accountKey(accId),
             txn->getSequence(),
             txn->getTransactionID()),
         txn));
+
+    return ret.second;
 }
 
 std::vector<std::shared_ptr<STTx const>>
@@ -130,6 +135,117 @@ CanonicalTXSet::prune(AccountID const& account, std::uint32_t const seq)
         txRange.begin(), txRange.end());
 
     map_.erase(range.begin(), range.end());
+
+    return result;
+}
+
+//-------------------------------------------------------------------------------------------
+uint256
+CanonicalTXSetHeld::accountKey(AccountID const& account)
+{
+    uint256 ret = beast::zero;
+    memcpy(ret.begin(), account.begin(), account.size());
+    return ret;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator<(Key const& rhs) const
+{
+    if (mAccount < rhs.mAccount)
+        return true;
+
+    if (mAccount > rhs.mAccount)
+        return false;
+
+    return mSeq < rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator>(Key const& rhs) const
+{
+    if (mAccount > rhs.mAccount)
+        return true;
+
+    if (mAccount < rhs.mAccount)
+        return false;
+
+    return mSeq > rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator<=(Key const& rhs) const
+{
+    if (mAccount < rhs.mAccount)
+        return true;
+
+    if (mAccount > rhs.mAccount)
+        return false;
+
+    return mSeq <= rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::Key::operator>=(Key const& rhs) const
+{
+    if (mAccount > rhs.mAccount)
+        return true;
+
+    if (mAccount < rhs.mAccount)
+        return false;
+
+    return mSeq >= rhs.mSeq;
+}
+
+bool
+CanonicalTXSetHeld::insert(
+    std::shared_ptr<Transaction> const& tx,bool bForceAdd)
+{
+    auto txn = tx->getSTransaction();
+    auto accId = txn->getAccountID(sfAccount);
+
+    if (!bForceAdd && accountTxsize_[accId] >= MAX_ACCOUNT_HELD_COUNT)
+        return false;
+    if (map_.size() >= MAX_HELD_COUNT)
+        return false;
+
+    auto ret = map_.insert(std::make_pair(
+        Key(accountKey(accId), txn->getSequence()),
+        tx));
+
+    if (ret.second)
+        accountTxsize_[accId]++;
+
+    return ret.second;
+}
+
+std::vector<std::shared_ptr<Transaction>>
+CanonicalTXSetHeld::prune(AccountID const& account, std::uint32_t const seq)
+{
+    auto effectiveAccount = accountKey(account);
+
+    Key keyLow(effectiveAccount, seq);
+    Key keyHigh(effectiveAccount, seq + 1);
+
+    auto range = boost::make_iterator_range(
+        map_.lower_bound(keyLow), map_.lower_bound(keyHigh));
+    auto txRange = boost::adaptors::transform(
+        range, [](auto const& p) { return p.second; });
+
+    std::vector<std::shared_ptr<Transaction>> result(
+        txRange.begin(), txRange.end());
+
+    map_.erase(range.begin(), range.end());
+    if (!result.empty() &&
+        accountTxsize_.find(account) != accountTxsize_.end() &&
+        accountTxsize_[account] > 0)
+    {
+        accountTxsize_[account]--;
+        if (accountTxsize_[account] <= 0)
+        {
+            accountTxsize_.erase(account);
+        }
+    }
+
     return result;
 }
 

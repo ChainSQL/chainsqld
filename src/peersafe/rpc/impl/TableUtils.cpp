@@ -114,9 +114,16 @@ namespace ripple {
                     auto nameInDB = table.getFieldH160(sfNameInDB);
                     if (sTableNameInDB == to_string(nameInDB))
                     {
-                       pEntry = (STObject*)&(table);
+                        pEntry = (STObject*)&(table);
                         return std::make_tuple(sleNode, pEntry, tableEntries);
                     }
+                }
+                else if (sleNode->getType() == ltTABLELIST)
+                {
+                    auto tableNameBlob = strCopy(sTableNameInDB);
+                    tableEntries = (STArray*)&(sleNode->getFieldArray(sfTableEntries));
+                    pEntry = getTableEntry(*tableEntries, tableNameBlob,true);
+                    return std::make_tuple(sleNode, pEntry, tableEntries);
                 }
             }
             auto const nodeIndex = dir->getFieldU64(sfIndexNext);
@@ -165,15 +172,26 @@ namespace ripple {
         return std::make_tuple(nullptr, pEntry, tableEntries);
     }
     STEntry*
-    getTableEntry(const STArray& aTables, Blob& vCheckName)
+    getTableEntry(
+        const STArray& aTables,
+        Blob& vCheckName,
+        bool bNameInDB /* = false*/)
     {
         auto iter(aTables.end());
         iter = std::find_if(
-            aTables.begin(), aTables.end(), [vCheckName](STObject const& item) {
-                if (!item.isFieldPresent(sfTableName))
-                    return false;
-
-                return item.getFieldVL(sfTableName) == vCheckName;
+            aTables.begin(), aTables.end(), [vCheckName,bNameInDB](STObject const& item) {
+                if (!bNameInDB)
+                {
+                    if (!item.isFieldPresent(sfTableName))
+                        return false;
+                    return item.getFieldVL(sfTableName) == vCheckName;
+                }
+                else
+                {
+                    if (!item.isFieldPresent(sfNameInDB))
+                        return false;
+                    return to_string(item.getFieldH160(sfNameInDB)) == strCopy(vCheckName);
+                }
             });
 
         if (iter == aTables.end())
@@ -245,4 +263,102 @@ namespace ripple {
 		else
 			return true;
 	}
+
+    bool
+    isConfidential(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName)
+    {
+        auto tup = getTableEntry(view, owner, tableName);
+        auto pEntry = std::get<1>(tup);
+        if (!pEntry)
+            return false;
+        if (pEntry->isFieldPresent(sfUsers))
+        {
+            auto const& aUsers(pEntry->getFieldArray(sfUsers));
+            if (aUsers.size() > 0 && aUsers[0].isFieldPresent(sfToken))
+                return true;
+        }
+        else
+        {
+            auto key = keylet::tablegrant(owner, tableName, owner);
+            auto sleGrantOwner = view.read(key);
+            if (sleGrantOwner)
+            {
+                return sleGrantOwner->isFieldPresent(sfToken);
+            }                
+        }
+        return false;
+    }
+
+    std::tuple<bool, uint32_t, Blob>
+    getUserAuthAndToken(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName,
+        const AccountID& userId)
+    {
+        auto tup = getTableEntry(view, owner, tableName);
+        auto pEntry = std::get<1>(tup);
+        if (!pEntry)
+            return std::make_tuple(false, 0, Blob{});
+        if (pEntry->isFieldPresent(sfUsers))
+        {
+            auto& users = pEntry->getFieldArray(sfUsers);
+            for (auto& user : users)  // check if there same user
+            {
+                if (user.getAccountID(sfUser) == userId)
+                {
+                    if (user.isFieldPresent(sfToken))
+                        return std::make_tuple(
+                            true,
+                            user.getFieldU32(sfFlags),
+                            user.getFieldVL(sfToken));
+                    else
+                        return std::make_tuple(
+                            true, user.getFieldU32(sfFlags), Blob{});
+                }
+            }
+        }
+        else
+        {
+            auto key = keylet::tablegrant(owner, tableName, userId);
+            auto sleGrantOwner = view.read(key);
+            if (sleGrantOwner)
+            {
+                if (sleGrantOwner->isFieldPresent(sfToken))
+                    return std::make_tuple(
+                        true,
+                        sleGrantOwner->getFieldU32(sfFlags),
+                        sleGrantOwner->getFieldVL(sfToken)); 
+                else
+                    return std::make_tuple(
+                        true,
+                        sleGrantOwner->getFieldU32(sfFlags), Blob{});
+            }
+        }
+        return std::make_tuple(false, 0, Blob{});
+    }
+
+    bool
+    hasAuthority(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName,
+        const AccountID& user,
+        TableRoleFlags flag)
+    {
+        auto tup = getUserAuthAndToken(view, owner, tableName, user);
+        if (!std::get<0>(tup))
+        {
+            auto tupAll = getUserAuthAndToken(view, owner, tableName, noAccount());
+            if (!std::get<0>(tupAll))
+                return false;
+
+            return (std::get<1>(tupAll) & flag) != 0;
+        }
+
+        return (std::get<1>(tup) & flag) != 0;
+    }
 }

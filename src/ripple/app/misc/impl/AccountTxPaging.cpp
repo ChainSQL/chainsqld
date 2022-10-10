@@ -37,7 +37,6 @@ void
 convertBlobsToTxResult(
     NetworkOPs::AccountTxs& to,
     std::uint32_t ledger_index,
-    std::string const& status,
     Blob const& rawTxn,
     Blob const& rawMeta,
     Schema& app)
@@ -48,7 +47,6 @@ convertBlobsToTxResult(
 
     auto tr = std::make_shared<Transaction>(txn, reason, app);
 
-    tr->setStatus(Transaction::sqlTransactionStatus(status));
     tr->setLedger(ledger_index);
 
     auto metaset = std::make_shared<TxMeta> (
@@ -64,6 +62,86 @@ saveLedgerAsync (Schema& app, std::uint32_t seq)
         pendSaveValidated(app, l, false, false);
 }
 
+
+void 
+processTransRes(Schema& app,DatabaseCon& connection,std::function<
+        void(std::uint32_t, Blob&&, Blob&&)> const&
+        onTransaction, std::optional<NetworkOPs::AccountTxMarker>& marker,
+    std::string sql, std::uint32_t numberOfResults)
+{
+    bool lookingForMarker = marker.has_value();
+    std::uint32_t findLedger = 0, findSeq = 0;
+
+    if (lookingForMarker)
+    {
+        findLedger = marker->ledgerSeq;
+        findSeq = marker->txnSeq;
+    }
+
+    // marker is also an output parameter, so need to reset
+    marker.reset();
+
+    auto db(connection.checkoutDb());
+
+    boost::optional<std::uint64_t> ledgerSeq;
+    boost::optional<std::uint64_t> txnSeq;
+    boost::optional<std::string> transID;
+
+    soci::statement st = (db->prepare << sql,
+        soci::into (ledgerSeq),
+        soci::into (txnSeq),
+        soci::into (transID));
+
+    st.execute();
+
+    std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
+    while (st.fetch())
+    {
+        if (lookingForMarker)
+        {
+            if (findLedger == ledgerSeq.value_or(0) &&
+                (uint64_t(findLedger) * 100000 + findSeq) == txnSeq.value_or(0))
+            {
+                lookingForMarker = false;
+            }
+        }
+        else if (numberOfResults == 0)
+        {
+            marker = {
+                rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
+                rangeCheckedCast<std::uint32_t>(txnSeq.value_or(0) % 100000)};
+            break;
+        }
+
+        if (!lookingForMarker)
+        {
+            auto const seq =
+                rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
+            auto const txID = from_hex_text<uint256>(transID.value());
+
+            std::shared_ptr<const ripple::Ledger> lgr = nullptr;
+
+            if (ledgerCache.count(seq))
+            {
+                lgr = ledgerCache[seq];
+            }
+            else if (
+                lgr =
+                    app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            {
+                ledgerCache.emplace(seq, lgr);
+            }
+
+            Blob txRaw, txMeta;
+            if (lgr && getRawMeta(*lgr, txID, txRaw, txMeta))
+            {
+                onTransaction(seq, std::move(txRaw), std::move(txMeta));
+            }
+            --numberOfResults;
+        }
+    }
+}
+
 void
 accountTxPage(
     Schema& app,
@@ -71,7 +149,7 @@ accountTxPage(
     AccountIDCache const& idCache,
     std::function<void(std::uint32_t)> const& onUnsavedLedger,
     std::function<
-        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        void(std::uint32_t, Blob&&, Blob&&)> const&
         onTransaction,
     AccountID const& account,
     std::int32_t minLedger,
@@ -106,15 +184,12 @@ accountTxPage(
     }
 
     // marker is also an output parameter, so need to reset
-    marker.reset();
+    //marker.reset();
 
     static std::string const prefix(
         R"(SELECT AccountTransactions.LedgerSeq,AccountTransactions.TxnSeq,
-          AccountTransactions.TransID,Status
-          FROM AccountTransactions INNER JOIN Transactions
-          ON Transactions.TransID = AccountTransactions.TransID
-          AND AccountTransactions.Account = '%s' WHERE
-          )");
+          AccountTransactions.TransID 
+          FROM AccountTransactions WHERE )");
 
     std::string sql;
 
@@ -124,7 +199,7 @@ accountTxPage(
     {
         sql = boost::str(
             boost::format(
-                prefix + (R"(AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u'
+                prefix + (R"(AccountTransactions.Account = '%s' AND AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u'
              ORDER BY AccountTransactions.LedgerSeq ASC,
              AccountTransactions.TxnSeq ASC
              LIMIT %u;)")) %
@@ -135,23 +210,25 @@ accountTxPage(
         auto b58acct = idCache.toBase58(account);
         sql = boost::str(
             boost::format(
-                (prefix +
-                 R"((AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
-            OR
-            (AccountTransactions.LedgerSeq = '%u' AND
+                prefix + (R"((AccountTransactions.Account = '%s' AND
+            AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
+            OR 
+            (AccountTransactions.Account = '%s' AND
+            AccountTransactions.LedgerSeq = '%u' AND
             AccountTransactions.TxnSeq >= '%u')
             ORDER BY AccountTransactions.LedgerSeq ASC,
             AccountTransactions.TxnSeq ASC
             LIMIT %u;
             )")) %
-            b58acct % (findLedger + 1) % maxLedger % findLedger % findSeq %
+            b58acct % (findLedger + 1) % maxLedger %
+            b58acct % findLedger % findSeq %
             queryLimit);
     }
     else if (!forward && (findLedger == 0))
     {
         sql = boost::str(
             boost::format(
-                prefix + (R"(AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u'
+                prefix + (R"(AccountTransactions.Account = '%s' AND AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u'
              ORDER BY AccountTransactions.LedgerSeq DESC,
              AccountTransactions.TxnSeq DESC
              LIMIT %u;)")) %
@@ -162,16 +239,18 @@ accountTxPage(
         auto b58acct = idCache.toBase58(account);
         sql = boost::str(
             boost::format(
-                (prefix +
-                 R"((AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
+                prefix + (R"((AccountTransactions.Account = '%s' AND
+            AccountTransactions.LedgerSeq BETWEEN '%u' AND '%u')
             OR
-            (AccountTransactions.LedgerSeq = '%u' AND
+            (AccountTransactions.Account = '%s' AND
+            AccountTransactions.LedgerSeq = '%u' AND
             AccountTransactions.TxnSeq <= '%u')
             ORDER BY AccountTransactions.LedgerSeq DESC,
             AccountTransactions.TxnSeq DESC
             LIMIT %u;
             )")) %
-            b58acct % minLedger % (findLedger - 1) % findLedger % findSeq %
+            b58acct % minLedger % (findLedger - 1) %
+            b58acct % findLedger % findSeq %
             queryLimit);
     }
     else
@@ -181,67 +260,7 @@ accountTxPage(
         return;
     }
 
-    {
-        auto db(connection.checkoutDb());
-
-        boost::optional<std::uint64_t> ledgerSeq;
-        boost::optional<std::uint32_t> txnSeq;
-        boost::optional<std::string> transID;
-        boost::optional<std::string> status;
-
-        soci::statement st = (db->prepare << sql,
-            soci::into (ledgerSeq),
-            soci::into (txnSeq),
-            soci::into (transID),
-            soci::into (status));
-
-        st.execute();
-
-        std::map<uint32_t, std::shared_ptr<const ripple::Ledger>> ledgerCache;
-        while (st.fetch ())
-        {
-            if (lookingForMarker)
-            {
-                if (findLedger == ledgerSeq.value_or(0) &&
-                    findSeq == txnSeq.value_or(0))
-                {
-                    lookingForMarker = false;
-                }
-            }
-            else if (numberOfResults == 0)
-            {
-                marker = {
-                    rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-                    txnSeq.value_or(0)};
-                break;
-            }
-
-            if (!lookingForMarker)
-            {
-                auto const seq =
-                    rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
-                auto const txID = from_hex_text<uint256>(transID.value());
-
-                std::shared_ptr<const ripple::Ledger> lgr = nullptr;
-
-                if (ledgerCache.count(seq))
-                {
-                    lgr = ledgerCache[seq];
-                }
-                else if (lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
-                {
-                    ledgerCache.emplace(seq, lgr);
-                }
-
-                Blob txRaw, txMeta;
-                if (lgr && getRawMeta(*lgr, txID, txRaw, txMeta))
-                {
-                    onTransaction(seq, *status, std::move(txRaw), std::move(txMeta));
-                }
-                --numberOfResults;
-            }
-        }
-    }
+    processTransRes(app, connection, onTransaction, marker, sql, numberOfResults);
 
     return;
 }
@@ -253,7 +272,7 @@ accountTxPageSQL(
     AccountIDCache const& idCache,
     std::function<void(std::uint32_t)> const& onUnsavedLedger,
     std::function<
-        void(std::uint32_t, std::string const&, Blob&&, Blob&&)> const&
+        void(std::uint32_t, Blob&&, Blob&&)> const&
         onTransaction,
     AccountID const& account,
     std::int32_t minLedger,
@@ -425,7 +444,7 @@ accountTxPageSQL(
 					onUnsavedLedger(ledgerSeq.value_or(0));
 
 				onTransaction(rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0)),
-					*status, std::move(rawData), std::move(rawMeta));
+					std::move(rawData), std::move(rawMeta));
 				--numberOfResults;
 			}
 		}
@@ -434,5 +453,89 @@ accountTxPageSQL(
 	return;
 }
 
+void
+contractTxPage(
+    Schema& app,
+    DatabaseCon& connection,
+    AccountIDCache const& idCache,
+    std::function<
+        void(std::uint32_t, Blob&&, Blob&&)> const&
+        onTransaction,
+    AccountID const& account,
+    std::int32_t minLedger,
+    std::int32_t maxLedger,
+    std::optional<NetworkOPs::AccountTxMarker>& marker,
+    int limit,
+    bool bAdmin,
+    std::uint32_t page_length)
+{
+    bool lookingForMarker = marker.has_value();
+
+    std::uint32_t numberOfResults;
+
+    if (limit <= 0 || (limit > page_length && !bAdmin))
+        numberOfResults = page_length;
+    else
+        numberOfResults = limit;
+
+    // As an account can have many thousands of transactions, there is a limit
+    // placed on the amount of transactions returned. If the limit is reached
+    // before the result set has been exhausted (we always query for one more
+    // than the limit), then we return an opaque marker that can be supplied in
+    // a subsequent query.
+    std::uint32_t queryLimit = numberOfResults + 1;
+    std::uint32_t findLedger = 0, findSeq = 0;
+
+    if (lookingForMarker)
+    {
+        findLedger = marker->ledgerSeq;
+        findSeq = marker->txnSeq;
+    }
+
+    // marker is also an output parameter, so need to reset
+    //marker.reset();
+
+    static std::string const prefix(
+        R"(SELECT LedgerSeq,TxSeq,TransID FROM TraceTransactions WHERE (Owner = '%s'
+            AND TransType = 'Contract' AND LedgerSeq BETWEEN '%u' AND '%u')
+          )");
+
+    std::string sql;
+
+    // SQL's BETWEEN uses a closed interval ([a,b])
+
+    if (findLedger == 0)
+    {
+        sql = boost::str(
+            boost::format(
+                prefix + (R"(ORDER BY LedgerSeq DESC,
+             TxSeq DESC
+             LIMIT %u;)")) %
+            idCache.toBase58(account) % minLedger % maxLedger % queryLimit);
+    }
+    else if (findLedger != 0)
+    {
+        auto b58acct = idCache.toBase58(account);
+        sql = boost::str(
+            boost::format(
+                prefix + (R"( OR (Owner = '%s'
+            AND TransType = 'Contract' AND
+            LedgerSeq = '%u' AND TxSeq <= '%u')
+            ORDER BY LedgerSeq DESC,TxSeq DESC
+            LIMIT %u;
+            )")) %
+            b58acct % minLedger % (findLedger - 1) % b58acct % findLedger %
+            (findLedger * 100000 + findSeq) % queryLimit);
+    }
+    else
+    {
+        assert(false);
+        // sql is empty
+        return;
+    }
+    processTransRes(app, connection, onTransaction, marker, sql, numberOfResults);
+
+    return;
+}
 
 }

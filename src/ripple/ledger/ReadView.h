@@ -65,8 +65,12 @@ struct Fees
         the reserve increment times the number of increments.
     */
     ZXCAmount
-    accountReserve(std::size_t ownerCount) const
+    accountReserve(std::size_t ownerCount, bool isContract=false) const
     {
+        if (isContract)
+        {
+            return ownerCount * increment;
+        }
         return reserve + ownerCount * increment;
     }
 

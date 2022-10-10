@@ -22,6 +22,7 @@
 
 #include <ripple/protocol/RippleLedgerHash.h>
 #include <ripple/protocol/STTx.h>
+#include <ripple/app/misc/Transaction.h>
 
 namespace ripple {
 
@@ -33,9 +34,10 @@ namespace ripple {
 
 */
 // VFALCO TODO rename to SortedTxSet
+
 class CanonicalTXSet
 {
-private:
+protected:
     class Key
     {
     public:
@@ -76,21 +78,27 @@ private:
         std::uint32_t mSeq;
     };
 
+public:
+    using const_iterator =
+        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
     // Calculate the salted key for the given account
     uint256
     accountKey(AccountID const& account);
 
-public:
-    using const_iterator =
-        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
+    uint256 const&
+    key() const
+    {
+        return salt_;
+    }
 
 public:
-    explicit CanonicalTXSet(LedgerHash const& saltHash) : salt_(saltHash)
+    explicit CanonicalTXSet(LedgerHash const& saltHash)
+        : salt_(saltHash)
     {
     }
 
-    void
-    insert(std::shared_ptr<STTx const> const& txn);
+    bool
+    insert(std::shared_ptr<STTx const> const& txn, bool bJudgeLimit = false);
 
     std::vector<std::shared_ptr<STTx const>>
     prune(AccountID const& account, std::uint32_t const seq);
@@ -132,19 +140,66 @@ public:
         return map_.empty();
     }
 
-    uint256 const&
-    key() const
-    {
-        return salt_;
-    }
 
 private:
     std::map<Key, std::shared_ptr<STTx const>> map_;
-
     // Used to salt the accounts so people can't mine for low account numbers
     uint256 salt_;
 };
 
+class CanonicalTXSetHeld
+{
+protected:
+    class Key
+    {
+    public:
+        Key(uint256 const& account, std::uint32_t seq)
+            : mAccount(account),  mSeq(seq)
+        {
+        }
+
+        bool
+        operator<(Key const& rhs) const;
+        bool
+        operator>(Key const& rhs) const;
+        bool
+        operator<=(Key const& rhs) const;
+        bool
+        operator>=(Key const& rhs) const;
+
+    private:
+        uint256 mAccount;
+        std::uint32_t mSeq;
+    };
+
+public:
+    using const_iterator =
+        std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
+    // Calculate the salted key for the given account
+    uint256
+    accountKey(AccountID const& account);
+
+public:
+    explicit CanonicalTXSetHeld(LedgerHash const& saltHash)
+    {
+    }
+
+    bool
+    insert(std::shared_ptr<Transaction> const& txn,bool bForceAdd);
+
+    std::vector<std::shared_ptr<Transaction>>
+    prune(AccountID const& account, std::uint32_t const seq);
+
+    size_t
+    size() const
+    {
+        return map_.size();
+    }
+
+private:
+    std::map<Key, std::shared_ptr<Transaction>> map_;
+    std::map<AccountID, uint32_t> accountTxsize_;
+};
 }  // namespace ripple
 
 #endif

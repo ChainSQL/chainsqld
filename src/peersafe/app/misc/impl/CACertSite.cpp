@@ -33,7 +33,7 @@ CACertSite::CACertSite(Schema& app)
     : ValidatorSite(app)
     , timeKeeper_(app.timeKeeper())
     , publisherManifests_(app.publisherManifests())
-    , certList_(app.certList())
+    , userCertList_(app.userCertList())
 
 {
 }
@@ -88,24 +88,34 @@ CACertSite::parseJsonResponse(
             // update CA root certs
             Json::Value const& newList = list["certs"];
 
-            std::vector<std::string> root_cert_list;  // root cert list
+            std::set<std::string> root_cert_list;  // root cert list
             for (auto const& val : newList)
             {
                 if (val.isObject() && val.isMember("cert") &&
                     val["cert"].isString())
                 {
-                    root_cert_list.push_back(val["cert"].asString());
+                    root_cert_list.insert(val["cert"].asString());
+                }
+            }
+
+            std::set<std::string> revoked_list;  //revoked cert list
+            Json::Value const& revokeList = list["revoked"];
+            for (auto const& val : revokeList)
+            {
+                if (val.isObject() && val.isMember("serial") &&
+                    val["serial"].isString())
+                {
+                    revoked_list.insert(val["serial"].asString());
                 }
             }
 
             // Update publisher's list
             auto& publisher = publisherLists_[pubKey];
             publisher.sequence = list["sequence"].asUInt();
-            //publisher.expiration = TimeKeeper::time_point{
-            //    TimeKeeper::duration{list["expiration"].asUInt()}};
             publisher.expiration = TimeKeeper::time_point::max();
-            // Update     certList_
-            certList_.setCertList(root_cert_list);
+
+            userCertList_.setCertListFromSite(root_cert_list);
+            userCertList_.setRevoked(revoked_list);
         }
         break;
         case ListDisposition::same_sequence:
@@ -224,7 +234,7 @@ CACertSite::verify(
         return ListDisposition::invalid;
 
     if (list.isMember("sequence") && list["sequence"].isInt() &&
-        list.isMember("expiration") && list["expiration"].isInt() &&
+        list.isMember("expiration") && (list["expiration"].isInt()||list["expiration"].isUInt())  &&
         list.isMember("certs") && list["certs"].isArray())
     {
         auto const sequence = list["sequence"].asUInt();

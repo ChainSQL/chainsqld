@@ -6,7 +6,7 @@
 #include <peersafe/schema/SchemaParams.h>
 #include <ripple/protocol/Protocol.h>
 #include <boost/asio.hpp>
-
+#include <ripple/core/Stoppable.h>
 namespace ripple {
 
 namespace perf {
@@ -52,7 +52,7 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
-class CertList;
+class UserCertList;
 class Cluster;
 class NodeStoreScheduler;
 class TxStoreDBConn;
@@ -72,16 +72,18 @@ class NodeFamily;
 class ShardFamily;
 class PeerReservationTable;
 class DatabaseCon;
+class TxnDBCon;
 class SHAMapStore;
 class SchemaManager;
 class ConnectionPool;
-
+class PrometheusClient;
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations;
+class RCLValidationsPolicy;
 class RCLValidationsAdaptor;
-using RCLValidations = Validations<RCLValidationsAdaptor>;
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 
 namespace RPC {
 class ShardArchiveHandler;
@@ -98,6 +100,10 @@ public:
     setup() = 0;
     virtual void
     doSweep() = 0;
+    virtual bool
+    isShutdown() = 0;
+    virtual JobCounter&
+    doJobCounter() = 0;
     virtual void
     doStop() = 0;
     virtual void
@@ -159,8 +165,8 @@ public:
     validators() = 0;
     virtual ValidatorSite&
     validatorSites() = 0;
-    virtual CertList&
-    certList() = 0;
+    virtual UserCertList&
+    userCertList() = 0;
     virtual ManifestCache&
     validatorManifests() = 0;
     virtual ManifestCache&
@@ -215,6 +221,8 @@ public:
     getStateManager() = 0;
     virtual ConnectionPool&
     getConnectionPool() = 0;
+    virtual PrometheusClient&
+    getPrometheusClient() = 0;
 
     virtual PathRequests&
     getPathRequests() = 0;
@@ -228,12 +236,14 @@ public:
     openLedger() = 0;
     virtual OpenLedger const&
     openLedger() const = 0;
+    virtual OpenLedger&
+    checkedOpenLedger() = 0;
     virtual NodeCache&
     getTempNodeCache() = 0;
     virtual CachedSLEs&
     cachedSLEs() = 0;
 
-    virtual DatabaseCon&
+    virtual TxnDBCon&
     getTxnDB() = 0;
     virtual DatabaseCon&
     getLedgerDB() = 0;
@@ -253,6 +263,10 @@ public:
     schemaId() = 0;
     virtual SchemaManager&
     getSchemaManager() = 0;
+    virtual bool
+    getWaitinBeginConsensus() = 0;
+    virtual Stoppable&
+    getStoppable() = 0;
 };
 
 std::shared_ptr<Schema>

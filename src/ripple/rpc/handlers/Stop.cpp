@@ -21,7 +21,9 @@
 #include <ripple/app/main/Application.h>
 #include <ripple/json/json_value.h>
 #include <ripple/rpc/impl/Handler.h>
-
+#include <ripple/net/RPCErr.h>
+#include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/table/TableSync.h>
 #include <mutex>
 
 namespace ripple {
@@ -33,10 +35,43 @@ struct JsonContext;
 Json::Value
 doStop(RPC::JsonContext& context)
 {
-    std::unique_lock lock{context.app.getMasterMutex()};
-    context.app.app().signalStop();
+    uint256 schemaID = beast::zero;
+    if (context.params.isMember(jss::schema))
+    {
+        auto const schema = context.params[jss::schema].asString();
+        if (schema.length() < 64)
+            return rpcError(rpcINVALID_PARAMS); 
+        schemaID = from_hex_text<uint256>(schema);
 
-    return RPC::makeObjectValue(systemName() + " server stopping");
+    }
+
+	if (!context.params.isMember(jss::schema) || schemaID.isZero())
+    {
+        std::unique_lock lock{context.app.getMasterMutex()};
+        context.app.app().signalStop();
+        return RPC::makeObjectValue(systemName() + " server stopping");
+    }
+    else
+    {
+         auto const schema = context.params[jss::schema].asString();
+         auto schemaID = from_hex_text<uint256>(schema);
+         if (context.app.getSchemaManager().contains(schemaID))
+         {
+             if(!context.app.app().getSchema(schemaID).isShutdown())
+             {
+                 context.app.app().getJobQueue().addJob(
+                     jtSTOP_SCHEMA, "StopSchema", [context, schemaID](Job&) {
+                         context.app.app().doStopSchema(schemaID);
+                     });
+                 return RPC::makeObjectValue("schemaID: " + schema + " server stopping");
+             }
+             context.app.getSchemaManager().removeSchema(schemaID);
+             return RPC::makeObjectValue("schemaID: " + schema + " server stopped");
+         }
+    }
+    return rpcError(rpcINVALID_PARAMS);
+    
+    
 }
 
 }  // namespace ripple

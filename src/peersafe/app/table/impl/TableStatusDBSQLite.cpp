@@ -41,19 +41,19 @@ namespace ripple {
 
             std::string sql(
                 "CREATE TABLE IF NOT EXISTS SyncTableState (\
-                Owner               CHARACTER(64) ,  \
-                TableName           CHARACTER(64),   \
-                TableNameInDB       CHARACTER(64),   \
-                TxnLedgerHash       CHARACTER(64),   \
-                TxnLedgerSeq        CHARACTER(64),   \
-                LedgerHash          CHARACTER(64),   \
-                LedgerSeq           CHARACTER(64),   \
-                TxnUpdateHash       CHARACTER(64),   \
-                deleted             CHARACTER(64),   \
-                AutoSync            CHARACTER(64),   \
-		        TxnLedgerTime		CHARACTER(64),   \
-                PreviousCommit      CHARACTER(64),   \
-				ChainId				CHARACTER(64),  \
+                Owner               VARCHAR(64) ,  \
+                TableName           VARCHAR(64),   \
+                TableNameInDB       VARCHAR(64),   \
+                TxnLedgerHash       VARCHAR(64),   \
+                TxnLedgerSeq        VARCHAR(64),   \
+                LedgerHash          VARCHAR(64),   \
+                LedgerSeq           VARCHAR(64),   \
+                TxnUpdateHash       VARCHAR(64),   \
+                deleted             VARCHAR(64),   \
+                AutoSync            VARCHAR(64),   \
+		        TxnLedgerTime		VARCHAR(64),   \
+                PreviousCommit      VARCHAR(64),   \
+				ChainId				VARCHAR(64),  \
                 primary key  (Owner,TableNameInDB))");
 
             *sql_session << sql;
@@ -595,4 +595,9 @@ namespace ripple {
         return ret;
     }
 
+    DatabaseCon*
+    TableStatusDBSQLite::GetDatabaseConn()
+    {
+        return databasecon_;
+    }
 }

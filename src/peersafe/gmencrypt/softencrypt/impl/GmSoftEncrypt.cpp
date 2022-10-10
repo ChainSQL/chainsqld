@@ -68,7 +68,6 @@ size_t SoftEncrypt::EC_KEY_key2buf(const EC_KEY *key, unsigned char **pbuf)
     }
     *pbuf = buf;
     return len;
-    return 0;
 }
 
 // std::pair<unsigned char*, int> SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& priKey)
@@ -81,11 +80,11 @@ bool SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& 
     {
         DebugPrint("private key Len: %d", priLen);
         priKey.resize(priLen);
-        int priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
-        (void)priLen;
-        return true;
+        priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
+        if(priLen != -1)
+            return true;
     }
-    else return false;
+    return false;
 }
 
 unsigned long SoftEncrypt::GenerateRandom(unsigned int uiLength, unsigned char * pucRandomBuf)
@@ -169,39 +168,52 @@ bool SoftEncrypt::generatePubFromPri(
     std::vector<unsigned char>& publicKey)
 {
     EC_POINT *pub_key = NULL;
-    BIGNUM* bn = BN_bin2bn(pPriUC, priLen, nullptr);
+    BIGNUM* bn = NULL;
+    EC_KEY* pEcKey = NULL;
+    const EC_GROUP* pEcGroup = NULL;
+    const BIGNUM* priv_key = NULL;
+    BN_CTX *bnCtx = NULL;
+    bool ret = false;
+    
+    bn = BN_bin2bn(pPriUC, priLen, nullptr);
     if (bn == nullptr)
     {
         DebugPrint("generatePubFromPri: BN_bin2bn failed");
-        return false;
+        goto end;
     }
 
-    EC_KEY* pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
-    const bool ok = EC_KEY_set_private_key(pEcKey, bn);
-    BN_clear_free(bn);
-
-    if (!ok)
+    pEcKey = EC_KEY_new_by_curve_name(NID_sm2p256v1);
+    if (!EC_KEY_set_private_key(pEcKey, bn))
     {
         DebugPrint("generatePubFromPri: EC_KEY_set_private_key failed");
-        EC_KEY_free(pEcKey);
-        return false;
+        goto end;
     }
 
-    const EC_GROUP* pEcGroup = EC_KEY_get0_group(pEcKey);
-    const BIGNUM* priv_key = EC_KEY_get0_private_key(pEcKey);
+    pEcGroup = EC_KEY_get0_group(pEcKey);
+    priv_key = EC_KEY_get0_private_key(pEcKey);
     if ((pub_key = EC_POINT_new(pEcGroup)) == NULL)
-        return false;
+        goto end;
 
-    BN_CTX *ctx = BN_CTX_new();
-    if(ctx == NULL) return false;
-    if (!EC_POINT_mul(pEcGroup, pub_key, priv_key, NULL, NULL, ctx))
-        return false;
-    
+    bnCtx = BN_CTX_new();
+    if(bnCtx == NULL) goto end;
+    if (!EC_POINT_mul(pEcGroup, pub_key, priv_key, NULL, NULL, bnCtx))
+    {
+        goto end;
+    }
     if (!EC_KEY_set_public_key(pEcKey, pub_key))
-        return false;
+        goto end;
 
-    getPublicKey(pEcKey, publicKey);
-    return true;
+    if(getPublicKey(pEcKey, publicKey))
+    {
+        ret = true;
+    }
+    
+end:
+    EC_POINT_clear_free(pub_key);
+    BN_clear_free(bn);
+    EC_KEY_free(pEcKey);
+    BN_CTX_free(bnCtx);
+    return ret;
 }
 //SM2 Sign&Verify
 /*
@@ -218,7 +230,7 @@ unsigned long SoftEncrypt::SM2ECCSign(
     std::vector<unsigned char>& signedDataV)
 {
     int ret = 1;
-    if (SeckeyType::gmOutCard != pri4SignInfo.first)
+    if (SeckeyType::gmOutCard != pri4SignInfo.first && pInData == nullptr)
 	{
         return ret;
 	}
@@ -300,6 +312,10 @@ unsigned long SoftEncrypt::SM2ECCVerify(
     unsigned long ulSignValueLen)
 {
     int ret = 1;
+    if(pInData == nullptr || pSignValue == nullptr)
+    {
+        return ret;
+    }
 	EC_KEY* pubkey = standPubToSM2Pub(pub4Verify.first, pub4Verify.second);
 	if (pubkey == nullptr)
     {
@@ -345,10 +361,16 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     unsigned long ulPlainDataLen,
     std::vector<unsigned char>& cipherDataV)
 {
+    unsigned long ret = 1;
+    if(pPlainData == nullptr)
+    {
+        return ret;
+    }
+    
     EC_KEY* pubkey = standPubToSM2Pub(pub4Encrypt.first, pub4Encrypt.second);
 	if (pubkey == nullptr)
     {
-        return 1;
+        return ret;
 	}
 
     size_t cipherDataTempLen;
@@ -357,27 +379,26 @@ unsigned long SoftEncrypt::SM2ECCEncrypt(
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
         EC_KEY_free(pubkey);
-		return 1;
+		return ret;
 	}
     unsigned char* pCipherDataTemp = new unsigned char[cipherDataTempLen];
 	if (!SM2_encrypt_with_recommended((const unsigned char *)pPlainData, ulPlainDataLen,
         pCipherDataTemp, &cipherDataTempLen, pubkey))
     {
 		DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended failed");
-        delete [] pCipherDataTemp;
-        EC_KEY_free(pubkey);
-		return 1;
+        
 	}
     else
     {
         std::vector<unsigned char> cipherDataVTemp(pCipherDataTemp, (pCipherDataTemp + cipherDataTempLen));
         cipherDataV.assign(cipherDataVTemp.begin(), cipherDataVTemp.end());
         // cipherReEncode(pCipherData, *pulCipherDataLen);
-        delete [] pCipherDataTemp;
+        ret = 0;
         DebugPrint("SM2ECCEncrypt: SM2_encrypt_with_recommended successfully");
-        EC_KEY_free(pubkey);
-		return 0;
     }
+    delete [] pCipherDataTemp;
+    EC_KEY_free(pubkey);
+    return ret;
 }
 unsigned long SoftEncrypt::SM2ECCDecrypt(
     std::pair<int, int> pri4DecryptInfo,
@@ -388,15 +409,16 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     bool isSymmertryKey,
     void* sm4Handle)
 {
-    if (SeckeyType::gmOutCard != pri4DecryptInfo.first)
+    unsigned long ret = 1;
+    if (SeckeyType::gmOutCard != pri4DecryptInfo.first && pCipherData == nullptr)
     {
-        return 1;
+        return ret;
     }
 
 	BIGNUM* bn = BN_bin2bn((const unsigned char *)(pri4Decrypt.first), (pri4Decrypt.second), nullptr);
 	if (bn == nullptr) {
 		DebugPrint("SM2ECCDecrypt: BN_bin2bn failed");
-		return 1;
+		return ret;
 	}
 
 	EC_KEY* ec_key = EC_KEY_new_by_curve_name(NID_sm2p256v1);
@@ -406,7 +428,7 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 	if (!ok) {
 		DebugPrint("SM2ECCSign: EC_KEY_set_private_key failed");
 		EC_KEY_free(ec_key);
-		return 1;
+		return ret;
 	}
 
 	// cipherReDecode(pCipherData, ulCipherDataLen);
@@ -416,7 +438,7 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
 		
 		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended failed");
 		EC_KEY_free(ec_key);
-		return 1;
+		return ret;
 	}
 
 	// if (msglen > tmpPlainDataLen) {
@@ -430,19 +452,17 @@ unsigned long SoftEncrypt::SM2ECCDecrypt(
     if (!SM2_decrypt_with_recommended(pCipherData, ulCipherDataLen, pPlainData, &msglen, ec_key))
 	{
 		DebugPrint("SM2ECCDecrypt2: SM2_decrypt_with_recommended failed");
-		EC_KEY_free(ec_key);
-        delete[] pPlainData;
-		return 1;
 	}
 	else
 	{
         std::vector<unsigned char> plainDataVTemp(pPlainData, pPlainData + msglen);
         plainDataV.assign(plainDataVTemp.begin(), plainDataVTemp.end());
-		DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
-		EC_KEY_free(ec_key);
-        delete[] pPlainData;
-		return 0;
+        ret = 0;
+        DebugPrint("SM2ECCDecrypt: SM2_decrypt_with_recommended successfully");
 	}
+    EC_KEY_free(ec_key);
+    delete[] pPlainData;
+    return ret;
 }
 //SM3 interface
 unsigned long SoftEncrypt::SM3HashTotal(
@@ -465,6 +485,7 @@ unsigned long SoftEncrypt::SM3HashTotal(
 
 unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
 {
+    unsigned long ret = 1;
     sm3_ctx_t* psm3_ctx_tmp = new sm3_ctx_t;
     // sm3_init((sm3_ctx_t*)*phSM3Handle);
     sm3_init(psm3_ctx_tmp);
@@ -473,36 +494,28 @@ unsigned long SoftEncrypt::SM3HashInit(HANDLE *phSM3Handle)
     {
         // *phSM3Handle = &sm3_ctx_;
         *phSM3Handle = psm3_ctx_tmp;
+        ret = 0;
         DebugPrint("SM3HashInit() OK!");
-        return 0;
     }
     else
     {
         DebugPrint("SM3HashInit() failed!");
-        return 1;
     }
+    return ret;
 }
 
 unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashData, unsigned long *pulHashDataLen)
 {
-    if (nullptr != phSM3Handle)
+    if (nullptr != phSM3Handle && pHashData != nullptr)
     {
         // sm3_final(&sm3_ctx_, pHashData);
         sm3_final((sm3_ctx_t*)phSM3Handle, pHashData);
-        if (pHashData != nullptr)
-        {
-            *pulHashDataLen = SM3_DIGEST_LENGTH;
-            // memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
-            // memset(phSM3Handle, 0, sizeof(sm3_ctx_t));
-            delete (sm3_ctx_t*)phSM3Handle;
-            DebugPrint("sm3_final Hash success!");
-            return 0;
-        }
-        else
-        {
-            DebugPrint("sm3_final Hash failed!");
-            return -1;
-        }
+        *pulHashDataLen = SM3_DIGEST_LENGTH;
+        // memset(&sm3_ctx_, 0, sizeof(sm3_ctx_t));
+        // memset(phSM3Handle, 0, sizeof(sm3_ctx_t));
+        delete (sm3_ctx_t*)phSM3Handle;
+        DebugPrint("sm3_final Hash success!");
+        return 0;
     }
     else
     {
@@ -512,7 +525,7 @@ unsigned long SoftEncrypt::SM3HashFinal(void* phSM3Handle, unsigned char *pHashD
 }
 void SoftEncrypt::operator()(void* phSM3Handle, void const* data, std::size_t size) noexcept
 {
-    if (nullptr != phSM3Handle)
+    if (nullptr != phSM3Handle && data != nullptr)
     {
         // sm3_update(&sm3_ctx_, (const unsigned char*)data, size);
         sm3_update((sm3_ctx_t*)phSM3Handle, (const unsigned char*)data, size);
@@ -535,44 +548,45 @@ unsigned long SoftEncrypt::SM4SymEncrypt(
 	unsigned long *pulCipherDataLen,
 	int secKeyType)
 {
-	if (SeckeyType::gmInCard == secKeyType)
-	{
-        DebugPrint("soft sm4 encrypt, secKeyType must be gmOutCard, please check!");
-        return -1;
-	}
-	else
-	{
-        sms4_key_t key;
-        sms4_set_encrypt_key(&key, pSessionKey);
-        
-        unsigned long nInlen = (ulPlainDataLen/16 + 1) * 16;
-        unsigned char* pIndata = new unsigned char[nInlen];
-        pkcs5Padding(pPlainData, ulPlainDataLen, pIndata, &nInlen);
-		if (SM4AlgType::ECB == uiAlgMode)
-		{
-            int loopTimes = nInlen/16;
-            // unsigned char* pCipherTemp = new unsigned char[nInlen];
-            for (int i = 0; i<loopTimes; i++)
+    unsigned long ret = -1;
+    try {
+        if (SeckeyType::gmInCard == secKeyType && pSessionKey != nullptr &&
+            pPlainData != nullptr && pCipherData != nullptr && pulCipherDataLen != nullptr)
+        {
+            DebugPrint("soft sm4 encrypt, secKeyType must be gmOutCard, please check!");
+        }
+        else
+        {
+            sms4_key_t key;
+            sms4_set_encrypt_key(&key, pSessionKey);
+            
+            unsigned long nInlen = (ulPlainDataLen/16 + 1) * 16;
+            unsigned char* pIndata = new unsigned char[nInlen];
+            pkcs5Padding(pPlainData, ulPlainDataLen, pIndata, &nInlen);
+            if (SM4AlgType::ECB == uiAlgMode)
             {
-                int offset = i*16;
-                sms4_ecb_encrypt(pIndata + offset, pCipherData + offset, &key, true);
+                int loopTimes = nInlen/16;
+                for (int i = 0; i<loopTimes; i++)
+                {
+                    int offset = i*16;
+                    sms4_ecb_encrypt(pIndata + offset, pCipherData + offset, &key, true);
+                }
+                *pulCipherDataLen = nInlen;
             }
-            // memcpy(pCipherData, pCipherTemp, ulPlainDataLen);
-            *pulCipherDataLen = nInlen;
-
-			// rv = SM4ExternalSymEncrypt(SGD_SMS4_ECB, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
-		}
-		else if (SM4AlgType::CBC == uiAlgMode)
-		{
-            unsigned char pIv[16];
-	        generateIV(uiAlgMode, pIv);
-            sms4_cbc_encrypt(pIndata, pCipherData, nInlen, &key, pIv, true);
-			// rv = SM4ExternalSymEncrypt(SGD_SMS4_CBC, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
-		}
-        delete [] pIndata;
-	}
-
-	return 0;
+            else if (SM4AlgType::CBC == uiAlgMode)
+            {
+                unsigned char pIv[16];
+                generateIV(uiAlgMode, pIv);
+                sms4_cbc_encrypt(pIndata, pCipherData, nInlen, &key, pIv, true);
+            }
+            delete [] pIndata;
+            ret = 0;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+    }
+	
+	return ret;
 }
 unsigned long SoftEncrypt::SM4SymDecrypt(
     unsigned int  uiAlgMode,
@@ -584,12 +598,13 @@ unsigned long SoftEncrypt::SM4SymDecrypt(
 	unsigned long *pulPlainDataLen,
 	int secKeyType)
 {
+    unsigned long ret = -1;
     try
     {
-        if (SeckeyType::gmInCard == secKeyType)
+        if (SeckeyType::gmInCard == secKeyType && pSessionKey != nullptr &&
+            pCipherData != nullptr && pPlainData != nullptr && pulPlainDataLen != nullptr)
         {
             DebugPrint("soft sm4 decrypt, secKeyType must be gmOutCard, please check!");
-            return -1;
         }
         else
         {
@@ -614,10 +629,10 @@ unsigned long SoftEncrypt::SM4SymDecrypt(
                 unsigned char pIv[16];
                 generateIV(uiAlgMode, pIv);
                 sms4_cbc_encrypt(pCipherData, pPlainData, ulCipherDataLen, &key, pIv, false);
-                // rv = SM4ExternalSymEncrypt(SGD_SMS4_CBC, pSessionKey, pSessionKeyLen, pPlainData, ulPlainDataLen, pCipherData, pulCipherDataLen);
             }
             dePkcs5Padding(pOutdata, ulCipherDataLen, pPlainData, pulPlainDataLen);
             delete[] pOutdata;
+            ret = 0;
             DebugPrint("SM4 symmetry decrypt successful!");
         }
     }
@@ -626,7 +641,7 @@ unsigned long SoftEncrypt::SM4SymDecrypt(
         std::cerr << e.what() << '\n';
     }
     
-	return 0;
+	return ret;
 }
 
 unsigned long SoftEncrypt::SM4GenerateSessionKey(
@@ -721,8 +736,8 @@ EC_KEY* SoftEncrypt::CreateEC(unsigned char *key, int is_public) {
     }
 
     if (ec_key == NULL) {
+        BIO_free_all(keybio);
         DebugPrint("Failed to Get Key");
-        return NULL;
     }
 
     return ec_key;
@@ -752,8 +767,8 @@ void SoftEncrypt::cipherReEncode(unsigned char* pCipher, unsigned long cipherLen
     
     memcpy(pCipher + 64, pC3, 32);
     memcpy(pCipher + 96, pRealCipher, realCipherLen);
-    delete pRealCipher;
-    delete pC3;
+    delete []pRealCipher;
+    delete []pC3;
 }
 void SoftEncrypt::cipherReDecode(unsigned char* pCipher, unsigned long cipherLen)
 {
@@ -765,8 +780,8 @@ void SoftEncrypt::cipherReDecode(unsigned char* pCipher, unsigned long cipherLen
     
     memcpy(pCipher + 64, pRealCipher, realCipherLen);
     memcpy(pCipher + 64 + realCipherLen, pC3, 32);
-    delete pRealCipher;
-    delete pC3;
+    delete []pRealCipher;
+    delete []pC3;
 }
 
 #endif

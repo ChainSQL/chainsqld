@@ -56,12 +56,14 @@
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
 #include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/ConnectionPool.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/system/error_code.hpp>
@@ -71,7 +73,7 @@
 #include <iostream>
 #include <mutex>
 #include <sstream>
-
+#include <ripple/nodestore/Scheduler.h>
 namespace ripple {
 
 
@@ -93,9 +95,6 @@ public:
     bool
     setSynTable();
 
-    bool
-    checkCertificate();
-
     std::shared_ptr<Ledger>
     getLastFullLedger(unsigned offset);
 
@@ -115,6 +114,7 @@ private:
     std::shared_ptr<Config> config_;
 
     bool m_schemaAvailable;
+    std::atomic<bool> waitingBeginConsensus_;
 
     Application::MutexType m_masterMutex;
     TransactionMaster m_txMaster;
@@ -148,7 +148,7 @@ private:
     std::unique_ptr<ManifestCache> publisherManifests_;
     std::unique_ptr<ValidatorList> validators_;
     std::unique_ptr<ValidatorSite> validatorSites_;
-    std::unique_ptr<CertList> certList_;
+    std::unique_ptr<UserCertList> userCertList_;
     std::unique_ptr<CACertSite> caCertSites_;
     std::unique_ptr<AmendmentTable> m_amendmentTable;
     // std::unique_ptr <PreContractFace> m_preContractFace;
@@ -169,10 +169,11 @@ private:
     std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
-    std::unique_ptr<DatabaseCon> mTxnDB;
+    std::unique_ptr<TxnDBCon> mTxnDB;
     std::unique_ptr<DatabaseCon> mLedgerDB;
     std::unique_ptr<DatabaseCon> mWalletDB;
     std::unique_ptr<PeerManager> m_peerManager;
+    std::unique_ptr<PrometheusClient> m_pPrometheusClient;
 
 public:
     SchemaImp(
@@ -187,6 +188,8 @@ public:
         , config_(config)
         , m_schemaAvailable(
               schema_params_.schemaId() == beast::zero ? true : false)
+
+        , waitingBeginConsensus_{false}
 
         , m_txMaster(*this)
 
@@ -206,7 +209,7 @@ public:
               SchemaImp::journal("TaggedCache"))
 
         , cachedSLEs_(std::chrono::minutes(1), stopwatch())
-
+   
         //
         // Anything which calls addJob must be a descendant of the JobQueue
         //
@@ -254,7 +257,7 @@ public:
               [this](std::shared_ptr<SHAMap> const& set, bool fromAcquire) {
                   gotTXSet(set, fromAcquire);
               }))
-
+        
         , m_acceptedLedgerCache(
               "AcceptedLedger",
               4,
@@ -296,8 +299,8 @@ public:
               config_->VALIDATION_QUORUM))
         , validatorSites_(std::make_unique<ValidatorSite>(*this))
 
-        , certList_(std::make_unique<CertList>(
-              config_->ROOT_CERTIFICATES,
+        , userCertList_(std::make_unique<UserCertList>(
+              config_->USER_ROOT_CERTIFICATES,
               SchemaImp::journal("CertList")))
         , caCertSites_(std::make_unique<CACertSite>(*this))
 
@@ -355,6 +358,11 @@ public:
         , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
+        , m_pPrometheusClient(std::make_unique<PrometheusClient>(
+              *this,
+              *config_,
+              app.getPromethExposer(),
+              SchemaImp::journal("PrometheusClient")))
 
     {
     }
@@ -587,6 +595,12 @@ public:
         return shardStore_.get();
     }
 
+    PrometheusClient&
+    getPrometheusClient() override
+    {
+        return *m_pPrometheusClient;
+    }
+
     RPC::ShardArchiveHandler*
     getShardArchiveHandler(bool tryRecovery) override
     {
@@ -706,10 +720,10 @@ public:
         return *validatorSites_;
     }
 
-    CertList&
-    certList() override
+    UserCertList&
+    userCertList() override
     {
-        return *certList_;
+        return *userCertList_;
     }
 
     ManifestCache&
@@ -766,6 +780,13 @@ public:
         return *openLedger_;
     }
 
+    virtual OpenLedger&
+    checkedOpenLedger() override
+    {
+        m_ledgerMaster->checkUpdateOpenLedger();
+        return *openLedger_;
+    }
+
     PeerManager&
     peerManager() override
     {
@@ -779,7 +800,7 @@ public:
         return *txQ_;
     }
 
-    DatabaseCon&
+    TxnDBCon&
     getTxnDB() override
     {
         assert(mTxnDB.get() != nullptr);
@@ -814,13 +835,13 @@ public:
             if (config_->useTxTables())
             {
                 // transaction database
-                mTxnDB = std::make_unique<DatabaseCon>(
+                mTxnDB = std::make_unique<TxnDBCon>(
                     setup,
                     TxDBName,
                     TxDBPragma,
                     TxDBInit,
                     DatabaseCon::CheckpointerSetup{
-                        &app_.getJobQueue(), &logs()});
+                        &app_.getJobQueue(),&doJobCounter(), &logs()});
                 mTxnDB->getSession() << boost::str(
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
@@ -886,7 +907,7 @@ public:
                 LgrDBName,
                 LgrDBPragma,
                 LgrDBInit,
-                DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &logs()});
+                DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &doJobCounter(), &logs()});
             mLedgerDB->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config_->getValueFor(SizedItem::lgrDBCache)));
@@ -1044,7 +1065,8 @@ public:
         m_acceptedLedgerCache.sweep();
         cachedSLEs_.expire();
 
-        getTableSync().sweep();
+        getTableSync().Sweep();
+        getTxPool().sweep();
     }
 
     void
@@ -1095,6 +1117,19 @@ public:
         stop(m_journal);
     }
 
+    bool
+    isShutdown() override
+    {
+        
+        return isStopped();
+    }
+
+    JobCounter&
+    doJobCounter() override
+    {
+        return jobCounter();
+    }
+
     LedgerIndex
     getMaxDisallowedLedger() override
     {
@@ -1117,6 +1152,18 @@ public:
     getSchemaManager() override
     {
         return app_.getSchemaManager();
+    }
+
+    bool
+    getWaitinBeginConsensus() override
+    {
+        return waitingBeginConsensus_;
+    }
+
+    Stoppable&
+    getStoppable() override
+    {
+        return *this;
     }
 
 private:
@@ -1150,9 +1197,6 @@ bool
 SchemaImp::setup()
 {
     if (!setSynTable())
-        return false;
-
-    if (!checkCertificate())
         return false;
 
     setMaxDisallowedLedger();
@@ -1296,7 +1340,7 @@ SchemaImp::setup()
         }
     }
 
-    m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
+    //m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
 
     if (!cluster_->load(config().section(SECTION_CLUSTER_NODES)))
     {
@@ -1347,7 +1391,7 @@ SchemaImp::setup()
         {
             m_networkOPs->setGenesisLedgerIndex(
                 m_ledgerMaster->getClosedLedger()->info().seq);
-            validatorSites_->setWaitinBeginConsensus();
+            waitingBeginConsensus_ = true;
         }
     }
 
@@ -1480,6 +1524,7 @@ SchemaImp::setup()
         }
     }
 
+    m_pPrometheusClient->setup();
     m_schemaAvailable = true;
 
     doStart();
@@ -1812,12 +1857,14 @@ SchemaImp::loadOldLedger(
             return false;
         }
 
-        if (!loadLedger->walkLedger(app_.journal("Ledger")))
-        {
-            JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
-            assert(false);
-            return false;
-        }
+        m_ledgerMaster->setLoadLedger(loadLedger->info().seq);
+        // if (!loadLedger->walkLedger(app_.journal("Ledger")))
+        // {
+        //     JLOG(m_journal.fatal()) << "Ledger is missing nodes.";
+        //     assert(false);
+        //     return false;
+        // }
+        
 
         if (!loadLedger->assertSane(app_.journal("Ledger")))
         {
@@ -2064,26 +2111,6 @@ SchemaImp::setSynTable()
     return true;
 }
 
-bool
-SchemaImp::checkCertificate()
-{
-    auto const vecCrtPath = config_->section("x509_crt_path").values();
-    if (vecCrtPath.empty())
-    {
-        return true;
-    }
-    else if (!config_->ROOT_CERTIFICATES.empty())
-    {
-        OpenSSL_add_all_algorithms();
-        return true;
-    }
-    else
-    {
-        std::cerr << "Root certificate configuration error ,please check cfg!"
-                  << std::endl;
-        return false;
-    }
-}
 
 std::shared_ptr<Schema>
 make_Schema(

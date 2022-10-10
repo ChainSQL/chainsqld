@@ -73,6 +73,9 @@ PlainWSPeer<Handler>::PlainWSPeer(
           journal)
     , ws_(std::move(socket))
 {
+    JLOG(journal.info()) << "upgrade to plainws: "
+                         << beast::IPAddressConversion::from_asio(
+                                remote_address);
 }
 
 }  // namespace ripple

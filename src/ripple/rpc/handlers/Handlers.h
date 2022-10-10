@@ -43,6 +43,10 @@ doAccountTxOld(RPC::JsonContext&);
 Json::Value
 doAccountTxJson(RPC::JsonContext&);
 Json::Value
+doAccountAuthorized(RPC::JsonContext&);
+Json::Value
+doContractTxJson(RPC::JsonContext& context);
+Json::Value
 doBookOffers(RPC::JsonContext&);
 Json::Value
 doBlackList(RPC::JsonContext&);
@@ -172,6 +176,7 @@ Json::Value doMallocTrim            (RPC::JsonContext&);
 Json::Value doSchemaList			(RPC::JsonContext&);
 Json::Value doSchemaInfo            (RPC::JsonContext&);
 Json::Value doSchemaAccept          (RPC::JsonContext&);
+Json::Value doSchemaStart          (RPC::JsonContext&);
 //for sql operation
 Json::Value doTableDump(RPC::JsonContext&);
 Json::Value doTableDumpStop(RPC::JsonContext&);
@@ -193,6 +198,10 @@ Json::Value doGetUserToken(RPC::JsonContext&);
 Json::Value doGetCheckHash(RPC::JsonContext&);
 Json::Value doValidators            (RPC::JsonContext&);
 Json::Value doValidatorListSites    (RPC::JsonContext&);
+Json::Value doTxInPool(RPC::JsonContext&);
+Json::Value doSyncInfo(RPC::JsonContext&);
+Json::Value doLedgerProof(RPC::JsonContext&);
+Json::Value doMonitorStatis(RPC::JsonContext&);
 
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);

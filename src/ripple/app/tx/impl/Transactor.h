@@ -133,6 +133,9 @@ public:
 	static NotTEC
 	checkSeq2(PreclaimContext const& ctx);
 
+    static STer
+    checkUserCert(PreclaimContext const& ctx);
+
     static TER
     checkFee(PreclaimContext const& ctx, FeeUnit64 baseFee);
 
@@ -141,6 +144,17 @@ public:
 
     static TER
     checkFrozen(PreclaimContext const& ctx);
+
+    static TER
+    checkAuthority(
+        PreclaimContext const& ctx_,
+        AccountID const acc,
+        LedgerSpecificFlags flag,
+        boost::optional<AccountID> dst = {});
+
+    static
+    TER
+    cleanUpDirOnDeleteAccount(ApplyContext& ctx, AccountID const& acc);
 
     static 
     void
@@ -175,6 +189,7 @@ public:
 
 	//set extra message for error
 	void setExtraMsg(std::string msg);
+
     /////////////////////////////////////////////////////
 protected:
 	STer apply();

@@ -33,7 +33,7 @@
 #include <boost/asio.hpp>
 #include <memory>
 #include <mutex>
-
+#include <peersafe/app/prometh/PrometheusClient.h>
 namespace ripple {
 
 namespace unl {
@@ -84,7 +84,8 @@ class TransactionMaster;
 class TxQ;
 class ValidatorList;
 class ValidatorSite;
-class CertList;
+class UserCertList;
+class PeerCertList;
 class Cluster;
 class PreContractFace;
 class TxStoreDBConn;
@@ -99,6 +100,7 @@ class TxPool;
 class StateManager;
 class NodeStoreScheduler;
 class DatabaseCon;
+class TxnDBCon;
 class SHAMapStore;
 class ResolverAsio;
 class ValidatorKeys;
@@ -108,10 +110,11 @@ class PeerReservationTable;
 
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
-template <class Adaptor>
+template <class StalePolicy, class Adaptor>
 class Validations;
+class RCLValidationsPolicy;
 class RCLValidationsAdaptor;
-using RCLValidations = Validations<RCLValidationsAdaptor>;
+using RCLValidations = Validations<RCLValidationsPolicy, RCLValidationsAdaptor>;
 
 namespace RPC {
 class ShardArchiveHandler;
@@ -155,6 +158,9 @@ public:
     virtual void
     checkSigs(bool) = 0;
 
+    virtual void
+    doStopSchema(SchemaID schemaID) = 0;
+
     //
     // ---
     //
@@ -173,6 +179,8 @@ public:
     getLoadManager() = 0;
     virtual Overlay&
     overlay() = 0;
+    virtual PeerCertList&
+    peerCertList() = 0;
     virtual perf::PerfLog&
     getPerfLog() = 0;
     virtual Resource::Manager&
@@ -220,8 +228,8 @@ public:
     validators(SchemaID const& id = beast::zero) = 0;
     virtual ValidatorSite&
     validatorSites(SchemaID const& id = beast::zero) = 0;
-    virtual CertList&
-    certList(SchemaID const& id = beast::zero) = 0;
+    virtual UserCertList&
+    userCertList(SchemaID const& id = beast::zero) = 0;
     virtual ManifestCache&
     validatorManifests(SchemaID const& id = beast::zero) = 0;
     virtual ManifestCache&
@@ -257,6 +265,8 @@ public:
 
     virtual PreContractFace&		
     getPreContractFace() = 0;
+    virtual PromethExposer& 
+    getPromethExposer() = 0;
     virtual TxStoreDBConn&
     getTxStoreDBConn(SchemaID const& id = beast::zero) = 0;
     virtual TxStore&
@@ -289,7 +299,7 @@ public:
     openLedger(SchemaID const& id = beast::zero) = 0;
     virtual OpenLedger const&
     openLedger(SchemaID const& id = beast::zero) const = 0;
-    virtual DatabaseCon&
+    virtual TxnDBCon&
     getTxnDB(SchemaID const& id = beast::zero) = 0;
     virtual DatabaseCon&
     getLedgerDB(SchemaID const& id = beast::zero) = 0;

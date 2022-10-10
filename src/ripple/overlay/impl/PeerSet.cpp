@@ -38,6 +38,7 @@ PeerSet::PeerSet(
     , mComplete(false)
     , mFailed(false)
     , mProgress(false)
+    , mWaitingRead(false)
     , mTimerInterval(interval)
     , mTimer(app_.getIOService())
 {
@@ -107,7 +108,8 @@ PeerSet::invokeOnTimer()
 
     if (!mProgress)
     {
-        ++mTimeouts;
+        if (!mWaitingRead)
+            ++mTimeouts;
         JLOG(m_journal.debug())
             << "Timeout(" << mTimeouts << ") pc=" << mPeers.size()
             << " acquiring " << mHash;

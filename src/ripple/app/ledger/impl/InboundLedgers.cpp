@@ -60,6 +60,7 @@ public:
         , m_clock(clock)
         , mRecentFailures(clock)
         , mCounter(collector->make_counter("ledger_fetches"))
+        , mCount(0)
     {
     }
 
@@ -94,6 +95,7 @@ public:
                 mLedgers.emplace(hash, inbound);
                 inbound->init(sl);
                 ++mCounter;
+                ++mCount;
             }
         }
 
@@ -186,7 +188,7 @@ public:
                 app_.getJobQueue().addJob(
                     jtLEDGER_DATA, "gotStaleData", [this, packet_ptr](Job&) {
                         gotStaleData(packet_ptr);
-                    });
+                    }, app_.doJobCounter());
             }
 
             return false;
@@ -197,7 +199,7 @@ public:
             app_.getJobQueue().addJob(
                 jtLEDGER_DATA, "processLedgerData", [this, hash](Job&) {
                     doLedgerData(hash);
-                });
+                }, app_.doJobCounter());
 
         return true;
     }
@@ -291,6 +293,29 @@ public:
         fetchRate_.add(1, m_clock.now());
     }
 
+    void 
+    onLedgerComplete(std::uint32_t seq) override
+    {
+        ScopedLockType sl(mLock);
+        bool bHighestFinish = true;
+        for (auto const& it : mLedgers)
+        {
+            assert(it.second);
+            if (it.second->getSeq() > seq && 
+                !it.second->isComplete() &&
+                !it.second->isFailed())
+            {
+                bHighestFinish = false;
+                break;
+            }
+        }
+        if (bHighestFinish)
+        {
+            JLOG(j_.info()) << "Clear StateNodeHashSet.";
+            app_.getNodeFamily().getStateNodeHashSet()->clear();
+        }
+    }
+
     Json::Value
     getInfo() override
     {
@@ -327,6 +352,13 @@ public:
         }
 
         return ret;
+    }
+
+    uint64_t
+    getCount() override
+    {
+        ScopedLockType sl(mLock);
+        return mCount;
     }
 
     void
@@ -416,6 +448,7 @@ private:
     beast::aged_map<uint256, std::uint32_t> mRecentFailures;
 
     beast::insight::Counter mCounter;
+    uint64_t mCount;
 };
 
 //------------------------------------------------------------------------------

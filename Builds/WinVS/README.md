@@ -10,7 +10,7 @@
 | [Git for Windows](README.md#install-git-for-windows)| 2.16.1 |
 | [OpenSSL Library](README.md#install-openssl) | 1.0.2u或者1.1.0+ |
 | [Goole Protocol Buffers Complier](README.md#install-protocol) | 2.5 |
-| [Boost library](README.md#build-boost) | 1.70.0 |
+| [Boost library](README.md#build-boost) | 1.73.0 |
 | [CMake for Windows](README.md#optional-install-cmake-for-windows)* | 3.12 |
 | [mysql](README.md#install-mysql) | 5.6 |
 
@@ -38,18 +38,18 @@
 > 2. 安装完 OpenSSL 后，并将 OPENSSL_ROOT_DIR 环境变量设置为 OpenSSL 安装路径
 
 ### install boost
-> 1. 下载 [boost 1.70 ](http://www.boost.org/users/news/)
+> 1. 下载 [boost 1.73 ](http://www.boost.org/users/news/)
 > 2. 编译 boost，注意下面的Num Parallel需要指定一个并行编译数量，如：2
 ```cmd
-> cd C:\lib\boost_1_70_0
+> cd C:\lib\boost_1_73_0
 > bootstrap
 > bjam -j<Num Parallel> --toolset=msvc-14.1 address-model=64 architecture=x86 link=static threading=multi runtime-link=shared,static stage --stagedir=stage64
 ```
-> 3. 将 BOOST_ROOT 环境变量设置为 C:\lib\boost_1_70_0
+> 3. 将 BOOST_ROOT 环境变量设置为 C:\lib\boost_1_73_0
 
 ### install mysql
 > 1. 下载 [mysql8.0 for windows](https://dev.mysql.com/downloads/installer/)。建议优先选择 x86，64-bit 的压缩包并安装。
-> 2. 将 MYSQL_ROOT_DIR 环境变量设置为 mysql8.0 的安装目录
+> 2. 将 MYSQL_DIR 环境变量设置为 mysql8.0 的安装目录
 
 ## 编译 chainsqld
 ### 下载源码

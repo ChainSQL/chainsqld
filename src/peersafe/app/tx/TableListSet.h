@@ -61,9 +61,37 @@ public:
     prepareTableEntry(const STTx& tx, ApplyView& view, STObject* pEntry);
 
     static
-    void UpdateTableSle(STObject *pEntry, LedgerIndex createLgrSeq, uint256 createdLedgerHash, uint256 createdTxnHash,LedgerIndex previousTxnLgrSeq = 0,uint256 previousTxnLgrHash = uint256());
+    void UpdateTableSle(
+        STObject *pEntry, 
+        LedgerIndex createLgrSeq, 
+        uint256 createdLedgerHash, 
+        uint256 createdTxnHash,
+        LedgerIndex previousTxnLgrSeq = 0,
+        uint256 previousTxnLgrHash = uint256());
 
 	std::pair<TER, std::string> dispose(TxStore& txStore, const STTx& tx) override;
+
+private:
+    static
+    void updateOperationRules(
+        STObject* pEntry, 
+        const STTx& tx);
+    static
+    bool updateOperationRuleForInserting(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& rule);
+    static
+    bool updateOperationRuleForUpdating(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& rule);
+    static
+    bool updateOperationRuleForDeletingOrGet(
+        const std::string& fieldName, 
+        STObject* pEntry,
+        int opType, 
+        Json::Value& rule);
 };
 
 } // ripple

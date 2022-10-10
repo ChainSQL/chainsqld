@@ -130,6 +130,11 @@ public:
     {
         return fdRequired();
     }
+
+    virtual void
+    printUsage() const
+    {
+    }
 };
 
 }  // namespace NodeStore

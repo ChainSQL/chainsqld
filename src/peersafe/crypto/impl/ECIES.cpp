@@ -546,7 +546,7 @@ Blob asymDecrypt(Blob const& cipherBlob, SecretKey const& secret_key)
     Blob realCipher(cipherBlob.begin() + 33, cipherBlob.end());
     
     PublicKey ephPublKey(Slice{ publickBlob.data(), publickBlob.size() });
-    auto const type = publicKeyType(ephPublKey);
+//    auto const type = publicKeyType(ephPublKey);
 
     Blob privateBlob(secret_key.data(), secret_key.data() + secret_key.size());
     uint256 secretKey = uint256::fromVoid(privateBlob.data() + (privateBlob.size() - 32));

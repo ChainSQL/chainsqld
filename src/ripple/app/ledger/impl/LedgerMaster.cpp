@@ -277,12 +277,14 @@ LedgerMaster::getPublishedLedgerAge()
 
 void
 LedgerMaster::onConsensusReached(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     std::shared_ptr<Ledger const> previousLedger)
 {
     updateConsensusTime();
 
-    if (bWaitingInit && previousLedger->info().seq != mValidLedgerSeq)
+    if (waitingConsensusReach &&
+        previousLedger &&
+        previousLedger->info().seq != mValidLedgerSeq)
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
@@ -292,7 +294,9 @@ LedgerMaster::onConsensusReached(
         }
     }
     checkSubChains();
+    checkLoadLedger();
     app_.getTableSync().TryTableSync();
+    app_.getTableSync().InitTableItems();
     tryAdvance();
 }
 
@@ -430,12 +434,13 @@ LedgerMaster::setPubLedger(std::shared_ptr<Ledger const> const& l)
     mPubLedgerSeq = l->info().seq;
 }
 
-void
+bool
 LedgerMaster::addHeldTransaction(
-    std::shared_ptr<Transaction> const& transaction)
+    std::shared_ptr<Transaction> const& transaction,
+    bool bForceAdd)
 {
     std::lock_guard ml(m_mutex);
-    mHeldTransactions.insert(transaction->getSTransaction());
+    return mHeldTransactions.insert(transaction,bForceAdd);
 }
 
 // Validate a ledger's close time and sequence number if we're considering
@@ -568,37 +573,7 @@ LedgerMaster::storeLedger(std::shared_ptr<Ledger const> ledger)
     return mLedgerHistory.insert(std::move(ledger), false);
 }
 
-/** Apply held transactions to the open ledger
-    This is normally called as we close the ledger.
-    The open ledger remains open to handle new transactions
-    until a new open ledger is built.
-*/
-void
-LedgerMaster::applyHeldTransactions()
-{
-    std::lock_guard sl(m_mutex);
-
-    app_.openLedger().modify([&](OpenView& view, beast::Journal j) {
-        bool any = false;
-        for (auto const& it : mHeldTransactions)
-        {
-            ApplyFlags flags = tapNONE;
-            auto const result =
-                app_.getTxQ().apply(app_, view, it.second, flags, j);
-            if (result.second)
-                any = true;
-        }
-        return any;
-    });
-
-    // VFALCO TODO recreate the CanonicalTxSet object instead of resetting
-    // it.
-    // VFALCO NOTE The hash for an open ledger is undefined so we use
-    // something that is a reasonable substitute.
-    mHeldTransactions.reset(app_.openLedger().current()->info().parentHash);
-}
-
-std::vector<std::shared_ptr<STTx const>>
+std::vector<std::shared_ptr<Transaction>>
 LedgerMaster::pruneHeldTransactions(
     AccountID const& account,
     std::uint32_t const seq)
@@ -942,8 +917,12 @@ LedgerMaster::onLastFullLedgerLoaded(
     if (!mPubLedger)
     {
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
+    app_.getJobQueue().addJob(
+    jtADVANCE, "tryFill", [this, ledger](Job& j) {
+        tryFill(j, ledger);
+    });
 }
     
 void LedgerMaster::setFullLedger(
@@ -985,7 +964,7 @@ void LedgerMaster::setFullLedger(
         if (!mPubLedger)
         {
             setPubLedger(ledger);
-            app_.getOrderBookDB().setup(ledger);
+            //app_.getOrderBookDB().setup(ledger);
         }
 
         if (ledger->info().seq != 0 && haveLedger(ledger->info().seq - 1))
@@ -1123,7 +1102,7 @@ LedgerMaster::isAuthorityValid(
             auto pEntry = std::get<1>(tup);
             if (pEntry != nullptr)
             {
-                if (!STEntry::hasAuthority(*pEntry, accountID, roles))
+                if (!hasAuthority(*ledger, ownerID, sCheckName, accountID, roles))
                     return std::make_pair(false, rpcTAB_UNAUTHORIZED);
             }
             else
@@ -1134,6 +1113,7 @@ LedgerMaster::isAuthorityValid(
 }
 std::tuple<bool, ripple::Blob, error_code_i>
 LedgerMaster::getUserToken(
+    std::shared_ptr<ReadView const> ledger,
     AccountID accountID,
     AccountID ownerID,
     std::string sTableName)
@@ -1141,43 +1121,25 @@ LedgerMaster::getUserToken(
     std::string sToken, errMsg;
 
     assert(accountID.isZero() == false);
-    auto ledger = getValidatedLedger();
     if (ledger)
     {
-        auto tup = getTableEntry(*ledger, ownerID, sTableName);
-        auto pEntry = std::get<1>(tup);
-        if (pEntry)
-        {
-            auto& users = pEntry->getFieldArray(sfUsers);
-            assert(users.size() > 0);
-            bool bNeedToken = users[0].isFieldPresent(sfToken);
-            if (!bNeedToken)
-            {
-                return std::make_tuple(true, Blob(), rpcSUCCESS);
-            }
-            else
-            {
-                for (auto& user : users)  // check if there same user
-                {
-                    if (user.getAccountID(sfUser) == accountID)
-                    {
-                        if (user.isFieldPresent(sfToken))
-                        {
-                            ripple::Blob passBlob = user.getFieldVL(sfToken);
-                            return std::make_tuple(true, passBlob, rpcSUCCESS);
-                        }
-                        else
-                        {
-                            return std::make_tuple(
-                                false, Blob(), rpcSLE_TOKEN_MISSING);
-                        }
-                    }
-                }
-                return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
-            }
-        }
-        else
+        auto tupTable = getTableEntry(*ledger, ownerID, sTableName);
+        if (std::get<1>(tupTable) == nullptr)
             return std::make_tuple(false, Blob(), rpcTAB_NOT_EXIST);
+
+        bool bNeedToken = ripple::isConfidential(*ledger, ownerID, sTableName);
+        if (!bNeedToken)
+            return std::make_tuple(true, Blob(), rpcSUCCESS);
+
+        auto tup = getUserAuthAndToken(*ledger, ownerID, sTableName, accountID);
+        if (!std::get<0>(tup))
+            return std::make_tuple(false, Blob(), rpcTAB_UNAUTHORIZED);
+
+        auto token = std::get<2>(tup);
+        if (token.size() > 0)
+            return std::make_tuple(true, token, rpcSUCCESS);
+        else
+            return std::make_tuple(false, Blob(), rpcSLE_TOKEN_MISSING);
     }
     else
     {
@@ -1286,10 +1248,7 @@ LedgerMaster::isConfidentialUnit(const STTx& tx)
         if (ledger == NULL)
             return false;
 
-        auto tup = getTableEntry(*ledger,owner,sTxTableName);
-        auto pEntry = std::get<1>(tup);
-        if (pEntry)
-            return STEntry::isConfidential(*pEntry);
+        return ripple::isConfidential(*ledger, owner, sTxTableName);
     }
 
     return false;
@@ -1349,8 +1308,12 @@ LedgerMaster::checkSubChains()
                         JLOG(m_journal.info())
                             << "Removing schema when checkSubChains:"
                             << schemaId;
-                        app_.app().getSchema(schemaId).doStop();
-                        app_.getSchemaManager().removeSchema(schemaId);
+                        app_.app().getJobQueue().addJob(
+                            jtSTOP_SCHEMA,
+                            "StopSchema",
+                            [this, schemaId](Job&) {
+                                app_.app().doStopSchema(schemaId);
+                            });
                     }
                 }
             }
@@ -1359,17 +1322,110 @@ LedgerMaster::checkSubChains()
 }
 
 void
+LedgerMaster::setLoadLedger(LedgerIndex const index)
+{
+    load_ledger_index_ = index;
+}
+
+void
+LedgerMaster::checkLoadLedger()
+{
+    if (ledgerLoadInited.exchange(true))
+        return;
+    if (app_.getInboundLedgers().getCount() <= 0)
+    {
+        app_.getJobQueue().addJob(
+            jtCheckLoadLedger, "LedgerMaster.checkLoadLedger", [this](Job&) {
+                if (getValidLedgerIndex() > 1)
+                {
+                    JLOG(m_journal.warn()) << "checkLoadLedger load for :"
+                                           << getValidLedgerIndex();
+                    app_.getInboundLedgers().acquire(
+                        mValidLedger.get()->info().hash,
+                        mValidLedger.get()->seq(),
+                        InboundLedger::Reason::GENERIC);
+                }
+                JLOG(m_journal.warn()) << "checkLoadLedger complete!";
+            }, app_.doJobCounter());
+    }
+    else
+    {
+        app_.getJobQueue().addJob(
+            jtCheckLoadLedger, "LedgerMaster::checkLoadLedger", [this](Job&) {
+                if (load_ledger_index_ > 1)
+                {
+                    auto loadLedger = getLedgerBySeq(load_ledger_index_);
+                    try
+                    {
+                        if (loadLedger && !loadLedger->walkLedger(m_journal))
+                        {
+                            JLOG(m_journal.fatal())
+                                << "Ledger " << loadLedger->info().seq
+                                << " is missing nodes.";
+                            app_.getInboundLedgers().acquire(
+                                loadLedger->info().hash,
+                                loadLedger->info().seq,
+                                InboundLedger::Reason::GENERIC);
+                        }
+                    }
+                    catch (SHAMapMissingNode const& mn)
+                    {
+                        JLOG(m_journal.warn())
+                            << "walkLedger exception for " << loadLedger->info().seq << ":"
+                            << mn.what();
+                        app_.getInboundLedgers().acquire(
+                            loadLedger->info().hash,
+                            loadLedger->info().seq,
+                            InboundLedger::Reason::GENERIC);
+                    }                    
+                }
+            }, app_.doJobCounter());
+    }
+}
+
+int
+LedgerMaster::heldTransactionSize()
+{
+    return mHeldTransactions.size();
+}
+
+void
+LedgerMaster::checkUpdateOpenLedger()
+{
+    if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
+    {
+        JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
+                               << app_.openLedger().current()->seq()
+                               << "<= mValidLedgerSeq:" << mValidLedgerSeq;
+        auto const lastVal = getValidatedLedger();
+        boost::optional<Rules> rules;
+        if (lastVal)
+            rules.emplace(*lastVal, app_.config().features);
+        else
+            rules.emplace(app_.config().features);
+
+        auto retries = CanonicalTXSet({});
+        app_.openLedger().accept(
+            app_,
+            *rules,
+            lastVal,
+            OrderedTxs({}),
+            false,
+            retries,
+            tapNONE,
+            "checkUpdate",
+            nullptr);
+    }
+}
+
+void
 LedgerMaster::initGenesisLedger(std::shared_ptr<Ledger> const genesis)
 {
     genesis->setValidated();
     setValidLedger(genesis);
-    // setLedgerRangePresent(
-    //	genesis->info().seq,
-    //	genesis->info().seq);
     pendSaveValidated(app_, genesis, true, true);
-    // setPubLedger(genesis);
 
-    tryAdvance();
+    //tryAdvance();
 }
 
 void
@@ -1446,7 +1502,7 @@ LedgerMaster::findNewLedgersToPublish(
         auto valLedger = mValidLedger.get();
         ret.push_back(valLedger);
         setPubLedger(valLedger);
-        app_.getOrderBookDB().setup(valLedger);
+        //app_.getOrderBookDB().setup(valLedger);
 
         return {valLedger};
     }
@@ -1530,7 +1586,7 @@ LedgerMaster::tryAdvance()
     if (!mAdvanceThread.exchange(true) && !mValidLedger.empty())
     {
         app_.getJobQueue().addJob(
-            jtADVANCE, "advanceLedger", [this](Job&) { advanceThread(); });
+            jtADVANCE, "advanceLedger", [this](Job&) { advanceThread(); }, app_.doJobCounter());
     }
 }
 
@@ -1650,7 +1706,7 @@ LedgerMaster::newPFWork(
     if (mPathFindThread < 2)
     {
         if (app_.getJobQueue().addJob(
-                jtUPDATE_PF, name, [this](Job& j) { updatePaths(j); }))
+                jtUPDATE_PF, name, [this](Job& j) { updatePaths(j); }, app_.doJobCounter()))
         {
             ++mPathFindThread;
         }
@@ -1989,7 +2045,7 @@ LedgerMaster::fetchForHistory(
                     app_.getJobQueue().addJob(
                         jtADVANCE, "tryFill", [this, ledger](Job& j) {
                             tryFill(j, ledger);
-                        });
+                        }, app_.doJobCounter());
                 }
             }
             progress = true;
@@ -2059,7 +2115,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     {
         pendSaveValidated(app_, ledger, true, true);
         setPubLedger(ledger);
-        app_.getOrderBookDB().setup(ledger);
+        //app_.getOrderBookDB().setup(ledger);
     }
 
     std::uint32_t const base = app_.getFeeTrack().getLoadBase();
@@ -2291,7 +2347,7 @@ LedgerMaster::gotFetchPack(bool progress, std::uint32_t seq)
         app_.getJobQueue().addJob(jtLEDGER_DATA, "gotFetchPack", [&](Job&) {
             app_.getInboundLedgers().gotFetchPack();
             mGotFetchPackThread.clear(std::memory_order_release);
-        });
+        }, app_.doJobCounter());
     }
 }
 
@@ -2462,7 +2518,7 @@ LedgerMaster::minSqlSeq()
 {
     boost::optional<LedgerIndex> seq;
     auto db = app_.getLedgerDB().checkoutDb();
-    *db << "SELECT MIN(LedgerSeq) FROM Ledgers", soci::into(seq);
+    *db << "SELECT MIN(LedgerSeq) FROM Ledgers WHERE LedgerSeq > 1", soci::into(seq);
     return seq;
 }
 

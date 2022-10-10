@@ -78,7 +78,7 @@ public:
     TxStoreDBConn&			getConsensusTxStoreDBConn();
     TxStore&                getConsensusTxStore();
 
-    void canonicalize (std::shared_ptr<Transaction>* pTransaction);
+    void canonicalize (std::shared_ptr<Transaction>* pTransaction,bool bReplace = false);
 
     void tune(int size, int age);
 

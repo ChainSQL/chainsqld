@@ -70,11 +70,12 @@ include(deps/date)
 include(deps/Protobuf)
 include(deps/gRPC)
 include(deps/LibFF)
-
+include(deps/Prometheus-cpp)
 ###
 
 add_subdirectory(src/eth/evmc)
 add_subdirectory(src/intx)
+add_subdirectory(src/wasmvm)
 
 include(ChainsqldCore)
 include(RippledInstall)

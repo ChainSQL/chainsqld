@@ -2,7 +2,7 @@
 
 ## Important
 
-We don't recommend macos for rippled production use at this time. Currently, the
+We don't recommend macos for chainsqld production use at this time. Currently, the
 Ubuntu platform has received the highest level of quality assurance and
 testing. That said, macos is suitable for many development/test tasks.
 
@@ -11,7 +11,7 @@ testing. That said, macos is suitable for many development/test tasks.
 You'll need macos 10.8 or later.
 
 To clone the source code repository, create branches for inspection or
-modification, build rippled using clang, and run the system tests you will need
+modification, build chainsqld using clang, and run the system tests you will need
 these software components:
 
 * [XCode](https://developer.apple.com/xcode/)
@@ -51,68 +51,35 @@ For more info, see "Step 2: Install Homebrew"
 ### Install Dependencies Using Homebrew
 
 `brew` will generally install the latest stable version of any package, which
-should satisfy the the minimum version requirements for rippled.
+should satisfy the the minimum version requirements for chainsqld.
 
 ```
 brew update
-brew install git cmake pkg-config protobuf openssl ninja
+brew install git cmake pkg-config protobuf openssl mysql-client@5.7
+#brew install git cmake pkg-config protobuf openssl ninja
 ```
 
 ### Build Boost
 
-Boost 1.70 or later is required.
+Boost 1.73 or later is required.
 
 We want to compile boost with clang/libc++
 
-Download [a release](https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.bz2)
+Download [a release](https://boostorg.jfrog.io/artifactory/main/release/1.73.0/source/boost_1_73_0.tar.gz)
 
 Extract it to a folder, making note of where, open a terminal, then:
 
 ```
 ./bootstrap.sh
+./b2 header
+# for x86_64
 ./b2 cxxflags="-std=c++14"  visibility=global
+# for apple silicon m1 or later
+./b2 toolset=clang-darwin target-os=darwin architecture=arm -d2 cxxflags="-std=c++14" -sNO_LZMA=1 -sNO_ZSTD=1 link=shared,static cxxflags="-stdlib=libc++"
 ```
 
 Create an environment variable `BOOST_ROOT` in one of your `rc` files, pointing
 to the root of the extracted directory.
-
-### Dependencies for Building Source Documentation
-
-Source code documentation is not required for running/debugging rippled. That
-said, the documentation contains some helpful information about specific
-components of the application. For more information on how to install and run
-the necessary components, see [this document](../../docs/README.md)
-
-## Build
-
-### Clone the rippled repository
-
-From a shell:
-
-```
-git clone git@github.com:ripple/rippled.git
-cd rippled
-```
-
-For a stable release, choose the `master` branch or one of the tagged releases
-listed on [GitHub](https://github.com/ripple/rippled/releases GitHub). 
-
-```
-git checkout master
-```
-
-or to test the latest release candidate, choose the `release` branch.
-
-```
-git checkout release
-```
-
-If you are doing development work and want the latest set of untested
-features, you can consider using the `develop` branch instead.
-
-```
-git checkout develop
-```
 
 ### Configure Library Paths
 
@@ -120,11 +87,52 @@ If you didn't persistently set the `BOOST_ROOT` environment variable to the
 root of the extracted directory above, then you should set it temporarily.
 
 For example, assuming your username were `Abigail` and you extracted Boost
-1.70.0 in `/Users/Abigail/Downloads/boost_1_70_0`, you would do for any
+1.73.0 in `/Users/Abigail/Downloads/boost_1_73_0`, you would do for any
 shell in which you want to build:
 
 ```
-export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_70_0
+echo 'export BOOST_ROOT=/Users/Abigail/Downloads/boost_1_73_0' >> ~/.zshrc
+```
+
+You need to specify the mysql-client lib path for `MYSQL_DIR` environment variable.
+For example, you install mysql-client through brew, the path will be under brew install 
+path just like: `/opt/homebrew/opt/mysql-client@5.7`, you would do for any
+shell in which you want to build:
+
+```
+echo 'export MYSQL_DIR=/opt/homebrew/opt/mysql-client@5.7' >> ~/.zshrc
+```
+
+### Dependencies for Building Source Documentation
+
+Source code documentation is not required for running/debugging chainsqld. That
+said, the documentation contains some helpful information about specific
+components of the application. For more information on how to install and run
+the necessary components, see [this document](../../docs/README.md)
+
+## Build
+
+### Clone the chainsqld repository
+
+From a shell:
+
+```
+git clone git@github.com:ChainSQL/chainsqld.git chainsqld
+cd chainsqld
+```
+
+For a stable release, choose the `master` branch or one of the tagged releases
+listed on [GitHub](https://github.com/ChainSQL/chainsqld/releases GitHub). 
+
+```
+git checkout master
+```
+
+If you are doing development work and want the latest set of untested
+features, you can consider using the `develop` branch instead.
+
+```
+git checkout develop
 ```
 
 ### Generate and Build
@@ -135,8 +143,8 @@ from the source tree root (a subdirectory is fine). For example, from the root
 of the ripple source tree:
 
 ```
-mkdir my_build
-cd my_build
+mkdir build
+cd build
 ```
 
 followed by:
@@ -145,11 +153,6 @@ followed by:
 cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
-or
-
-```
-cmake -G "Ninja" -DCMAKE_BUILD_TYPE=Debug ..
-```
 
 `CMAKE_BUILD_TYPE` can be changed as desired for `Debug` vs.
 `Release` builds (all four standard cmake build types are supported).
@@ -164,7 +167,7 @@ the `-j` parameter in this example tells the build tool to compile several
 files in parallel. This value should be chosen roughly based on the number of
 cores you have available and/or want to use for building.
 
-When the build completes succesfully, you will have a `rippled` executable in
+When the build completes succesfully, you will have a `chainsqld` executable in
 the current directory, which can be used to connect to the network (when
 properly configured) or to run unit tests.
 
@@ -172,7 +175,7 @@ If you prefer to have an XCode project to use for building, ask CMake to
 generate that instead:
 
 ```
-cmake -GXcode ..
+cmake -G "Xcode" -DCMAKE_BUILD_TYPE=Debug ..
 ```
 
 After generation succeeds, the xcode project file can be opened and used to
@@ -185,6 +188,19 @@ cmake --build . -- -jobs 4
 
 This will invoke the `xcodebuild` utility to compile the project. See `xcodebuild
 --help` for details about build options.
+
+
+
+#### Issues
+
+*When build the project in Xcode, environment variables can not be read from terminal shell,
+so you will encount compiling erros with soci sub-project. You need to reconfigure the soci project in terminal shell.*
+
+```
+cd <chainsqld source path>/.nih_c/xcode/AppleClang_13.1.6.13160021/src/soci-build
+cmake .
+```
+
 
 #### Optional installation
 
@@ -224,8 +240,6 @@ Several other infrequently used options are available - run `ccmake` or
 
 ## Unit Tests (Recommended)
 
-`rippled` builds a set of unit tests into the server executable. To run these unit
-tests after building, pass the `--unittest` option to the compiled `rippled`
+`chainsqld` builds a set of unit tests into the server executable. To run these unit
+tests after building, pass the `--unittest` option to the compiled `chainsqld`
 executable. The executable will exit with summary info after running the unit tests.
-
-

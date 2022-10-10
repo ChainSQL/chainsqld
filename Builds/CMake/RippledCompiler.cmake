@@ -116,7 +116,7 @@ else ()
       # tweak gcc optimization for debug
       $<$<AND:$<BOOL:${is_gcc}>,$<CONFIG:Debug>>:-O0>
       # Add debug symbols to release config
-      # $<$<CONFIG:Release>:-g>
+      $<$<CONFIG:Release>:-g>
 	  )
   target_link_libraries (common
     INTERFACE

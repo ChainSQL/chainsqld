@@ -132,7 +132,7 @@ Shard::open(Scheduler& scheduler, nudb::context& ctx)
             AcquireShardDBName,
             AcquireShardDBPragma,
             AcquireShardDBInit,
-            DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &app_.logs()});
+            DatabaseCon::CheckpointerSetup{&app_.getJobQueue(), &app_.doJobCounter(),  &app_.logs()});
     };
 
     try
@@ -707,7 +707,7 @@ Shard::initSQLite(std::lock_guard<std::recursive_mutex> const&)
                 LgrDBPragma,
                 LgrDBInit,
                 DatabaseCon::CheckpointerSetup{
-                    &app_.getJobQueue(), &app_.logs()});
+                    &app_.getJobQueue(), &app_.doJobCounter(), &app_.logs()});
             lgrSQLiteDB_->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config.getValueFor(SizedItem::lgrDBCache)));
@@ -718,7 +718,7 @@ Shard::initSQLite(std::lock_guard<std::recursive_mutex> const&)
                 TxDBPragma,
                 TxDBInit,
                 DatabaseCon::CheckpointerSetup{
-                    &app_.getJobQueue(), &app_.logs()});
+                    &app_.getJobQueue(), &app_.doJobCounter(), &app_.logs()});
             txSQLiteDB_->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config.getValueFor(SizedItem::txnDBCache)));

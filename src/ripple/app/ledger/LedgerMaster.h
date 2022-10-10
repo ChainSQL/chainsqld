@@ -216,7 +216,7 @@ public:
     setLedgerRangePresent(std::uint32_t minV, std::uint32_t maxV);
     void
     onConsensusReached(
-        bool bWaitingInit,
+        bool waitingConsensusReach,
         std::shared_ptr<Ledger const> previousLedger);
 
     // Returns the minimum ledger sequence in SQL database, if any.
@@ -240,16 +240,8 @@ public:
     void
     failedSave(std::uint32_t seq, uint256 const& hash);
 
-    void
-    addHeldTransaction(std::shared_ptr<Transaction> const& trans);
-
-    /** Apply held transactions to the open ledger
-        This is normally called as we close the ledger.
-        The open ledger remains open to handle new transactions
-        until a new open ledger is built.
-    */
-    void
-    applyHeldTransactions();
+    bool
+    addHeldTransaction(std::shared_ptr<Transaction> const& trans,bool bForceAdd);
 
     /** Get all the transactions held for a particular account.
         This is normally called when a transaction for that
@@ -257,7 +249,7 @@ public:
         ledger so those transactions can be resubmitted without
         waiting for ledger close.
     */
-    std::vector<std::shared_ptr<STTx const>>
+    std::vector<std::shared_ptr<Transaction>>
     pruneHeldTransactions(AccountID const& account, std::uint32_t const seq);
 
     /** Walk to a ledger's hash using the skip list */
@@ -331,6 +323,7 @@ public:
 
     std::tuple<bool, ripple::Blob, error_code_i>
     getUserToken(
+        std::shared_ptr<ReadView const> ledger,
         AccountID accountID,
         AccountID ownerID,
         std::string sTableName);
@@ -359,6 +352,14 @@ public:
     void
     onLastFullLedgerLoaded(std::shared_ptr<Ledger const> const& ledger);
 
+    void
+    setLoadLedger(LedgerIndex const index);
+
+    int
+    heldTransactionSize();
+
+    void
+    checkUpdateOpenLedger();
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);
@@ -405,6 +406,8 @@ private:
     void
     checkSubChains();
 
+    void
+    checkLoadLedger();
 private:
     Schema& app_;
     beast::Journal m_journal;
@@ -434,7 +437,7 @@ private:
 
     LedgerHistory mLedgerHistory;
 
-    CanonicalTXSet mHeldTransactions{uint256()};
+    CanonicalTXSetHeld mHeldTransactions{uint256()};
 
     // A set of transactions to replay during the next close
     std::unique_ptr<LedgerReplay> replayData;
@@ -487,7 +490,9 @@ private:
     TimeKeeper::time_point upgradeWarningPrevTime_{};
 
     std::atomic_bool subChainInited_{false};
+    std::atomic_bool ledgerLoadInited{false};
 
+    LedgerIndex  load_ledger_index_;
 private:
     struct Stats
     {

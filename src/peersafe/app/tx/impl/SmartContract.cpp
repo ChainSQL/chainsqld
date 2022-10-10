@@ -28,6 +28,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
+#include <peersafe/app/ledger/LedgerAdjust.h>
 
 namespace ripple {
 
@@ -53,7 +54,25 @@ namespace ripple {
 
 	TER SmartContract::preclaim(PreclaimContext const& ctx)
 	{
-		auto& tx = ctx.tx;
+        auto& tx = ctx.tx;
+        AccountID srcAcc = tx.getAccountID(sfAccount);
+        auto const k = keylet::account(srcAcc);
+        auto const sle = ctx.view.read(k);
+        if (tx.getFieldU16(sfContractOpType) == ContractCreation)
+        {
+            if (auto res =
+                    checkAuthority(ctx, srcAcc, lsfDeployContractAuth);
+                res != tesSUCCESS)
+                return res;
+        }
+
+        if (tx.isFieldPresent(sfContractValue) &&
+            tx.getFieldAmount(sfContractValue).zxc().drops() > 0)
+        {
+            if (auto res = checkAuthority(ctx, srcAcc, lsfPaymentAuth);
+                res != tesSUCCESS)
+                return res;
+        }
 
         if (!isContractTypeValid((ContractOpType)tx.getFieldU16(sfContractOpType)))
             return temBAD_OPTYPE;
@@ -68,7 +87,7 @@ namespace ripple {
 			}
 		}			
 
-
+		
 		// Avoid unaffordable transactions.
         int64_t gas_price = ctx.view.fees().gas_price;
 		int64_t gas = tx.getFieldU32(sfGas);
@@ -81,17 +100,15 @@ namespace ripple {
 			return temMALFORMED;
 		}
 
-		auto const k = keylet::account(tx.getAccountID(sfAccount));
-		auto const sle = ctx.view.read(k);
 		auto balance = sle->getFieldAmount(sfBalance).zxc().drops();
 		if (balance < totalCost)
 		{
-                    JLOG(ctx.j.trace())
-                        << "Not enough zxc: Require >" << totalCost << "="
-                        << gas << "*" << gas_price << "+" << value << " Got"
-                        << balance
-                        << "for sender: " << tx.getAccountID(sfAccount);
-			return terINSUF_FEE_B;
+            JLOG(ctx.j.trace())
+                << "Not enough zxc: Require >" << totalCost << "="
+                << gas << "*" << gas_price << "+" << value << " Got"
+                << balance
+                << "for sender: " << tx.getAccountID(sfAccount);
+            return tecINSUFF_FEE;
 		}
 		return tesSUCCESS;
 	}
@@ -111,7 +128,9 @@ namespace ripple {
 				std::string errMsg = e.takeOutput().toString();
 				JLOG(ctx_.journal.warn()) << "SmartContract exception:"<< errMsg;
 				setExtraMsg(errMsg);
-			}				
+			}	
+			if(ctx_.tx.getFieldU16(sfContractOpType) != ContractCreation)
+				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CALL);
 			return e.finalize();
 		}			
 		else

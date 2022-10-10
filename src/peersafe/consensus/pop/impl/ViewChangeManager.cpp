@@ -141,18 +141,28 @@ ViewChangeManager::haveConsensus(
 }
 
 void
-ViewChangeManager::onViewChanged(VIEWTYPE const& newView)
+ViewChangeManager::onViewChanged(VIEWTYPE const& newView, std::uint32_t preSeq)
 {
-    auto iter = viewChangeReq_.begin();
-    while (iter != viewChangeReq_.end())
+    for (auto it = viewChangeReq_.begin(); it != viewChangeReq_.end();)
     {
-        if (iter->first <= newView)
+        if (it->first <= newView)
         {
-            iter = viewChangeReq_.erase(iter);
+            it = viewChangeReq_.erase(it);
         }
         else
         {
-            iter++;
+            for (auto it1 = it->second.begin(); it1 != it->second.end();)
+            {
+                if (it1->second->prevSeq() < preSeq)
+                    it1 = it->second.erase(it1);
+                else
+                    it1++;
+            }
+
+            if (it->second.empty())
+                it = viewChangeReq_.erase(it);
+            else
+                it++;
         }
     }
 }
@@ -166,26 +176,26 @@ ViewChangeManager::shouldTriggerViewChange(
     if (viewChangeReq_[toView].size() >= quorum)
     {
         auto& mapChange = viewChangeReq_[toView];
-        std::map<int, int> mapSeqCount;
+        std::map<RCLCxLedger::ID, int> mapSeqCount;
         uint32_t prevSeq = 0;
         uint256 prevHash = beast::zero;
         // Check if the prevSeq is consistent between view_change messages.
         for (auto iter = mapChange.begin(); iter != mapChange.end(); iter++)
         {
-            int prevSeqTmp = iter->second->prevSeq();
-            if (mapSeqCount.find(prevSeqTmp) != mapSeqCount.end())
+            auto const& prevHashTmp = iter->second->prevHash();
+            if (mapSeqCount.find(prevHashTmp) != mapSeqCount.end())
             {
-                mapSeqCount[prevSeqTmp]++;
+                mapSeqCount[prevHashTmp]++;
             }
             else
             {
-                mapSeqCount[prevSeqTmp] = 1;
+                mapSeqCount[prevHashTmp] = 1;
             }
 
-            if (mapSeqCount[prevSeqTmp] >= quorum)
+            if (mapSeqCount[prevHashTmp] >= quorum)
             {
-                prevSeq = prevSeqTmp;
-                prevHash = iter->second->prevHash();
+                prevSeq = iter->second->prevSeq();
+                prevHash = prevHashTmp;
                 break;
             }
         }
@@ -202,6 +212,68 @@ void
 ViewChangeManager::clearCache()
 {
     viewChangeReq_.clear();
+}
+
+//  {
+//      "views" : [
+//          {
+//              "toView" : 100,
+//              "count" : 2
+//              "view" : [
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  },
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  }
+//              ]
+//          }, 
+//          {
+//              "toView" : 101,
+//              "count" : 2
+//              "view" : [
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  },
+//                  {
+//                      "public_key" : "xxx",
+//                      "PreviousSeq" : 1,
+//                      "PreviousHash" : "xxxx"
+//                  }
+//              ]
+//          }
+//      ]
+//  }
+Json::Value
+ViewChangeManager::getJson() const
+{
+    Json::Value ret(Json::objectValue);
+    Json::Value& views = (ret["views"] = Json::arrayValue);
+
+    for (auto const& [toView, mapPK2View] : viewChangeReq_)
+    {
+        Json::Value elem(Json::objectValue);
+        elem["toView"] = (Json::UInt)toView;
+        elem[jss::count] = (Json::UInt)mapPK2View.size();
+
+        Json::Value& view = (elem[jss::view] = Json::arrayValue);
+
+        for (auto const& [_, v] : mapPK2View)
+        {
+            (void)_;
+            Json::Value const& e = v->getJson(false);
+            view.append(e);
+        }
+        views.append(elem);
+    }
+
+    return ret;
 }
 
 }  // namespace ripple

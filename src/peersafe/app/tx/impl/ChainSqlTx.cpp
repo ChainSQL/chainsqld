@@ -64,8 +64,12 @@ namespace ripple {
         {
             auto const sle = ctx.view.read(keylet::account(tx.getAccountID(sfAccount)));
             auto const balance = (*sle)[sfBalance].zxc();
+            bool isContract = false;
+            if (sle->isFieldPresent(sfContractCode)){
+                isContract = true;
+			}
             auto const reserve = ctx.view.fees().accountReserve(
-                (*sle)[sfOwnerCount]);
+                (*sle)[sfOwnerCount],isContract);
             if (balance < reserve + calculateFeePaid(tx))
                 return tecINSUFFICIENT_RESERVE;
         }

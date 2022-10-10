@@ -424,6 +424,11 @@ extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfGas;
+extern SF_U32 const sfContractCreateCountField;
+extern SF_U32 const sfContractCallCountField;
+extern SF_U32 const sfTxSuccessCountField;
+extern SF_U32 const sfTxFailureCountField;
+extern SF_U32 const sfAccountCountField;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
@@ -584,6 +589,7 @@ extern SF_Vec256 const sfSchemaIndexes;
 
 // map of 256-bit
 extern SF_Map256 const sfStorageOverlay;
+extern SF_Map256 const sfStorageExtension;
 
 // inner object
 // OBJECT/1 is reserved for end of object

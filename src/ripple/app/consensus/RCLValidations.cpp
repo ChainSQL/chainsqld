@@ -26,16 +26,154 @@
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/chrono.h>
+#include <ripple/core/ConfigSections.h>
 #include <ripple/core/DatabaseCon.h>
 #include <ripple/core/JobQueue.h>
 #include <ripple/core/TimeKeeper.h>
-#include <peersafe/schema/Schema.h>
-#include <peersafe/consensus/LedgerTiming.h>
 #include <memory>
 #include <mutex>
+#include <peersafe/consensus/LedgerTiming.h>
+#include <peersafe/schema/Schema.h>
 #include <thread>
 
 namespace ripple {
+
+RCLValidationsPolicy::RCLValidationsPolicy(Schema& app, beast::Journal j)
+    : app_(app), j_(j)
+{
+    staleValidations_.reserve(512);
+    if (app.config().exists(SECTION_CONSENSUS))
+    {
+        write_ = app.config().loadConfig(
+            SECTION_CONSENSUS, "write_validation", write_);
+    }
+}
+
+NetClock::time_point
+RCLValidationsPolicy::now() const
+{
+    return app_.timeKeeper().closeTime();
+}
+
+void
+RCLValidationsPolicy::onStale(RCLValidation&& v)
+{
+    // Store the newly stale validation; do not do significant work in this
+    // function since this is a callback from Validations, which may be
+    // doing other work.
+    if (!write_)
+        return;
+
+    ScopedLockType sl(staleLock_);
+    staleValidations_.emplace_back(std::move(v));
+    if (staleWriting_)
+        return;
+
+    // addJob() may return false (Job not added) at shutdown.
+    staleWriting_ = app_.getJobQueue().addJob(
+        jtWRITE, "Validations::doStaleWrite", [this](Job&) {
+            auto event =
+                app_.getJobQueue().makeLoadEvent(jtDISK, "ValidationWrite");
+            ScopedLockType sl(staleLock_);
+            doStaleWrite(sl);
+        });
+}
+
+void
+RCLValidationsPolicy::flush(hash_map<PublicKey, RCLValidation>&& remaining)
+{
+    if (!write_)
+        return;
+
+    bool anyNew = false;
+    {
+        ScopedLockType sl(staleLock_);
+
+        for (auto const& keyVal : remaining)
+        {
+            staleValidations_.emplace_back(std::move(keyVal.second));
+            anyNew = true;
+        }
+
+        // If we have new validations to write and there isn't a write in
+        // progress already, then write to the database synchronously.
+        if (anyNew && !staleWriting_)
+        {
+            staleWriting_ = true;
+            doStaleWrite(sl);
+        }
+
+        // In the case when a prior asynchronous doStaleWrite was scheduled,
+        // this loop will block until all validations have been flushed.
+        // This ensures that all validations are written upon return from
+        // this function.
+
+        while (staleWriting_)
+        {
+            ScopedUnlockType sul(staleLock_);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
+}
+
+// NOTE: doStaleWrite() must be called with staleLock_ *locked*.  The passed
+// ScopedLockType& acts as a reminder to future maintainers.
+void
+RCLValidationsPolicy::doStaleWrite(ScopedLockType&)
+{
+    static const std::string insVal(
+        "INSERT OR REPLACE INTO Validations "
+        "(InitialSeq, LedgerSeq, LedgerHash, NodePubKey, SignTime, RawData) "
+        "VALUES (:initialSeq, :ledgerSeq, "
+        ":ledgerHash,:nodePubKey,:signTime,:rawData);");
+
+    assert(staleWriting_);
+
+    while (!staleValidations_.empty())
+    {
+        std::vector<RCLValidation> currentStale;
+        currentStale.reserve(512);
+        staleValidations_.swap(currentStale);
+
+        {
+            ScopedUnlockType sul(staleLock_);
+            {
+                auto db = app_.getLedgerDB().checkoutDb();
+
+                Serializer s(1024);
+                soci::transaction tr(*db);
+                for (auto const& rclValidation : currentStale)
+                {
+                    auto ledgerSeq = rclValidation.seq();
+                    s.erase();
+                    STValidation::pointer const& val = rclValidation.unwrap();
+                    val->add(s);
+
+                    auto const ledgerHash = to_string(val->getLedgerHash());
+
+                    auto const nodePubKey =
+                        toBase58(TokenType::NodePublic, val->getSignerPublic());
+                    auto const signTime =
+                        val->getSignTime().time_since_epoch().count();
+
+                    soci::blob rawData(*db);
+                    rawData.append(
+                        reinterpret_cast<const char*>(s.peekData().data()),
+                        s.peekData().size());
+                    assert(rawData.get_len() == s.peekData().size());
+
+                    *db << insVal, soci::use(ledgerSeq), soci::use(ledgerSeq),
+                        soci::use(ledgerHash), soci::use(nodePubKey),
+                        soci::use(signTime), soci::use(rawData);
+                }
+
+                tr.commit();
+            }
+        }
+    }
+
+    staleWriting_ = false;
+}
 
 RCLValidatedLedger::RCLValidatedLedger(MakeGenesis)
     : ledgerID_{0}, ledgerSeq_{0}, j_{beast::Journal::getNullSink()}
@@ -143,7 +281,7 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
             jtADVANCE, "getConsensusLedger", [pApp, hash](Job&) {
                 pApp->getInboundLedgers().acquire(
                     hash, 0, InboundLedger::Reason::CONSENSUS);
-            });
+            }, app_.doJobCounter());
         return boost::none;
     }
 
@@ -152,6 +290,5 @@ RCLValidationsAdaptor::acquire(LedgerHash const& hash)
 
     return RCLValidatedLedger(std::move(ledger), j_);
 }
-
 
 }  // namespace ripple

@@ -36,15 +36,16 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace ripple {
 
-std::string OperationRule::getOperationRule(ApplyView& view, const STTx& tx)
+std::string
+OperationRule::getOperationRule(ApplyView& view, const STTx& tx)
 {
-	std::string rule;
+    std::string rule;
     auto tup = getTableEntry(view, tx);
     auto pEntry = std::get<1>(tup);
-	auto opType = tx.getFieldU16(sfOpType);
+    auto opType = tx.getFieldU16(sfOpType);
     if (pEntry)
         rule = STEntry::getOperationRule(*pEntry, (TableOpType)opType);
-	return rule;
+    return rule;
 }
 
 bool OperationRule::hasOperationRule(ApplyView& view, const STTx& tx)

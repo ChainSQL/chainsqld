@@ -156,6 +156,7 @@ makeCheckpointer(
     std::uintptr_t id,
     std::weak_ptr<soci::session>,
     JobQueue&,
+    JobCounter&,
     Logs&);
 
 }  // namespace ripple

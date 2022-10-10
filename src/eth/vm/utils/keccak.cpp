@@ -154,4 +154,9 @@ void keccak(uint8_t const* _data, uint64_t _size, uint8_t* o_hash)
 	keccak_256(o_hash, 32, _data, _size);
 }
 
+void sha3(uint8_t const* _data, uint64_t _size, uint8_t* o_hash)
+{
+    keccak_256(o_hash, 32, _data, _size);
+}
+
 }

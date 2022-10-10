@@ -30,6 +30,7 @@
 #include <ripple/rpc/GRPCHandlers.h>
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <ripple/app/ledger/LedgerMaster.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <grpc/status.h>
 
@@ -79,6 +80,11 @@ doAccountInfo(RPC::JsonContext& context)
 
     if (jvAccepted)
         return jvAccepted;
+    
+    //check if the new openLedger not created.
+    auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+    if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
+        ledger = ledgerVal;
 
     auto const sleAccepted = ledger->read(keylet::account(accountID));
     if (sleAccepted)
@@ -99,11 +105,13 @@ doAccountInfo(RPC::JsonContext& context)
 			jvAccepted[jss::TransferFeeMin] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMin].asString()));
 		if (jvAccepted.isMember(jss::TransferFeeMax))
 			jvAccepted[jss::TransferFeeMax] = strCopy(*strUnHex(jvAccepted[jss::TransferFeeMax].asString()));
-		if (jvAccepted.isMember(jss::Sequence) && jvAccepted[jss::Sequence].asUInt() 
-			!= context.app.getStateManager().getAccountSeq(accountID))
-		{
-			jvAccepted[jss::Sequence] = context.app.getStateManager().getAccountSeq(accountID);
-		}
+
+        //Bug: non-validator node response tefPAST_SEQ when send tx???
+        if(ledger->open())
+            jvAccepted[jss::Sequence] = std::max(
+                    context.app.getStateManager().getAccountCheckSeq(accountID, sleAccepted),
+                    jvAccepted[jss::Sequence].asUInt());
+
 
         result[jss::account_data] = jvAccepted;
 

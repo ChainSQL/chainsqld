@@ -107,7 +107,7 @@ transactionSign(
 /** Returns a Json::objectValue. */
 Json::Value
 transactionSubmit(
-    Json::Value params,  // Passed by value so it can be modified locally.
+    Json::Value& params,  // Passed by value so it can be modified locally.
     NetworkOPs::FailHard failType,
     Role role,
     std::chrono::seconds validatedLedgerAge,

@@ -59,6 +59,7 @@ LedgerFormats::LedgerFormats()
 			{ sfStorageOverlay,		 soeOPTIONAL },
 			{ sfContractCode,		 soeOPTIONAL },
             { sfWhiteLists,          soeOPTIONAL },
+            { sfStorageExtension,    soeOPTIONAL }
         },
         commonFields);
 
@@ -296,6 +297,24 @@ LedgerFormats::LedgerFormats()
             {sfSchemaIndexes, soeREQUIRED},
         },
         commonFields);
+
+    add(jss::Statis,ltSTATIS,
+        {
+            {sfContractCreateCountField, soeOPTIONAL},
+            {sfContractCallCountField,   soeOPTIONAL},
+            {sfTxSuccessCountField,      soeOPTIONAL},
+            {sfTxFailureCountField,      soeOPTIONAL},
+            {sfAccountCountField,        soeOPTIONAL},
+        },
+        commonFields);
+
+    add(jss::TableGrant,ltTABLEGRANT,
+        {
+            {sfUser,        soeREQUIRED},
+            {sfToken,       soeOPTIONAL},
+            {sfNameInDB,    soeREQUIRED},
+            {sfOwnerNode,   soeREQUIRED},
+        },commonFields);
 }
 
 LedgerFormats const&

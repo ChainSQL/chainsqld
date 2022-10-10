@@ -24,6 +24,7 @@
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/STObject.h>
 #include <ripple/protocol/PublicKey.h>
+#include <ripple/protocol/SecretKey.h>
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -115,6 +116,14 @@ public:
                     "Required field '" + e.sField().getName() +
                     "' missing from validation.");
         }
+    }
+
+    void
+    sign(SecretKey const& secretKey)
+    {
+        setFieldVL(
+            sfSignature,
+            signDigest(getSignerPublic(), secretKey, getLedgerHash()));
     }
 
     STBase*

@@ -61,6 +61,7 @@ STValidation::validationFormat()
     static SOTemplate const format{
         { sfFlags,              soeREQUIRED},
         { sfLedgerHash,         soeREQUIRED},
+        { sfSignature,          soeOPTIONAL},
         { sfLedgerSequence,     soeOPTIONAL},
         { sfCloseTime,          soeOPTIONAL},
         { sfLoadFee,            soeOPTIONAL},

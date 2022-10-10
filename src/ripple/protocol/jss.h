@@ -178,6 +178,7 @@ JSS(converge_time);          // out: NetworkOPs
 JSS(converge_time_s);        // out: NetworkOPs
 JSS(count);                  // in: AccountTx*, ValidatorList
 JSS(counters);               // in/out: retrieve counters
+JSS(crypto_alg);
 JSS(currency);               // in: paths/PathRequest, STAmount
                              // out: STPathSet, STAmount,
                              //      AccountLines
@@ -262,6 +263,7 @@ JSS(hash_type);             // out: ServerInfo
 JSS(have_header);           // out: InboundLedger
 JSS(have_state);            // out: InboundLedger
 JSS(have_transactions);     // out: InboundLedger
+JSS(have_contracts);        // out: InboundLedger
 JSS(highest_sequence);      // out: AccountInfo
 JSS(historical_perminute);  // historical_perminute.
 JSS(hostid);                // out: NetworkOPs
@@ -542,6 +544,7 @@ JSS(tx_blob);                 // in/out: Submit,
 JSS(tx_hash);                 // in: TransactionEntry
 JSS(tx_json);                 // in/out: TransactionSign
                               // out: TransactionEntry
+JSS(tx_node_hash);
 JSS(tx_signing_hash);         // out: TransactionSign
 JSS(tx_unsigned);             // out: TransactionSign
 JSS(txn_count);               // out: NetworkOPs
@@ -550,6 +553,7 @@ JSS(txs);                     // out: TxHistory
 JSS(type);                    // in: AccountObjects
                               // out: NetworkOPs
                               //      OverlayImpl, Logic
+JSS(types);
 JSS(type_hex);                // out: STPathSet
 JSS(unl);                     // out: UnlList
 JSS(unlimited);               // out: Connection.h
@@ -600,7 +604,7 @@ JSS ( chainsql_tx );
  
 JSS ( SchemaCreate );
 JSS ( SchemaModify );
-
+JSS ( SchemaDelete );
 JSS ( FreezeAccount );
 
 JSS ( Contract );					// transaction type.
@@ -614,6 +618,8 @@ JSS ( Schema );
 JSS ( Admin );
 JSS ( FrozenAccounts );
 JSS ( SchemaIndex );
+JSS ( Statis );
+JSS ( TableGrant );
 
 JSS (TransferFeeMin);
 JSS (TransferFeeMax);
@@ -659,6 +665,8 @@ JSS ( contract_topics);             // in: Contract Local Call
 JSS ( tablelist );
 JSS ( table );
 JSS ( schema );
+JSS ( statis );
+JSS ( tablegrant );
 JSS	( tablename );					// in tablename
 JSS ( nameInDB );
 JSS	(confidential);
@@ -666,7 +674,20 @@ JSS ( raw );
 JSS ( inclusive );
 JSS(txn_success);                   // out: NetworkOPs
 JSS(txn_failure);                   // out: NetworkOPs
-JSS(transaction_result);			// out: doLedgerTxs
+JSS (validate_success);
+JSS (validate_error);
+JSS (validate_timeout);
+JSS (db_success);
+JSS (db_error);
+JSS (db_timeout);
+JSS (db_noTableExistInDB);
+JSS (db_noDbConfig);
+JSS (db_noSyncConfig);
+JSS (db_noAutoSync);
+JSS (db_acctSecretError);
+JSS (db_notInSync);
+JSS (db_noSyncTable);
+JSS (transaction_result);			// out: doLedgerTxs
 JSS(include_success);			    // out: doLedgerTxs
 JSS(include_failure);			    // out: doLedgerTxs
 JSS(txn_success_detail);			// out: doLedgerTxs
@@ -683,6 +704,7 @@ JSS ( meta_chain);                    // out: table tx chain and contract
 JSS ( TableChain );                  // out: 
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
+JSS (PreviousSeq);                  // out:
 JSS ( NextHash );                   // out: 
 JSS ( log );
 
@@ -699,6 +721,8 @@ JSS (running);
 
 JSS(drops_per_byte);                       // out: LogLevel
 JSS(view);
+JSS(Authorize);
+JSS (x509_subjects);
 #undef JSS
 
 }  // namespace jss

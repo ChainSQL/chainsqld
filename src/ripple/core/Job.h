@@ -47,6 +47,7 @@ enum JobType {
     jtTABLE_DATA,    // Peer request table data
     
     jtCheckSubTx,	 // check subscribe tx
+    jtCheckLoadLedger,
 
     jtCLIENT,        // A websocket command from the client
     jtRPC,           // A websocket command from the client
@@ -56,11 +57,15 @@ enum JobType {
     jtTRANSACTION,   // A transaction received from the network
     jtBATCH,         // Apply batched transactions
 
+    jtCREATE_PROMETH_SLE, // Build prometh's sle
+
     jtTABLESTORAGE,  // storage tables
     jtTableCheckHash,// check tx hash
     jtOPERATESQL,    // write table sync info
     jtTABLELOCALSYNC,// local synchronize tables
     jtTABLESYNC,     // synchronize tables
+
+    jtSTOP_SCHEMA,   // Stop sub-chain
 
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
@@ -74,6 +79,7 @@ enum JobType {
     jtWRITE,         // Write out hashed objects
     jtACCEPT,        // Accept a consensus ledger
     jtSWEEP,         // Sweep for stale structures
+    jtMALLOC_TRIM,   // TRIM G_LIBC memory
     jtNETOP_CLUSTER, // NetworkOPs cluster peer report
     jtNETOP_TIMER,   // NetworkOPs net timer processing
     jtADMIN,         // An administrative operation
@@ -96,6 +102,7 @@ enum JobType {
     jtNS_SYNC_READ,
     jtNS_ASYNC_READ,
     jtNS_WRITE,
+
 };
 
 class Job

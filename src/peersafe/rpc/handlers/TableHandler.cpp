@@ -488,8 +488,23 @@ Json::Value getLedgerTableInfo(TxStore& txStore, const std::string& sql, std::se
 		}
 
 		const Json::Value & line = lines[0u];
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
-		setOwnerID2TableName.emplace(std::make_pair(*ownerID, line[jss::TableName].asString()));
+        boost::optional<AccountID> ownerID = boost::none;
+        std::string tableName;
+        if (line.isMember(jss::Owner) && line.isMember(jss::TableName))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line[jss::Owner].asString()));
+            tableName =
+                trim_whitespace(line[jss::TableName].asString());
+        }
+        else if (line.isMember("OWNER") && line.isMember("TABLENAME"))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line["OWNER"].asString()));
+            tableName = trim_whitespace(line["TABLENAME"].asString());
+        }
+        if (ownerID)
+			setOwnerID2TableName.emplace(std::make_pair(*ownerID, tableName));
 
 	}
 	return ret;
@@ -523,9 +538,23 @@ Json::Value getLedgerTableInfo(RPC::JsonContext& context,TxStore& txStore,Accoun
 			return RPC::make_error(rpcGET_VALUE_INVALID, errMsg);
 		}
 		const Json::Value & line = lines[0u];
-		auto ownerID = ripple::parseBase58<AccountID>(line[jss::Owner].asString());
+        boost::optional<AccountID> ownerID = boost::none;
+        std::string tableName;
+        if (line.isMember(jss::Owner) && line.isMember(jss::TableName))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line[jss::Owner].asString()));
+            tableName = trim_whitespace(line[jss::TableName].asString());
+        }
+        else if (line.isMember("OWNER") && line.isMember("TABLENAME"))
+        {
+            ownerID = ripple::parseBase58<AccountID>(
+                trim_whitespace(line["OWNER"].asString()));
+            tableName = trim_whitespace(line["TABLENAME"].asString());
 
-		setOwnerID2TableName.emplace(std::make_pair(*ownerID, line[jss::TableName].asString()));
+        }
+        if (ownerID)
+			setOwnerID2TableName.emplace(std::make_pair(*ownerID, tableName));
 	}
 
 	return Json::Value();
@@ -733,15 +762,13 @@ doGetRecord(RPC::JsonContext& context)
             // ledgerseq
             ret[jss::diff] = getDiff(context, *pTxStore, vecNameInDB);
         }
-        if (unit->islocked())
-            unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
     }
     catch (std::exception const& e)
     {
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecord exception" << e.what();
-        if (unit->islocked())
-            unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
     }
 
     return ret;
@@ -815,7 +842,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
         ret = checkTableExistOnChain(context, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -824,7 +851,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
             context, sql, setOwnerID2TableName, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -832,7 +859,7 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
 
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -847,12 +874,11 @@ Json::Value doGetRecordBySql(RPC::JsonContext&  context)
         }
 
         ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
-        unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
 	}
     catch (std::exception const& e)
     {
-        if (unit->islocked())
-			unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecordBySql exception" << e.what();
 	}
@@ -884,7 +910,7 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
             context, txStore, accountID, setNameInDB, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -892,7 +918,7 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
         ret = checkAuthForSql(context, accountID, setOwnerID2TableName);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -901,14 +927,14 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
             context, accountID, setOwnerID2TableName, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
         ret = queryBySql(txStore, catenatedSql);
         if (ret.isMember(jss::error))
         {
-            unit->unlock();
+            context.app.getConnectionPool().releaseConnection(unit);
             return ret;
         }
 
@@ -923,11 +949,11 @@ Json::Value doGetRecordBySqlUser(RPC::JsonContext& context)
         }
 
         ret[jss::diff] = getDiff(context, txStore, vecNameInDB);
-        unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
     }
     catch (std::exception const& e)
     {
-        unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecordBySqlUser exception" << e.what();
     }	
@@ -962,14 +988,12 @@ std::pair<std::vector<std::vector<Json::Value>>,std::string> doGetRecord2D(RPC::
     try
     {
         auto retVec = pTxStore->txHistory2d(context);
-        if (unit->islocked())
-            unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
         return retVec;
     }
     catch (std::exception const& e)
     {
-        if (unit->islocked())
-            unit->unlock();
+        context.app.getConnectionPool().releaseConnection(unit);
         JLOG(context.app.journal("RPCHandler").error())
             << "doGetRecord2D exception" << e.what();
         return std::make_pair(result, "Exception occurred.");
@@ -1118,7 +1142,8 @@ Json::Value doGetUserToken(RPC::JsonContext& context)
 	bool bRet = false;
 	ripple::Blob passWd;
 	error_code_i errCode;
-	std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(userID, ownerID, tableName);
+    std::tie(bRet, passWd, errCode) = context.ledgerMaster.getUserToken(
+        ledger ,userID, ownerID, tableName);
 
 	if (bRet)
 	{

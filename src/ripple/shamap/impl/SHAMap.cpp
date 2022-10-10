@@ -19,7 +19,9 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/shamap/SHAMap.h>
-#include "ripple.pb.h"
+#include "ripple.pb.h" 
+#include <peersafe/app/util/Common.h>
+
 
 namespace ripple {
 
@@ -83,14 +85,30 @@ SHAMap::genesisSnapShot(Family& f) const
     newMap.root_ = root_->clone(1);
     newMap.backed_ = backed_;
 
+    int flushed = 0;
+
+    if (!root_ || (root_->getSeq() != 0))
+        return ret;
+
+    if (root_->isLeaf())
+    {  // special case -- root_ is leaf
+        if (backed_)
+        {
+            newMap.root_ = newMap.writeNode(hotACCOUNT_NODE, 1, std::move(newMap.root_));
+        }            
+        return ret;
+    }
+
+    auto node = std::static_pointer_cast<SHAMapInnerNode>(root_);
+
     // Stack of {parent,index,child} pointers representing
+    // inner nodes we are in the process of flushing
     using StackEntry = std::pair<std::shared_ptr<SHAMapInnerNode>, int>;
     std::stack<StackEntry, std::vector<StackEntry>> stack;
 
-    auto node = std::static_pointer_cast<SHAMapInnerNode>(newMap.root_);
-
-    // set seq of all nodes equal to 1
     int pos = 0;
+
+    // We can't flush an inner node until we flush its children
     while (1)
     {
         while (pos < 16)
@@ -101,9 +119,13 @@ SHAMap::genesisSnapShot(Family& f) const
             }
             else
             {
+                // No need to do I/O. If the node isn't linked,
+                // it can't need to be flushed
                 int branch = pos;
                 auto child = node->getChild(pos++);
-                if (child)
+                if (!child)
+                    child = descendNoStore(node, branch);
+                if (child && (child->getSeq() == 0))
                 {
                     if (child->isInner())
                     {
@@ -118,13 +140,33 @@ SHAMap::genesisSnapShot(Family& f) const
                     }
                     else
                     {
-                        child->setSeq(1);
+                        // flush this leaf
+                        ++flushed;
+
+                        assert(node->getSeq() == 0);
+                        
+                        if (backed_)
+                        {
+                            auto childCy = std::static_pointer_cast<SHAMapAbstractNode>(child->clone(1));
+                            child = newMap.writeNode(hotACCOUNT_NODE, 1, childCy);
+                        }
                     }
-                }
+                    
+                } 
             }
         }
 
-        node->setSeq(1);
+ 
+        
+        if (backed_)
+        {
+            auto nodeCy = std::static_pointer_cast<SHAMapAbstractNode>(node->clone(1));
+            node = std::static_pointer_cast<SHAMapInnerNode>(
+                    newMap.writeNode(hotACCOUNT_NODE, 1, nodeCy));
+        }
+
+        ++flushed;
+
         if (stack.empty())
             break;
 
@@ -132,10 +174,19 @@ SHAMap::genesisSnapShot(Family& f) const
         pos = stack.top().second;
         stack.pop();
 
+        // Hook this inner node to its parent
+        assert(parent->getSeq() == 0);
+        // parent->shareChild(pos, node);
+
+        // Continue with parent's next child, if any
         node = std::move(parent);
         ++pos;
     }
 
+    assert(flushed > 0);
+    ret = std::make_shared<SHAMap>(type_,root_->getNodeHash().as_uint256(), f);
+    ret->fetchRoot(root_->getNodeHash(), nullptr);
+    ret->clearSynching();
     return ret;
 }
 //
@@ -352,11 +403,10 @@ SHAMap::fetchNodeNT(SHAMapHash const& hash, SHAMapSyncFilter* filter) const
         node = fetchNodeFromDB(hash);
         if (node)
         {
-            canonicalize(hash, node);
+            //canonicalize(hash, node);
             return node;
         }
     }
-
     if (filter)
         node = checkFilter(hash, filter);
 
@@ -523,7 +573,9 @@ SHAMap::descendAsync(
     }
 
     if (ptr)
-        ptr = parent->canonicalizeChild(branch, std::move(ptr));
+    {
+        ptr = canonicalizeChild(ptr, parent, branch);
+    }
 
     return ptr.get();
 }
@@ -813,7 +865,7 @@ SHAMap::delItem(uint256 const& id)
                         }
                     }
                     prevNode = std::make_shared<SHAMapTreeNode>(
-                        item, type, node->getSeq());
+                        item, type, node->getSeq(),leaf->getStorageRoot());
                 }
                 else
                 {
@@ -835,7 +887,8 @@ bool
 SHAMap::addGiveItem(
     std::shared_ptr<SHAMapItem const> item,
     bool isTransaction,
-    bool hasMeta)
+    bool hasMeta,
+    boost::optional<uint256> const& storageRoot)
 {
     // add the specified item, does not update
     uint256 tag = item->key();
@@ -843,6 +896,8 @@ SHAMap::addGiveItem(
         ? SHAMapTreeNode::tnACCOUNT_STATE
         : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
                    : SHAMapTreeNode::tnTRANSACTION_NM);
+    if (storageRoot)
+        type = SHAMapTreeNode::tnCONTRACT_STATE;
 
     assert(state_ != SHAMapState::Immutable);
 
@@ -869,7 +924,8 @@ SHAMap::addGiveItem(
         int branch = nodeID.selectBranch(tag);
         assert(inner->isEmptyBranch(branch));
         auto newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_,storageRoot);
+        
         inner->setChild(branch, newNode);
     }
     else
@@ -899,13 +955,13 @@ SHAMap::addGiveItem(
         assert(node->isInner());
 
         std::shared_ptr<SHAMapTreeNode> newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(item), type, seq_,storageRoot);
         assert(newNode->isValid() && newNode->isLeaf());
         auto inner = std::static_pointer_cast<SHAMapInnerNode>(node);
         inner->setChild(b1, newNode);
 
         newNode =
-            std::make_shared<SHAMapTreeNode>(std::move(otherItem), type, seq_);
+            std::make_shared<SHAMapTreeNode>(std::move(otherItem), leaf->getType(), seq_,leaf->getStorageRoot());
         assert(newNode->isValid() && newNode->isLeaf());
         inner->setChild(b2, newNode);
     }
@@ -939,7 +995,8 @@ bool
 SHAMap::updateGiveItem(
     std::shared_ptr<SHAMapItem const> item,
     bool isTransaction,
-    bool hasMeta)
+    bool hasMeta,
+    boost::optional<uint256> const& storageRoot)
 {
     // can't change the tag but can change the hash
     uint256 tag = item->key();
@@ -963,12 +1020,15 @@ SHAMap::updateGiveItem(
     }
 
     node = unshareNode(std::move(node), nodeID);
+    SHAMapTreeNode::TNType type;
+    if (storageRoot)
+        type = SHAMapTreeNode::TNType::tnCONTRACT_STATE;
+    else
+        type = !isTransaction ? SHAMapTreeNode::tnACCOUNT_STATE
+                              : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
+                                         : SHAMapTreeNode::tnTRANSACTION_NM);
 
-    if (!node->setItem(
-            std::move(item),
-            !isTransaction ? SHAMapTreeNode::tnACCOUNT_STATE
-                           : (hasMeta ? SHAMapTreeNode::tnTRANSACTION_MD
-                                      : SHAMapTreeNode::tnTRANSACTION_NM)))
+    if (!node->setItem(std::move(item),type,storageRoot))
     {
         JLOG(journal_.trace()) << "SHAMap setItem, no change";
         return true;
@@ -993,6 +1053,10 @@ SHAMap::fetchRoot(SHAMapHash const& hash, SHAMapSyncFilter* filter)
         else if (type_ == SHAMapType::STATE)
         {
             stream << "Fetch root STATE node " << hash;
+        }
+        else if (type_ == SHAMapType::CONTRACT)
+        {
+            stream << "Fetch root CONTRACT node " << hash;
         }
         else
         {
@@ -1267,6 +1331,20 @@ SHAMap::canonicalize(
         ->canonicalize_replace_client(hash.as_uint256(), node);
 }
 
+std::shared_ptr<SHAMapAbstractNode>
+SHAMap::canonicalizeChild(
+    std::shared_ptr<SHAMapAbstractNode> ptr,
+    SHAMapInnerNode* parent,
+    int branch) const
+{
+    if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+        ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+        f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
+    else
+        ptr = parent->canonicalizeChild(branch, std::move(ptr));
+    return ptr;
+}
+
 void
 SHAMap::invariants() const
 {
@@ -1281,7 +1359,7 @@ SHAMap::invariants() const
     node->invariants(true);
 }
 
-Blob
+std::pair<uint256, Blob>
 SHAMap::genNodeProof(uint256 key) const
 {
     SharedPtrNodeStack stack;
@@ -1343,7 +1421,20 @@ SHAMap::genNodeProof(uint256 key) const
     Blob b;
     b.assign(s.begin(), s.end());
 
-    return b;
+    return std::make_pair(leaf->getNodeHash().as_uint256(), b);
 }
 
+std::shared_ptr<SHAMapInnerNode>
+SHAMap::getContractRootNode(boost::optional<uint256> root) const
+{
+    if (root)
+    {
+        auto mapPtr = std::make_shared<SHAMap>(SHAMapType::CONTRACT, *root, f_);
+        if (mapPtr && mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
+        {
+            return std::static_pointer_cast<SHAMapInnerNode>(mapPtr->root_);
+        }
+    }
+    return nullptr;
+}
 }  // namespace ripple

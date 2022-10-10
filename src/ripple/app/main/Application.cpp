@@ -46,6 +46,7 @@
 #include <ripple/basics/ByteUtilities.h>
 #include <ripple/basics/PerfLog.h>
 #include <ripple/basics/ResolverAsio.h>
+#include <ripple/basics/Sustain.h>
 #include <ripple/basics/safe_cast.h>
 #include <ripple/beast/asio/io_latency_probe.h>
 #include <ripple/beast/core/LexicalCast.h>
@@ -67,6 +68,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/optional.hpp>
 #include <boost/system/error_code.hpp>
 #include <condition_variable>
 #include <cstring>
@@ -80,19 +82,23 @@
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/sql/TxStore.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/storage/TableStorage.h>
 #include <peersafe/app/table/TableStatusDBMySQL.h>
 #include <peersafe/app/table/TableStatusDBSQLite.h>
 #include <peersafe/app/table/TableSync.h>
 #include <peersafe/app/table/TableTxAccumulator.h>
+#include <peersafe/precompiled/PreContractFace.h>
 #include <peersafe/rpc/impl/TableAssistant.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/SchemaManager.h>
-#include <peersafe/precompiled/PreContractFace.h>
-#include <boost/optional.hpp>
 #include <sstream>
 #include <ripple/basics/Sustain.h>
+#include <peersafe/app/prometh/PrometheusClient.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 
 namespace ripple {
 
@@ -178,14 +184,17 @@ public:
     std::unique_ptr<JobQueue> m_jobQueue;
     std::unique_ptr<ServerHandler> serverHandler_;
     std::unique_ptr<LoadManager> m_loadManager;
+    std::unique_ptr<PromethExposer> m_promethExposer;
     std::unique_ptr<SchemaManager> m_schemaManager;
     std::unique_ptr<Overlay> m_overlay;
+    std::unique_ptr<PeerCertList> m_peerCertList;
 
     Application::MutexType m_masterMutex;
 
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
     boost::asio::steady_timer sweepTimer_;
     boost::asio::steady_timer entropyTimer_;
+    boost::asio::steady_timer mallocTrimTimer_;
     bool startTimers_;
     boost::asio::signal_set m_signals;
     std::condition_variable cv_;
@@ -195,7 +204,7 @@ public:
     std::unique_ptr<ResolverAsio> m_resolver;
     io_latency_sampler m_io_latency_sampler;
     std::unique_ptr<GRPCServer> grpcServer_;
-    std::unique_ptr <PreContractFace> m_preContractFace;
+    std::unique_ptr<PreContractFace> m_preContractFace;
     //--------------------------------------------------------------------------
 
     static std::size_t
@@ -271,14 +280,26 @@ public:
 
         , m_loadManager(
               make_LoadManager(*this, *this, logs_->journal("LoadManager")))
+         , m_promethExposer(std::make_unique<PromethExposer>(
+            *this,
+            *config_,
+            toBase58(TokenType::NodePublic, validatorKeys_.publicKey),
+            logs_->journal("PromethExposer")))
 
         , m_schemaManager(std::make_unique<SchemaManager>(
               *this,
               logs_->journal("SchemaManager")))
 
+        , m_peerCertList(std::make_unique<PeerCertList>(
+              config_->PEER_ROOT_CERTIFICATES,
+              config_->PEER_X509_CRED,
+              logs_->journal("PeerCertList")))
+
         , sweepTimer_(get_io_service())
 
         , entropyTimer_(get_io_service())
+
+        , mallocTrimTimer_(get_io_service())
 
         , startTimers_(false)
 
@@ -337,7 +358,8 @@ public:
     checkSigs(bool) override;
     int
     fdRequired() const override;
-
+    void
+    doStopSchema(SchemaID schemaID) override;
     //--------------------------------------------------------------------------
 
     Logs&
@@ -425,6 +447,12 @@ public:
         return *m_overlay;
     }
 
+    PeerCertList&
+    peerCertList() override
+    {
+        return *m_peerCertList;
+    }
+
     std::pair<PublicKey, SecretKey> const&
     nodeIdentity() override
     {
@@ -438,9 +466,15 @@ public:
         return m_schemaManager->getSchema(id)->getTxStoreDBConn();
     }
 
-    PreContractFace& getPreContractFace() override
+    PreContractFace&
+    getPreContractFace() override
+    {
+        return *m_preContractFace;
+    }
+
+    PromethExposer& getPromethExposer() override
 	{
-		return *m_preContractFace;
+		return *m_promethExposer;
 	}
 
     TxStore&
@@ -713,12 +747,11 @@ public:
         return m_schemaManager->getSchema(id)->validatorSites();
     }
 
-    CertList&
-    certList(SchemaID const& id) override
+    UserCertList&
+    userCertList(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));
-        return m_schemaManager->getSchema(id)->certList();
-        ;
+        return m_schemaManager->getSchema(id)->userCertList();
     }
 
     ManifestCache&
@@ -784,7 +817,7 @@ public:
         return m_schemaManager->getSchema(id)->getTxQ();
     }
 
-    DatabaseCon&
+    TxnDBCon&
     getTxnDB(SchemaID const& id) override
     {
         assert(m_schemaManager->contains(id));
@@ -832,6 +865,7 @@ public:
         {
             setSweepTimer();
             setEntropyTimer();
+            setMallocTrimTimer();
         }
 
         m_io_latency_sampler.start();
@@ -879,6 +913,15 @@ public:
                     << "Application: entropyTimer cancel error: "
                     << ec.message();
             }
+
+            ec.clear();
+            mallocTrimTimer_.cancel(ec);
+            if (ec)
+            {
+                JLOG(m_journal.error())
+                    << "Application: mallocTrimTimer cancel error: "
+                    << ec.message();
+            }
         }
         // Make sure that any waitHandlers pending in our timers are done
         // before we declare ourselves stopped.
@@ -888,13 +931,10 @@ public:
         logs_->resetCallBack();
 
         // foreach schema
-        for (auto iter = m_schemaManager->begin();
-             iter != m_schemaManager->end();
-             iter++)
-        {
-            auto schema = (*iter).second;
-            schema->doStop();
-        }
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
+              schema->doStop();
+        });
+
         stopped();
     }
 
@@ -971,16 +1011,47 @@ public:
     }
 
     void
+    setMallocTrimTimer()
+    {
+        // Only start the timer if waitHandlerCounter_ is not yet joined.
+        if (auto optionalCountedHandler = waitHandlerCounter_.wrap(
+                [this](boost::system::error_code const& e) {
+                    if ((e.value() == boost::system::errc::success) &&
+                        (!m_jobQueue->isStopped()))
+                    {
+                        m_jobQueue->addJob(
+                            jtMALLOC_TRIM, "malloc_trim", [this](Job&) { 
+                                #ifdef __GLIBC__
+                                malloc_trim(0);
+                                #endif
+                                setMallocTrimTimer();
+                            });
+                    }
+                    // Recover as best we can if an unexpected error occurs.
+                    if (e.value() != boost::system::errc::success &&
+                        e.value() != boost::asio::error::operation_aborted)
+                    {
+                        // Try again later and hope for the best.
+                        JLOG(m_journal.error())
+                            << "MallocTrim timer got error '" << e.message()
+                            << "'.  Restarting timer.";
+                        setMallocTrimTimer();
+                    }
+                }))
+        {
+            using namespace std::chrono;
+            mallocTrimTimer_.expires_from_now(1min);
+            mallocTrimTimer_.async_wait(std::move(*optionalCountedHandler));
+        }
+    }
+
+    void
     doSweep()
     {
         // by ljl: foreach schema do sweep
-        for (auto iter = m_schemaManager->begin();
-             iter != m_schemaManager->end();
-             iter++)
-        {
-            auto schema = (*iter).second;
-            schema->doSweep();
-        }
+        m_schemaManager->foreach([](std::shared_ptr<Schema> schema) {
+              schema->doSweep();
+        });
         // Set timer to do another sweep later.
         setSweepTimer();
     }
@@ -995,6 +1066,10 @@ public:
 bool
 ApplicationImp::setup()
 {
+    if (config_->checkCertificates())
+    {
+        OpenSSL_add_all_algorithms();
+    }
     if (!config_->standalone())
         timeKeeper_->run(config_->SNTP_SERVERS);
 
@@ -1027,7 +1102,7 @@ ApplicationImp::setup()
 
     // VFALCO NOTE: 0 means use heuristics to determine the thread count.
     m_jobQueue->setThreadCount(config_->WORKERS, config_->standalone());
-	grpcServer_->run();
+    grpcServer_->run();
     // We want to intercept CTRL-C and the standard termination signal SIGTERM
     // and terminate the process. This handler will NEVER be invoked twice.
     //
@@ -1067,8 +1142,9 @@ ApplicationImp::setup()
 
     /*if (config().exists(SECTION_ENCRYPT_CARD_TYPE))
     {
-        auto encryptCardType = config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front();
-        if (encryptCardType == std::string("sjkCard"))
+        auto encryptCardType =
+    config().section(SECTION_ENCRYPT_CARD_TYPE).lines().front(); if
+    (encryptCardType == std::string("sjkCard"))
         {
             GmEncryptObj::hEType_ = GmEncryptObj::sjkCardType;
         }
@@ -1175,7 +1251,13 @@ ApplicationImp::isShutdown()
     // from Stoppable mixin
     return isStopped();
 }
-
+void
+ApplicationImp::doStopSchema(SchemaID schemaID)
+{
+    getSchema(schemaID).doStop();
+    getSchemaManager().removeSchema(schemaID);
+       
+}
 bool
 ApplicationImp::checkSigs() const
 {
@@ -1197,14 +1279,11 @@ ApplicationImp::fdRequired() const
     // 2x the configured peer limit for peer connections:
     needed += 2 * m_overlay->limit();
 
-    for (auto item : *m_schemaManager)
-    {
-        auto schema = item.second;
-        // the number of fds needed by the backend (internally
-        // doubled if online_delete is enabled).
+    m_schemaManager->foreach([&needed](std::shared_ptr<Schema> schema) {
         if (schema->getShardStore())
             needed += std::max(5, schema->getSHAMapStore().fdRequired());
-    }
+    });
+
 
     // One fd per incoming connection a port can accept, or
     // if no limit is set, assume it'll handle 256 clients.

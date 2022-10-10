@@ -64,6 +64,7 @@ add(    jtCONSENSUS_t,   "trustedConsensus",        2,        false, 500ms,  150
 add(    jtWRITE,         "writeObjects",            maxLimit, false, 1750ms,  2500ms);
 add(    jtACCEPT,        "acceptLedger",            maxLimit, false, 0ms,     0ms);
 add(    jtSWEEP,         "sweep",                   maxLimit, false, 0ms,     0ms);
+add(    jtMALLOC_TRIM,   "malloc_trim",             1,        false, 0ms,     0ms);
 add(    jtNETOP_CLUSTER, "clusterReport",           1,        false, 9999ms,  9999ms);
 add(    jtNETOP_TIMER,   "heartbeat",               1,        false, 999ms,   999ms);
 add(    jtADMIN,         "administration",          maxLimit, false, 0ms,     0ms);
@@ -71,6 +72,7 @@ add(    jtTABLESYNC,     "tableSync",               1,        false, 0ms,     0m
 add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0ms,     0ms);
 add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0ms,		0ms);
 add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0ms,		0ms);
+add(    jtCheckLoadLedger, "checkLoadLedger",       1,        false, 0ms,       0ms);
 add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0ms,     0ms);
 add(    jtOPERATESQL,    "operateSQL",              10,        false, 0ms,     0ms);
 add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0ms,     0ms);
@@ -87,7 +89,8 @@ add(    jtGENERIC,       "generic",                 0,        true,  0ms,     0m
 add(    jtNS_SYNC_READ,  "SyncReadNode",            0,        true,  0ms,     0ms);
 add(    jtNS_ASYNC_READ, "AsyncReadNode",           0,        true,  0ms,     0ms);
 add(    jtNS_WRITE,      "WriteNode",               0,        true,  0ms,     0ms);
-
+add(    jtSTOP_SCHEMA,   "StopSchema",              maxLimit, false, 0ms,     15000ms);
+add(    jtCREATE_PROMETH_SLE, "CreatePromethSle",   1,        false, 250ms,   15000ms);
     }
 
 public:

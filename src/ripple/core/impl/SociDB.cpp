@@ -209,10 +209,12 @@ public:
         std::uintptr_t id,
         std::weak_ptr<soci::session> session,
         JobQueue& q,
+        JobCounter& c,
         Logs& logs)
         : id_(id)
         , session_(std::move(session))
         , jobQueue_(q)
+        , jobCounter(c)
         , j_(logs.journal("WALCheckpointer"))
     {
         if (auto [conn, keepAlive] = getConnection(); conn)
@@ -306,7 +308,7 @@ protected:
     std::weak_ptr<soci::session> session_;
     std::mutex mutex_;
     JobQueue& jobQueue_;
-
+    JobCounter& jobCounter;
     bool running_ = false;
     beast::Journal const j_;
 
@@ -340,10 +342,11 @@ makeCheckpointer(
     std::uintptr_t id,
     std::weak_ptr<soci::session> session,
     JobQueue& queue,
+    JobCounter& counter,
     Logs& logs)
 {
     return std::make_shared<WALCheckpointer>(
-        id, std::move(session), queue, logs);
+        id, std::move(session), queue, counter, logs);
 }
 
 }  // namespace ripple

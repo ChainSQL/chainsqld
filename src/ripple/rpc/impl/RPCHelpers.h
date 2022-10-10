@@ -222,10 +222,11 @@ template <class Object>
 void
 setVersion(Object& parent)
 {
-    auto&& object = addObject(parent, jss::version);
-    object[jss::first] = firstVersion.print();
-    object[jss::good] = goodVersion.print();
-    object[jss::last] = lastVersion.print();
+    parent[jss::version] = BuildInfo::getVersionString();
+    //auto&& object = addObject(parent, jss::version);
+    //object[jss::first] = firstVersion.print();
+    //object[jss::good] = goodVersion.print();
+    //object[jss::last] = lastVersion.print();
 }
 
 std::pair<RPC::Status, LedgerEntryType>

@@ -53,6 +53,8 @@
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/protocol/Contract.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxnDBConn.h>
+#include <peersafe/protocol/STMap256.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -68,23 +70,6 @@ storePeersafeSql(
     std::uint64_t SeqInLedger,
     std::uint32_t inLedger,
     Schema& app);
-
-uint256
-calculateLedgerHash(LedgerInfo const& info)
-{
-    // VFALCO This has to match addRaw in View.h.
-    return sha512Half(
-        HashPrefix::ledgerMaster,
-        std::uint32_t(info.seq),
-        std::uint64_t(info.drops.drops()),
-        info.parentHash,
-        info.txHash,
-        info.accountHash,
-        std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
-        std::uint32_t(info.closeTime.time_since_epoch().count()),
-        std::uint8_t(info.closeTimeResolution.count()),
-        std::uint8_t(info.closeFlags));
-}
 
 //------------------------------------------------------------------------------
 
@@ -203,41 +188,35 @@ Ledger::Ledger(
     // {
     //     keyType = KeyType::gmalg;
     // }
-
-    static auto const id = calcAccountID(
-        generateKeyPair(CommonKey::chainAlgTypeG, generateSeed("masterpassphrase"))
-            .first);
+    AccountID id;
+    if (config.ADMIN)
     {
-        auto const sle = std::make_shared<SLE>(keylet::account(id));
-        sle->setFieldU32(sfSequence, 1);
-        sle->setAccountID(sfAccount, id);
-        sle->setFieldAmount(sfBalance, info_.drops);
-        rawInsert(sle);
+        id = *config.ADMIN;
+    }
+    else
+    {
+        id = calcAccountID(
+            generateKeyPair(
+                CommonKey::chainAlgTypeG, generateSeed("masterpassphrase"))
+                .first);
     }
 
-    if (config.exists(SECTION_GOVERNANCE))
-    {
-        auto result = config.section(SECTION_GOVERNANCE).find("admin");
-        if (result.second)
-        {
-            auto admin = ripple::parseBase58<AccountID>(result.first);
-            auto const sle = std::make_shared<SLE>(keylet::admin());
-            sle->setAccountID(sfAccount, *admin);
-            rawInsert(sle);
-
-            auto const sleFrozen = std::make_shared<SLE>(keylet::frozen());
-            STObject obj(sfFrozen);
-            STArray frozenAccounts;
-            obj.setFieldArray(sfFrozenAccounts, frozenAccounts);
-            sleFrozen->setFieldObject(sfFrozen, obj);
-            rawInsert(sleFrozen);
-        }
-    }
+    std::shared_ptr<SLE> rootSle = std::make_shared<SLE>(keylet::account(id));
+    rootSle->setAccountID(sfAccount, id);
+    rootSle->setFieldU32(sfSequence, 1);
+    rootSle->setFieldAmount(sfBalance, info_.drops);
+    rawInsert(rootSle);
 
     if (!amendments.empty())
     {
         auto const sle = std::make_shared<SLE>(keylet::amendments());
         sle->setFieldV256(sfAmendments, STVector256{amendments});
+        rawInsert(sle);
+    }
+
+    {
+        auto const sle = std::make_shared<SLE>(keylet::statis());
+        sle->setFieldU32(sfAccountCountField, 1);
         rawInsert(sle);
     }
 
@@ -360,12 +339,12 @@ Ledger::Ledger(
 Ledger::Ledger(Ledger const& ledger, Family& f)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
-	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
+	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
 	, fees_(ledger.fees_)
 	, rules_(ledger.rules_)
 {
 	info_.seq = 1;
-	info_.drops = ledger.info().drops;
+	info_.drops = ledger.info().drops;  
 	info_.closeTimeResolution = ledger.info_.closeTimeResolution;
 	info_.closeTimeResolution = getNextLedgerTimeResolution(
 		ledger.info_.closeTimeResolution,
@@ -376,15 +355,94 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
 	//{
 	//	info_.closeFlags |= sLCF_SHAMapV2;
 	//}
-
 	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
-	stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+    int count = 0;
+    for (auto sle : ledger.sles)
+    {
+        if (sle->getType() == ltACCOUNT_ROOT && !sle->isFieldPresent(sfContractCode))
+        {
+            auto id = sle->getAccountID(sfAccount);
+            std::shared_ptr<SLE> sleNew = std::make_unique<SLE>(keylet::account(id));
+            (*sleNew)[sfLedgerEntryType] = (*sle)[sfLedgerEntryType];
+            (*sleNew)[sfFlags] = 0;
+            (*sleNew)[sfSequence] = (*sle)[sfSequence];
+            (*sleNew)[sfBalance] = (*sle)[sfBalance];
+            (*sleNew)[sfOwnerCount] = 0;
+            (*sleNew)[sfPreviousTxnID] = (*sle)[sfPreviousTxnID];
+            (*sleNew)[sfPreviousTxnLgrSeq] = (*sle)[sfPreviousTxnLgrSeq];
+            if (sle->getFieldU32(sfTransferRate))
+                (*sleNew)[sfTransferRate] = (*sle)[sfTransferRate];
+            if (sle->getFieldU32(sfTransferFeeMin))
+                (*sleNew)[sfTransferFeeMin] = (*sle)[sfTransferFeeMin];
+            if (sle->getFieldU32(sfTransferFeeMax))
+                (*sleNew)[sfTransferFeeMax] = (*sle)[sfTransferFeeMax];
+            rawInsert(sleNew);
+            count++;
+        }
+    }
 
-    //stateMap_->dump(true);
+    auto const sle = std::make_shared<SLE>(keylet::statis());
+    sle->setFieldU32(sfAccountCountField, count);
+    rawInsert(sle);
+
+    stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+   //stateMap_->dump(true);
    // ledger.stateMap_->dump(true);
-
-
 }
+
+//Ledger::Ledger(Ledger const& ledger, Family& f)
+//	: mImmutable(false)
+//	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
+//	, stateMap_(ledger.stateMap_->genesisSnapShot(f))
+//	, fees_(ledger.fees_)
+//	, rules_(ledger.rules_)
+//{
+//	info_.seq = 1;
+//	info_.drops = ledger.info().drops;  
+//	info_.closeTimeResolution = ledger.info_.closeTimeResolution;
+//	info_.closeTimeResolution = getNextLedgerTimeResolution(
+//		ledger.info_.closeTimeResolution,
+//		getCloseAgree(ledger.info()), info_.seq);
+//	info_.parentHash = ledger.info().hash;
+//
+//	//if (stateMap_->is_v2())
+//	//{
+//	//	info_.closeFlags |= sLCF_SHAMapV2;
+//	//}
+//	info_.closeTime = ledger.info_.closeTime + info_.closeTimeResolution;
+//    Keylet key = keylet::statis();
+//    auto statisSle = peek(key);
+//    if (statisSle)
+//    {
+//        statisSle->setFieldU32(sfTxSuccessCountField, 0);
+//        statisSle->setFieldU32(sfTxFailureCountField, 0);
+//        statisSle->setFieldU32(sfContractCallCountField,0);
+//        statisSle->setFieldU32(sfContractCreateCountField, 0);
+//        rawReplace(statisSle);
+//    }
+//    else
+//    {
+//        auto const sle = std::make_shared<SLE>(keylet::statis());
+//        sle->setFieldU32(sfAccountCountField, 1);
+//        rawInsert(sle);
+//    }
+//        
+//    key = keylet::chainId();
+//    auto chainIdSle = read(key);
+//    if (chainIdSle)
+//        stateMap_->delItem(chainIdSle->key());
+//
+//    key = keylet::schema_index();
+//    auto schemaIndexSle = read(key);
+//    if (schemaIndexSle)
+//        stateMap_->delItem(schemaIndexSle->key());
+//
+//    stateMap_->flushDirty(hotACCOUNT_NODE, info_.seq);
+//   //stateMap_->dump(true);
+//   // ledger.stateMap_->dump(true);
+//
+//
+//}
 
 void Ledger::setImmutable (Config const& config)
 {
@@ -570,7 +628,14 @@ Ledger::rawInsert(std::shared_ptr<SLE> const& sle)
     Serializer ss;
     sle->add(ss);
     auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
-    if (!stateMap_->addGiveItem(std::move(item), false, false))
+    boost::optional<uint256> storageRoot = boost::none;
+    if (sle->isFieldPresent(sfStorageOverlay))
+    {
+        auto const& mapStore = sle->getFieldM256(sfStorageOverlay);
+        storageRoot = mapStore.rootHash();
+    }
+
+    if (!stateMap_->addGiveItem(std::move(item), false, false,storageRoot))
         LogicError("Ledger::rawInsert: key already exists");
 }
 
@@ -580,8 +645,14 @@ Ledger::rawReplace(std::shared_ptr<SLE> const& sle)
     Serializer ss;
     sle->add(ss);
     auto item = std::make_shared<SHAMapItem const>(sle->key(), std::move(ss));
+    boost::optional<uint256> storageRoot = boost::none;
+    if (sle->isFieldPresent(sfStorageOverlay))
+    {
+        auto const& mapStore = sle->getFieldM256(sfStorageOverlay);
+        storageRoot = mapStore.rootHash();
+    }
 
-    if (!stateMap_->updateGiveItem(std::move(item), false, false))
+    if (!stateMap_->updateGiveItem(std::move(item), false, false,storageRoot))
         LogicError("Ledger::rawReplace: key not found");
 }
 
@@ -1028,13 +1099,13 @@ saveValidatedLedger(
         auto db = app.getTxnDB().checkoutDb();
 
         soci::transaction tr(*db);
-
+        
         *db << boost::str(deleteTrans1 % seq);
         *db << boost::str(deleteTrans2 % seq);
-
+        *db << boost::str(deleteTrans3 % seq);
         std::string const ledgerSeq(std::to_string(seq));
-
-		std::uint64_t iTxSeq = uint64_t(seq) * 100000;
+		
+        std::uint64_t iTxSeq = uint64_t(seq) * 100000;
         for (auto const& [_, acceptedLedgerTx] : aLedger->getMap())
         {
             (void)_;
@@ -1222,7 +1293,7 @@ bool pendSaveValidated (
         app.getJobQueue().addJob(
             jobType, jobName, [&app, ledger, isCurrent](Job&) {
                 saveValidatedLedger(app, ledger, isCurrent);
-            }))
+            },app.doJobCounter()))
     {
         return true;
     }
@@ -1310,7 +1381,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
 
     if (!db->got_data())
     {
-        auto stream = app.journal("Ledger").info();
+        auto stream = app.journal("Ledger").debug();
         JLOG(stream) << "Ledger not found: " << sqlSuffix;
         return std::make_tuple(
             std::shared_ptr<Ledger>(), ledgerSeq, ledgerHash);

@@ -33,18 +33,27 @@ namespace ripple {
 
 		// This is a time-consuming process for a project that has many
 		// sles.
-		for (auto sle : ctx.view.sles)
-		{
-			if (sle->getType() != ltSCHEMA)
-				continue;
-			for (auto& validator : sle->getFieldArray(sfValidators))
-			{
-				Json::Value val(Json::objectValue);
-				auto publicKey = validator.getFieldVL(sfPublicKey);
-                if (++mapValidatorCount[publicKey] > MAX_VALIDATOR_SCHEMA_COUNT)
-					return tefSCHEMA_MAX_SCHEMAS;
-			}
-		}
+        auto sleIndex = ctx.view.read(keylet::schema_index());
+        if (sleIndex)
+        {
+            auto& schemaIndexes = sleIndex->getFieldV256(sfSchemaIndexes);
+            for (auto const& index : schemaIndexes)
+            {
+                auto key = Keylet(ltSCHEMA, index);
+                auto sle = ctx.view.read(key);
+                if (sle)
+                {
+                    for (auto& validator : sle->getFieldArray(sfValidators))
+                    {
+                        Json::Value val(Json::objectValue);
+                        auto publicKey = validator.getFieldVL(sfPublicKey);
+                        if (++mapValidatorCount[publicKey] >
+                            MAX_VALIDATOR_SCHEMA_COUNT)
+                            return tefSCHEMA_MAX_SCHEMAS;
+                    }
+                }
+            }
+        }
 		return tesSUCCESS;
 	}
 
@@ -149,14 +158,14 @@ namespace ripple {
 	{
 		auto j = ctx.app.journal("preclaimSchema");
 
-		if ((uint8_t)SchemaStragegy::with_state == ctx.tx.getFieldU8(sfSchemaStrategy) &&
-			(!ctx.tx.isFieldPresent(sfAnchorLedgerHash) || 
-				!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash))))
+		if ((uint8_t)SchemaStragegy::with_state ==ctx.tx.getFieldU8(sfSchemaStrategy)
+			&&ctx.tx.isFieldPresent(sfAnchorLedgerHash)
+			&&!ctx.app.getLedgerMaster().getLedgerByHash(ctx.tx.getFieldH256(sfAnchorLedgerHash)))
 		{
 			JLOG(j.trace()) << "anchor ledger is not match the schema strategy.";
 			return temBAD_ANCHORLEDGER;
-		}
-
+		} 
+			
 		if (ctx.tx.getFieldArray(sfValidators).size() <= 0 || 
 			ctx.tx.getFieldArray(sfPeerList).size() <= 0)
 		{
@@ -202,7 +211,13 @@ namespace ripple {
 		(*slep)[sfSchemaName] = ctx_.tx[sfSchemaName];
 		(*slep)[sfSchemaStrategy] = ctx_.tx[sfSchemaStrategy];
 		(*slep)[~sfSchemaAdmin] = ctx_.tx[~sfSchemaAdmin];
-		(*slep)[~sfAnchorLedgerHash] = ctx_.tx[~sfAnchorLedgerHash];
+		 
+		if ((uint8_t)SchemaStragegy::with_state ==ctx_.tx.getFieldU8(sfSchemaStrategy) 
+			&& !ctx_.tx.isFieldPresent(sfAnchorLedgerHash))
+			(*slep)[~sfAnchorLedgerHash] =
+				ctx_.app.getLedgerMaster().getValidatedLedger()->info().hash;
+        else
+            (*slep)[~sfAnchorLedgerHash] = ctx_.tx[~sfAnchorLedgerHash];
 
 		//Reset validators
 		{
@@ -300,14 +315,14 @@ namespace ripple {
 
 	TER SchemaModify::doApply()
 	{
-		auto j = ctx_.app.journal("schemaModifyApply");
+//		auto j = ctx_.app.journal("schemaModifyApply");
 		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
 		if (sleSchema == nullptr)
 		{
 			return tefBAD_SCHEMAID;
 		}
 
-		auto const account = ctx_.tx[sfAccount];
+//		auto const account = ctx_.tx[sfAccount];
 		if (!ctx_.tx.getSigningPubKey().empty())
 		{
 			if (!sleSchema->isFieldPresent(sfSchemaAdmin))
@@ -404,6 +419,70 @@ namespace ripple {
 		}
 
 		ctx_.view().update(sleSchema);
+		return tesSUCCESS;
+	}
+
+	NotTEC SchemaDelete::preflight(PreflightContext const& ctx)
+	{
+		auto const ret = preflight1(ctx);
+		if (!isTesSuccess(ret))
+			return ret;
+
+		if (!ctx.tx.isFieldPresent(sfSchemaID))
+			return temMALFORMED;
+
+        if (ctx.app.schemaId() != beast::zero)
+        return tefSCHEMA_TX_FORBIDDEN;
+
+		return preflight2(ctx);
+	}
+
+	TER SchemaDelete::preclaim(PreclaimContext const& ctx)
+	{
+        return tesSUCCESS;
+	}
+
+	TER SchemaDelete::doApply()
+	{
+		auto j = ctx_.app.journal("schemaDeleteApply");
+		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
+		if (sleSchema == nullptr)
+		{
+			return tefBAD_SCHEMAID;
+		}
+
+		auto const account = ctx_.tx[sfAccount];
+		if (!ctx_.tx.getSigningPubKey().empty())
+		{
+			if (!sleSchema->isFieldPresent(sfSchemaAdmin))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}
+			if (sleSchema->getAccountID(sfSchemaAdmin) != ctx_.tx.getAccountID(sfAccount))
+			{
+				return tefBAD_SCHEMAADMIN;
+			}			
+		}
+		else
+		{
+			if (sleSchema->getAccountID(sfAccount) != account)
+			{
+				return tefBAD_SCHEMAACCOUNT;
+			}
+			auto const ret = checkMulsignValid(sleSchema->getFieldArray(sfValidators), ctx_.tx.getFieldArray(sfSigners));
+			if (!isTesSuccess(ret))
+				return ret;
+		}
+		if (!ctx_.view().dirRemove(
+                keylet::ownerDir(sleSchema->getAccountID(sfAccount)),
+                (*sleSchema)[sfOwnerNode],
+                sleSchema->key(),
+                true))
+        {
+            return tefBAD_LEDGER;
+        }
+
+		ctx_.view().erase(sleSchema);
 		return tesSUCCESS;
 	}
 }

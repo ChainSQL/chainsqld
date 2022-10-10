@@ -66,6 +66,7 @@ docs/html_doc
 # Xcode
 .DS_Store
 */build/*
+*build*
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -150,3 +151,4 @@ compile_commands.json
 
 # VScode config files
 .vscode/
+*.diff

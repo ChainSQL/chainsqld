@@ -34,7 +34,7 @@ namespace ripple {
 	std::string hash(std::string &pk);
 	uint160 generateNameInDB(uint32_t ledgerSeq,AccountID account,std::string sTableName);
 	bool isDBConfigured(Schema& app);
-	STEntry* getTableEntry(const STArray& aTables, Blob& vCheckName);
+	STEntry* getTableEntry(const STArray& aTables, Blob& vCheckName,bool bNameInDB = false);
     std::tuple<std::shared_ptr<SLE const>, STObject*, STArray*>
 		getTableEntry(ReadView const& view, const STTx& tx);
 	std::tuple<std::shared_ptr<SLE>, STObject*, STArray*>
@@ -46,6 +46,27 @@ namespace ripple {
     getTableEntryByNameInDB(ReadView const& view,AccountID const& accountId,std::string const& sTableNameInDB);
 
 	bool isTableSLEChanged(STObject* pEntry, LedgerIndex iLastSeq, bool bStrictEqual);
+
+	bool
+    isConfidential(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName);
+
+	std::tuple<bool,uint32_t,Blob>
+    getUserAuthAndToken(
+		ReadView const& view, 
+		const AccountID& owner,
+        const std::string& tableName,
+		const AccountID& user);
+ 
+	bool
+    hasAuthority(
+        ReadView const& view,
+        const AccountID& owner,
+        const std::string& tableName,
+        const AccountID& user,
+        TableRoleFlags flag);
 }
 
 #endif

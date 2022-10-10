@@ -182,7 +182,10 @@ enum error_code_i {
     rpcTXN_BIGGER_THAN_MAXSIZE  = 127,
     rpcINVALID_TRANSACTION      = 128,
 
-    rpcBAD_PROOF             = 129,
+    rpcUNRELIABLE_LEDGER_HEADER = 129,
+    rpcTX_HASH_NOT_MATCH        = 130,
+    rpcTX_NODEHASH_NOT_MATCH    = 131,
+    rpcBAD_PROOF                = 132,
     
     rpcLAST = rpcBAD_PROOF  // rpcLAST should always equal the last code.=
 };

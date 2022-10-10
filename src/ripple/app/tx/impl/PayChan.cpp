@@ -189,6 +189,10 @@ TER
 PayChanCreate::preclaim(PreclaimContext const& ctx)
 {
     auto const account = ctx.tx[sfAccount];
+    auto const dst = ctx.tx[sfDestination];
+    auto checkRet = checkAuthority(ctx, account, lsfPaymentAuth, dst);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
     auto const sle = ctx.view.read(keylet::account(account));
     if (!sle)
         return terNO_ACCOUNT;
@@ -205,8 +209,6 @@ PayChanCreate::preclaim(PreclaimContext const& ctx)
         if (balance < reserve + ctx.tx[sfAmount])
             return tecUNFUNDED;
     }
-
-    auto const dst = ctx.tx[sfDestination];
 
     {
         // Check destination account
@@ -307,6 +309,18 @@ PayChanFund::preflight(PreflightContext const& ctx)
         return temBAD_AMOUNT;
 
     return preflight2(ctx);
+}
+
+TER
+PayChanFund::preclaim(PreclaimContext const& ctx)
+{
+    Keylet const k(ltPAYCHAN, ctx.tx[sfPayChannel]);
+    auto const slep = ctx.view.read(k);
+    if (!slep)
+        return tecNO_TARGET;
+    AccountID const dst = (*slep)[sfDestination];
+    return checkAuthority(
+        ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth, dst);
 }
 
 TER
@@ -438,6 +452,18 @@ PayChanClaim::preflight(PreflightContext const& ctx)
     }
 
     return preflight2(ctx);
+}
+
+TER
+PayChanClaim::preclaim(PreclaimContext const& ctx)
+{
+    Keylet const k(ltPAYCHAN, ctx.tx[sfPayChannel]);
+    auto const slep = ctx.view.read(k);
+    if (!slep)
+        return tecNO_TARGET;
+    AccountID const dst = (*slep)[sfDestination];
+    return checkAuthority(
+        ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth, dst);
 }
 
 TER

@@ -104,6 +104,10 @@ public:
     bool
     isThreadedType() const;
 
+    // Whether to save into meta
+    bool
+    isHideInMeta() const;
+
     bool
     thread(
         uint256 const& txID,

@@ -204,6 +204,11 @@ public:
     setWaitinBeginConsensus();
 
 private:
+    // for fixing an issue is a lock re-entry
+	bool
+    load(std::vector<std::string> const& siteURIs,
+        std::lock_guard<std::mutex>& sites_lock);
+
     /// Queue next site to be fetched
     /// lock over state_mutex_ required
     void
@@ -258,7 +263,7 @@ private:
     /// If no sites are provided, or a site fails to load,
     /// get a list of local cache files from the ValidatorList.
     bool
-    missingSite();
+    missingSite(std::lock_guard<std::mutex>& sites_lock);
 };
 
 }  // namespace ripple

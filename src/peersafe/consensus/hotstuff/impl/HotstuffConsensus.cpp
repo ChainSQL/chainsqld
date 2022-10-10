@@ -26,9 +26,6 @@
 
 namespace ripple {
 
-extern uint256
-calculateLedgerHash(LedgerInfo const& info);
-
 HotstuffConsensus::HotstuffConsensus(
     Adaptor& adaptor,
     clock_type const& clock,
@@ -241,7 +238,7 @@ HotstuffConsensus::gotTxSet(
             adaptor_.getJobQueue().addJob(
                 jtACCEPT, "handle_proposal", [=](Job&) {
                     this->hotstuff_->handleProposal(it.second->block());
-                });
+                }, adaptor_.app_.doJobCounter());
             //hotstuff_->handleProposal(it.second->block());
         else
             JLOG(j_.warn()) << "proposal for txSet " << id << " is stale";
@@ -642,10 +639,10 @@ HotstuffConsensus::syncState(const hotstuff::BlockInfo& prevInfo)
         prevInfo.ledger_info.seq == previousLedger_.seq() &&
         adaptor_.parms().omitEMPTY && prevInfo.round > 0)
     {
-        adaptor_.onConsensusReached(bWaitingInit_, previousLedger_, newRound_);
-        if (bWaitingInit_)
+        adaptor_.onConsensusReached(waitingConsensusReach_, previousLedger_, newRound_);
+        if (waitingConsensusReach_)
         {
-            bWaitingInit_ = false;
+            waitingConsensusReach_ = false;
         }
     }
 
@@ -812,7 +809,7 @@ HotstuffConsensus::broadcast(
         jtACCEPT, "handle_proposal", [this, block](Job&) {
             //ScopedLockType _(this->adaptor_.peekConsensusMutex());
             this->hotstuff_->handleProposal(block);
-        });
+        }, adaptor_.app_.doJobCounter());
 }
 
 void
@@ -829,7 +826,7 @@ HotstuffConsensus::broadcast(
         jtCONSENSUS_t, "broadcast_vote", [this, vote, syncInfo](Job&) {
             ScopedLockType _(this->adaptor_.peekConsensusMutex());
             this->hotstuff_->handleVote(vote, syncInfo);
-        });
+        }, adaptor_.app_.doJobCounter());
 }
 
 void
@@ -844,7 +841,7 @@ HotstuffConsensus::sendVote(
             jtCONSENSUS_t, "send_vote", [this, vote, syncInfo](Job&) {
                 ScopedLockType _(this->adaptor_.peekConsensusMutex());
                 this->hotstuff_->handleVote(vote, syncInfo);
-            });
+            }, adaptor_.app_.doJobCounter());
     }
     else
     {
@@ -880,7 +877,13 @@ HotstuffConsensus::broadcast(
                     ConsensusMode::switchedLedger,
                     true);
             }
-        });
+        }, adaptor_.app_.doJobCounter());
+}
+
+std::chrono::milliseconds 
+HotstuffConsensus::getConsensusTimeOut() const
+{
+    return adaptor_.parms().consensusTIMEOUT;
 }
 
 // -------------------------------------------------------------------
@@ -1061,7 +1064,7 @@ HotstuffConsensus::peerProposalInternal(STProposal::ref proposal)
 
     adaptor_.getJobQueue().addJob(jtACCEPT, "handle_proposal", [=](Job&) {
         this->hotstuff_->handleProposal(proposal->block());
-    });
+    }, adaptor_.app_.doJobCounter());
     //hotstuff_->handleProposal(proposal->block());
 }
 

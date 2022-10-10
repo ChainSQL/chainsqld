@@ -159,7 +159,13 @@ EscrowCreate::preflight(PreflightContext const& ctx)
 
     return preflight2(ctx);
 }
-
+TER
+EscrowCreate::preclaim(PreclaimContext const& ctx)
+{
+    auto const& dest = ctx.tx[sfDestination];
+    return checkAuthority(
+        ctx, ctx.tx.getAccountID(sfAccount), lsfPaymentAuth, dest);
+}
 TER
 EscrowCreate::doApply()
 {
@@ -447,6 +453,21 @@ EscrowFinish::preflight(PreflightContext const& ctx)
     }
 
     return tesSUCCESS;
+}
+
+TER
+EscrowFinish::preclaim(PreclaimContext const& ctx)
+{
+    auto const k = keylet::escrow(ctx.tx[sfOwner], ctx.tx[sfOfferSequence]);
+    auto const slep = ctx.view.read(k);
+    if (!slep)
+    {
+        return tecNO_TARGET;
+    }
+
+    AccountID const account = (*slep)[sfAccount];
+    AccountID const& dest = (*slep)[sfDestination];
+    return checkAuthority(ctx, account, lsfPaymentAuth, dest);
 }
 
 FeeUnit64

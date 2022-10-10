@@ -106,7 +106,11 @@ enum LedgerEntryType {
 
     ltSCHEMA_INDEX = 'k',
 
-    ltTABLE = 't'
+    ltTABLE = 't',
+
+    ltSTATIS = 'I',
+
+    ltTABLEGRANT = 'G'
 };
 
 /**
@@ -126,6 +130,12 @@ enum LedgerSpecificFlags {
     lsfDefaultRipple =
         0x00800000,               // True, trust lines allow rippling by default
     lsfDepositAuth = 0x01000000,  // True, all deposits require authorization
+
+    lsfPaymentAuth = 0x00000001,  // True, Transfer authorize
+    lsfDeployContractAuth = 0x00000002,  // True, Deploy contract authorize 
+    lsfCreateTableAuth = 0x00000004,  // True, Create table authorize 
+    lsfIssueCoinsAuth = 0x00000008,  // True, Token issuance authority
+    lsfAdminAuth = 0x00000010,  // True, admin Authorize 
 
     // ltOFFER
     lsfPassive = 0x00010000,

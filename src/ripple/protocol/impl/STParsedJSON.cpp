@@ -32,6 +32,7 @@
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/protocol/STPathSet.h>
 #include <ripple/protocol/STVector256.h>
+#include <peersafe/protocol/STMap256.h>
 #include <ripple/protocol/TER.h>
 #include <ripple/protocol/TxFormats.h>
 #include <ripple/protocol/UintTypes.h>
@@ -761,6 +762,48 @@ parseLeaf(
             }
         }
         break;
+
+        case STI_MAP256:
+        {
+            if (!value.isObjectOrNull())
+            {
+                error = not_an_object(json_name, fieldName);
+                return ret;
+            }
+
+            try
+            {
+                STMap256 map256(field);
+                for (auto const& fieldName : value.getMemberNames())
+                {
+                    if (!value[fieldName].isString())
+                    {
+                        error = bad_type(json_name, fieldName);
+                        return ret;
+                    }
+                    uint256 v;
+                    v.SetHex(value[fieldName].asString());
+                    if (fieldName == jss::hash)
+                    {
+                        map256.updateRoot(v);
+                        break;
+                    }
+                    else
+                    {
+                        uint256 k;
+                        k.SetHex(fieldName);
+                        map256[k] = v;
+                    }
+                }
+                ret = detail::make_stvar<STMap256>(std::move(map256));
+            }
+            catch (std::exception const&)
+            {
+                error = invalid_data(json_name, fieldName);
+                return ret;
+            }
+            break;
+        }
 
         default:
             error = bad_type(json_name, fieldName);

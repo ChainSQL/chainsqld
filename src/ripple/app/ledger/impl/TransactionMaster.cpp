@@ -25,6 +25,7 @@
 #include <ripple/basics/chrono.h>
 #include <peersafe/schema/Schema.h>
 #include <ripple/protocol/STTx.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 
 namespace ripple {
 
@@ -65,20 +66,20 @@ TransactionMaster::getTxCount(bool chainsql, int ledgerIndex)
         if (ledgerIndex > 0)
         {
             sql += " and LedgerSeq <=";
-            sql += ledgerIndex;
+            sql += std::to_string(ledgerIndex);
         }
 	}
     else if (ledgerIndex > 0)
     {
         sql += "WHERE LedgerSeq <=";
-        sql += ledgerIndex;
+        sql += std::to_string(ledgerIndex);
     }
-   
+
 	sql += ";";
 
 	boost::optional<int> txCount;
 	{
-		auto db = mApp.getTxnDB().checkoutDb();
+		auto db = mApp.getTxnDB().checkoutDbRead();
 		*db << sql,
 			soci::into(txCount);
 
@@ -220,14 +221,17 @@ TxStore& TransactionMaster::getConsensusTxStore()
 }
 
 void
-TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction)
+TransactionMaster::canonicalize(std::shared_ptr<Transaction>* pTransaction,bool bReplace /* = false */)
 {
     uint256 const tid = (*pTransaction)->getID();
     if (tid != beast::zero)
     {
         auto txn = *pTransaction;
         // VFALCO NOTE canonicalize can change the value of txn!
-        mCache.canonicalize_replace_client(tid, txn);
+        if (!bReplace)
+            mCache.canonicalize_replace_client(tid, txn);
+        else
+            mCache.canonicalize_replace_cache(tid, txn);
         *pTransaction = txn;
     }
 }

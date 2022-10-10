@@ -313,6 +313,7 @@ message TMGetObjectByHash
         otSTATE_NODE        = 4;
         otCAS_OBJECT        = 5;
         otFETCH_PACK        = 6;
+		otCONTRACT_NODE		= 7;
     }
 
     required ObjectType type            = 1;
@@ -338,6 +339,7 @@ enum TMLedgerInfoType
     liAS_NODE       = 2;        // account state node
     liTS_CANDIDATE  = 3;        // candidate transaction set
     liSKIP_NODE     = 4;
+	liCONTRACT_NODE	= 5;		// contract storage node
 }
 
 enum TMLedgerType
@@ -363,6 +365,7 @@ message TMGetLedger
     optional TMQueryType queryType  = 7;
     optional uint32 queryDepth      = 8;    // How deep to go, number of extra levels
 	required bytes schemaId			= 9;
+	optional bytes rootHash			= 10; 	// For contract storage map,need to specify which map we are requesting for.
 }
 
 message TMGetTable
@@ -371,7 +374,7 @@ message TMGetTable
     optional bytes ledgerHash       = 2;
     required uint32 ledgerCheckSeq  = 3;	
     optional bytes ledgerCheckHash  = 4;  
-    required bytes tablename        = 5;
+    required bytes nameInDB         = 5;
     required bytes account          = 6;
     optional uint32 ledgerStopSeq   = 7;     
     required bool getLost           = 8;
@@ -395,6 +398,7 @@ message TMLedgerData
     optional uint32 requestCookie   = 5;
     optional TMReplyError error     = 6;
 	required bytes schemaId			= 7;
+	optional bytes rootHash			= 8; 	// For contract storage map,need to specify which map we are replying for.
 }
 
 message TMTableData
@@ -404,7 +408,7 @@ message TMTableData
     required bytes        ledgerCheckHash     = 3;
     required uint32       lastLedgerSeq       = 4;
     required bytes        lastLedgerHash      = 5;
-    required bytes        tablename           = 6;
+    required bytes        nameInDB            = 6;
     required bytes        account             = 7;
     repeated TMLedgerNode txNodes             = 8;
     required bool         seekStop            = 9;

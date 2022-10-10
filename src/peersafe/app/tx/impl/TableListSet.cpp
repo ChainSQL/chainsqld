@@ -70,6 +70,60 @@ namespace ripple {
 		return false;
 	}
 
+    uint32_t
+        getFinalFlag(STTx const& tx,bool bHasSameUser,STObject const& user)
+    {
+        uint32_t uAdd = 0, uCancel = 0;
+        auto optype = tx.getFieldU16(sfOpType);
+        getGrantFlag(tx, uAdd, uCancel);
+        uint32_t finalFlag = 0;
+        if (bHasSameUser)
+        {
+            auto newFlags = user.getFieldU32(sfFlags);
+            if (optype == T_ASSIGN)
+            {
+                if (tx.isFieldPresent(sfFlags))
+                {
+                    newFlags = newFlags |
+                        tx.getFieldU32(sfFlags);  // add auth of this user
+                }
+            }
+            else if (optype == T_CANCELASSIGN)
+            {
+                if (tx.isFieldPresent(sfFlags))
+                {
+                    newFlags = newFlags &
+                        (~tx.getFieldU32(sfFlags));  // cancel auth of this user
+                }
+            }
+            else  // grant optype
+            {
+                newFlags |= uAdd;
+                newFlags &= ~uCancel;
+            }
+            finalFlag = newFlags;
+        }
+        else
+        {
+            if (optype == T_ASSIGN)
+            {
+                if (tx.isFieldPresent(sfFlags))
+                {
+                    finalFlag = tx.getFieldU32(sfFlags);
+                }
+            }
+            else if (optype == T_CANCELASSIGN)
+            {
+                finalFlag = lsfNone;
+            }
+            else
+            {
+                finalFlag = (uAdd & ~uCancel);
+            }
+        }
+        return finalFlag;
+    }
+
 	NotTEC
         TableListSet::preflightHandler(const STTx & tx, Schema& app)
     {
@@ -225,6 +279,95 @@ namespace ripple {
     }
 
     void
+    setTableGrant(const STTx& tx, STObject& obj,uint32_t finalFlag,bool bGrantEnabled)
+    {
+        if (bGrantEnabled)
+        {
+            auto tables = tx.getFieldArray(sfTables);
+            obj.setFieldH160(sfNameInDB, tables[0].getFieldH160(sfNameInDB));
+        }        
+
+        if (tx.getFieldU16(sfOpType) == T_GRANT)  // preflight assure sfUser and sfFlags
+                                        // exist together or not exist at all
+        {
+            obj.setAccountID(sfUser, tx.getAccountID(sfUser));
+            obj.setFieldU32(sfFlags, finalFlag);
+        }
+        else if (tx.getFieldU16(sfOpType) == T_CREATE)
+        {
+            obj.setAccountID(sfUser, tx.getAccountID(sfAccount));
+            obj.setFieldU32(sfFlags, lsfAll);
+        }
+
+        // cipher encrypted by user's publickey
+        if (tx.isFieldPresent(sfToken) && tx.getFieldVL(sfToken).size() > 0)
+        {
+            obj.setFieldVL(sfToken, tx.getFieldVL(sfToken));
+        }
+    }
+
+    TER
+    addSleToDir(
+        AccountID const& accountId,
+        ApplyView& view,
+        std::shared_ptr<SLE> pSle,
+        beast::Journal viewJ)
+    {
+        if (pSle != nullptr)
+        {
+            auto result = dirAdd(
+                view,
+                keylet::ownerDir(accountId),
+                pSle->key(),
+                false,
+                describeOwnerDir(accountId),
+                viewJ);
+
+            if (!result)
+                return tecDIR_FULL;
+            (*pSle)[sfOwnerNode] = *result;
+            view.insert(pSle);
+        }
+        return tesSUCCESS;
+    }
+
+    void
+    getRelatedGrantSles(
+        AccountID const& accountId,
+        ApplyView& view,
+        STObject* pEntry,
+        std::vector<std::shared_ptr<SLE>>& vecDel)
+    {
+        auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+
+        // Need non-const sle-pointer,so not use foreachItem
+        auto ownerDir = keylet::ownerDir(accountId);
+        auto pos = ownerDir;
+        for (;;)
+        {
+            auto sle = view.read(pos);
+            if (!sle)
+                return;
+
+            for (auto const& key : sle->getFieldV256(sfIndexes))
+            {
+                auto sleNode = view.peek(keylet::child(key));
+                if (!sle)
+                    return;
+                if (sleNode->getType() == ltTABLEGRANT &&
+                    sleNode->getFieldH160(sfNameInDB) == nameInDB)
+                {
+                    vecDel.push_back(sleNode);
+                }
+            }
+            auto const next = sle->getFieldU64(sfIndexNext);
+            if (!next)
+                break;
+            pos = keylet::page(ownerDir, next);
+        }
+    }
+
+    void
         TableListSet::prepareTableEntry(const STTx &tx, ApplyView& view,STObject * pEntry)  //preflight assure sfTables must exist
     {
         STEntry obj_tableEntry;
@@ -237,27 +380,17 @@ namespace ripple {
         ripple::uint256 createdLedgerHash = view.info().hash; createdLedgerHash--; 
         uint256 hashNew = sha512Half(makeSlice(strCopy(tx.getFieldVL(sfRaw))));
 
-        STArray users;//store Users
-        STObject obj_user(sfUser);
-
-        if (tx.isFieldPresent(sfUser))//preflight assure sfUser and sfFlags exist together or not exist at all
+        if (!view.rules().enabled(featureTableGrant))
         {
-            obj_user.setAccountID(sfUser, tx.getAccountID(sfUser));
-            obj_user.setFieldU32(sfFlags, tx.getFieldU32(sfFlags));
-        }
-        else
-        {
-            obj_user.setAccountID(sfUser, tx.getAccountID(sfAccount));
-            obj_user.setFieldU32(sfFlags, lsfAll);
-            //cipher encrypted by user's publickey
-            if (tx.isFieldPresent(sfToken) && tx.getFieldVL(sfToken).size() > 0)
-            {
-                obj_user.setFieldVL(sfToken, tx.getFieldVL(sfToken));
-            }
-        }
+            STArray users;//store Users
+            STObject obj_user(sfUser);
 
-        users.push_back(obj_user);
+            setTableGrant(tx, obj_user,0,false);
 
+            users.push_back(obj_user);
+            pEntry->setFieldArray(sfUsers, users);
+        }
+       
         // if (tableName == NUll ) then set to null ,no exception
         pEntry->setFieldVL(sfTableName, tableName);  
         pEntry->setFieldH160(sfNameInDB, nameInDB);
@@ -269,10 +402,8 @@ namespace ripple {
         pEntry->setFieldU32(sfPreviousTxnLgrSeq, 0);
         pEntry->setFieldH256(sfPrevTxnLedgerHash, beast::zero);
         pEntry->setFieldH256(sfTxCheckHash, hashNew);
-        pEntry->setFieldArray(sfUsers, users);
 		if (tx.isFieldPresent(sfOperationRule))
 			STEntry::initOperationRule(*pEntry,tx.getFieldVL(sfOperationRule));
-	
     }
 
     TER
@@ -290,14 +421,12 @@ namespace ripple {
 
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
-        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
-
 
         auto tup = getTableEntry(view, tx);
         auto pEntry = std::get<1>(tup);
         auto tableEntries = std::get<2>(tup);
         if (!pEntry && optype >= T_DROP)
-            ret = tefTABLE_NOTEXIST;
+            return tefTABLE_NOTEXIST;
 
         if (optype == T_REPORT)
             return tesSUCCESS;
@@ -306,7 +435,8 @@ namespace ripple {
         {
         case T_CREATE:
         {
-
+            bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
+            auto const sleAccount = view.read(keylet::account(sourceID));
 			if (!bSleChangeEnabled &&
                 tableEntries != nullptr &&
                 (*tableEntries).size() >= ACCOUNT_OWN_TABLE_COUNT)
@@ -315,11 +445,15 @@ namespace ripple {
             if (pEntry != NULL)                
                 ret = tefTABLE_EXISTANDNOTDEL;
 
-			auto const sleAccount = view.read(keylet::account(sourceID));
+			
 			// Check reserve and funds availability
 			{
+                 bool isContract = false;
+                 if (sleAccount->isFieldPresent(sfContractCode))
+                    isContract = true;
+		
 				auto const reserve = view.fees().accountReserve(
-					(*sleAccount)[sfOwnerCount] + 1);
+					(*sleAccount)[sfOwnerCount] + 1, isContract);
 				STAmount priorBalance = STAmount((*sleAccount)[sfBalance]).zxc();
 				if (priorBalance < reserve)
 					return tefINSU_RESERVE_TABLE;
@@ -442,12 +576,11 @@ namespace ripple {
                 return tefTABLE_NOTEXIST;
             }
 
-            if (!pEntry->isFieldPresent(sfUsers))
-            {
-                return tefTABLE_STATEERROR;
-            }
+            //if (!pEntry->isFieldPresent(sfUsers))
+            //{
+            //    return tefTABLE_STATEERROR;
+            //}
 
-            auto& users = pEntry->getFieldArray(sfUsers);
 
             if (!tx.isFieldPresent(sfUser))
             {
@@ -469,35 +602,55 @@ namespace ripple {
                 return temMALFORMED;
             }
 
-                    
-            bool isSameUser = false;
-            for (auto & user : users)  //check if there same user
+            if (pEntry->isFieldPresent(sfUsers))
             {
-                auto userID = user.getAccountID(sfUser);
-                if (userID == addUserID)
+                auto& users = pEntry->getFieldArray(sfUsers);
+                bool isSameUser = false;
+                for (auto& user : users)  // check if there same user
                 {
-                    isSameUser = true;
-					break;
+                    auto userID = user.getAccountID(sfUser);
+                    if (userID == addUserID)
+                    {
+                        isSameUser = true;
+                        break;
+                    }
+                }
+
+                if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
+                    return tefTABLE_GRANTFULL;
+
+                {
+                    // for the first time to assign to one user
+                    if (users.size() > 0 && users[0].isFieldPresent(sfToken))
+                    {
+                        // cannot grant for 'everyone' if table is confidential
+                        if (addUserID == noAccount())
+                            return temINVALID;
+                        if (!tx.isFieldPresent(sfToken) ||
+                            tx.getFieldVL(sfToken).size() == 0)
+                            return temINVALID;
+                    }
                 }
             }
-                    
-			if (!isSameUser && users.size() - 1 >= TABLE_GRANT_COUNT)
-				return tefTABLE_GRANTFULL;
-
+            else
             {
-                //for the first time to assign to one user
-                if (users.size() > 0 && users[0].isFieldPresent(sfToken))
+                auto keylet = keylet::tablegrant(
+                    sourceID,
+                    strCopy(tables[0].getFieldVL(sfTableName)),
+                    sourceID);
+                auto pSle = view.read(keylet);
+                if (pSle && pSle->isFieldPresent(sfToken) &&
+                    pSle->getFieldVL(sfToken).size() != 0)
                 {
-					//cannot grant for 'everyone' if table is confidential
-					if (addUserID == noAccount())
-						return temINVALID;
-                    if (!tx.isFieldPresent(sfToken) || tx.getFieldVL(sfToken).size() == 0)
+                    if (addUserID == noAccount())
+                        return temINVALID;
+                    if (!tx.isFieldPresent(sfToken) ||
+                        tx.getFieldVL(sfToken).size() == 0)
                         return temINVALID;
                 }
-                ret = tesSUCCESS;
             }
 
-
+            ret = tesSUCCESS;
             break;
         }
         case T_RECREATE:
@@ -525,6 +678,13 @@ namespace ripple {
     TER
         TableListSet::preclaim(PreclaimContext const& ctx)  //just do some pre job
     {
+        if (ctx.tx.getFieldU16(sfOpType) == T_CREATE)
+        {
+            auto checkRet = checkAuthority(ctx, ctx.tx.getAccountID(sfAccount), lsfCreateTableAuth);
+            if (checkRet != tesSUCCESS)
+                return checkRet;
+        }
+
         auto tmpret = preclaimHandler(ctx.view, ctx.tx, ctx.app);
         if (!isTesSuccess(tmpret))
             return tmpret;
@@ -545,7 +705,6 @@ namespace ripple {
         auto tables = tx.getFieldArray(sfTables);
         Blob vTableNameStr = tables[0].getFieldVL(sfTableName);
         auto sTableName = strCopy(vTableNameStr);
-        bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
 
         STObject* pEntry = nullptr;
         STArray* tableEntries = nullptr;
@@ -569,7 +728,10 @@ namespace ripple {
         {
         case T_CREATE:
 		{
+            bool bTableGrantEnabled = view.rules().enabled(featureTableGrant);
+            bool bSleChangeEnabled = view.rules().enabled(featureTableSleChange);
             std::shared_ptr<SLE> tableSle = nullptr;
+            std::shared_ptr<SLE> tableGrantSle = nullptr;
             if (!bSleChangeEnabled)
             {
                 STEntry tableEntry;
@@ -599,24 +761,26 @@ namespace ripple {
                 prepareTableEntry(tx, view, &tableEntry);
                 tableSle->setFieldObject(sfTableEntry, tableEntry);
             }
-            if (tableSle != nullptr)
+            if (bTableGrantEnabled)
             {
-                auto result = dirAdd(
-                    view,
-                    keylet::ownerDir(accountId),
-                    tableSle->key(),
-                    false,
-                    describeOwnerDir(accountId),
-                    viewJ);
-
-                if (!result)
-                    return tecDIR_FULL;
-                (*tableSle)[sfOwnerNode] = *result;
-                view.insert(tableSle);
+                Keylet key = keylet::tablegrant(accountId, sTableName, accountId);
+                tableGrantSle = std::make_shared<SLE>(ltTABLEGRANT, key.key);
+                setTableGrant(tx,*tableGrantSle,0,true);
+                terResult = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                if (terResult != tesSUCCESS)
+                    return terResult;
             }
+
+            terResult = addSleToDir(accountId, view, tableSle, viewJ);
+            if (terResult != tesSUCCESS)
+                return terResult;
+
 			//add owner count
 			auto const sleAccount = view.peek(keylet::account(accountId));
 			adjustOwnerCount(view, sleAccount, 1, viewJ);
+            if (tableGrantSle != nullptr)
+                adjustOwnerCount(view, sleAccount, 1, viewJ);
+            
 			break;
 		}
         case T_DROP:
@@ -642,7 +806,7 @@ namespace ripple {
             }
             else if (tableSleExist && pEntry)
             {
-                Keylet key = keylet::table(accountId, sTableName);
+//                Keylet key = keylet::table(accountId, sTableName);
                 if (!view.dirRemove(
                         keylet::ownerDir(accountId),
                         (*tableSleExist)[sfOwnerNode],
@@ -659,6 +823,34 @@ namespace ripple {
             {
 				auto const sleAccount = view.peek(keylet::account(accountId));
 				adjustOwnerCount(view, sleAccount, -1, viewJ);
+
+                //Remove related TableGrant sles and directory node
+                if (!pEntry->isFieldPresent(sfUsers))
+                {
+//                    auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+                    std::vector<std::shared_ptr<SLE>> vecDel;
+
+                    //Need non-const sle-pointer,so not use foreachItem
+                    getRelatedGrantSles(accountId, view, pEntry, vecDel);
+                    if (!vecDel.empty())
+                    {
+                        auto ownerDir = keylet::ownerDir(accountId);
+                        for (auto sleNode : vecDel)
+                        {
+                            if (!view.dirRemove(
+                                    ownerDir,
+                                    (*sleNode)[sfOwnerNode],
+                                    sleNode->key(),
+                                    true))
+                            {
+                                return tefBAD_LEDGER;
+                            }
+                            view.erase(sleNode);
+                        }
+                        adjustOwnerCount(
+                            view, sleAccount, -1 * vecDel.size(), viewJ);
+                    }
+                }                
 			}
 
             break;
@@ -685,21 +877,9 @@ namespace ripple {
                     tableSle = std::make_shared<SLE>(ltTABLE, key.key);
                     tableSle->setFieldObject(sfTableEntry, *pEntry);
             
-                    if (tableSle != nullptr)
-                    {
-                        auto result = dirAdd(
-                            view,
-                            keylet::ownerDir(accountId),
-                            tableSle->key(),
-                            false,
-                            describeOwnerDir(accountId),
-                            viewJ);
-
-                        if (!result)
-                            return tecDIR_FULL;
-                        (*tableSle)[sfOwnerNode] = *result;
-                        view.insert(tableSle);
-                    }
+                    terResult = addSleToDir(accountId, view, tableSle, viewJ);
+                    if (terResult != tesSUCCESS)
+                        return terResult;
                     //delete old tablesle
                     // Keylet oldKey = keylet::table(accountId, sTableName);
                     if (!view.dirRemove(
@@ -711,6 +891,47 @@ namespace ripple {
                         return tefBAD_LEDGER;
                     }
                     view.erase(tableSleExist);
+                }
+
+                if (pEntry->isFieldPresent(sfUsers))
+                    break;
+                //Delete and re-add TableGrant sles
+                auto nameInDB = pEntry->getFieldH160(sfNameInDB);
+                std::vector<std::shared_ptr<SLE>> vecDel;
+
+                // Need non-const sle-pointer,so not use foreachItem
+                getRelatedGrantSles(accountId, view, pEntry, vecDel);
+                if (!vecDel.empty())
+                {
+                    auto sTableNewName = strCopy(tableNewName);
+                    auto ownerDir = keylet::ownerDir(accountId);
+                    for (auto sleNode : vecDel)
+                    {
+                        Keylet key = keylet::tablegrant(
+                            accountId,
+                            sTableNewName,
+                            sleNode->getAccountID(sfUser));
+                        auto tableGrantSle =
+                            std::make_shared<SLE>(ltTABLEGRANT, key.key);
+                        tableGrantSle->setAccountID(sfUser, sleNode->getAccountID(sfUser));
+                        tableGrantSle->setFieldU32(sfFlags, sleNode->getFieldU32(sfFlags));
+                        tableGrantSle->setFieldH160(sfNameInDB, nameInDB);
+                        if (sleNode->isFieldPresent(sfToken))
+                            tableGrantSle->setFieldVL(sfToken, sleNode->getFieldVL(sfToken));
+                        auto ret = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                        if (ret != tesSUCCESS)
+                            return ret;
+
+                        if (!view.dirRemove(
+                                ownerDir,
+                                (*sleNode)[sfOwnerNode],
+                                sleNode->key(),
+                                true))
+                        {
+                            return tefBAD_LEDGER;
+                        }
+                        view.erase(sleNode);
+                    }
                 }
             }
             
@@ -724,80 +945,58 @@ namespace ripple {
 			{
 				return tesSUCCESS;
 			}
-			uint32_t uAdd = 0, uCancel = 0;
-			getGrantFlag(tx, uAdd, uCancel);
+            
+            auto addUserID = tx.getAccountID(sfUser);
+	        uint32_t finalFlag = lsfNone;
+            if (pEntry->isFieldPresent(sfUsers))
             {
-                if (pEntry->isFieldPresent(sfUsers))
+                auto& users = pEntry->peekFieldArray(sfUsers);
+                bool isSameUser = false;
+                for (auto & user : users)  //check if there same user
                 {
-                    auto& users = pEntry->peekFieldArray(sfUsers);
-
-                    if (tx.isFieldPresent(sfUser))
+                    auto userID = user.getAccountID(sfUser);
+                    if (userID == addUserID)
                     {
-                        auto  addUserID = tx.getAccountID(sfUser);
-
-                        bool isSameUser = false;
-						uint32_t finalFlag = lsfNone;
-                        for (auto & user : users)  //check if there same user
-                        {
-                            auto userID = user.getAccountID(sfUser);
-                            if (userID == addUserID)
-                            {
-                                isSameUser = true;
-
-								auto newFlags = user.getFieldU32(sfFlags);
-                                if (optype == T_ASSIGN)
-                                {                                        
-                                    if (tx.isFieldPresent(sfFlags))
-                                    {
-                                        newFlags = newFlags | tx.getFieldU32(sfFlags); //add auth of this user                                            
-                                    }
-                                }
-								else if (optype == T_CANCELASSIGN)
-								{										
-									if (tx.isFieldPresent(sfFlags))
-									{
-										newFlags = newFlags & (~tx.getFieldU32(sfFlags));   //cancel auth of this user											
-									}
-								}
-								else   //grant optype
-								{
-									newFlags |= uAdd;
-									newFlags &= ~uCancel;
-								}
-								finalFlag = newFlags;
-								user.setFieldU32(sfFlags, newFlags);
-								break;
-                            }
-                        }
-                        if (!isSameUser)  //mean that there no same user
-                        {
-                            // Optype must be t_grant(preclaim assure that),just add a new user
-                            STObject obj_user(sfUser);
-                            if (tx.isFieldPresent(sfUser))
-                                obj_user.setAccountID(sfUser, tx.getAccountID(sfUser));
-							if(optype == T_ASSIGN)
-							{
-								if (tx.isFieldPresent(sfFlags))
-								{
-									finalFlag = tx.getFieldU32(sfFlags);										
-								}
-							}
-                            else if (optype == T_CANCELASSIGN)
-                            {
-                                finalFlag = lsfNone;
-                            }
-							else
-							{
-								finalFlag = (uAdd & ~uCancel);									
-							}
-                            obj_user.setFieldU32(sfFlags, finalFlag);
-
-							if (tx.isFieldPresent(sfToken))
-								obj_user.setFieldVL(sfToken,tx.getFieldVL(sfToken));
-                            users.push_back(obj_user);
-						}
-                        view.update(tableSleExist);
+                        isSameUser = true;
+                        finalFlag = getFinalFlag(tx, true, user);
+                        user.setFieldU32(sfFlags, finalFlag);
+						break;
                     }
+                }
+                if (!isSameUser)  //mean that there no same user
+                {
+                    // Optype must be t_grant(preclaim assure that),just add a new user
+                    STObject obj_user(sfUser);
+                    finalFlag = getFinalFlag(tx, false, obj_user);
+                    setTableGrant(tx, obj_user, finalFlag, false);
+                    users.push_back(obj_user);
+				}
+                view.update(tableSleExist);
+            }
+            else
+            {
+                auto keylet = keylet::tablegrant(
+                    accountId,
+                    strCopy(tables[0].getFieldVL(sfTableName)),
+                    addUserID);
+                auto pSle = view.peek(keylet);
+                if (pSle)
+                {
+                    finalFlag = getFinalFlag(tx, true, *pSle);
+                    pSle->setFieldU32(sfFlags, finalFlag);
+                    view.update(pSle);
+                }
+                else
+                {
+                    auto tableGrantSle = std::make_shared<SLE>(ltTABLEGRANT, keylet.key);
+                    finalFlag = getFinalFlag(tx, false, *tableGrantSle);
+                    setTableGrant(tx, *tableGrantSle, finalFlag, true);
+
+                    terResult = addSleToDir(accountId, view, tableGrantSle, viewJ);
+                    if (terResult != tesSUCCESS)
+                        return terResult;
+                    auto const sleAccount = view.peek(keylet::account(accountId));
+                    adjustOwnerCount(view, sleAccount, 1, viewJ);
                 }
             }
             break;
@@ -811,11 +1010,233 @@ namespace ripple {
             view.update(tableSleExist);
             break;
         }
+        case T_DELETE_FIELDS:
+        {
+            updateOperationRules(pEntry, tx);
+            view.update(tableSleExist);
+            break;
+        }
+        case T_ADD_FIELDS:
+        case T_MODIFY_FIELDS:
+        case T_CREATE_INDEX:
+        case T_DELETE_INDEX:
+            view.update(tableSleExist);
+            break;
         default:
             break;
         }
 
         return terResult;
+    }
+
+    void TableListSet::updateOperationRules(STObject* pEntry, const STTx& tx)
+    {
+        auto opType = tx.getFieldU16(sfOpType);
+        if (opType != (int)T_DELETE_FIELDS)
+            return;
+
+        auto sRaw = strCopy(tx.getFieldVL(sfRaw));
+        Json::Value jsonRaw;
+        if (Json::Reader().parse(sRaw, jsonRaw) == false)
+            return;
+        assert(jsonRaw.isArray());
+
+        STObject operationRuleObject(sfRules);
+        for (Json::UInt i = 0; i < jsonRaw.size(); i++) 
+        {
+            Json::Value& item = jsonRaw[i];
+            if (item.isMember(jss::field) == false)
+                continue;
+            Json::Value& field = item[jss::field];
+            assert(field.isString());
+            auto fieldName = field.toStyledString();
+            if (fieldName.empty())
+                continue;
+
+            Json::Value insertionRule;
+            if (updateOperationRuleForInserting(
+                fieldName,
+                pEntry,
+                insertionRule))
+            {
+                std::string rule = insertionRule.toStyledString();
+                operationRuleObject.setFieldVL(sfInsertRule, strCopy(rule));
+            }
+
+            Json::Value updateRule;
+            if (updateOperationRuleForUpdating(
+                fieldName,
+                pEntry,
+                updateRule))
+            {
+                std::string rule = updateRule.toStyledString();
+                operationRuleObject.setFieldVL(sfUpdateRule, strCopy(rule));
+            }
+
+            Json::Value deleteRule;
+            if (updateOperationRuleForDeletingOrGet(
+                fieldName,
+                pEntry,
+                (TableOpType)R_DELETE,
+                deleteRule))
+            {
+                std::string rule = deleteRule.toStyledString();
+                operationRuleObject.setFieldVL(sfDeleteRule, strCopy(rule));
+            }
+
+            Json::Value getRule;
+            if (updateOperationRuleForDeletingOrGet(
+                fieldName,
+                pEntry,
+                (TableOpType)R_GET,
+                getRule))
+            {
+                std::string rule = getRule.toStyledString();
+                operationRuleObject.setFieldVL(sfGetRule, strCopy(rule));
+            }
+        }
+        pEntry->setFieldObject(sfRules, operationRuleObject);
+    }
+
+    bool TableListSet::updateOperationRuleForInserting(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& jsonRule)
+    {
+        bool ret = false;
+        auto insertOperationRule = STEntry::getOperationRule(*pEntry, (TableOpType)R_INSERT);
+        if (insertOperationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(insertOperationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            auto members = condition.getMemberNames();
+            auto found = std::find_if(members.begin(), members.end(), [&](const std::string& key) {
+                return key == fieldName;
+            });
+
+            if (found != members.end())
+            {
+                condition.removeMember(fieldName);
+                ret = true;
+            }
+
+            if (condition.getMemberNames().size() == 0)
+            {
+                jsonRule.removeMember(jss::Condition);
+            }
+        }
+
+        if (jsonRule.isMember(jss::Count))
+        {
+            Json::Value& count = jsonRule[jss::Count];
+            if (count[jss::AccountField].toStyledString() != fieldName)
+                return ret;
+            jsonRule.removeMember(jss::Count);
+            ret = true;
+        }
+
+        return ret;
+    }
+
+    bool updateCondtion(Json::Value& condition, const std::string& fieldName)
+    {
+        if (condition.isMember("$or") || condition.isMember("$and"))
+        {
+            assert(condition.isArray());
+            Json::Value::UInt size = condition.size();
+            for (auto i = 0; i < size; i++) {
+                if (updateCondtion(condition[i], fieldName))
+                    return true;
+                else
+                    continue;
+            }
+        }
+        else
+        {
+            auto members = condition.getMemberNames();
+            auto found = std::find_if(members.begin(), members.end(), [&](const std::string& key) {
+                return key == fieldName;
+            });
+
+            if (found != members.end())
+            {
+                condition.removeMember(fieldName);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool TableListSet::updateOperationRuleForUpdating(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        Json::Value& jsonRule) {
+
+        bool ret = false;
+        auto updateOperationRule = STEntry::getOperationRule(*pEntry, (TableOpType)R_UPDATE);
+        if (updateOperationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(updateOperationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            if (updateCondtion(condition, fieldName))
+                ret = true;
+        }
+
+        if (jsonRule.isMember(jss::Fields))
+        {
+            Json::Value& fields = jsonRule[jss::Fields];
+            Json::Value newFields(Json::arrayValue);
+            assert(fields.isArray());
+            Json::Value::UInt size = fields.size();
+            for (auto i = 0; i < size; i++)
+            {
+                Json::Value& value = fields[i];
+                assert(value.isString());
+                if (value.asString() != fieldName) {
+                    newFields.append(value);
+                }
+                else {
+                    ret = true;
+                }
+            }
+            jsonRule[jss::Fields] = newFields;
+        }
+
+        return ret;
+    }
+
+    bool TableListSet::updateOperationRuleForDeletingOrGet(
+        const std::string& fieldName, 
+        STObject* pEntry, 
+        const int opType, 
+        Json::Value& jsonRule) {
+
+        bool ret = false;
+        auto operationRule = STEntry::getOperationRule(*pEntry, (TableOpType)opType);
+        if (operationRule.empty())
+            return ret;
+
+        if (Json::Reader().parse(operationRule, jsonRule) == false)
+            return ret;
+
+        if (jsonRule.isMember(jss::Condition))
+        {
+            Json::Value& condition = jsonRule[jss::Condition];
+            if (updateCondtion(condition, fieldName))
+                ret = true;
+        }
+
+        return ret;
     }
 
 	std::pair<TER, std::string> TableListSet::dispose(TxStore& txStore, const STTx& tx)

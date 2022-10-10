@@ -61,6 +61,9 @@ enum class HashPrefix : std::uint32_t {
     /** account state */
     leafNode = detail::make_hash_prefix('M', 'L', 'N'),
 
+    /** contract state */
+    leafNodeContract = detail::make_hash_prefix('C', 'L', 'N'),
+
     /** inner node in V1 tree */
     innerNode = detail::make_hash_prefix('M', 'I', 'N'),
 

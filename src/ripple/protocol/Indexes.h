@@ -245,7 +245,18 @@ schema(
     AccountID const& source,
     std::uint32_t seq,
     uint256 const& prevLedgerHash) noexcept;
+
+Keylet
+statis() noexcept;
+
+Keylet
+contract_index() noexcept;
+
+Keylet
+tablegrant(AccountID const& owner, std::string const& tableName,AccountID const& user) noexcept;
+
 }  // namespace keylet
+
 
 // Everything below is deprecated and should be removed in favor of keylets:
 

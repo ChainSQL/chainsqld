@@ -99,10 +99,14 @@ HotstuffAdaptor::HotstuffAdaptor(
     }
 }
 
-void
-HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t newRound)
+TrustChanges
+HotstuffAdaptor::onConsensusReached(
+    bool waitingConsensusReach,
+    Ledger_t previousLedger,
+    uint64_t newRound)
 {
-    Adaptor::onConsensusReached(bWaitingInit, previousLedger, newRound);
+    TrustChanges const changes = Adaptor::onConsensusReached(
+        waitingConsensusReach, previousLedger, newRound);
 
     // Try to clear state cache.
     if (app_.getLedgerMaster().getPublishedLedgerAge() >
@@ -111,6 +115,8 @@ HotstuffAdaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, 
     {
         app_.getStateManager().clear();
     }
+
+    return changes;
 }
 
 inline HotstuffAdaptor::Author

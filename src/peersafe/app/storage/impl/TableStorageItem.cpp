@@ -265,7 +265,7 @@ namespace ripple {
                 {   
                     iter->bCommit = true;
                     auto initIter = std::find_if(txList_.begin(), txList_.end(),
-                        [tx](txInfo &item) {
+                        [](txInfo &item) {
                         return !item.bCommit;
                     });
 
@@ -320,7 +320,7 @@ namespace ripple {
         app_.getTableSync().ReStartOneTable(accountID_, sTableNameInDB_, sTableName_, bDropped_, true);
         
 
-		auto result = std::make_tuple("db_success", "", "");
+		auto result = std::make_tuple(std::string(jss::db_success), "", "");
 		for (auto& info : txList_)
 		{
 			auto txn = app_.getMasterTransaction().fetch(info.uTxHash);

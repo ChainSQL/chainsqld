@@ -72,8 +72,9 @@ VotableValue<value_type>::getVotes() const -> value_type
     for (auto const& [key, val] : mVoteMap)
     {
         // Take most voted value between current and target, inclusive
-        if ((key <= std::max(mTarget, mCurrent)) &&
-            (key >= std::min(mTarget, mCurrent)) && (val > weight))
+        if (/* (key <= std::max(mTarget, mCurrent)) &&
+            (key >= std::min(mTarget, mCurrent)) && */
+            (val > weight))
         {
             ourVote = key;
             weight = val;
@@ -331,8 +332,8 @@ setup_FeeVote(Section const& section)
         if (set(temp, "drops_per_byte", section))
             setup.drops_per_byte = temp;
             
-        // drops_per_byte range in [1,10^6]
-        if (setup.drops_per_byte == 0 || setup.drops_per_byte > 1000000) {
+        // drops_per_byte range in [0,10^6]
+        if (setup.drops_per_byte > 1000000) {
             setup.drops_per_byte = (1000000 / 1024);
         }
     }

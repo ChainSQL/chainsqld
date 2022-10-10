@@ -42,20 +42,31 @@ namespace ripple {
 
 LedgerHistory::LedgerHistory(
     beast::insight::Collector::ptr const& collector,
-        Schema& app)
-    : app_ (app)
-    , collector_ (collector)
-    , mismatch_counter_ (collector->make_counter ("ledger.history", "mismatch"))
-    , m_ledgers_by_hash ("LedgerCache", CACHED_LEDGER_NUM, CACHED_LEDGER_AGE, CACHED_LEDGER_AGE_MAX
-		, stopwatch()
-		, [](std::shared_ptr<Ledger const> ledger) 
-			{
-				return ledger->info().validated;
-			}
-		,app.journal("TaggedCache"))
-    , m_consensus_validated ("ConsensusValidated", 64, std::chrono::minutes {5},
-        stopwatch(), app_.journal("TaggedCache"))
-    , j_ (app.journal ("LedgerHistory"))
+    Schema& app)
+    : app_(app)
+    , collector_(collector)
+    , mismatch_counter_(collector->make_counter("ledger.history", "mismatch"))
+    , m_ledgers_by_hash(
+          "LedgerCache",
+          CACHED_LEDGER_NUM,
+          CACHED_LEDGER_AGE,
+          CACHED_LEDGER_AGE, /*CACHED_LEDGER_AGE_MAX,*/
+          stopwatch(),
+          [this](std::shared_ptr<Ledger const> ledger) {
+              if (!ledger->info().validated &&
+                  this->getClosedLedgerHash(ledger->info().seq) ==
+                      ledger->info().hash)
+                  return true;
+              return false;
+          },
+          app.journal("TaggedCache"))
+    , m_consensus_validated(
+          "ConsensusValidated",
+          64,
+          std::chrono::minutes{5},
+          stopwatch(),
+          app_.journal("TaggedCache"))
+    , j_(app.journal("LedgerHistory"))
 {
 }
 
@@ -72,7 +83,19 @@ LedgerHistory::insert(std::shared_ptr<Ledger const> ledger, bool validated)
     const bool alreadyHad = m_ledgers_by_hash.canonicalize_replace_cache(
         ledger->info().hash, ledger);
     if (validated)
+    {
         mLedgersByIndex[ledger->info().seq] = ledger->info().hash;
+
+        // clear closed and unvalidated ledger seq -> hash
+        mClosedLedgersByIndex.erase(
+            mClosedLedgersByIndex.begin(),
+            mClosedLedgersByIndex.upper_bound(ledger->info().seq));
+    }
+    else
+    {
+        // record closed and unvalidated ledger seq -> hash
+        mClosedLedgersByIndex[ledger->info().seq] = ledger->info().hash;
+    }
 
     return alreadyHad;
 }
@@ -84,6 +107,18 @@ LedgerHistory::getLedgerHash(LedgerIndex index)
     auto it = mLedgersByIndex.find(index);
 
     if (it != mLedgersByIndex.end())
+        return it->second;
+
+    return uint256();
+}
+
+LedgerHash
+LedgerHistory::getClosedLedgerHash(LedgerIndex index)
+{
+    std::unique_lock sl(m_ledgers_by_hash.peekMutex());
+    auto it = mClosedLedgersByIndex.find(index);
+
+    if (it != mClosedLedgersByIndex.end())
         return it->second;
 
     return uint256();

@@ -70,7 +70,7 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
             databasecon_ = std::make_shared<DatabaseCon>(
                 setup, dbName, nullptr, 0, dbType);
         }
-        catch (soci::soci_error error)
+        catch (soci::soci_error const& error)
         {
             if (count == 1)
                 std::cerr << error.get_error_message() << std::endl;
@@ -97,7 +97,7 @@ TxStoreDBConn::~TxStoreDBConn() {
 TxStoreTransaction::TxStoreTransaction(TxStoreDBConn* storeDBConn)
 {
     if (storeDBConn->GetDBConn() != nullptr)
-        tr_ = std::make_shared<soci::transaction>(storeDBConn->GetDBConn()->getSession());
+        tr_ = std::make_shared<soci::transaction>(*storeDBConn->GetDBConn()->checkoutDb());
 }
 
 TxStoreTransaction::~TxStoreTransaction() {

@@ -98,43 +98,21 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
         // Check we are on the proper ledger (this may change phase_)
         checkLedger();
     }
-        
-
-    if (mode_.get() == ConsensusMode::wrongLedger)
-    {
-        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-        {
-            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
-                            << ":" << prevLedgerID_;
-
-            if (initAcquireLedgerID_ == beast::zero)
-                initAcquireLedgerID_ = prevLedgerID_;
-
-            adaptor_.removePoolTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-
-            startRoundInternal(
-                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-        }
-        return;
-    }
-
-    if (!adaptor_.validating())
-        return;
 
     // Long time no consensus reach,rollback to initial state.
     // What if 2 of 4 validate new ledger success, but other 2 of 4 not ,can
     // roll back work,or is there such occasion?
     if (timeOutCount_ > adaptor_.parms().timeoutCOUNT_ROLLBACK)
     {
-        auto valLedger = adaptor_.getValidLedgerIndex();
-        if (view_ > 0 || previousLedger_.seq() > valLedger)
+        //auto valLedger = adaptor_.getValidLedgerIndex();
+        //May be view_ = 0 and previousLedger_.seq() < valLedger
+        //if (view_ > 0 || previousLedger_.seq() > valLedger)
         {      
             auto oldLedger = adaptor_.getValidatedLedger();
-            if (initAcquireLedgerID_ == prevLedgerID_)
-                oldLedger = previousLedger_.ledger_;
+            //If we are acquiring ledger just after init phrase,don't switch ledger to validated.
+            if (initAcquireLedgerID_ != beast::zero &&
+                initAcquireLedgerID_ == prevLedgerID_)
+                 oldLedger = previousLedger_.ledger_;
 
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
@@ -155,9 +133,32 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
                 // advanced ledger".
 
                 adaptor_.flushValidations();
+                //In case: ledger closed,but not validated,reopen consensus for the same ledger.
+                adaptor_.clearPoolAvoid(oldLedger->seq() + 1);
             }
         }
     }
+
+    if (mode_.get() == ConsensusMode::wrongLedger)
+    {
+        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
+        {
+            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
+                            << ":" << prevLedgerID_;
+
+            adaptor_.removePoolTxs(
+                newLedger->ledger_->txMap(),
+                newLedger->ledger_->info().seq,
+                newLedger->ledger_->info().parentHash);
+
+            startRoundInternal(
+                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
+        }
+        return;
+    }
+
+    if (!adaptor_.validating())
+        return;
 
     if (phase_ == ConsensusPhase::open)
     {
@@ -305,9 +306,22 @@ PopConsensus::getJson(bool full) const
 
     ret["tx_count_in_pool"] = static_cast<Int>(adaptor_.getPoolTxCount());
 
+    ret["tx_pool_sync_status"] = adaptor_.getSyncStatusJson();
+
     ret["initialized"] = !waitingForInit();
 
+    ret["timeout_count"] = timeOutCount_;
+
+    ret["mode"] = to_string(mode_.get());
+
+    ret["validated_seq"] = adaptor_.getValidLedgerIndex();
+
     ret["parms"] = adaptor_.parms().getJson();
+
+    if (mode_.get() == ConsensusMode::wrongLedger)
+    {
+        ret["time_since_consensus"] = (uint32_t)timeSinceConsensus();
+    }
 
     if (full)
     {
@@ -399,7 +413,16 @@ PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
         }
     }
 
-    checkVoting();
+    if (result_)
+    {
+        checkVoting();
+    }
+}
+
+std::chrono::milliseconds 
+PopConsensus::getConsensusTimeOut() const
+{
+    return adaptor_.parms().consensusTIMEOUT;
 }
 
 // -------------------------------------------------------------------
@@ -555,10 +578,8 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     // we need to switch the ledger we're working from
     if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
     {
-        JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
+        JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
-        if (initAcquireLedgerID_ == beast::zero)
-            initAcquireLedgerID_ = prevLedgerID_;
 
         adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
@@ -598,8 +619,8 @@ PopConsensus::checkCache()
         for (auto iter = proposalCache_.begin(); iter != proposalCache_.end();)
         {
             /**
-             * Maybe prosoal seq meet curSeq, but view is feture,
-             * so don't remove propal which seq meet curSeq at this moment
+             * Maybe proposal seq meet curSeq, but view is future,
+             * so don't remove proposal which seq meet curSeq at this moment
              */
             if (iter->first < curSeq)
             {
@@ -826,6 +847,15 @@ PopConsensus::checkTimeout()
 
     if (timeSinceConsensus() < timeOut)
         return;
+
+    // really timeouted
+    if (consensusTime_ > 0)
+    {
+        JLOG(j_.warn()) << "Really timeouted, PrevSeq=" << previousLedger_.seq()
+                        << " PrevHash=" << previousLedger_.id()
+                        << " Current view=" << view_
+                        << viewChangeManager_.getJson().toStyledString();
+    }
 
     if (adaptor_.validating())
         launchViewChange();
@@ -1177,9 +1207,6 @@ PopConsensus::peerViewChange(
 bool
 PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
 {
-    if (waitingForInit())
-        return false;
-
     JLOG(j_.info()) << "Processing peer ViewChange toView="
                     << viewChange->toView() << ", PublicKey index="
                     << adaptor_.getPubIndex(viewChange->nodePublic())
@@ -1187,37 +1214,14 @@ PopConsensus::peerViewChangeInternal(STViewChange::ref viewChange)
                     << ",PrevHash=" << viewChange->prevHash();
 
     viewChangeManager_.recvViewChange(viewChange);
-    //bool saved = viewChangeManager_.recvViewChange(viewChange);
-    //if (saved)
-    {
-        JLOG(j_.info()) << "ViewChange saved, current count of this view is "
-                        << viewChangeManager_.viewCount(viewChange->toView());
 
-        checkChangeView(viewChange->toView());
-        
-    //    if (waitingForInit() && mode_.get() != ConsensusMode::wrongLedger)
-    //    {
-    //        if (viewChange->prevSeq() > prevLedgerSeq_)
-    //        {
-    //            JLOG(j_.warn())
-    //                << "Init time switch to netLedger " << viewChange->prevSeq()
-    //                << ":" << viewChange->prevHash();
-    //            prevLedgerID_ = viewChange->prevHash();
-    //            prevLedgerSeq_ = viewChange->prevSeq();
-    //            //view_ = viewChange->toView() - 1;
-    //            //checkLedger();
-    //        }
-    //        else if (
-    //            viewChange->prevSeq() == previousLedger_.seq() &&
-    //            viewChange->toView() > view_ + 1)
-    //        {
-    //            JLOG(j_.warn())
-    //                << "Init time switch to view " << viewChange->toView() - 1;
-    //            view_ = viewChange->toView() - 1;
-    //        }
-    //    }
-    }
+    JLOG(j_.info()) << "ViewChange saved, current count of this view is "
+                    << viewChangeManager_.viewCount(viewChange->toView());
 
+    if (waitingForInit())
+        return false;
+
+    checkChangeView(viewChange->toView());
     adaptor_.touchAcquringLedger(viewChange->prevHash());
 
     return true;
@@ -1260,9 +1264,20 @@ PopConsensus::checkChangeView(uint64_t toView)
             }
             else if (previousLedger_.seq() == std::get<1>(ret))
             {
-                JLOG(j_.info())
-                    << "We have the newest ledger, change view to " << view_;
-                onViewChange(toView);
+                if (previousLedger_.id() != std::get<2>(ret))
+                {
+                    JLOG(j_.info())
+                        << "View changed fulfilled in other nodes: " << toView
+                        << ", and we need ledger:" << std::get<2>(ret);
+                    handleWrongLedger(std::get<2>(ret));
+                }
+                else
+                {
+                    JLOG(j_.info())
+                        << "We have the newest ledger, change view to "
+                        << view_;
+                    onViewChange(toView);
+                }
             }
         }
     }
@@ -1294,18 +1309,19 @@ PopConsensus::onViewChange(uint64_t toView)
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
 
-    viewChangeManager_.onViewChanged(view_);
-    if (bWaitingInit_)
+    viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
+    if (waitingConsensusReach_)
     {
         if (mode_.get() != ConsensusMode::wrongLedger)
         {
-            adaptor_.onViewChanged(bWaitingInit_, previousLedger_, view_);
-            bWaitingInit_ = false;
+            adaptor_.onViewChanged(waitingConsensusReach_, previousLedger_, view_);
+            waitingConsensusReach_ = false;
         }
     }
     else
     {
-        adaptor_.onViewChanged(bWaitingInit_, previousLedger_, view_);
+        adaptor_.onViewChanged(waitingConsensusReach_, previousLedger_, view_);
+        mode_.set(adaptor_.mode(), adaptor_);
     }
 
     if (mode_.get() == ConsensusMode::proposing)
@@ -1415,6 +1431,7 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
                 << ":" << initAnnounce->prevHash();
             prevLedgerID_ = initAnnounce->prevHash();
             prevLedgerSeq_ = initAnnounce->prevSeq();
+            initAcquireLedgerID_ = prevLedgerID_;
             //checkLedger();
         }
         else if (initAnnounce->prevHash() == prevLedgerID_)

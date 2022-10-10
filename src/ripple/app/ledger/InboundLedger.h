@@ -48,6 +48,7 @@ public:
     using PeerDataPairType =
         std::pair<std::weak_ptr<Peer>, std::shared_ptr<protocol::TMLedgerData>>;
 
+
     // These are the reasons we might acquire a ledger
     enum class Reason {
         HISTORY,   // Acquiring past ledger
@@ -192,13 +193,32 @@ private:
     std::vector<uint256>
     neededStateHashes(int max, SHAMapSyncFilter* filter) const;
 
+    std::vector<uint256>
+    neededCTNodeHashes(
+        SHAMap& map,
+        uint256 rootHash,
+        int max,
+        SHAMapSyncFilter* filter) const;
+    bool
+    haveContractNodes();
+
+    bool
+    checkComplete();
+
+    //void
+    //insertContractRoots(std::set<uint256>& setHashes);
+
+    bool
+    checkLoadContractRoots();
+
     clock_type& m_clock;
-    clock_type::time_point mLastAction;
+    std::atomic<clock_type::time_point> mLastAction;
 
     std::shared_ptr<Ledger> mLedger;
     bool mHaveHeader;
     bool mHaveState;
     bool mHaveTransactions;
+    bool mHaveContracts;
     bool mSignaled;
     bool mByHash;
     std::uint32_t mSeq;
@@ -212,6 +232,9 @@ private:
     std::mutex mReceivedDataLock;
     std::vector<PeerDataPairType> mReceivedData;
     bool mReceiveDispatched;
+    std::atomic_bool mContractRootLoaded;
+    std::map<uint256, std::shared_ptr<SHAMap>> mContractMapInfo;
+    std::atomic_bool mCheckingContract{false};
 };
 
 /** Deserialize a ledger header from a byte array. */

@@ -136,6 +136,8 @@ public:
         const std::string& owner,
         const std::string& tablename,
         const bool& isAutoSync) override;
+
+    DatabaseCon*  GetDatabaseConn() override;
 };
 
 }

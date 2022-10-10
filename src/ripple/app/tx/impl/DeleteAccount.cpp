@@ -28,6 +28,7 @@
 #include <ripple/protocol/Indexes.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/protocol/st.h>
+#include <peersafe/app/misc/SleOps.h>
 
 namespace ripple {
 
@@ -135,6 +136,30 @@ nonObligationDeleter(LedgerEntryType t)
     }
 }
 
+TER
+contractDelete(ApplyContext& ctx, AccountID const& from, AccountID const& to)
+{
+    SleOps ops(ctx);
+
+    auto value = ops.balance(from);
+
+    if (value)
+    {
+        if (auto res = ops.subBalance(from, value, true); res == tesSUCCESS)
+        {
+            ops.addBalance(to, value);
+        }
+        else
+        {
+            return res;
+        }
+    }
+
+    ops.kill(from);
+
+    return tesSUCCESS;
+}
+
 }  // namespace
 
 TER
@@ -148,6 +173,21 @@ DeleteAccount::preclaim(PreclaimContext const& ctx)
     if (!sleDst)
         return tecNO_DST;
 
+    auto sleAccount = ctx.view.read(keylet::account(account));
+    assert(sleAccount);
+    if (!sleAccount)
+        return terNO_ACCOUNT;
+
+    if (sleDst->isFieldPresent(sfContractCode))
+    {
+        if (!ctx.app.config().ADMIN || ctx.app.config().ADMIN != account)
+        {
+            return tecNO_PERMISSION;
+        }
+
+        return tesSUCCESS;
+    }
+
     if ((*sleDst)[sfFlags] & lsfRequireDestTag && !ctx.tx[~sfDestinationTag])
         return tecDST_TAG_NEEDED;
 
@@ -158,11 +198,6 @@ DeleteAccount::preclaim(PreclaimContext const& ctx)
         if (!ctx.view.exists(keylet::depositPreauth(dst, account)))
             return tecNO_PERMISSION;
     }
-
-    auto sleAccount = ctx.view.read(keylet::account(account));
-    assert(sleAccount);
-    if (!sleAccount)
-        return terNO_ACCOUNT;
 
     // We don't allow an account to be deleted if its sequence number
     // is within 256 of the current ledger.  This prevents replay of old
@@ -239,6 +274,19 @@ DeleteAccount::doApply()
 
     if (!src || !dst)
         return tefBAD_LEDGER;
+
+    if (dst->isFieldPresent(sfContractCode))
+    {
+        if (auto ter = cleanUpDirOnDeleteAccount(ctx_, ctx_.tx[sfDestination]);
+            ter != tesSUCCESS)
+            return ter;
+        return contractDelete(ctx_, ctx_.tx[sfDestination], account_);
+    }
+
+    if (auto ter = cleanUpDirOnDeleteAccount(ctx_, account_); ter != tesSUCCESS)
+    {
+        return ter;
+    }
 
     // Delete all of the entries in the account directory.
     Keylet const ownerDirKeylet{keylet::ownerDir(account_)};

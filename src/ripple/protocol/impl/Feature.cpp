@@ -97,6 +97,8 @@ detail::supportedAmendments()
         "DisableV2",
         "DecreaseStorage",
         "TableSLEChange",
+        "ContractStorage",
+        "TableGrant",
         "MultiSign",      // Unconditionally supported.
         "Tickets",
         "TrustSetAuth",   // Unconditionally supported.
@@ -139,6 +141,7 @@ detail::supportedAmendments()
         "HardenedValidations",
         "fixAmendmentMajorityCalc",
         //"NegativeUNL"      // Commented out to prevent automatic enablement
+        "PromethSLEHideInMeta"
     };
     return supported;
 }
@@ -196,7 +199,10 @@ fixAmendmentMajorityCalc = *getRegisteredFeature("fixAmendmentMajorityCalc"),
 featureNegativeUNL = *getRegisteredFeature("NegativeUNL"),
 featureDisableV2 = *getRegisteredFeature("DisableV2"),
 featureDecreaseStorage = *getRegisteredFeature("DecreaseStorage"),
-featureTableSleChange = *getRegisteredFeature("TableSLEChange");
+featureTableSleChange = *getRegisteredFeature("TableSLEChange"),
+featureContractStorage = *getRegisteredFeature("ContractStorage"),
+featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta"),
+featureTableGrant = *getRegisteredFeature("TableGrant");
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
 // uint256 const featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");

@@ -70,6 +70,9 @@ public:
 
     Blob getSerialized() const;
 
+    Json::Value
+    getJson(bool withView = true) const;
+
 private:
     std::uint32_t   prevSeq_;
     uint256         prevHash_;

@@ -31,6 +31,7 @@
 #include <ripple/rpc/GRPCHandlers.h>
 #include <ripple/rpc/impl/GRPCHelpers.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <test/rpc/GRPCTestClientBase.h>
 
 #include <string>

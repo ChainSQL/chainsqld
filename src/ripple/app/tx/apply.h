@@ -156,10 +156,6 @@ applyTransaction(
     bool retryAssured,
     ApplyFlags flags,
     beast::Journal journal);
-
-	// ca verify
-	bool
-	verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException);
 }  // namespace ripple
 
 #endif

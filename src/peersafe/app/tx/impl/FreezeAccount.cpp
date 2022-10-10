@@ -39,14 +39,11 @@ FreezeAccount::preflight(PreflightContext const& ctx)
 TER
 FreezeAccount::preclaim(PreclaimContext const& ctx)
 {
-    auto const sleAdmin = ctx.view.read(keylet::admin());
-    if (!sleAdmin)
+    if (!ctx.app.config().ADMIN)
         return tefNO_ADMIN_CONFIGURED;
 
-    AccountID const admin(sleAdmin->getAccountID(sfAccount));
-
     AccountID const uSrcAccountID(ctx.tx.getAccountID(sfAccount));
-    if (uSrcAccountID != admin)
+    if (uSrcAccountID != *ctx.app.config().ADMIN)
         return tecNO_PERMISSION;
 
     AccountID const uDstAccountID(ctx.tx.getAccountID(sfDestination));
@@ -67,11 +64,23 @@ FreezeAccount::preclaim(PreclaimContext const& ctx)
 TER
 FreezeAccount::doApply()
 {
-    auto const sleFrozen = ctx_.view().peek(keylet::frozen());
-    assert(sleFrozen);
+    std::shared_ptr<SLE> sleFrozen;
+    STObject objFrozen(sfFrozen);
+    STArray frozenAccounts;
+    bool isExist = true;
+    sleFrozen = ctx_.view().peek(keylet::frozen());
 
-    auto objFrozen = sleFrozen->getFieldObject(sfFrozen);
-    auto frozenAccounts = objFrozen.peekFieldArray(sfFrozenAccounts);
+    if (!sleFrozen)
+    {
+        sleFrozen = std::make_shared<SLE>(keylet::frozen());
+        isExist = false;
+    }
+    else
+    {
+        objFrozen = sleFrozen->getFieldObject(sfFrozen);
+        frozenAccounts = objFrozen.peekFieldArray(sfFrozenAccounts);
+    }
+    
 
     AccountID const uDstAccountID(ctx_.tx.getAccountID(sfDestination));
 
@@ -104,7 +113,11 @@ FreezeAccount::doApply()
 
     objFrozen.setFieldArray(sfFrozenAccounts, frozenAccounts);
     sleFrozen->setFieldObject(sfFrozen, objFrozen);
-    ctx_.view().update(sleFrozen);
+
+    if (isExist)
+        ctx_.view().update(sleFrozen);
+    else
+        ctx_.view().insert(sleFrozen);
 
     return tesSUCCESS;
 }

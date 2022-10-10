@@ -115,6 +115,16 @@ STLedgerEntry::isThreadedType() const
 }
 
 bool
+STLedgerEntry::isHideInMeta() const
+{
+    if (ltSTATIS == getType())
+    {
+        return true;
+    }
+    return false;
+}
+
+bool
 STLedgerEntry::thread(
     uint256 const& txID,
     std::uint32_t ledgerSeq,

@@ -192,7 +192,7 @@ void VM::caseCall()
 
         m_SPP[0] = result.status_code == EVMC_SUCCESS ? 1 : 0;
         m_io_gas += result.gas_left;
-
+        m_exception = result.exception;
         if (result.release)
             result.release(&result);
     }

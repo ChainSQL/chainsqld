@@ -23,10 +23,12 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <string>
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 namespace ripple {
 namespace test {

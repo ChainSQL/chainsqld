@@ -44,7 +44,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/tx/SchemaTx.h>
 #include <peersafe/app/tx/FreezeAccount.h>
-
+#include <peersafe/app/tx/AccountAuthorize.h>
 namespace ripple {
 
 static
@@ -109,8 +109,12 @@ invoke_preflight (PreflightContext const& ctx)
             return SchemaCreate::preflight(ctx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::preflight(ctx);
+        case ttSCHEMA_DELETE:		 
+            return SchemaDelete::preflight(ctx);
         case ttFREEZE_ACCOUNT:
             return FreezeAccount ::preflight(ctx);
+        case ttAUTHORIZE:
+        return AccountAuthorize ::preflight(ctx);
         default:
             assert(false);
             return temUNKNOWN;
@@ -211,8 +215,12 @@ invoke_preclaim(PreclaimContext const& ctx)
             return invoke_preclaim <SchemaCreate>(ctx);
         case ttSCHEMA_MODIFY:		 
             return invoke_preclaim <SchemaModify>(ctx);
+        case ttSCHEMA_DELETE:		 
+            return invoke_preclaim <SchemaDelete>(ctx);
         case ttFREEZE_ACCOUNT:
             return invoke_preclaim<FreezeAccount>(ctx);
+        case ttAUTHORIZE:
+            return invoke_preclaim<AccountAuthorize>(ctx);
         default:
             assert(false);
             return temUNKNOWN;
@@ -280,8 +288,12 @@ invoke_calculateBaseFee(ReadView const& view, STTx const& tx)
             return SchemaCreate::calculateBaseFee(view,tx);
         case ttSCHEMA_MODIFY:		 
             return SchemaModify::calculateBaseFee(view,tx);
+        case ttSCHEMA_DELETE:		 
+            return SchemaDelete::calculateBaseFee(view,tx);
         case ttFREEZE_ACCOUNT:
             return FreezeAccount::calculateBaseFee(view,tx);
+        case ttAUTHORIZE:
+        return AccountAuthorize::calculateBaseFee(view,tx);
         default:
             assert(false);
             return FeeUnit64{0};
@@ -362,8 +374,12 @@ invoke_calculateConsequences(STTx const& tx)
             return invoke_calculateConsequences <SchemaCreate>(tx);
         case ttSCHEMA_MODIFY:		 
             return invoke_calculateConsequences <SchemaModify>(tx);
+        case ttSCHEMA_DELETE:		 
+            return invoke_calculateConsequences <SchemaDelete>(tx);
         case ttFREEZE_ACCOUNT:
             return invoke_calculateConsequences<FreezeAccount>(tx);
+        case ttAUTHORIZE:
+            return invoke_calculateConsequences<AccountAuthorize>(tx);
         default:
             assert(false);
             return {
@@ -488,8 +504,16 @@ invoke_apply(ApplyContext& ctx)
             SchemaModify p(ctx); 
             return p(); 
         }
+        case ttSCHEMA_DELETE: { 
+            SchemaDelete p(ctx); 
+            return p(); 
+        }
         case ttFREEZE_ACCOUNT: {
             FreezeAccount p(ctx);
+            return p();
+        }
+        case ttAUTHORIZE: {
+            AccountAuthorize p(ctx);
             return p();
         }
         default:

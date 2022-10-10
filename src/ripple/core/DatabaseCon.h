@@ -107,6 +107,7 @@ public:
     struct CheckpointerSetup
     {
         JobQueue* jobQueue;
+        JobCounter* jobCounter;
         Logs* logs;
     };
 
@@ -144,7 +145,7 @@ public:
         CheckpointerSetup const& checkpointerSetup)
         : DatabaseCon(setup, dbName, pragma, initSQL)
     {
-        setupCheckpointing(checkpointerSetup.jobQueue, *checkpointerSetup.logs);
+        setupCheckpointing(checkpointerSetup.jobQueue, checkpointerSetup.jobCounter, *checkpointerSetup.logs);
     }
 
     template <std::size_t N, std::size_t M>
@@ -167,7 +168,7 @@ public:
         CheckpointerSetup const& checkpointerSetup)
         : DatabaseCon(dataDir, dbName, pragma, initSQL)
     {
-        setupCheckpointing(checkpointerSetup.jobQueue, *checkpointerSetup.logs);
+        setupCheckpointing(checkpointerSetup.jobQueue, checkpointerSetup.jobCounter, *checkpointerSetup.logs);
     }
 
     ~DatabaseCon();
@@ -184,21 +185,9 @@ public:
         return LockedSociSession(session_, lock_);
     }
 
-    void
-    setHasTxResult(bool bSet)
-    {
-        hasTxResult_ = bSet;
-    }
-
-    bool
-    hasTxResult()
-    {
-        return hasTxResult_;
-    }
-
 private:
     void
-    setupCheckpointing(JobQueue*, Logs&);
+    setupCheckpointing(JobQueue*, JobCounter*, Logs&);
 
     template <std::size_t N, std::size_t M>
     DatabaseCon(
@@ -240,7 +229,6 @@ private:
     // shared_ptr in this class. session_ will never be null.
     std::shared_ptr<soci::session> const session_;
     std::shared_ptr<Checkpointer> checkpointer_;
-    bool hasTxResult_ = false;
 };
 
 // Return the checkpointer from its id. If the checkpointer no longer exists, an

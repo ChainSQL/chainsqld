@@ -23,8 +23,6 @@
 #include <ripple/basics/Log.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/app/misc/HashRouter.h>
-#include <peersafe/crypto/X509.h>
-#include <peersafe/app/misc/CertList.h>
 #include <peersafe/schema/Schema.h>
 
 namespace ripple {
@@ -53,40 +51,6 @@ checkValidity(
 
     if (!(flags & SF_SIGGOOD))
     {
-		auto const certificate = tx.getFieldVL(sfCertificate);
-
-		std::vector<std::string> rootCertificates = schema.certList().getCertList();
-
-		bool  bHasCert             = (!certificate.empty());
-		bool  bNeedCertVerify = (!rootCertificates.empty());
-
-		if (bHasCert  && bNeedCertVerify) {
-
-				auto const sigCertVerify = tx.checkCertSign();
-				if (!sigCertVerify.first) {
-
-					router.setFlags(id, SF_SIGBAD);
-					return{ Validity::SigBad, sigCertVerify.second };
-				}
-
-				// certification  au
-				std::string certInfo = sigCertVerify.second;
-
-				std::string sException;
-				if (!verifyCACert(certInfo, rootCertificates, sException)) {
-
-					std::string errInfo = "Certificate authentication failed. " + sException;
-					return{ Validity::SigBad,errInfo };
-				}
-		}
-		else if (bNeedCertVerify) {
-				return{ Validity::SigBad, "Missing Certificate field" };
-		}
-		else if(bHasCert){
-
-			return{ Validity::SigBad, "Root certificate has not been configurated" };
-		}
-
         // Don't know signature state. Check it.
         auto const requireCanonicalSig =
             rules.enabled(featureRequireFullyCanonicalSig)
@@ -176,13 +140,7 @@ applyTransaction(
     try
     {
         auto const result = apply(app, view, txn, flags, j);
-        if (result.second)
-        {
-            JLOG(j.debug())
-                << "Transaction applied: " << transHuman(result.first);
-            return ApplyResult::Success;
-        }
-
+  
         if (isTefFailure(result.first) || isTemMalformed(result.first) ||
             isTelLocal(result.first))
         {
@@ -191,7 +149,12 @@ applyTransaction(
                 << "Transaction failure: " << transHuman(result.first);
             return ApplyResult::Fail;
         }
-
+        if (result.second)
+        {
+            JLOG(j.debug())
+                << "Transaction applied: " << transHuman(result.first);
+            return ApplyResult::Success;
+        }
         JLOG(j.debug()) << "Transaction retry: " << transHuman(result.first);
         return ApplyResult::Retry;
     }
@@ -202,9 +165,5 @@ applyTransaction(
     }
 }
 
-bool verifyCACert(std::string& certUser, std::vector<std::string>& rootCerts, std::string& sException)
-{
-	return verifyCert(rootCerts, certUser, sException);
-}
 
 } // ripple

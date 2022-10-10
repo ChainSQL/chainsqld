@@ -28,14 +28,38 @@ const char* const TABLE_METHOD_INSERT_HASH_STR =
     "insertWithHash(address,string,string,string)";
 const char* const TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR =
     "insertWithHashByContract(address,string,string,string)";
-const char* const TABLE_METHOD_UPDATE_STR =
+const char* const TABLE_METHOD_UPDATE_GETRAW_STR =
     "update(address,string,string,string)";
-const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
+const char* const TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR = 
      "updateByContract(address,string,string,string)";
+const char* const TABLE_METHOD_UPDATE_STR =
+    "update(address,string,string)";
+const char* const TABLE_METHOD_UPDATE_BY_CONTTRACT_STR = 
+     "updateByContract(address,string,string)";
 const char* const TABLE_METHOD_DELETE_DATA_STR =
     "deleteData(address,string,string)";
 const char* const TABLE_METHOD_DELETE_BY_CONTRACT_STR =
     "deleteByContract(address,string,string)";
+const char* const TABLE_METHOD_ADD_FIELDS_STR =
+    "addFields(string,string)";
+const char* const TABLE_METHOD_ADD_FIELDS_BY_CONTRACT_STR =
+    "addFieldsByContract(string,string)";
+const char* const TABLE_METHOD_DELETE_FIELDS_STR =
+    "deleteFields(string,string)";
+const char* const TABLE_METHOD_DELETE_FIELDS_BY_CONTRACT_STR =
+    "deleteFieldsByContract(string,string)";
+const char* const TABLE_METHOD_MODIFY_FIELDS_STR =
+    "modifyFields(string,string)";
+const char* const TABLE_METHOD_MODIFY_FIELDS_BY_CONTRACT_STR =
+    "modifyFieldsByContract(string,string)";
+const char* const TABLE_METHOD_CREATE_INDEX_STR =
+    "createIndex(string,string)";
+const char* const TABLE_METHOD_CREATE_INDEX_BY_CONTRACT_STR =
+    "createIndexByContract(string,string)";
+const char* const TABLE_METHOD_DELETE_INDEX_STR =
+    "deleteIndex(string,string)";
+const char* const TABLE_METHOD_DELETE_INDEX_BY_CONTRACT_STR =
+    "deleteIndexByContract(string,string)";
 const char* const TABLE_METHOD_GET_DATA_HANDLE_STR =
     "getDataHandle(address,string,string)";
 const char* const TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR =
@@ -67,14 +91,38 @@ TableOpPrecompiled::TableOpPrecompiled()
         getFuncSelector(TABLE_METHOD_INSERT_HASH_BY_CONTTRACT_STR);
     name2Selector_[TABLE_METHOD_INSERT_BY_CONTRACT_STR] =
         getFuncSelector(TABLE_METHOD_INSERT_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_GETRAW_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_GETRAW_STR);
     name2Selector_[TABLE_METHOD_UPDATE_STR] =
         getFuncSelector(TABLE_METHOD_UPDATE_STR);
     name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR] =
         getFuncSelector(TABLE_METHOD_UPDATE_BY_CONTTRACT_STR);
+    name2Selector_[TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR);
     name2Selector_[TABLE_METHOD_DELETE_DATA_STR] =
         getFuncSelector(TABLE_METHOD_DELETE_DATA_STR);
     name2Selector_[TABLE_METHOD_DELETE_BY_CONTRACT_STR] =
         getFuncSelector(TABLE_METHOD_DELETE_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_ADD_FIELDS_STR] =
+        getFuncSelector(TABLE_METHOD_ADD_FIELDS_STR);
+    name2Selector_[TABLE_METHOD_ADD_FIELDS_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_ADD_FIELDS_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_DELETE_FIELDS_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_FIELDS_STR);
+    name2Selector_[TABLE_METHOD_DELETE_FIELDS_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_FIELDS_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_MODIFY_FIELDS_STR] =
+        getFuncSelector(TABLE_METHOD_MODIFY_FIELDS_STR);
+    name2Selector_[TABLE_METHOD_MODIFY_FIELDS_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_MODIFY_FIELDS_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_CREATE_INDEX_STR] =
+        getFuncSelector(TABLE_METHOD_CREATE_INDEX_STR);
+    name2Selector_[TABLE_METHOD_CREATE_INDEX_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_CREATE_INDEX_BY_CONTRACT_STR);
+    name2Selector_[TABLE_METHOD_DELETE_INDEX_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_INDEX_STR);
+    name2Selector_[TABLE_METHOD_DELETE_INDEX_BY_CONTRACT_STR] =
+        getFuncSelector(TABLE_METHOD_DELETE_INDEX_BY_CONTRACT_STR);
     name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_STR] =
         getFuncSelector(TABLE_METHOD_GET_DATA_HANDLE_STR);
     name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_BY_CONTRACT_STR] =
@@ -164,15 +212,25 @@ TableOpPrecompiled::execute(
             abi.abiOut(data, owner, tableName, raw);
             ret = _s.insertData(caller, owner, tableName, raw);
         }
-        if (func == name2Selector_[TABLE_METHOD_UPDATE_STR])
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_GETRAW_STR])
         {
             abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
             ret = _s.updateData(origin, owner, tableName, rawGet, rawUpdate);
         }
-        if (func == name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR])
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.updateData(origin, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_GETRAW_BY_CONTTRACT_STR])
         {
             abi.abiOut(data, owner, tableName, rawUpdate, rawGet);
             ret = _s.updateData(caller, owner, tableName, rawGet, rawUpdate);
+        }
+        if (func == name2Selector_[TABLE_METHOD_UPDATE_BY_CONTTRACT_STR])
+        {
+            abi.abiOut(data, owner, tableName, raw);
+            ret = _s.updateData(caller, owner, tableName, raw);
         }
         if (func == name2Selector_[TABLE_METHOD_DELETE_DATA_STR])
         {
@@ -183,6 +241,66 @@ TableOpPrecompiled::execute(
         {
             abi.abiOut(data, owner, tableName, raw);
             ret = _s.deleteData(caller, owner, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_ADD_FIELDS_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_ADD_FIELDS;
+            ret = _s.updateFieldsTable(origin, eType, tableName, raw);
+        }    
+        if (func == name2Selector_[TABLE_METHOD_ADD_FIELDS_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_ADD_FIELDS;
+            ret = _s.updateFieldsTable(caller, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_FIELDS_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_DELETE_FIELDS;
+            ret = _s.updateFieldsTable(origin, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_FIELDS_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_DELETE_FIELDS;
+            ret = _s.updateFieldsTable(caller, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_MODIFY_FIELDS_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_MODIFY_FIELDS;
+            ret = _s.updateFieldsTable(origin, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_MODIFY_FIELDS_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_MODIFY_FIELDS;
+            ret = _s.updateFieldsTable(caller, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_CREATE_INDEX_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_CREATE_INDEX;
+            ret = _s.updateFieldsTable(origin, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_CREATE_INDEX_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_CREATE_INDEX;
+            ret = _s.updateFieldsTable(caller, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_INDEX_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_DELETE_INDEX;
+            ret = _s.updateFieldsTable(origin, eType, tableName, raw);
+        }
+        if (func == name2Selector_[TABLE_METHOD_DELETE_INDEX_BY_CONTRACT_STR])
+        {
+            abi.abiOut(data, tableName, raw);
+            TableOpType eType = T_DELETE_INDEX;
+            ret = _s.updateFieldsTable(caller, eType, tableName, raw);
         }
         if (func == name2Selector_[TABLE_METHOD_GET_DATA_HANDLE_STR])
         {
@@ -200,7 +318,7 @@ TableOpPrecompiled::execute(
     }
     else
     {
-        return std::make_tuple(tesSUCCESS, strCopy(""), 0);
+        return std::make_tuple(temUNKNOWN, strCopy(""),0);
     }
 }
 }  // namespace ripple

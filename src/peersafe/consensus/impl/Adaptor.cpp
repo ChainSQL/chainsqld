@@ -260,7 +260,7 @@ Adaptor::acquireLedger(LedgerHash const& hash)
                 [id = hash, &app = app_](Job&) {
                     app.getInboundLedgers().acquire(
                         id, 0, InboundLedger::Reason::CONSENSUS);
-                });
+                }, app_.doJobCounter());
         }
         return boost::none;
     }
@@ -280,7 +280,7 @@ Adaptor::touchAcquringLedger(LedgerHash const& prevLedgerHash)
     auto inboundLedger = app_.getInboundLedgers().find(prevLedgerHash);
     if (inboundLedger && !inboundLedger->isComplete() && !inboundLedger->isFailed())
     {
-        JLOG(j_.warn()) << "touch inboundLedger for " << prevLedgerHash;
+        JLOG(j_.info()) << "touch inboundLedger for " << prevLedgerHash;
         inboundLedger->touch();
     }
 }
@@ -356,13 +356,13 @@ Adaptor::onModeChange(ConsensusMode before, ConsensusMode after)
     }
 }
 
-void
-Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t curTurn)
+TrustChanges
+Adaptor::onConsensusReached(bool waitingConsensusReach, Ledger_t previousLedger, uint64_t curTurn)
 {
     app_.getLedgerMaster().onConsensusReached(
-        bWaitingInit, previousLedger.ledger_);
+        waitingConsensusReach, previousLedger.ledger_);
 
-    if (bWaitingInit)
+    if (waitingConsensusReach)
     {
         notify(protocol::neSWITCHED_LEDGER, previousLedger, true);
     }
@@ -399,7 +399,7 @@ Adaptor::onConsensusReached(bool bWaitingInit, Ledger_t previousLedger, uint64_t
             mode() != ConsensusMode::wrongLedger);
     }
 
-    app_.validators().updateTrustedAndBroadcast(
+    return app_.validators().updateTrustedAndBroadcast(
         app_.getValidations().getCurrentNodeIDs(),
         app_.schemaId(),
         previousLedger.seq() + 1,

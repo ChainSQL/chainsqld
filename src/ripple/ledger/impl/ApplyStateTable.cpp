@@ -149,6 +149,11 @@ ApplyStateTable::apply(
             auto curNode = item.second.second;
             if ((type == &sfModifiedNode) && (*curNode == *origNode))
                 continue;
+            if (curNode->getType() == ltSTATIS)
+            {
+                if (to.rules().enabled(featurePromethSLEHideInMeta))
+                    continue;
+            }
             std::uint16_t nodeType = curNode
                 ? curNode->getFieldU16(sfLedgerEntryType)
                 : origNode->getFieldU16(sfLedgerEntryType);
@@ -633,6 +638,12 @@ ApplyStateTable::threadOwners(
     }
     case ltTABLELIST:
     case ltTABLE:
+    case ltTABLEGRANT:
+    {
+       // Nothing to do
+       break;
+    }
+    case ltSTATIS:
     {
        // Nothing to do
        break;

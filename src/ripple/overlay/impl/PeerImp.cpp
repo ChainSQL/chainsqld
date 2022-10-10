@@ -88,8 +88,6 @@ PeerImp::PeerImp(
     , m_inbound(true)
     , protocol_(protocol)
     , state_(State::active)
-    , sanity_(Sanity::unknown)
-    , insaneTime_(clock_type::now())
     , publicKey_(publicKey)
     , publicValidate_(publicValidate)
     , creationTime_(clock_type::now())
@@ -208,12 +206,12 @@ PeerImp::dispatch()
 {
     if (publicValidate_)
     {
-        for (auto item : app_.getSchemaManager())
-        {
-            auto vecKeys = item.second->validators().validators();
-            auto vecPendingKeys = item.second->validators().pendingValidators();
+
+        app_.getSchemaManager().foreach([this](std::shared_ptr<Schema> schema) {
+            auto vecKeys = schema->validators().validators();
+            auto vecPendingKeys = schema->validators().pendingValidators();
             bool bShoundAdd = false;
-            if (item.first ==
+            if (schema->schemaId() ==
                 beast::zero)  // add to main chain with no validators check.
             {
                 bShoundAdd = true;
@@ -233,10 +231,10 @@ PeerImp::dispatch()
             if (bShoundAdd)
             {
                 std::lock_guard sl(schemaInfoMutex_);
-                schemaInfo_.emplace(item.first, SchemaInfo());
-                item.second->peerManager().add(shared_from_this());
+                schemaInfo_.emplace(schema->schemaId(), SchemaInfo());
+                schema->peerManager().add(shared_from_this());
             }
-        }
+        });
     }
     else
     {
@@ -426,7 +424,7 @@ PeerImp::json(uint256 const& schemaId)
         ret[jss::complete_ledgers] =
             std::to_string(minSeq) + " - " + std::to_string(maxSeq);
 
-    switch (sanity_.load())
+    switch (pInfo->sanity_.load())
     {
         case Sanity::insane:
             ret[jss::sanity] = "insane";
@@ -527,7 +525,7 @@ PeerImp::hasLedger(
         std::lock_guard sl(recentLock_);
         auto& info = schemaInfo_.at(schemaId);
         if ((seq != 0) && (seq >= info.minLedger_) &&
-            (seq <= info.maxLedger_) && (sanity_.load() == Sanity::sane))
+            (seq <= info.maxLedger_) && (info.sanity_.load() == Sanity::sane))
             return true;
         if (std::find(
                 info.recentLedgers_.begin(), info.recentLedgers_.end(), hash) !=
@@ -619,7 +617,7 @@ PeerImp::hasRange(
     }
 
     auto& info = schemaInfo_.at(schemaId);
-    return (sanity_ != Sanity::insane) && (uMin >= info.minLedger_) &&
+    return (info.sanity_ != Sanity::insane) && (uMin >= info.minLedger_) &&
         (uMax <= info.maxLedger_);
 }
 
@@ -1574,12 +1572,6 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMPeerShardInfo> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMEndpoints> const& m)
 {
-    if (sanity_.load() != Sanity::sane)
-    {
-        // Don't allow endpoints from peer not known sane
-        return;
-    }
-
     std::vector<PeerFinder::Endpoint> endpoints;
 
     if (m->endpoints_v2().size())
@@ -1661,13 +1653,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMEndpoints> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
 {
-    if (sanity_.load() == Sanity::insane)
-        return;
-
     auto tup = getSchemaInfo("TMTransaction:", m->schemaid());
     if (!get<0>(tup))
         return;
     uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
+    if (info.sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "TMTransaction peer insane";
+        return;
+    }
 
     if (app_.getOPs(schemaId).isNeedNetworkLedger())
     {
@@ -1762,13 +1757,16 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
 void
 PeerImp::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 {
-    if (sanity_.load() == Sanity::insane)
-        return;
-
     auto tup = getSchemaInfo("TMTransactions:", m->schemaid());
     if (!get<0>(tup))
         return;
     uint256 schemaId = get<1>(tup);
+    auto& info = *get<2>(tup);
+    if (info.sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "TMTransactions peer insane";
+        return;
+    }
 
     try
     {
@@ -1856,6 +1854,21 @@ void
 PeerImp::onMessage(std::shared_ptr<protocol::TMLedgerData> const& m)
 {
     protocol::TMLedgerData& packet = *m;
+
+    if (m->type() == protocol::liSKIP_NODE)
+    {
+        auto hash = m->ledgerhash();
+        auto const pap = &app_;
+        // got data for a candidate transaction set
+        std::weak_ptr<PeerImp> weak = shared_from_this();
+        auto& journal = p_journal_;
+        app_.getJobQueue().addJob(
+            jtSKIPNODE, "recvPeerSkipNode",
+            [pap, weak, hash, journal, m](Job&) {
+            pap->getTableSync().GotLedger(m);
+        });
+        return;
+    }
 
     if (m->nodes().size() <= 0)
     {
@@ -2067,7 +2080,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMStatusChange> const& m)
         app_.getLedgerMaster(schemaId).getValidatedLedgerAge() < 2min)
     {
         checkSanity(
-            m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
+            info,
+            m->ledgerseq(),
+            app_.getLedgerMaster(schemaId).getValidLedgerIndex());
     }
 
     app_.getOPs(schemaId).pubPeerStatus([=]() -> Json::Value {
@@ -2169,29 +2184,29 @@ PeerImp::checkSanity(uint256 const& schemaId, std::uint32_t validationSeq)
     {
         // Compare the peer's ledger sequence to the
         // sequence of a recently-validated ledger
-        checkSanity(serverSeq, validationSeq);
+        checkSanity(info,serverSeq, validationSeq);
     }
 }
 
 void
-PeerImp::checkSanity(std::uint32_t seq1, std::uint32_t seq2)
+PeerImp::checkSanity(SchemaInfo& info, std::uint32_t seq1, std::uint32_t seq2)
 {
     int diff = std::max(seq1, seq2) - std::min(seq1, seq2);
 
     if (diff < Tuning::saneLedgerLimit)
     {
         // The peer's ledger sequence is close to the validation's
-        sanity_ = Sanity::sane;
+        info.sanity_ = Sanity::sane;
     }
 
     if ((diff > Tuning::insaneLedgerLimit) &&
-        (sanity_.load() != Sanity::insane))
+        (info.sanity_.load() != Sanity::insane))
     {
         // The peer's ledger sequence is way off the validation's
         std::lock_guard sl(recentLock_);
 
-        sanity_ = Sanity::insane;
-        insaneTime_ = clock_type::now();
+        info.sanity_ = Sanity::insane;
+        info.insaneTime_ = clock_type::now();
     }
 }
 
@@ -2200,36 +2215,36 @@ PeerImp::checkSanity(std::uint32_t seq1, std::uint32_t seq2)
 void
 PeerImp::check()
 {
-    if (m_inbound || (sanity_.load() == Sanity::sane))
-        return;
+    //if (m_inbound || (sanity_.load() == Sanity::sane))
+    //    return;
 
-    clock_type::time_point insaneTime;
-    {
-        std::lock_guard sl(recentLock_);
+    //clock_type::time_point insaneTime;
+    //{
+    //    std::lock_guard sl(recentLock_);
 
-        insaneTime = insaneTime_;
-    }
+    //    insaneTime = insaneTime_;
+    //}
 
-    bool reject = false;
+    //bool reject = false;
 
-    if (sanity_.load() == Sanity::insane)
-        reject = (insaneTime - clock_type::now()) >
-            std::chrono::seconds(Tuning::maxInsaneTime);
+    //if (sanity_.load() == Sanity::insane)
+    //    reject = (insaneTime - clock_type::now()) >
+    //        std::chrono::seconds(Tuning::maxInsaneTime);
 
-    if (sanity_.load() == Sanity::unknown)
-        reject = (insaneTime - clock_type::now()) >
-            std::chrono::seconds(Tuning::maxUnknownTime);
+    //if (sanity_.load() == Sanity::unknown)
+    //    reject = (insaneTime - clock_type::now()) >
+    //        std::chrono::seconds(Tuning::maxUnknownTime);
 
-    if (reject)
-    {
-        overlay_.peerFinder().on_failure(slot_);
-        post(
-            strand_,
-            std::bind(
-                (void (PeerImp::*)(std::string const&)) & PeerImp::fail,
-                shared_from_this(),
-                "Not useful"));
-    }
+    //if (reject)
+    //{
+    //    overlay_.peerFinder().on_failure(slot_);
+    //    post(
+    //        strand_,
+    //        std::bind(
+    //            (void (PeerImp::*)(std::string const&)) & PeerImp::fail,
+    //            shared_from_this(),
+    //            "Not useful"));
+    //}
 }
 
 void
@@ -2341,6 +2356,15 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMValidatorList> const& m)
                     }
 #endif
                     publisherListSequences_[pubKey] = *applyResult.sequence;
+
+                    if (app_.getSchema().getWaitinBeginConsensus())
+                    {
+                        app_.getOPs().beginConsensus(app_.getLedgerMaster().getClosedLedger()->info().hash);
+                    }
+                    else
+                    {
+                        app_.validators().updateTrusted(app_.getValidations().getCurrentNodeIDs());
+                    }
                 }
                 break;
             case ListDisposition::same_sequence:
@@ -2574,7 +2598,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
     if (!app_.getValidationPublicKey().empty() &&
         publicKey == app_.getValidationPublicKey())
     {
-        JLOG(p_journal_.info())
+        JLOG(p_journal_.debug())
             << "Consensus message mt(" << m->msgtype() << ")"
             << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
             << ": self";
@@ -2583,16 +2607,28 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
 
     auto tup = getSchemaInfo("TMConsensus:", m->schemaid());
     if (!get<0>(tup))
+    {
+        JLOG(p_journal_.info())
+            << "Consensus message mt(" << m->msgtype() << ")"
+            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
+            << ": unknown schema";
         return;
+    }
+
     uint256 schemaId = get<1>(tup);
 
     if (!app_.getHashRouter(schemaId).addSuppressionPeer(
             consensusMessageUniqueId(*m), id_))
     {
-        JLOG(p_journal_.info())
-            << "Consensus message mt(" << m->msgtype() << ")"
-            << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)m->msgtype())
-            << ": duplicate";
+        auto dmp = [&](beast::Journal::Stream s, std::uint32_t type) {
+            s << "Consensus message mt(" << type << ")"
+              << RCLConsensus::conMsgTypeToStr((ConsensusMessageType)type)
+              << ": duplicate";
+        };
+        if (m->msgtype() == mtVALIDATION)
+            dmp(p_journal_.info(), m->msgtype());
+        else
+            dmp(p_journal_.debug(), m->msgtype());
         return;
     }
 
@@ -2600,7 +2636,7 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMConsensus> const& m)
 
     if (!isTrusted)
     {
-        if (sanity_.load() == Sanity::insane)
+        if (get<2>(tup)->sanity_.load() == Sanity::insane)
         {
             JLOG(p_journal_.info())
                 << "Consensus message mt(" << m->msgtype() << ")"
@@ -2969,7 +3005,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 {
     protocol::TMGetLedger& packet = *m;
     std::shared_ptr<SHAMap> shared;
-    SHAMap const* map = nullptr;
+    std::shared_ptr<SHAMap> map = nullptr;
     protocol::TMLedgerData reply;
     bool fatLeaves = true;
     std::shared_ptr<Ledger const> ledger;
@@ -3008,7 +3044,7 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         uint256 const txHash{packet.ledgerhash()};
 
         shared = app_.getInboundTransactions(schemaId).getSet(txHash, false);
-        map = shared.get();
+        map = shared;
 
         if (!map)
         {
@@ -3254,21 +3290,32 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
 
         if (packet.itype() == protocol::liTX_NODE)
         {
-            map = &ledger->txMap();
+            map = ledger->txMapPtr();
             logMe += " TX:";
             logMe += to_string(map->getHash());
         }
         else if (packet.itype() == protocol::liAS_NODE)
         {
-            map = &ledger->stateMap();
+            map = ledger->stateMapPtr();
             logMe += " AS:";
             logMe += to_string(map->getHash());
+        }
+        else if (packet.itype() == protocol::liCONTRACT_NODE)
+        {
+            uint256 rootHash;
+            memcpy(rootHash.begin(), packet.roothash().data(), rootHash.size());
+            reply.set_roothash(rootHash.begin(), rootHash.size());
+            map = ledger->contractStorageMap(rootHash);
+            logMe += " CTS rootHash=";
+            logMe += to_string(rootHash);
         }
     }
 
     if (!map || (packet.nodeids_size() == 0))
     {
-        JLOG(p_journal_.warn()) << "GetLedger: Can't find map or empty request";
+        JLOG(p_journal_.warn())
+            << "GetLedger: Can't find map or empty request, packet.type="
+            << packet.itype();
         charge(Resource::feeInvalidRequest);
         return;
     }
@@ -3279,9 +3326,11 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
         ? (std::min(packet.querydepth(), 3u))
         : (isHighLatency() ? 2 : 1);
 
+    std::uint64_t i64NodeByteSize = 0;
+
     for (int i = 0;
          (i < packet.nodeids().size() &&
-          (reply.nodes().size() < Tuning::maxReplyNodes));
+          (reply.nodes().size() < Tuning::maxReplyNodes && i64NodeByteSize < Tuning::maxReplyByteSize));
          ++i)
     {
         SHAMapNodeID mn(packet.nodeids(i).data(), packet.nodeids(i).size());
@@ -3317,6 +3366,9 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                     node->set_nodeid(nID.getDataPtr(), nID.getLength());
                     node->set_nodedata(
                         &rawNodeIterator->front(), rawNodeIterator->size());
+                    i64NodeByteSize += rawNodeIterator->size();
+                    if(i64NodeByteSize > Tuning::maxReplyByteSize)
+                        break;
                 }
             }
             else
@@ -3337,6 +3389,8 @@ PeerImp::getLedger(std::shared_ptr<protocol::TMGetLedger> const& m)
                 info = "TX node";
             else if (packet.itype() == protocol::liAS_NODE)
                 info = "AS node";
+            else if (packet.itype() == protocol::liCONTRACT_NODE)
+                info = "CONTRACT node";
 
             if (!packet.has_ledgerhash())
                 info += ", no hash specified";
