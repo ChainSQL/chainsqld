@@ -183,7 +183,7 @@ namespace ripple {
     {
         ripple::AccountID accountID = ctx.tx.getAccountID(sfAccount);
         Blob txs_blob = ctx.tx.getFieldVL(sfStatements);
-        ripple::uint256 txId = ctx.tx.getTransactionID();
+//        ripple::uint256 txId = ctx.tx.getTransactionID();
         std::string txs_str;
 
         txs_str.assign(txs_blob.begin(), txs_blob.end());

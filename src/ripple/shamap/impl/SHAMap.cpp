@@ -19,7 +19,9 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/shamap/SHAMap.h>
-#include "ripple.pb.h"
+#include "ripple.pb.h" 
+#include <peersafe/app/util/Common.h>
+
 
 namespace ripple {
 
@@ -401,11 +403,10 @@ SHAMap::fetchNodeNT(SHAMapHash const& hash, SHAMapSyncFilter* filter) const
         node = fetchNodeFromDB(hash);
         if (node)
         {
-            canonicalize(hash, node);
+            //canonicalize(hash, node);
             return node;
         }
     }
-
     if (filter)
         node = checkFilter(hash, filter);
 
@@ -1336,10 +1337,10 @@ SHAMap::canonicalizeChild(
     SHAMapInnerNode* parent,
     int branch) const
 {
-    //if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-    //    ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
-    //    f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
-    //else
+    if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+        ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+        f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
+    else
         ptr = parent->canonicalizeChild(branch, std::move(ptr));
     return ptr;
 }

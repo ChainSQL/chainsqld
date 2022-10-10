@@ -19,7 +19,9 @@ namespace eth {
 	bytes const NullBytes;
 
 	using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
-	//using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+	using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
+    using s256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256,
+        boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
 
     struct Exception : virtual std::exception, virtual boost::exception
     {

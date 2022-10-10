@@ -49,8 +49,8 @@ public:
 
     ~SecretKey();
 
-    SecretKey(std::array<std::uint8_t, 32> const& data);
-    SecretKey(Slice const& slice);
+    SecretKey(std::array<std::uint8_t, 32> const& data, KeyType keyT = KeyType::secp256k1);
+    SecretKey(Slice const& slice, KeyType keyT = KeyType::secp256k1);
 
     std::uint8_t const*
     data() const
@@ -185,7 +185,6 @@ Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key);
 
 boost::optional<SecretKey> getSecretKey(const std::string& secret);
-boost::optional<PublicKey> getPublicKey(const std::string& secret);
 
 /** Encode a Secret in RFC1751 format */
 std::string

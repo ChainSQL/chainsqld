@@ -121,7 +121,7 @@ protected:
     bool mFailed;
     /** Whether forward progress has been made. */
     bool mProgress;
-
+    bool mWaitingRead;
     /** The identifiers of the peers we are tracking. */
     std::set<Peer::id_t> mPeers;
 

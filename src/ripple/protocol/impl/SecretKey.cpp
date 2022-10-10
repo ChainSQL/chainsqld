@@ -40,16 +40,18 @@ SecretKey::~SecretKey()
     secure_erase(buf_, sizeof(buf_));
 }
 
-SecretKey::SecretKey(std::array<std::uint8_t, 32> const& key)
+SecretKey::SecretKey(std::array<std::uint8_t, 32> const& key, KeyType keyT)
 {
     std::memcpy(buf_, key.data(), key.size());
+    keyTypeInt_ = keyT;
 }
 
-SecretKey::SecretKey(Slice const& slice)
+SecretKey::SecretKey(Slice const& slice, KeyType keyT)
 {
     if (slice.size() != sizeof(buf_))
         LogicError("SecretKey::SecretKey: invalid size");
     std::memcpy(buf_, slice.data(), sizeof(buf_));
+    keyTypeInt_ = keyT;
 }
 
 std::string
@@ -252,8 +254,14 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
     // if (GmEncryptObj::getInstance())
     if ('p' == secret[0])
     {
-        std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
-        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
+        std::string priKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
+        if(priKeyStrDe58.empty())
+        {
+            boost::optional<SecretKey> ret;
+            return ret;
+        }
+        else
+            return SecretKey(Slice(priKeyStrDe58.c_str(), priKeyStrDe58.size()), KeyType::gmalg);
     }
     else if('x' == secret[0])
     {
@@ -271,29 +279,6 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
 		boost::optional<SecretKey> ret;
 		return ret;
 	}
-}
-
-boost::optional<PublicKey> getPublicKey(const std::string& secret)
-{
-    //tx_secret is acturally masterseed
-    boost::optional<PublicKey> oPublic_key;
-    if (secret.size() > 0)
-    {
-        KeyType keyType = KeyType::secp256k1;
-        // if (GmEncryptObj::getInstance())
-        if ('p' == secret[0])
-        {
-            keyType = KeyType::gmalg;
-            Seed seed = randomSeed();
-            oPublic_key = generateKeyPair(keyType, seed).first;
-        }
-        else if ('x' == secret[0])
-        {
-            auto seed = parseBase58<Seed>(secret);
-            oPublic_key = generateKeyPair(keyType, *seed).first;
-        }
-    }
-    return oPublic_key;
 }
 
 SecretKey
@@ -409,10 +394,8 @@ generateKeyPair(KeyType type, Seed const& seed)
             bool isRoot = strRootSeed != strSeed ? false : true;
             hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey, isRoot);
 
-            SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-            secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
             return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
-                secretkeyTemp);
+                                  SecretKey(Slice(tempPrivatekey.data(), tempPrivatekey.size()), KeyType::gmalg));
         }
         
     }
@@ -434,10 +417,8 @@ randomKeyPair(KeyType type)
         std::vector<unsigned char> tempPrivatekey;
         hEObj->SM2GenECCKeyPair(tempPublickey, tempPrivatekey);
 
-		SecretKey secretkeyTemp(Slice(tempPrivatekey.data(), tempPrivatekey.size()));
-		secretkeyTemp.keyTypeInt_ = KeyType::gmalg;
         return std::make_pair(PublicKey(Slice(tempPublickey.data(), tempPublickey.size())),
-			secretkeyTemp);
+                              SecretKey(Slice(tempPrivatekey.data(), tempPrivatekey.size()), type));
     }
     else
     {

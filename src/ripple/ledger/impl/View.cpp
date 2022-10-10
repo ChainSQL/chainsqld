@@ -270,6 +270,29 @@ forEachItem(
     }
 }
 
+void
+forEachItem(
+    ReadView const& view,
+    Keylet const key,
+    std::function<void(std::shared_ptr<SLE const> const&)> f)
+{
+    auto const root = key;
+    auto pos = root;
+    for (;;)
+    {
+        auto sle = view.read(pos);
+        if (!sle)
+            return;
+        // VFALCO NOTE We aren't checking field exists?
+        for (auto const& key : sle->getFieldV256(sfIndexes))
+            f(view.read(keylet::child(key)));
+        auto const next = sle->getFieldU64(sfIndexNext);
+        if (!next)
+            return;
+        pos = keylet::page(root, next);
+    }
+}
+
 bool
 forEachItemAfter(
     ReadView const& view,

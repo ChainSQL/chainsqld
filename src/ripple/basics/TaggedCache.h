@@ -25,6 +25,7 @@
 #include <ripple/basics/hardened_hash.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/insight/Insight.h>
+#include <peersafe/app/util/Common.h>
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -48,7 +49,9 @@ template <
     class T,
     class Hash = hardened_hash<>,
     class KeyEqual = std::equal_to<Key>,
-    class Mutex = std::recursive_mutex>
+    class Mutex = std::recursive_mutex,
+    class ReadLock = std::lock_guard<Mutex>,
+    class WriteLock = std::lock_guard<Mutex>>
 class TaggedCache
 {
 public:
@@ -56,7 +59,8 @@ public:
     using key_type = Key;
     using mapped_type = T;
     using clock_type = beast::abstract_clock<std::chrono::steady_clock>;
-
+    using readlock_type = ReadLock;
+    using writelock_type = WriteLock;
 public:
     TaggedCache(
         std::string const& name,
@@ -78,6 +82,8 @@ public:
         , m_cache_count(0)
         , m_hits(0)
         , m_misses(0)
+        , m_cache_threshold(0)
+        , m_read_when_fetch(false)
     {
     }
 
@@ -96,14 +102,14 @@ public:
     int
     getTargetSize() const
     {
-        std::lock_guard lock(m_mutex);
+        readlock_type lock(m_mutex);
         return m_target_size;
     }
 
     void
     setTargetSize(int s)
     {
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
         m_target_size = s;
 
         if (s > 0)
@@ -116,14 +122,14 @@ public:
     clock_type::duration
     getTargetAge() const
     {
-        std::lock_guard lock(m_mutex);
+        readlock_type lock(m_mutex);
         return m_target_age;
     }
 
     void
     setTargetAge(clock_type::duration s)
     {
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
         m_target_age = s;
         JLOG(m_journal.debug())
             << m_name << " target age set to " << m_target_age.count();
@@ -132,21 +138,21 @@ public:
     int
     getCacheSize() const
     {
-        std::lock_guard lock(m_mutex);
+        readlock_type lock(m_mutex);
         return m_cache_count;
     }
 
     int
     getTrackSize() const
     {
-        std::lock_guard lock(m_mutex);
+        readlock_type lock(m_mutex);
         return m_cache.size();
     }
 
     float
     getHitRate()
     {
-        std::lock_guard lock(m_mutex);
+        readlock_type lock(m_mutex);
         auto const total = static_cast<float>(m_hits + m_misses);
         return m_hits * (100.0f / std::max(1.0f, total));
     }
@@ -154,7 +160,7 @@ public:
     void
     clear()
     {
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
         m_cache.clear();
         m_cache_count = 0;
     }
@@ -162,7 +168,7 @@ public:
     void
     reset()
     {
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
         m_cache.clear();
         m_cache_count = 0;
         m_hits = 0;
@@ -179,13 +185,19 @@ public:
         // Keep references to all the stuff we sweep
         // so that we can destroy them outside the lock.
         //
-        std::vector<std::shared_ptr<mapped_type>> stuffToSweep;
+        std::vector<key_type> stuffToSweep;
+        std::vector<key_type> stuffToReset;
 
         {
             clock_type::time_point const now(m_clock.now());
             clock_type::time_point when_expire;
+            auto start = utcTime();
 
-            std::lock_guard lock(m_mutex);
+            readlock_type lock(m_mutex);
+            if (m_cache_threshold > 0 && m_cache.size() >= m_cache_threshold)
+            {
+                m_read_when_fetch = true;
+            }
 
             if (m_target_size == 0 ||
                 (static_cast<int>(m_cache.size()) <= m_target_size))
@@ -207,7 +219,6 @@ public:
                     << (now - when_expire).count() << " of "
                     << m_target_age.count();
             }
-
             stuffToSweep.reserve(m_cache.size());
 
             auto cit = m_cache.begin();
@@ -219,13 +230,11 @@ public:
                     // weak
                     if (cit->second.isExpired())
                     {
+                        stuffToSweep.push_back(cit->first);
                         ++mapRemovals;
-                        cit = m_cache.erase(cit);
+                        //cit = m_cache.erase(cit);
                     }
-                    else
-                    {
-                        ++cit;
-                    }
+                    ++cit;
                 }
                 else if (cit->second.last_access <= when_expire)
                 {
@@ -240,22 +249,49 @@ public:
                     ++cacheRemovals;
                     if (cit->second.ptr.unique())
                     {
-                        stuffToSweep.push_back(cit->second.ptr);
+                        stuffToSweep.push_back(cit->first);
                         ++mapRemovals;
-                        cit = m_cache.erase(cit);
+                        //cit = m_cache.erase(cit);
                     }
                     else
                     {
                         // remains weakly cached
-                        cit->second.ptr.reset();
-                        ++cit;
+                        stuffToReset.push_back(cit->first);
+                        //cit->second.ptr.reset();
                     }
+                    ++cit;
                 }
                 else
                 {
                     // strong, not expired
                     ++cc;
                     ++cit;
+                }
+            }
+            auto end = utcTime();
+            if (end - start > 1000 &&
+                (m_cache_threshold == 0 || m_cache_threshold > m_cache.size()))
+            {
+                m_cache_threshold = m_cache.size();
+            }
+            m_read_when_fetch = false;
+        }
+
+        {
+            writelock_type lock(m_mutex);
+
+            for (auto key : stuffToReset)
+            {
+                if (auto cit = m_cache.find(key); cit != m_cache.end())
+                {
+                    cit->second.ptr.reset();
+                }
+            }
+            for (auto key : stuffToSweep)
+            {
+                if (auto cit = m_cache.find(key); cit != m_cache.end())
+                {
+                    m_cache.erase(cit);
                 }
             }
         }
@@ -276,7 +312,7 @@ public:
     {
         // Remove from cache, if !valid, remove from map too. Returns true if
         // removed from cache
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
 
         auto cit = m_cache.find(key);
 
@@ -325,7 +361,7 @@ private:
     {
         // Return canonical value, store if needed, refresh in cache
         // Return values: true=we had the data already
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
 
         auto cit = m_cache.find(key);
 
@@ -402,37 +438,63 @@ public:
     fetch(const key_type& key)
     {
         // fetch us a shared pointer to the stored data object
-        std::lock_guard lock(m_mutex);
-
-        auto cit = m_cache.find(key);
-
-        if (cit == m_cache.end())
+        if (m_read_when_fetch)
         {
-            ++m_misses;
+            readlock_type lock(m_mutex);
+
+            auto cit = m_cache.find(key);
+            if (cit == m_cache.end())
+                return {};
+
+            Entry& entry = cit->second;
+            entry.touch(m_clock.now());
+
+            if (entry.isCached())
+                return entry.ptr;
+
+            // A write operation for element
+            entry.ptr = entry.lock();
+            if (entry.isCached())
+            {
+                // independent of cache size, so not counted as a hit
+                return entry.ptr;
+            }
+
             return {};
         }
-
-        Entry& entry = cit->second;
-        entry.touch(m_clock.now());
-
-        if (entry.isCached())
+        else
         {
-            ++m_hits;
-            return entry.ptr;
-        }
+            writelock_type lock(m_mutex);
+            auto cit = m_cache.find(key);
 
-        entry.ptr = entry.lock();
+            if (cit == m_cache.end())
+            {
+                ++m_misses;
+                return {};
+            }
 
-        if (entry.isCached())
-        {
-            // independent of cache size, so not counted as a hit
-            ++m_cache_count;
-            return entry.ptr;
-        }
+            Entry& entry = cit->second;
+            entry.touch(m_clock.now());
 
-        m_cache.erase(cit);
-        ++m_misses;
-        return {};
+            if (entry.isCached())
+            {
+                ++m_hits;
+                return entry.ptr;
+            }
+
+            entry.ptr = entry.lock();
+
+            if (entry.isCached())
+            {
+                // independent of cache size, so not counted as a hit
+                ++m_cache_count;
+                return entry.ptr;
+            }
+
+            m_cache.erase(cit);
+            ++m_misses;
+            return {};
+        }        
     }
 
     /** Insert the element into the container.
@@ -475,7 +537,7 @@ public:
         bool found = false;
 
         // If present, make current in cache
-        std::lock_guard lock(m_mutex);
+        writelock_type lock(m_mutex);
 
         if (auto cit = m_cache.find(key); cit != m_cache.end())
         {
@@ -523,7 +585,7 @@ public:
         std::vector<key_type> v;
 
         {
-            std::lock_guard lock(m_mutex);
+            readlock_type lock(m_mutex);
             v.reserve(m_cache.size());
             for (auto const& _ : m_cache)
                 v.push_back(_.first);
@@ -541,7 +603,7 @@ private:
         {
             beast::insight::Gauge::value_type hit_rate(0);
             {
-                std::lock_guard lock(m_mutex);
+                writelock_type lock(m_mutex);
                 auto const total(m_hits + m_misses);
                 if (total != 0)
                     hit_rate = (m_hits * 100) / total;
@@ -639,6 +701,10 @@ protected:
     cache_type m_cache;  // Hold strong reference to recent objects
     std::uint64_t m_hits;
     std::uint64_t m_misses;
+
+    //To control lock when sweep and fetch simultaneously
+    uint32_t            m_cache_threshold;
+    std::atomic_bool    m_read_when_fetch;
 };
 
 }  // namespace ripple

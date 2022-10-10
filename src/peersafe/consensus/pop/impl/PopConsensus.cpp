@@ -419,6 +419,12 @@ PopConsensus::onDeleteUntrusted(hash_set<NodeID> const& nowUntrusted)
     }
 }
 
+std::chrono::milliseconds 
+PopConsensus::getConsensusTimeOut() const
+{
+    return adaptor_.parms().consensusTIMEOUT;
+}
+
 // -------------------------------------------------------------------
 // Private member functions
 
@@ -613,8 +619,8 @@ PopConsensus::checkCache()
         for (auto iter = proposalCache_.begin(); iter != proposalCache_.end();)
         {
             /**
-             * Maybe prosoal seq meet curSeq, but view is feture,
-             * so don't remove propal which seq meet curSeq at this moment
+             * Maybe proposal seq meet curSeq, but view is future,
+             * so don't remove proposal which seq meet curSeq at this moment
              */
             if (iter->first < curSeq)
             {
@@ -1304,17 +1310,17 @@ PopConsensus::onViewChange(uint64_t toView)
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
 
     viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
-    if (bWaitingInit_)
+    if (waitingConsensusReach_)
     {
         if (mode_.get() != ConsensusMode::wrongLedger)
         {
-            adaptor_.onViewChanged(bWaitingInit_, previousLedger_, view_);
-            bWaitingInit_ = false;
+            adaptor_.onViewChanged(waitingConsensusReach_, previousLedger_, view_);
+            waitingConsensusReach_ = false;
         }
     }
     else
     {
-        adaptor_.onViewChanged(bWaitingInit_, previousLedger_, view_);
+        adaptor_.onViewChanged(waitingConsensusReach_, previousLedger_, view_);
         mode_.set(adaptor_.mode(), adaptor_);
     }
 

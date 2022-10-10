@@ -687,6 +687,16 @@ SHAMapStoreImp::clearPrior(LedgerIndex lastRotated)
         "DELETE FROM AccountTransactions WHERE LedgerSeq < %u;");
     if (health())
         return;
+
+    if (!app_.config().USE_TRACE_TABLE)
+        return;
+    clearSql(
+        *transactionDb_,
+        lastRotated,
+        "SELECT MIN(LedgerSeq) FROM TraceTransactions;",
+        "DELETE FROM TraceTransactions WHERE LedgerSeq < %u;");
+    if (health())
+        return;
 }
 
 SHAMapStoreImp::Health

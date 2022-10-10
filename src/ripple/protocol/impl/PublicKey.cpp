@@ -449,4 +449,49 @@ calcNodeID(PublicKey const& pk)
     return result;
 }
 
+bool SignatureStruct::isValid() const noexcept
+{
+    static const uint256 s_max =
+            from_hex_text<uint256>("0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141");
+    static const uint256 s_zero;
+
+    return (v <= 1 && r > s_zero && s > s_zero && r < s_max && s < s_max);
+}
+
+secp256k1_context const* getCtx()
+{
+    static std::unique_ptr<secp256k1_context, decltype(&secp256k1_context_destroy)> s_ctx{
+        secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY),
+        &secp256k1_context_destroy
+    };
+    return s_ctx.get();
+}
+
+Blob recover(Signature const& _sig, uint256 const& _message)
+{
+    int v = _sig[64];
+    if (v > 3)
+        return {};
+
+    auto* ctx = getCtx();
+    secp256k1_ecdsa_recoverable_signature rawSig;
+    if (!secp256k1_ecdsa_recoverable_signature_parse_compact(ctx, &rawSig, _sig.data(), v))
+        return {};
+
+    secp256k1_pubkey rawPubkey;
+    if (!secp256k1_ecdsa_recover(ctx, &rawPubkey, &rawSig, _message.data()))
+        return {};
+
+    std::array<byte, 65> serializedPubkey;
+    size_t serializedPubkeySize = serializedPubkey.size();
+    secp256k1_ec_pubkey_serialize(
+            ctx, serializedPubkey.data(), &serializedPubkeySize,
+            &rawPubkey, SECP256K1_EC_UNCOMPRESSED
+    );
+    assert(serializedPubkeySize == serializedPubkey.size());
+    assert(serializedPubkey[0] == 0x04);
+    
+    return Blob(serializedPubkey.data()+1, serializedPubkey.data() + serializedPubkey.size());
+}
+
 }  // namespace ripple

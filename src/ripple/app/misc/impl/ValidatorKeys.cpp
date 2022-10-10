@@ -123,8 +123,7 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                         configInvalid_ = true;
                         JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
-                    secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()));
-                    secretKey.keyTypeInt_ = KeyType::gmalg;
+                    secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
                     publicKey = derivePublicKey(KeyType::gmalg, secretKey);
                 }
             }
@@ -144,9 +143,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                         //valSecret.encrytCardIndex_ = index;
                         char *temp4Secret = new char[32];
                         memset(temp4Secret, index, 32);
-                        SecretKey tempSecKey(Slice(temp4Secret, 32));
+                        SecretKey tempSecKey(Slice(temp4Secret, 32), KeyType::gmInCard);
                         tempSecKey.encrytCardIndex_ = index;
-                        tempSecKey.keyTypeInt_ = KeyType::gmInCard;
                         hEObj->getPrivateKeyRight(index);
                         secretKey = tempSecKey;
                         delete[] temp4Secret;

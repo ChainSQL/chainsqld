@@ -277,12 +277,12 @@ LedgerMaster::getPublishedLedgerAge()
 
 void
 LedgerMaster::onConsensusReached(
-    bool bWaitingInit,
+    bool waitingConsensusReach,
     std::shared_ptr<Ledger const> previousLedger)
 {
     updateConsensusTime();
 
-    if (bWaitingInit &&
+    if (waitingConsensusReach &&
         previousLedger &&
         previousLedger->info().seq != mValidLedgerSeq)
     {
@@ -1332,7 +1332,7 @@ LedgerMaster::checkLoadLedger()
 {
     if (ledgerLoadInited.exchange(true))
         return;
-    if (app_.getInboundLedgers().getInfo().size() == 0)
+    if (app_.getInboundLedgers().getCount() <= 0)
     {
         app_.getJobQueue().addJob(
             jtCheckLoadLedger, "LedgerMaster.checkLoadLedger", [this](Job&) {
@@ -1379,7 +1379,7 @@ LedgerMaster::checkLoadLedger()
                             InboundLedger::Reason::GENERIC);
                     }                    
                 }
-            });
+            }, app_.doJobCounter());
     }
 }
 
@@ -1394,6 +1394,9 @@ LedgerMaster::checkUpdateOpenLedger()
 {
     if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
     {
+        JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
+                               << app_.openLedger().current()->seq()
+                               << "<= mValidLedgerSeq:" << mValidLedgerSeq;
         auto const lastVal = getValidatedLedger();
         boost::optional<Rules> rules;
         if (lastVal)
@@ -2515,7 +2518,7 @@ LedgerMaster::minSqlSeq()
 {
     boost::optional<LedgerIndex> seq;
     auto db = app_.getLedgerDB().checkoutDb();
-    *db << "SELECT MIN(LedgerSeq) FROM Ledgers", soci::into(seq);
+    *db << "SELECT MIN(LedgerSeq) FROM Ledgers WHERE LedgerSeq > 1", soci::into(seq);
     return seq;
 }
 

@@ -198,8 +198,10 @@ public:
             std::is_trivially_copyable<typename Container::value_type>::value>>
     explicit base_uint(Container const& c)
     {
-        assert(c.size() * sizeof(typename Container::value_type) == size());
-        std::memcpy(data_.data(), c.data(), size());
+        auto l =
+            std::min(c.size() * sizeof(typename Container::value_type), size());
+        std::memset(data_.data(), 0, size());
+        std::memcpy(data_.data(), c.data(), l);
     }
 
     template <class Container>
@@ -209,8 +211,10 @@ public:
         base_uint&>
     operator=(Container const& c)
     {
-        assert(c.size() * sizeof(typename Container::value_type) == size());
-        std::memcpy(data_.data(), c.data(), size());
+        auto l =
+            std::min(c.size() * sizeof(typename Container::value_type), size());
+        std::memset(data_.data(), 0, size());
+        std::memcpy(data_.data(), c.data(), l);
         return *this;
     }
 

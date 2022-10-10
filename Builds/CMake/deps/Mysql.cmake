@@ -12,6 +12,7 @@
       FIND_LIBRARY(MYSQL_LIBRARY
         NAMES ${MYSQL_NAMES}
         PATHS ${MYSQL_LIBRARY_DIR}
+        NO_DEFAULT_PATH
       )
     else()
       find_program(HOMEBREW brew)

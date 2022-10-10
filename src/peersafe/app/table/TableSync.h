@@ -89,6 +89,7 @@ public:
     void SetHaveSyncFlag(bool haveSync);
     void Sweep();
     bool InitTableItems();
+    bool IsInitTable();
     Json::Value SyncInfo(std::string const& nameInDB);
 
 private:
@@ -161,6 +162,7 @@ private:
     bool                                        bAutoLoadTable_;
 
     bool                                        bIsHaveSync_;
+    bool                                        bRemoteSync_;
 
     bool bInitTableItems_{false};
     // if the sync thread is running

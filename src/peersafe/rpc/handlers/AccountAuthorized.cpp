@@ -21,6 +21,9 @@
 #include <ripple/net/RPCErr.h>
 #include <ripple/protocol/TxFlags.h>
 #include <ripple/rpc/impl/RPCHelpers.h>
+#include <peersafe/basics/TypeTransform.h>
+#include <peersafe/core/Tuning.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -207,8 +210,10 @@ doAccountAuthorized(RPC::JsonContext& context)
         if (!sleAccount)
             return rpcError(rpcINVALID_PARAMS);
 
-        if (sleAccount->isFieldPresent(sfOwnerNode))
-            startHint = sleAccount->getFieldU64(sfOwnerNode);
+        STMap256 const& mapExtension =
+            sleAccount->getFieldM256(sfStorageExtension);
+        if (mapExtension.has(NODE_TYPE_AUTHORIZE))
+            startHint = fromUint256(mapExtension.at(NODE_TYPE_AUTHORIZE));
         else
             return rpcError(rpcINVALID_PARAMS);
     }
