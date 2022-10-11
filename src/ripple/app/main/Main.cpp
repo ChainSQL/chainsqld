@@ -737,18 +737,7 @@ run(int argc, char** argv)
         thresh = kTrace;
 
     auto logs = std::make_unique<Logs>(thresh);
-#ifdef HARD_GM
-	setDebugLogSink(logs->makeSink(
-		"Debug", beast::severities::kTrace));
-	auto GmCheckJournal = logs->journal("GmCheck");
-	GmEncrypt* hEObj = GmEncryptObj::getInstance();
-    // need judge the chainsqld.cfg validation_seed whether is a number,if number and must have card
-	if (nullptr == hEObj)
-	{
-		JLOG(GmCheckJournal.info()) << "No EncryptCard! Please Check!";
-		return -1;
-	}
-#endif
+
     // No arguments. Run server.
     if (!vm.count("parameters"))
     {
@@ -765,6 +754,16 @@ run(int argc, char** argv)
                 << "preceded by a \\";
         }
 
+        auto GmCheckJournal = logs->journal("GmCheck");
+#ifdef HARD_GM
+        GmEncrypt* hEObj = GmEncryptObj::getInstance();
+        // need judge the chainsqld.cfg validation_seed whether is a number,if number and must have card
+        if (nullptr == hEObj)
+        {
+            JLOG(GmCheckJournal.info()) << "No EncryptCard! Please Check!";
+            return -1;
+        }
+#endif
 		if (config->GM_SELF_CHECK)
 		{
 			bool checkResult = false;
@@ -774,20 +773,17 @@ run(int argc, char** argv)
 				checkResult = gmCheckObj->startAlgRanCheck(GMCheck::SM_ALL_CK);
 				if (checkResult)
 				{
-					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
-                    std::cout << "SM2/SM3/SM4 and random check successful!" << std::endl;
+					JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check successful!";
 				}
 				else
 				{
-					// JLOG(GmCheckJournal.info()) << "SM2/SM3/SM4 and random check failed!";
-                    std::cerr << "SM2/SM3/SM4 and random check failed!" << std::endl;
+					JLOG(GmCheckJournal.fatal()) << "SM2/SM3/SM4 and random check failed!";
 					return -1;
 				}
 			}
 			else
 			{
-				// JLOG(GmCheckJournal.info()) << "Get check obj failed! Please Check!";
-                std::cerr << "Get check obj failed! Please Check!" << std::endl;
+				JLOG(GmCheckJournal.error()) << "Get check obj failed! Please Check!";
 				return -1;
 			}
 		}
