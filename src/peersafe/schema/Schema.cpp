@@ -90,7 +90,7 @@ public:
     nodeToShards();
     bool
     validateShards();
-    void
+    bool
     startGenesisLedger();
     bool
     setSynTable();
@@ -1260,7 +1260,8 @@ SchemaImp::setup()
     {
         JLOG(m_journal.info()) << "Starting new Ledger";
 
-        startGenesisLedger();
+        if (!startGenesisLedger())
+            return false;
     }
     else if (
         startUp == Config::LOAD || startUp == Config::LOAD_FILE ||
@@ -1285,7 +1286,8 @@ SchemaImp::setup()
         if (!config_->standalone())
             m_networkOPs->setNeedNetworkLedger();
 
-        startGenesisLedger();
+        if (!startGenesisLedger())
+            return false;
     }
     else
     {
@@ -1347,7 +1349,8 @@ SchemaImp::setup()
             }
             else
             {
-                startGenesisLedger();
+                if (!startGenesisLedger())
+                    return false;
             }            
         }
     }
@@ -1544,9 +1547,14 @@ SchemaImp::setup()
     return true;
 }
 
-void
+bool
 SchemaImp::startGenesisLedger()
 {
+    if (boost::none == config_->CHAINID)
+    {
+        JLOG(m_journal.fatal()) << "chainID mot configured in cfg.";
+        return false;
+    }
     std::vector<uint256> initialAmendments =
         (config_->START_UP == Config::FRESH) ? m_amendmentTable->getDesired()
                                              : std::vector<uint256>{};
@@ -1560,6 +1568,7 @@ SchemaImp::startGenesisLedger()
     m_ledgerMaster->switchLCL(genesis);
     // set valid ledger
     m_ledgerMaster->initGenesisLedger(genesis);
+    return true;
     /*
     auto const next = std::make_shared<Ledger>(
             *genesis, timeKeeper().closeTime());

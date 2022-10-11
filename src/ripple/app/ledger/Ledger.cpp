@@ -209,7 +209,7 @@ Ledger::Ledger(
     rawInsert(rootSle);
     
     auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
-    uint256 hash(config.CHAINID);
+    uint256 hash(*config.CHAINID);
     sleChainID->setFieldH256(sfChainId, hash);
     rawInsert(sleChainID);
 
