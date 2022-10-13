@@ -1370,10 +1370,14 @@ void TableSync::TableSyncThread()
 				}
 				else if(!stItem.isDeleted)
 				{
-                    JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT table "
-                                        << stItem.sTableName
-                                        << " not found in ledger:"
-                                        << app_.getLedgerMaster().getValidLedgerIndex();
+                    if(setTableInCfg_.count(to_string(stItem.accountID) + stItem.sTableName) > 0)
+                    {
+                        JLOG(journal_.warn())
+                            << "TableSyncThread SYNC_INIT table "
+                            << stItem.sTableName << " not found in ledger:"
+                            << app_.getLedgerMaster().getValidLedgerIndex();
+                    }
+
 					std::string sNameInDB;
 					if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 					{
