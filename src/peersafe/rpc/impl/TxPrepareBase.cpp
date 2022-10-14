@@ -611,7 +611,10 @@ Json::Value TxPrepareBase::prepareForCreate()
     else
     {
         auto oSecKey = ripple::getSecretKey(secret_);
-        public_key = ripple::derivePublicKey(oSecKey->keyTypeInt_, *oSecKey);
+        if(oSecKey)
+            public_key = ripple::derivePublicKey(oSecKey->keyTypeInt_, *oSecKey);
+        else
+            return RPC::make_error(rpcINVALID_PARAMS, "Parse secret failed, please checkout!");
     }
 
     std::string raw = tx_json_[jss::Raw].toStyledString();

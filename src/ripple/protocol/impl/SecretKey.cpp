@@ -254,8 +254,14 @@ boost::optional<SecretKey> getSecretKey(const std::string& secret)
     // if (GmEncryptObj::getInstance())
     if ('p' == secret[0])
     {
-        std::string privateKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
-        return SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
+        std::string priKeyStrDe58 = decodeBase58Token(secret, TokenType::AccountSecret);
+        if(priKeyStrDe58.empty())
+        {
+            boost::optional<SecretKey> ret;
+            return ret;
+        }
+        else
+            return SecretKey(Slice(priKeyStrDe58.c_str(), priKeyStrDe58.size()), KeyType::gmalg);
     }
     else if('x' == secret[0])
     {
