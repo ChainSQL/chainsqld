@@ -71,10 +71,6 @@ enum {
     // Number of nodes to request blindly
     ,
     reqNodes = 8
-
-    //Number of contract maps request one time
-    ,
-    reqMapCount = 5
 };
 
 // millisecond for each ledger timeout
@@ -110,7 +106,10 @@ InboundLedger::init(ScopedLockType& collectionLock)
     ScopedLockType sl(mLock);
     collectionLock.unlock();
 
+    // tryDB may take long time,without this condition doAdvance may stuck.
+    if (mReason != Reason::HISTORY)
         tryDB(app_.getNodeFamily().db());
+
     if (mFailed)
         return;
 
@@ -457,8 +456,10 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
             {
                 AccountStateSF filter(
                     mLedger->stateMap().family().db(), app_.getLedgerMaster());
+                mWaitingRead = true;
                 auto ret =
                     neededCTNodeHashes(*it->second, it->first, 1, &filter);
+                mWaitingRead = false;
                 if (ret.empty())
                     it = mContractMapInfo.erase(it);
                 else
@@ -590,7 +591,8 @@ InboundLedger::done()
         jtLEDGER_DATA, "AcquisitionDone", [self = shared_from_this()](Job&) {
             if (self->mComplete && !self->mFailed)
             {
-                self->app_.getInboundLedgers().onLedgerComplete(self->getSeq());
+                auto seq = self->getLedger()->info().seq;
+                self->app_.getInboundLedgers().onLedgerComplete(seq);
                 if (self->app().getOPs().checkLedgerAccept(self->getLedger()))
                 {
                     self->app().getLedgerMaster().doValid(self->getLedger());
@@ -897,7 +899,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
             std::map<uint256, std::shared_ptr<SHAMap>> tmpMap;
             auto it = mContractMapInfo.begin();
             int count = 0;
-            while (count++ < reqMapCount && it != mContractMapInfo.end())
+            while (count++ < app_.config().REQ_MAP_COUNT && it != mContractMapInfo.end())
             {
                 tmpMap.insert(std::make_pair(it->first, it->second));
                 it++;

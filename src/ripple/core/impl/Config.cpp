@@ -41,7 +41,7 @@
 
 namespace ripple {
 
-inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 13>
+inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 14>
     sizedItems{{
         // FIXME: We should document each of these items, explaining exactly
         // what
@@ -59,7 +59,8 @@ inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 13>
         {SizedItem::txnDBCache, {{4, 12, 24, 64, 128}}},
         {SizedItem::lgrDBCache, {{4, 8, 16, 32, 128}}},
         {SizedItem::transactionSize,    {{65536,  131072, 196608, 262144,     327680  }} },
-        {SizedItem::transactionAge,     {{60,     90,     120,    900,        1800    }} }
+        {SizedItem::transactionAge,     {{60,     90,     120,    900,        1800    }} },
+        {SizedItem::requestMapCount, {{1, 3, 5, 8, 10}}}
     }};
 
 // Ensure that the order of entries in the table corresponds to the
@@ -1037,6 +1038,10 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error>("admin address is invalid");
         }
     }
+
+    Section ledgerSyncSection = section(SECTION_FETCH_LEDGER);
+    REQ_MAP_COUNT = get(ledgerSyncSection, "request_map_count", getValueFor(SizedItem::requestMapCount));
+    get_if_exists(ledgerSyncSection, "enable_state_hash_set", ENABLE_STATE_HASH_SET);
 }
 
 boost::filesystem::path

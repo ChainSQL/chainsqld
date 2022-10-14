@@ -94,6 +94,12 @@ NodeFamily::missingNode(std::uint32_t seq)
     }
 }
 
+bool
+NodeFamily::stateNodeHashSetEnabled()
+{
+    return app_.config().ENABLE_STATE_HASH_SET;
+}
+
 void
 NodeFamily::acquire(uint256 const& hash, std::uint32_t seq)
 {

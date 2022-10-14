@@ -88,6 +88,9 @@ public:
 
     virtual void
     reset() = 0;
+
+    virtual bool
+    stateNodeHashSetEnabled() = 0;
 };
 
 }  // namespace ripple

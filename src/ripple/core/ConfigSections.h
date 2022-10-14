@@ -141,6 +141,8 @@ struct ConfigSection
 
 #define SECTION_GOVERNANCE              "governance"
 
+#define SECTION_FETCH_LEDGER            "ledger_sync"
+
 #define SECTION_PEER_X509_ROOT_PATH     "peer_x509_root_path"
 #define SECTION_PEER_X509_CRED_PATH     "peer_x509_cred_path"
 

@@ -61,7 +61,8 @@ enum class SizedItem : std::size_t {
     txnDBCache,
     lgrDBCache,
     transactionSize,
-    transactionAge
+    transactionAge,
+    requestMapCount,
     //is need still?
     //siSLECacheSize,
     //siSLECacheAge,
@@ -235,6 +236,10 @@ public:
     bool                        OPEN_ACCOUNT_DELAY = false;
     boost::optional<AccountID>  ADMIN;
     bool                        DEFAULT_AUTHORITY_ENABLED = false;
+
+
+    std::uint32_t               REQ_MAP_COUNT;
+    bool                        ENABLE_STATE_HASH_SET = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}
