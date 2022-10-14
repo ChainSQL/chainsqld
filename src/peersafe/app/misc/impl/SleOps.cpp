@@ -127,6 +127,9 @@ namespace ripple {
         if (auto res = checkAuthority(_from, lsfPaymentAuth, _to);
             res != tesSUCCESS)
             return res;
+		if (auto res = checkAuthority(_from, lsfRealNameAuth, _to);
+            res != tesSUCCESS)
+            return res;
 
         int64_t value = fromUint256(_value);
         auto ret = subBalance(_from, value, addressHasCode(_from));
@@ -960,18 +963,36 @@ namespace ripple {
 		if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
             dst == ctx_.app.config().ADMIN)
             return tesSUCCESS;
-
-        if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
-        {
-            if (!(sle->getFlags() & flag))
-                return tecNO_PERMISSION;
-        }
+		if (flag == lsfRealNameAuth)
+		{
+			if (ctx_.app.config().REAL_NAME_AUTHORITY_ENABLED)
+			{
+				if (flag == lsfRealNameAuth && dst && ctx_.app.config().ADMIN &&
+					dst == ctx_.app.config().ADMIN)
+					return tesSUCCESS;
+				if (!(sle->getFlags() & flag))
+					return tecNO_PERMISSION;
+				auto const dstSle = ctx_.view().read(keylet::account(dst.value()));
+				if (!dstSle)
+					return tefINTERNAL;
+				if (!(dstSle->getFlags() & flag))
+					return tecNO_PERMISSION;
+			}
+		}
         else
         {
-            if (sle->getFlags() & flag)
-                return tecNO_PERMISSION;
+			if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+			{
+				if (!(sle->getFlags() & flag))
+					return tecNO_PERMISSION;
+			}
+			else
+			{
+				if (sle->getFlags() & flag)
+					return tecNO_PERMISSION;
+			}
         }
-
+        
         return tesSUCCESS;
     }
 

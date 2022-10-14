@@ -44,7 +44,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (setFlag != asfPaymentAuth && setFlag != asfDeployContractAuth &&
             setFlag != asfCreateTableAuth && setFlag != asfIssueCoinsAuth &&
-            setFlag != asfAdminAuth)
+            setFlag != asfAdminAuth && setFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -54,7 +54,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (clearFlag != asfPaymentAuth && clearFlag != asfDeployContractAuth &&
             clearFlag != asfCreateTableAuth && clearFlag != asfIssueCoinsAuth &&
-            clearFlag != asfAdminAuth)
+            clearFlag != asfAdminAuth && clearFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -152,6 +152,9 @@ AccountAuthorize::doApply()
         case asfIssueCoinsAuth:
             setAuthority(uFlagsOut, lsfIssueCoinsAuth);
             break;
+        case asfRealNameAuth:
+            uFlagsOut |= lsfRealNameAuth;
+            break;
         case asfAdminAuth:
             setAuthority(uFlagsOut, lsfPaymentAuth);
             setAuthority(uFlagsOut, lsfDeployContractAuth);
@@ -176,6 +179,9 @@ AccountAuthorize::doApply()
             break;
         case asfIssueCoinsAuth:
             clearAuthority(uFlagsOut, lsfIssueCoinsAuth);
+            break;
+        case asfRealNameAuth:
+            uFlagsOut &= ~lsfRealNameAuth;
             break;
         case asfAdminAuth:
             clearAuthority(uFlagsOut, lsfPaymentAuth);
