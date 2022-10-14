@@ -422,16 +422,14 @@ Transactor::checkAuthority(
         return tesSUCCESS;
 
     // allow payment with super admin
-    if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
-        dst == ctx_.app.config().ADMIN)
+    if (((flag == lsfPaymentAuth) | (flag == lsfRealNameAuth))
+        && dst && ctx_.app.config().ADMIN 
+        && dst == ctx_.app.config().ADMIN)
         return tesSUCCESS;
     if (flag == lsfRealNameAuth)
     {
         if (ctx_.app.config().REAL_NAME_AUTHORITY_ENABLED)
         {
-            if (flag == lsfRealNameAuth && dst && ctx_.app.config().ADMIN &&
-                dst == ctx_.app.config().ADMIN)
-                return tesSUCCESS;
             if (!(sle->getFlags() & flag))
                 return tecNO_PERMISSION;
             auto const dstSle = ctx_.view.read(keylet::account(dst.value()));
@@ -445,8 +443,8 @@ Transactor::checkAuthority(
     {
         if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
         {
-        if (!(sle->getFlags() & flag))
-            return tecNO_PERMISSION;
+            if (!(sle->getFlags() & flag))
+                return tecNO_PERMISSION;
         }
         else
         {
