@@ -100,6 +100,12 @@ public:
     bool
     stateNodeHashSetEnabled() override;
 
+    void
+    setTimer();
+
+    void
+    trigger();
+
 private:
     Schema& app_;
     NodeStore::Database& db_;
@@ -109,6 +115,10 @@ private:
     std::shared_ptr<TreeNodeCache> tnCache_;
 
     std::shared_ptr<StateNodeHashSet> stateNodeHashSet_;
+
+    LedgerIndex               lastValidSeq_;
+    std::chrono::milliseconds timerInterval_;
+    boost::asio::basic_waitable_timer<std::chrono::steady_clock> mTimer;
 
     // Missing node handler
     LedgerIndex maxSeq_{0};

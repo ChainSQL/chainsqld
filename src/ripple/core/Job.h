@@ -66,6 +66,7 @@ enum JobType {
     jtTABLESYNC,     // synchronize tables
 
     jtSTOP_SCHEMA,   // Stop sub-chain
+    jtFULLBELOW_TOUCH,
 
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
