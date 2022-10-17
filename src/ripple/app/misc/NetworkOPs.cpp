@@ -1952,7 +1952,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
                     if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
-                        JLOG(m_journal.warn())
+                        JLOG(m_journal.info())
                             << "Account sequence too large,accountId="
                             << txCur->getAccountID(sfAccount)
                             << ", curSeq = " << seq
