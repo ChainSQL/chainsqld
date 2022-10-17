@@ -199,7 +199,7 @@ AccountAuthorize::doApply()
     // flag权限位被清除时，从超级管理员的目录中移除该账户。
     if (uFlagsOut &
         (lsfPaymentAuth | lsfDeployContractAuth | lsfCreateTableAuth |
-         lsfIssueCoinsAuth | lsfAdminAuth))
+         lsfIssueCoinsAuth | lsfAdminAuth | lsfRealNameAuth))
     {
         auto admin = ctx_.app.config().ADMIN;
         if (!admin)
