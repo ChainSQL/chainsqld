@@ -11,14 +11,108 @@
 如果你是开发者，请访问[www.docs.chainsql.net](http://docs.chainsql.net)
 
 # 进行中
-1. 支持wasm智能合约
-
+1. 支持MetaMask钱包
+2. 支持以太坊格式账户发送chainsql交易
 
 # 待发布
-## 版本 3.2.0
-支持Oracle数据库
+## 版本 3.3.0
+- 共识保活机制
+- 表同步重连机制优化
+- 特性功能优化
 
 # 发布
+
+## 版本3.2.0
+### 接口
+1. 新增接口
+- sync_info:获取节点本地表同步信息
+- tx_in_pool：获取交易池信息
+- monitor_statis：统计链上交易数、合约数、账户数（需开启Prometheus监控功能）
+2. 修改tx_history接口：
+- 过滤掉内部交易类型（EnableAmendment、SetFee、UNLModify）
+- 增加交易类型过滤功能
+- 对单个交易增加时间、交易执行结果字段
+
+### 配置项
+1. Prometheus监控端口
+```
+[prometheus]
+7007
+```
+2. 超级管理员配置
+```
+[govenance]
+admin=xxx
+default_authority_enabled=0
+```
+3. 节点准入控制
+- 配置信任的根证书，用于在建立p2p连接的过程中验证对等节点的子证书
+- 配置节点自身的子证书文件
+```
+[peer_x509_root_path]
+./ca.cert
+
+[peer_x509_cred_path]
+./peer1.cert
+```
+4. https，wss接口支持证书双向认证
+
+https及wss协议的接口增加证书密钥及证书的文件路径配置，以及是否开启双向认证的配置。
+```
+[port_wss_admin_local]
+port = 6006
+ip = 0.0.0.0
+admin = 127.0.0.1
+protocol = wss
+ssl_key = /Users/lascion/lcworkspace/cafile/server/server.key
+ssl_cert = /Users/lascion/lcworkspace/cafile/server/server.crt
+ssl_verify = 1
+
+#如果开启双向认证，增加用于配置验证客户端证书的根证书文件路径
+[trusted_ca_list]
+/Users/lascion/lcworkspace/cafile/root/root.crt
+```
+说明：
+- ssl_key:    节点wss服务证书密钥文件路径
+- ssl_cert:   节点wss服务证书文件路径
+- ssl_verify: 是否开启双向认证，配置为1开启，0为不开启，默认为0
+5. 表同步是否只支持本地同步
+```
+[remote_sync]
+0
+```
+
+### 特性
+- ``ContractStorage`` 修改合约存储实现为二级存储树
+- ``TableGrant`` 表授权一个授权对应一个SLE
+- ``PromethSLEHideInMeta`` 在交易详情的Meta字段中隐藏Prometheus监控相关的SLE修改
+
+
+### 功能
+1. 支持wasm合约虚拟机
+2. 支持 Prometheus 对节点的监控
+3. 增加peer连接证书准入机制
+4. 支持与sdk之间的ssl连接，支持国密与非国密证书
+5. 支持用户证书吊销功能
+6. 超级管理员治理
+- 可授权转账、建表、建合约、发行数字资产
+- 可冻结、解冻、销毁合约
+7. 增加删除子链功能
+8. 增加对子链单独执行stop与start操作的功能
+
+### 优化
+1. 缓存优化
+- 调节fullbelow缓存大小与过期时间
+- malloc_trim做到chainsql定时任务中，一分钟调用一次
+2. 共识优化
+- 优化节点启动初始化机制：init_announce
+- 对transaction.db的处理实现读写分离
+3. 交易池增加定时任务移除LastLedgerSequence过期的交易
+
+### Bug修复
+- 修复远程同步表失败导致表无法同步的bug
+- 解决断块问题：close但未共识过的区块不从缓存中移除
+- 其它
 
 ## 版本3.1.0
 ### 新增接口
