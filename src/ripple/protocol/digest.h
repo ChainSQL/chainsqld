@@ -252,6 +252,15 @@ sha512Half(Args const&... args)
         return static_cast<typename
             sha512_half_hasher::result_type>(h);
 	}
+#ifndef OLD_SHA3
+    else if (hashTypeTemp == CommonKey::sha3)
+    {
+        Sha3 sha3Hash;
+        hash_append(sha3Hash, args...);
+        return static_cast<typename sha512_half_hasher::result_type>(sha3Hash);
+        
+    }
+#endif
 	else {
 		assert(0);
 		uint256 ret;

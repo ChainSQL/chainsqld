@@ -74,10 +74,10 @@ template <>
 boost::optional<AccountID>
 parseHex(std::string const& s)
 {
-    if (s.size() != 40)
+    if (s.substr(0,2) != "0x" && s.size() != 42)
         return boost::none;
     AccountID id;
-    if (!id.SetHex(s, true))
+    if (!id.SetHex(s.substr(2), true))
         return boost::none;
     return id;
 }

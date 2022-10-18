@@ -132,7 +132,7 @@ namespace ripple {
 			if(ctx_.tx.getFieldU16(sfContractOpType) != ContractCreation)
 				LedgerAdjust::updateContractCount(ctx_.app, ctx_.view(),CONTRACT_CALL);
 			return e.finalize();
-		}			
+		}
 		else
 			return e.getException();
 	}

@@ -99,8 +99,9 @@ Transaction::transactionFromSQL(
     std::uint32_t const inLedger =
         rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
 
-    SerialIter it(makeSlice(rawTxn));
-    auto txn = std::make_shared<STTx const>(it);
+    //SerialIter it(makeSlice(rawTxn));
+    //auto txn = std::make_shared<STTx const>(it);
+    auto txn = makeSTTx(makeSlice(rawTxn));
     std::string reason;
     auto tr = std::make_shared<Transaction> (
         txn, reason, app);

@@ -39,12 +39,12 @@
 #include <ripple/protocol/digest.h>
 #include <peersafe/app/misc/StateManager.h>
 #include <peersafe/app/misc/TxPool.h>
-#include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/protocol/STETx.h>
 
 
 namespace ripple {
@@ -88,12 +88,15 @@ preflight1(PreflightContext const& ctx)
         return temBAD_FEE;
     }
 
-    auto const spk = ctx.tx.getSigningPubKey();
-
-    if (!spk.empty() && !publicKeyType(makeSlice(spk)))
+    if (!isEthTx(ctx.tx))
     {
-        JLOG(ctx.j.debug()) << "preflight1: invalid signing key";
-        return temBAD_SIGNATURE;
+        auto const spk = ctx.tx.getSigningPubKey();
+
+        if (!spk.empty() && !publicKeyType(makeSlice(spk)))
+        {
+            JLOG(ctx.j.debug()) << "preflight1: invalid signing key";
+            return temBAD_SIGNATURE;
+        }
     }
 
     return tesSUCCESS;
@@ -378,6 +381,40 @@ Transactor::checkUserCert(PreclaimContext const& ctx)
 }
 
 TER
+Transactor::checkDeleted(PreclaimContext const& ctx)
+{
+    auto const srcId = ctx.tx.getAccountID(sfAccount);
+
+    //actually when a tx comes here, the src will be normal
+    auto const sle = ctx.view.read(keylet::account(srcId));
+    if (!sle)
+    {
+        return terNO_ACCOUNT;
+    }
+    else if(sle->isDeletedAccount())
+    {
+        return tefACCOUNT_ALREADY_DELETE;
+    }
+    
+    if(ctx.tx.isFieldPresent(sfDestination))
+    {
+        auto const dstId = ctx.tx.getAccountID(sfDestination);
+        auto const dstSle = ctx.view.read(keylet::account(dstId));
+        if (!dstSle)
+        {
+            //active a new account
+            return tesSUCCESS;
+        }
+        else if(dstSle->isDeletedAccount())
+        {
+            return tefACCOUNT_ALREADY_DELETE;
+        }
+    }
+    
+    return tesSUCCESS;
+}
+
+TER
 Transactor::checkFrozen(PreclaimContext const& ctx)
 {
     auto const id = ctx.tx.getAccountID(sfAccount);
@@ -416,7 +453,7 @@ Transactor::checkAuthority(
 {
     auto const sle = ctx_.view.read(keylet::account(acc));
     if (!sle)
-        return tefINTERNAL;
+        return terNO_ACCOUNT;
 
     if (ctx_.app.config().ADMIN && acc == *ctx_.app.config().ADMIN)
         return tesSUCCESS;
@@ -626,6 +663,8 @@ void Transactor::checkAddChainIDSle()
 NotTEC
 Transactor::checkSign (PreclaimContext const& ctx)
 {
+    if (isEthTx(ctx.tx))
+        return tesSUCCESS;
     // If the pk is empty, then we must be multi-signing.
     if (ctx.tx.getSigningPubKey().empty())
         return checkMultiSign(ctx);
@@ -926,22 +965,22 @@ Transactor::operator()()
 {
     JLOG(j_.trace()) << "apply: " << ctx_.tx.getTransactionID();
 
-#ifdef DEBUG
-    {
-        Serializer ser;
-        ctx_.tx.add(ser);
-        SerialIter sit(ser.slice());
-        STTx s2(sit);
-
-        if (!s2.isEquivalent(ctx_.tx))
-        {
-            JLOG(j_.fatal()) << "Transaction serdes mismatch";
-            JLOG(j_.info()) << to_string(ctx_.tx.getJson(JsonOptions::none));
-            JLOG(j_.fatal()) << s2.getJson(JsonOptions::none);
-            assert(false);
-        }
-    }
-#endif
+//#ifdef DEBUG
+//    {
+//        Serializer ser;
+//        ctx_.tx.add(ser);
+//        SerialIter sit(ser.slice());
+//        STTx s2(sit);
+//
+//        if (!s2.isEquivalent(ctx_.tx))
+//        {
+//            JLOG(j_.fatal()) << "Transaction serdes mismatch";
+//            JLOG(j_.info()) << to_string(ctx_.tx.getJson(JsonOptions::none));
+//            JLOG(j_.fatal()) << s2.getJson(JsonOptions::none);
+//            assert(false);
+//        }
+//    }
+//#endif
 
     auto terResult = STer(ctx_.preclaimResult);
 	if (terResult.ter == terPRE_SEQ)
@@ -958,9 +997,7 @@ Transactor::operator()()
 	}
 	if (terResult.ter == tesSUCCESS)
     {
-        ctx_.app.getContractHelper().clearDirty();
 		terResult = apply();
-        ctx_.app.getContractHelper().flushDirty(terResult.ter);
 	}
 
     // No transaction can return temUNKNOWN from apply,

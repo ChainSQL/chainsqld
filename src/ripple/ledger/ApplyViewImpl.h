@@ -86,6 +86,10 @@ public:
             std::shared_ptr<SLE const> const& after)> const& func);
 
 private:
+    void
+    applyDirty(OpenView& to);
+
+private:
     boost::optional<STAmount> deliver_;
 };
 

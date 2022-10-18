@@ -152,12 +152,29 @@ public:
     using const_iterator = ValueConstIterator;
     using UInt = Json::UInt;
     using Int = Json::Int;
+#if defined(JSON_HAS_INT64)
+    using UInt64 = Json::UInt64;
+    using Int64 = Json::Int64;
+#endif // defined(JSON_HAS_INT64)
+    using LargestInt = Json::LargestInt;
+    using LargestUInt = Json::LargestUInt;
     using ArrayIndex = UInt;
 
     static const Value null;
     static const Int minInt;
     static const Int maxInt;
     static const UInt maxUInt;
+
+    static constexpr LargestInt minLargestInt =LargestInt(~(LargestUInt(-1) / 2));
+    static constexpr LargestInt maxLargestInt = LargestInt(LargestUInt(-1) / 2);
+    static constexpr LargestUInt maxLargestUInt = LargestUInt(-1);
+    
+#if defined(JSON_HAS_INT64)
+    static constexpr Int64 minInt64 = Int64(~(UInt64(-1) / 2));
+    static constexpr Int64 maxInt64 = Int64(UInt64(-1) / 2);
+    static constexpr UInt64 maxUInt64 = UInt64(-1);
+#endif // defined(JSON_HAS_INT64)
+    static constexpr double maxUInt64AsDouble = 18446744073709551615.0;
 
 private:
     class CZString
@@ -212,6 +229,10 @@ public:
     Value(ValueType type = nullValue);
     Value(Int value);
     Value(UInt value);
+#if defined(JSON_HAS_INT64)
+    Value(Int64 value);
+    Value(UInt64 value);
+#endif // if defined(JSON_HAS_INT64)
     Value(double value);
     Value(const char* value);
     /** \brief Constructs a value from a static string.
@@ -254,6 +275,13 @@ public:
     asInt() const;
     UInt
     asUInt() const;
+    
+#if defined(JSON_HAS_INT64)
+    Int64 asInt64() const;
+    UInt64 asUInt64() const;
+#endif // if defined(JSON_HAS_INT64)
+    LargestInt asLargestInt() const;
+    LargestUInt asLargestUInt() const;
     double
     asDouble() const;
     bool
@@ -268,8 +296,10 @@ public:
     isBool() const;
     bool
     isInt() const;
+    bool isInt64() const;
     bool
     isUInt() const;
+    bool isUInt64() const;
     bool
     isIntegral() const;
     bool
@@ -422,8 +452,8 @@ private:
 private:
     union ValueHolder
     {
-        Int int_;
-        UInt uint_;
+        LargestInt int_;
+        LargestUInt uint_;
         double real_;
         bool bool_;
         char* string_;

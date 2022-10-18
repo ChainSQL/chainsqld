@@ -121,6 +121,7 @@ transResults()
 		MAKE_ERROR(tefNO_ADMIN_CONFIGURED ,		"No admin configured on chain!"),
 		MAKE_ERROR(tefNO_NEED_AUTHORIZE ,		"No need authorize"),
 		MAKE_ERROR(tefBAD_USERCERT ,			"Check user cert failed."),
+        MAKE_ERROR(tefACCOUNT_ALREADY_DELETE ,  "The account has been deleted."),
 		MAKE_ERROR(telLOCAL_ERROR,             "Local failure."                                                                ),
 		MAKE_ERROR(telBAD_DOMAIN,              "Domain too long."                                                              ),
 		MAKE_ERROR(telBAD_PATH_COUNT,          "Malformed: Too many paths."                                                    ),

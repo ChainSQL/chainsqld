@@ -9,29 +9,11 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <boost/exception/diagnostic_information.hpp>
 #include <boost/exception/exception.hpp>
-#include "vector_ref.h"
+#include <eth/tools/vector_ref.h>
+#include <eth/tools/Common.h>
+#include <eth/tools/Exceptions.h>
 
 namespace eth {
-	using byte = uint8_t;
-	using bytes = std::vector<byte>;
-	using bytesRef = vector_ref<byte>;
-	using bytesConstRef = vector_ref<byte const>;
-	bytes const NullBytes;
-
-	using bigint = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<>>;
-	using u256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256, boost::multiprecision::unsigned_magnitude, boost::multiprecision::unchecked, void>>;
-    using s256 = boost::multiprecision::number<boost::multiprecision::cpp_int_backend<256, 256,
-        boost::multiprecision::signed_magnitude, boost::multiprecision::unchecked, void>>;
-
-    struct Exception : virtual std::exception, virtual boost::exception
-    {
-        const char *what() const noexcept override { return boost::diagnostic_information_what(*this); }
-    };
-
-	#define DEV_SIMPLE_EXCEPTION(X)  \
-		struct X : virtual eth::Exception \
-		{                            \
-		}
     /// Virtual machine bytecode instruction.
 	enum class Instruction : uint8_t
 	{

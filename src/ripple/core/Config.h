@@ -236,6 +236,9 @@ public:
     bool                        OPEN_ACCOUNT_DELAY = false;
     boost::optional<AccountID>  ADMIN;
     bool                        DEFAULT_AUTHORITY_ENABLED = false;
+    
+    //genesis
+    boost::optional<std::uint64_t>  CHAINID;
 
 
     std::uint32_t               REQ_MAP_COUNT;

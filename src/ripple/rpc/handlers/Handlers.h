@@ -205,12 +205,30 @@ Json::Value doMonitorStatis(RPC::JsonContext&);
 
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);
+Json::Value doEstimateGas(RPC::JsonContext&);
 
 Json::Value doGenCsr(RPC::JsonContext&); // for humans
 
 //for gm algorithm data generation
 Json::Value doCreateRandom(RPC::JsonContext&);
 Json::Value doCryptData(RPC::JsonContext&);
+
+// Ethereum-compatible JSON RPC API
+Json::Value doEthChainId(RPC::JsonContext&);
+Json::Value doNetVersion(RPC::JsonContext&);
+Json::Value doEthBlockNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByHash(RPC::JsonContext&);
+Json::Value doEthGetBalance(RPC::JsonContext&);
+Json::Value doEthCall(RPC::JsonContext&);
+Json::Value doEthSendRawTransaction(RPC::JsonContext&);
+Json::Value doEthGetTransactionReceipt(RPC::JsonContext&);
+Json::Value doEthGetTransactionByHash(RPC::JsonContext&);
+Json::Value doEthGetTransactionCount(RPC::JsonContext&);
+Json::Value doEthGasPrice(RPC::JsonContext&);
+Json::Value doEthFeeHistory(RPC::JsonContext&);
+Json::Value doEthGetCode(RPC::JsonContext&);
+
 }  // namespace ripple
 
 #endif

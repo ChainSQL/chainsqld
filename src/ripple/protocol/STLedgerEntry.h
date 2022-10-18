@@ -107,6 +107,9 @@ public:
     // Whether to save into meta
     bool
     isHideInMeta() const;
+    
+    bool
+    isDeletedAccount() const;
 
     bool
     thread(

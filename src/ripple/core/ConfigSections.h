@@ -149,6 +149,8 @@ struct ConfigSection
 #define SECTOIN_TRUSTED_CA_LIST         "trusted_ca_list"
 #define SECTION_CMD_SSL_CERT            "cmd_ssl_cert"
 
+#define SECTION_GENESIS                 "genesis"
+
 }  // namespace ripple
 
 #endif

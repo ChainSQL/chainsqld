@@ -33,7 +33,7 @@ namespace ripple {
     uint64_t const TX_GAS               = 21000;
     uint64_t const TX_CREATE_GAS        = 53000;
     uint64_t const TX_DATA_ZERO_GAS     = 4;
-    uint64_t const TX_DATA_NON_ZERO_GAS = 68;
+    uint64_t const TX_DATA_NON_ZERO_GAS = 16;
 
 	constexpr auto maxUInt64 = std::numeric_limits<std::uint64_t>::max();
 	constexpr auto maxInt64  = std::numeric_limits<std::int64_t>::max();

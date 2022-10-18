@@ -713,6 +713,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/crypto/impl/ECIES.cpp
   src/peersafe/crypto/impl/X509.cpp
   src/peersafe/crypto/impl/LibSnark.cpp
+  src/peersafe/crypto/impl/sha3.cpp
   src/peersafe/gmencrypt/impl/GmEncrypt.cpp
   src/peersafe/gmencrypt/impl/GmEncryptObj.cpp
   src/peersafe/gmencrypt/impl/GmCheck.cpp
@@ -731,7 +732,6 @@ target_sources (chainsqld PRIVATE
   src/peersafe/precompiled/TableOpPrecompiled.cpp
   src/peersafe/precompiled/ToolsPrecompiled.cpp
   src/peersafe/precompiled/Utils.cpp
-  src/peersafe/precompiled/ripemd160.cpp
   src/peersafe/protocol/impl/Contract.cpp
   src/peersafe/protocol/impl/STEntry.cpp
   src/peersafe/protocol/impl/STMap256.cpp
@@ -741,6 +741,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/protocol/impl/STViewChange.cpp
   src/peersafe/protocol/impl/STVote.cpp
   src/peersafe/protocol/impl/STInitAnnounce.cpp
+  src/peersafe/protocol/impl/STETx.cpp
   src/peersafe/serialization/impl/Buffer.cpp
   src/peersafe/serialization/impl/PublicKey.cpp
   src/peersafe/consensus/impl/Adaptor.cpp
@@ -783,6 +784,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/MallocTrim.cpp
   src/peersafe/rpc/handlers/NodeSize.cpp
   src/peersafe/rpc/handlers/MonitorStatis.cpp
+  src/peersafe/rpc/handlers/EthRpcApi.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp
@@ -799,6 +801,10 @@ target_sources (chainsqld PRIVATE
   src/eth/vm/executor/interpreter/VMCalls.cpp
   src/eth/vm/executor/interpreter/VMOpt.cpp
   src/eth/vm/utils/keccak.cpp
+  src/eth/tools/ripemd160.cpp
+  src/eth/tools/RLP.cpp
+  src/eth/tools/CommonData.cpp
+  src/eth/tools/FixedHash.cpp
   #[===============================[
       wasmvm sources:
         subdir: wasmvm

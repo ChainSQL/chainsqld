@@ -55,6 +55,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -206,6 +207,11 @@ Ledger::Ledger(
     rootSle->setFieldU32(sfSequence, 1);
     rootSle->setFieldAmount(sfBalance, info_.drops);
     rawInsert(rootSle);
+    
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    uint256 hash(*config.CHAINID);
+    sleChainID->setFieldH256(sfChainId, hash);
+    rawInsert(sleChainID);
 
     if (!amendments.empty())
     {
@@ -336,7 +342,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, Family& f)
+Ledger::Ledger(Ledger const& ledger, Family& f, uint256 schemaID)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -380,6 +386,10 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
             count++;
         }
     }
+    
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    sleChainID->setFieldH256(sfChainId, schemaID);
+    rawInsert(sleChainID);
 
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);
@@ -490,8 +500,9 @@ Ledger::addSLE(SLE const& sle)
 std::shared_ptr<STTx const>
 deserializeTx(SHAMapItem const& item)
 {
-    SerialIter sit(item.slice());
-    return std::make_shared<STTx const>(sit);
+    //SerialIter sit(item.slice());
+    //return std::make_shared<STTx const>(sit);
+    return makeSTTx(item.slice());
 }
 
 std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
@@ -501,8 +512,9 @@ deserializeTxPlusMeta(SHAMapItem const& item)
         result;
     SerialIter sit(item.slice());
     {
-        SerialIter s(sit.getSlice(sit.getVLDataLength()));
-        result.first = std::make_shared<STTx const>(s);
+        //SerialIter s(sit.getSlice(sit.getVLDataLength()));
+        //result.first = std::make_shared<STTx const>(s);
+        result.first = makeSTTx(sit.getSlice(sit.getVLDataLength()));
     }
     {
         SerialIter s(sit.getSlice(sit.getVLDataLength()));

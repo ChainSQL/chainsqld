@@ -342,6 +342,18 @@ TxFormats::TxFormats()
             {sfClearFlag, soeOPTIONAL},
         },
         commonFields);
+
+    add(jss::EthTx,
+        ttETH_TX,
+        {
+            {sfContractOpType, soeREQUIRED},
+            {sfContractData, soeREQUIRED},
+            {sfGas, soeREQUIRED},
+            {sfContractAddress, soeOPTIONAL},
+            {sfContractValue, soeOPTIONAL},
+            {sfDestination, soeOPTIONAL},
+        },
+        commonFields);
 }
 
 TxFormats const&

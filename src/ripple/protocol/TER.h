@@ -235,6 +235,7 @@ enum TEFcodes : TERUnderlyingType
     tefNO_ADMIN_CONFIGURED,
     tefNO_NEED_AUTHORIZE,
     tefBAD_USERCERT,
+    tefACCOUNT_ALREADY_DELETE,
 };
 
 //------------------------------------------------------------------------------

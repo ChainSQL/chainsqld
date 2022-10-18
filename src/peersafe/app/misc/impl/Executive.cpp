@@ -11,6 +11,8 @@
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/protocol/STETx.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -27,6 +29,16 @@ Executive::Executive(
 {
 }
 
+double Executive::getCurGasPrice(ApplyContext& ctx)
+{
+    std::uint64_t scaledGasPrice = scaleGasLoad(ctx.app.getFeeTrack(), ctx.view().fees());
+    
+    double curGasPrice;
+    curGasPrice = (double)scaledGasPrice/std::uint64_t(1e3);
+
+    return curGasPrice;
+}
+
 void Executive::initGasPrice()
 {
     m_gasPrice = scaleGasLoad(
@@ -34,21 +46,28 @@ void Executive::initGasPrice()
 		m_s.ctx().view().fees());
 }
 
+
+int64_t Executive::baseGasRequired(bool isCreation, eth::bytesConstRef const& data) {
+    int64_t baseGas = isCreation ? TX_CREATE_GAS : TX_GAS;
+    for (auto i : data)
+        baseGas += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
+    return baseGas;
+}
+
 void Executive::initialize() {
-	initGasPrice();
+//	initGasPrice();
+    m_gasPrice = getCurGasPrice(m_s.ctx());
 
 	auto& tx = m_s.ctx().tx;
 	auto data = tx.getFieldVL(sfContractData);
 	bool isCreation = tx.getFieldU16(sfContractOpType) == ContractCreation;
-	int g = isCreation ? TX_CREATE_GAS : TX_GAS;
-	for (auto i : data)
-		g += i ? TX_DATA_NON_ZERO_GAS : TX_DATA_ZERO_GAS;
-	m_baseGasRequired = g;
+    m_baseGasRequired = baseGasRequired(isCreation, &data);
 
-	// Avoid unaffordable transactions.
+	// Avoid unfordable transactions.
 	int64_t gas = tx.getFieldU32(sfGas);
-	int64_t gasCost = int64_t(gas * m_gasPrice);
-	m_gasCost = gasCost;
+    double gasCost = gas * m_gasPrice;
+    if(gasCost < 1) gasCost = 1;
+	m_gasCost = (int64_t)gasCost;
 }
 
 bool Executive::execute() {
@@ -82,8 +101,8 @@ bool Executive::execute() {
 	}
 	else
 	{
-		AccountID contract_address = tx.getAccountID(sfContractAddress);
-		return call(contract_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
+		AccountID receive_address = tx.getAccountID(sfContractAddress);
+		return call(receive_address, sender, value, gasPrice, &m_input, gas - m_baseGasRequired);
 	}
 }
 
@@ -220,8 +239,8 @@ bool Executive::call(CallParametersR const& _p, uint256 const& _gasPrice, Accoun
             m_ext = std::make_shared<ExtVM>(m_s, m_envInfo, _p.receiveAddress,
                                             _p.senderAddress, _origin, _p.apparentValue, _gasPrice, _p.data, &c, codeHash,
                                             m_depth, false, _p.staticCall);
-        }
-        else if (m_depth == 1) //if not first call,codeAddress not need to be a contract address
+        }// if not first call,codeAddress not need to be a contract address
+        else if (m_depth == 1 && !isEthTx(m_s.ctx().tx))                                                
         {
             // contract may be killed
             auto blob = strCopy(std::string("Contract does not exist,maybe destructed."));

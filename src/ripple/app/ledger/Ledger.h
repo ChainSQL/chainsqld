@@ -136,7 +136,7 @@ public:
 	/** Create a new ledger from an exist ledger
 	*/
 	Ledger(Ledger const& ledger,
-		Family& f);
+		Family& f, uint256 schemaID);
 
     // used for database ledgers
     Ledger(

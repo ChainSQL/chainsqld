@@ -223,6 +223,25 @@ Handler const handlerArray[]{
     {"monitor_statis", byRef (&doMonitorStatis), Role::USER, NO_CONDITION},
 };
 
+Handler const ethHandlerArray[]{
+    // Ethereum-compatible JSON RPC API
+    {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
+    {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
+    {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
+    {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
+    {"eth_call", byRef(&doContractCall), Role::USER, NO_CONDITION},
+    {"eth_estimateGas", byRef(&doEstimateGas), Role::USER, NO_CONDITION},
+    {"eth_sendRawTransaction", byRef(&doEthSendRawTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
+    {"eth_getTransactionReceipt", byRef(&doEthGetTransactionReceipt), Role::USER, NO_CONDITION},
+    {"eth_getTransactionByHash", byRef(&doEthGetTransactionByHash), Role::USER, NO_CONDITION},
+    {"eth_getTransactionCount", byRef(&doEthGetTransactionCount), Role::USER, NO_CONDITION},
+    {"eth_gasPrice", byRef(&doEthGasPrice), Role::USER, NO_CONDITION},
+    {"eth_feeHistory", byRef(&doEthFeeHistory), Role::USER, NO_CONDITION},
+    {"eth_getCode", byRef(&doEthGetCode), Role::USER, NO_CONDITION},
+};
+
 class HandlerTable
 {
 private:
@@ -237,6 +256,15 @@ private:
             {
                 auto& innerTable = table_[versionToIndex(v)];
                 auto const& entry = entries[i];
+                assert(innerTable.find(entry.name_) == innerTable.end());
+                innerTable[entry.name_] = entry;
+            }
+            
+            std::size_t ethArrayLen = sizeof(ethHandlerArray)/sizeof(ethHandlerArray[0]);
+            for (std::size_t j = 0; j < ethArrayLen; ++j)
+            {
+                auto& innerTable = table_[versionToIndex(v)];
+                auto const& entry = ethHandlerArray[j];
                 assert(innerTable.find(entry.name_) == innerTable.end());
                 innerTable[entry.name_] = entry;
             }

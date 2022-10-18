@@ -28,6 +28,8 @@
 #include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/protocol/STETx.h>
+#include <peersafe/app/util/Common.h>
 
 
 namespace ripple {
@@ -325,8 +327,7 @@ PopAdaptor::doAccept(
     {
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            retriableTxs.insert(makeSTTx(item.slice()));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)

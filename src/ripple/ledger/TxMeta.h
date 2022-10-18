@@ -92,6 +92,11 @@ public:
     {
         return mContractDetailMsg;
     }
+    Blob
+    getContractLogData() const
+    {
+        return contractLogData;
+    }
     std::uint32_t
     getIndex() const
     {

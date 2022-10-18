@@ -110,6 +110,24 @@ public:
     TER
     checkInvariants(TER const result, ZXCAmount const fee);
 
+    boost::optional<uint256>
+    fetchFromDirty(AccountID const& contract, uint256 const& key);
+
+    void
+    setDirtyValue(
+        AccountID const& contract,
+        uint256 const& key,
+        uint256 const& value);
+
+    void
+    setDirtyExistInDB(
+        AccountID const& contract,
+        uint256 const& key,
+        bool exist);
+
+    boost::optional<ContractValueType>
+    fetchFromStateCache(AccountID const& contract, uint256 const& key);
+
 private:
     TER
     failInvariantCheck(TER const result);

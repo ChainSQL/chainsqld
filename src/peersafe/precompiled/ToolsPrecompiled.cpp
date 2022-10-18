@@ -2,6 +2,7 @@
 #include <peersafe/precompiled/ABI.h>
 #include <peersafe/precompiled/ToolsPrecompiled.h>
 #include <peersafe/precompiled/Utils.h>
+#include <eth/tools/ripemd160.h>
 
 namespace ripple {
 
@@ -101,7 +102,7 @@ ToolsPrecompiled::execute(
             std::string param;
             abi.abiOut(data, param);
             //ret = eth_ripemd160(makeSlice(param));
-            auto accID = eth_ripemd160(makeSlice(param));
+            auto accID = eth::eth_ripemd160(makeSlice(param));
             uint256 retValue(0);
             std::copy(
                 accID.begin(),

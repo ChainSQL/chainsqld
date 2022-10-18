@@ -27,40 +27,51 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/app/util/Common.h>
 #include <iostream> 
 
 namespace ripple {
 
 Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, std::string exeResult)
 {
-	Json::Value jvResult;
+    Json::Value jvResult;
+    std::string detailMethod = originJson[jss::command].asString();
+    bool isEthCall = (detailMethod == "eth_call");
+    jvResult[jss::request] = originJson;
 	try
 	{
-		jvResult[jss::request] = originJson;
-
 		if (temUNCERTAIN != terResult)
 		{
 			if (tesSUCCESS != terResult)
 			{
-				return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
-				//jvResult[jss::error] = exeResult;
+                if (isEthCall)
+                    jvResult["result"] = "0x";
+                else
+                    return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
 			}
 			else
 			{
-				jvResult[jss::contract_call_result] = exeResult;
+                if(isEthCall)
+                    jvResult["result"] = exeResult;
+                else
+                    jvResult[jss::contract_call_result] = exeResult;
 			}
 		}
 	}
 	catch (std::exception&)
 	{
-		jvResult = RPC::make_error(rpcINTERNAL,
-			"Exception occurred during JSON handling.");
+        auto errMsg = "Exception occurred during JSON handling.";
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, "Exception occurred during JSON handling.");
+        else
+            return RPC::make_error(rpcINTERNAL, errMsg);
 	}
 	return jvResult;
 }
@@ -121,6 +132,27 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
+Json::Value checkEthJsonFields(Json::Value originJson)
+{
+    Json::Value ret = Json::Value();
+
+    if (!originJson.isObject())
+    {
+        ret = RPC::object_field_error(jss::params);
+    }
+
+    if (!originJson.isMember("to"))
+    {
+        ret = RPC::missing_field_error("to");
+    }
+
+    if (!originJson.isMember("data"))
+    {
+        ret = RPC::missing_field_error("data");
+    }
+    return ret;
+}
+
 Json::Value
 doContractCall(RPC::JsonContext& context)
 {
@@ -129,47 +161,98 @@ doContractCall(RPC::JsonContext& context)
 
     // Json::Value jsonRpcObj = context.params[jss::tx_json];
     Json::Value jsonParams = context.params;
+    Json::Value ethParams = jsonParams["realParams"][0u];
 
-    auto checkResult = checkJsonFields(jsonParams);
-    if (isRpcError(checkResult))
-        return checkResult;
-
-    std::string accountStr = jsonParams[jss::account].asString();
-    AccountID accountID;
-    auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
-    if (jvAccepted)
+    std::string detailMethod = jsonParams[jss::command].asString();
+    bool isEthCall = (detailMethod == "eth_call");
+    Json::Value checkResult;
+    if (isEthCall)
     {
-        return jvAccepted;
+        std::string ledgerIndexStr = context.params["realParams"][1u].asString();
+        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
+        checkResult = checkEthJsonFields(ethParams);
     }
+    else
+        checkResult = checkJsonFields(jsonParams);
+
+    if (isRpcError(checkResult))
+    {
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, checkResult[jss::error_message].asString());
+        return checkResult;
+    }
+
+    AccountID accountID;
+    if (isEthCall)
+    {
+        if(ethParams.isMember("from"))
+        {
+            auto accId = parseHex<AccountID>(ethParams["from"].asString());
+            if (!accId)
+                return formatEthError(
+                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+            accountID = *accId;
+        }
+    }
+    else
+    {
+        std::string accountStr = jsonParams[jss::account].asString();
+        auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
+        if (jvAccepted)
+        {
+            return jvAccepted;
+        }
+    }
+
     std::shared_ptr<ReadView const> ledger;
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
+    {
+        if (isEthCall && result.isMember(jss::error_message))
+            return formatEthError(
+                defaultEthErrorCode, result[jss::error_message].asString());
         return result;
-    if (!ledger->exists(keylet::account(accountID)))
-        return rpcError(rpcACT_NOT_FOUND);
-
-    std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
-    AccountID contractAddrID;
-    auto jvAcceptedCtrAddr =
-        RPC::accountFromString(contractAddrID, ctrAddrStr, true);
-    if (jvAcceptedCtrAddr)
-    {
-        return jvAcceptedCtrAddr;
     }
-    if (!ledger->exists(keylet::account(contractAddrID)))
+
+
+    AccountID contractAddrID;
+    if (isEthCall)
+    {
+        auto optID = parseHex<AccountID>(ethParams["to"].asString());
+        if (!optID)
+            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+        contractAddrID = *optID;
+        
+        if(!ethParams.isMember("from"))
+            accountID = *optID;
+    }
+    else
+    {
+        std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+
+        auto jvAcceptedCtrAddr =
+            RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+        if (jvAcceptedCtrAddr)
+        {
+            return jvAcceptedCtrAddr;
+        }
+    }
+
+    if (!isEthCall && !ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
-    auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
-    if (!strUnHexRes)
+    auto strUnHexRes = strUnHex(
+        isEthCall ? ethParams["data"].asString().substr(2)
+                  : jsonParams[jss::contract_data].asString());
+    if (!strUnHexRes || (*strUnHexRes).empty())
     {
-        errMsgStr = "contract_data is not in hex";
+        errMsgStr = "contract_data is invalid.";
+        if (isEthCall)
+            return formatEthError(defaultEthErrorCode, errMsgStr);
         return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
     }
-    Blob contractDataBlob = *strUnHexRes;
-    if (contractDataBlob.size() == 0)
-    {
-        return RPC::invalid_field_error(jss::contract_data);
-    }
+    auto contractDataBlob = *strUnHexRes;
+
     // int64_t txValue = 0;
     STTx contractTx(
         ttCONTRACT,
@@ -185,17 +268,6 @@ doContractCall(RPC::JsonContext& context)
     std::shared_ptr<OpenView> openViewTemp =
         std::make_shared<OpenView>(ledger.get());
 
-    boost::optional<PreclaimContext const> pcctx;
-    pcctx.emplace(
-        appTemp,
-        *openViewTemp,
-        tesSUCCESS,
-        contractTx,
-        tapNONE,
-        appTemp.journal("ContractLocalCall"));
-    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
-        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
-
     ApplyContext applyContext(
         appTemp,
         *openViewTemp,
@@ -210,5 +282,188 @@ doContractCall(RPC::JsonContext& context)
     return ContractLocalCallResultImpl(
         jsonParams, localCallRet.first, localCallRet.second);
 }
+
+Json::Value
+doEstimateGas(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        Schema& appTemp = context.app;
+        Json::Value jsonParams = context.params;
+        Json::Value ethParams = jsonParams["realParams"][0u];
+        
+        AccountID accountID;
+        
+        auto optID = RPC::accountFromStringStrict(ethParams["from"].asString());
+        if (!optID)
+            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+
+        accountID = *optID;
+        
+        std::shared_ptr<ReadView const> ledger;
+        auto result = RPC::lookupLedger(ledger, context);
+        if (!ledger)
+            return result;
+        if (!ledger->exists(keylet::account(accountID)))
+            return formatEthError(defaultEthErrorCode, rpcACT_NOT_FOUND);
+        
+        std::shared_ptr<OpenView> openViewTemp =
+            std::make_shared<OpenView>(ledger.get());
+        
+        AccountID contractAddrID;
+        bool isCreation = true;
+        bool isCtrAddr = false;
+        if(ethParams.isMember("to"))
+        {
+            auto optID = parseHex<AccountID>(ethParams["to"].asString());
+            if (!optID)
+                return formatEthError(
+                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+
+            contractAddrID = *optID;
+            isCreation = false;
+            
+            //check if the new openLedger not created.
+            auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+            if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
+                ledger = ledgerVal;
+            
+            if (ledger->exists(keylet::account(contractAddrID)))
+            {
+                auto ctrSle = *(ledger->read(keylet::account(contractAddrID)));
+
+                if (ctrSle.isFieldPresent(sfContractCode))
+                {
+                    isCtrAddr = true;
+                }
+            }
+        }
+        
+        Blob contractDataBlob;
+        if(ethParams.isMember("data") && ethParams["data"].asString() != "")
+        {
+            auto strUnHexRes = strUnHex(ethParams["data"].asString().substr(2));
+            if (!strUnHexRes)
+            {
+                return formatEthError(
+                    defaultEthErrorCode, "contract_data is not in hex");
+            }
+            contractDataBlob = *strUnHexRes;
+            if (contractDataBlob.size() == 0)
+            {
+                return RPC::invalid_field_error(jss::contract_data);
+            }
+        }
+        else if(isCreation)
+        {
+            std::int64_t estimatedGas = TX_CREATE_GAS +
+                            (std::uint64_t)openViewTemp->fees().base.drops()/openViewTemp->fees().gas_price;
+            jvResult["result"] = toHexString(estimatedGas);
+            return jvResult;
+        }
+        else if(!isCtrAddr)
+        {
+            std::int64_t estimatedGas = TX_GAS +
+                            (std::uint64_t)openViewTemp->fees().base.drops()/openViewTemp->fees().gas_price;
+            jvResult["result"] = toHexString(estimatedGas);
+            return jvResult;
+        }
+        
+        std::int64_t value = 0;
+        if(ethParams.isMember("value"))
+        {
+            std::string valueStrHex = ethParams["value"].asString().substr(2);
+            value = std::stoll(valueStrHex, 0, 16);
+        }
+        
+        int64_t upperBound = 0;
+        if(ethParams.isMember("gas"))
+        {
+            std::string gasStrHex = ethParams["gas"].asString().substr(2);
+            upperBound = std::stoll(gasStrHex, 0, 16);
+        }
+        if (upperBound == 0 || upperBound == eth::Invalid256 || upperBound > eth::c_maxGasEstimate)
+            upperBound = eth::c_maxGasEstimate;
+        
+        int64_t lowerBound = Executive::baseGasRequired(isCreation, &contractDataBlob);
+        
+        while (upperBound != lowerBound)
+        {
+            int64_t mid = (lowerBound + upperBound) / 2;
+            STTx contractTx(
+                ttCONTRACT,
+                [&accountID, &contractAddrID, &value, &contractDataBlob, &mid, &isCreation](
+                    auto& obj) {
+                    obj.setAccountID(sfAccount, accountID);
+                    obj.setAccountID(sfContractAddress, contractAddrID);
+                    obj.setFieldVL(sfContractData, contractDataBlob);
+                    obj.setFieldU16(sfContractOpType, isCreation ? ContractCreation : MessageCall);
+                    if(value != 0) obj.setFieldAmount(sfAmount, ZXCAmount(value));
+                    obj.setFieldU32(sfGas, mid);
+                });
+            ApplyContext applyContext(
+                appTemp,
+                *openViewTemp,
+                contractTx,
+                tesSUCCESS,
+                FeeUnit64{(std::uint64_t)openViewTemp->fees().base.drops()},
+                tapNO_CHECK_SIGN,
+                appTemp.journal("EstimateGas"));
+            
+            SleOps ops(applyContext);
+            auto pInfo = std::make_shared<EnvInfoImpl>(applyContext.view().info().seq, mid,
+                                                       applyContext.view().fees().drops_per_byte,
+                                                       applyContext.app.getPreContractFace());
+            Executive e(ops, *pInfo, INITIAL_DEPTH);
+            e.initialize();
+            
+            TER execRet = tesSUCCESS;
+            if (!e.execute())
+            {
+                e.go();
+                execRet = e.getException();
+            }
+            else
+                execRet = e.getException();
+
+            std::string errMsg;
+            if(execRet != tesSUCCESS)
+                errMsg = e.takeOutput().toString();
+            
+            if (execRet == tesSUCCESS)
+            {
+                upperBound = upperBound == mid ? lowerBound : mid;
+            }
+            else if (execRet == tefGAS_INSUFFICIENT ||
+                errMsg == "OutOfGas" ||
+                errMsg == "BadJumpDestination")
+            {
+                lowerBound = lowerBound == mid ? upperBound : mid;
+            }
+            else
+            { 
+                return formatEthError(defaultEthErrorCode, errMsg);
+            }
+            
+            //JLOG(context.j.warn())
+            //    << "eth_estimateGas execRet=" << execRet << ",errMsg="<<errMsg<<",bound=["
+            //    << lowerBound << "," << upperBound << "]";
+        }
+        std::int64_t estimatedGas = upperBound +
+            (std::uint64_t)openViewTemp->fees().base.drops() /
+                openViewTemp->fees().gas_price;
+        jvResult["result"] = toHexString(estimatedGas);
+        return jvResult;
+    }
+    catch (...)
+    {
+        // TODO: Some sort of notification of failure.
+        jvResult["result"] = toHexString(eth::u256());
+        return jvResult;
+    }
+}
+
+
 
 } // ripple

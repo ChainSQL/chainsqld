@@ -631,6 +631,8 @@ getMajorityAmendments(ReadView const& view)
 boost::optional<uint256>
 hashOfSeq(ReadView const& ledger, LedgerIndex seq, beast::Journal journal)
 {
+    if (seq == 0)
+        return boost::none;
     // Easy cases...
     if (seq > ledger.seq())
     {

@@ -42,10 +42,11 @@
 #include <ripple/json/json_reader.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/crypto/X509.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
-static auto
+const KnownFormats<TxType>::Item*
 getTxFormat(TxType type)
 {
     auto format = TxFormats::getInstance().findByType(type);
@@ -929,8 +930,9 @@ sterilize(STTx const& stx)
 {
     Serializer s;
     stx.add(s);
-    SerialIter sit(s.slice());
-    return std::make_shared<STTx const>(std::ref(sit));
+//    SerialIter sit(s.slice());
+//    return std::make_shared<STTx const>(std::ref(sit));
+    return makeSTTx(s.slice());
 }
 
 bool

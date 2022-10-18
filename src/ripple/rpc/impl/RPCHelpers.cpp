@@ -45,7 +45,9 @@ accountFromStringStrict(std::string const& account)
     if (publicKey)
         result = calcAccountID(*publicKey);
     else
-        result = parseBase58<AccountID>(account);
+    {
+        result = parseHexOrBase58<AccountID>(account);
+    }
 
     return result;
 }

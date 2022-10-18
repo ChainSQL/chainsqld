@@ -1673,11 +1673,12 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransaction> const& m)
         return;
     }
 
-    SerialIter sit(makeSlice(m->rawtransaction()));
+    //SerialIter sit(makeSlice(m->rawtransaction()));
 
     try
     {
-        auto stx = std::make_shared<STTx const>(sit);
+        //auto stx = std::make_shared<STTx const>(sit);
+        auto stx = makeSTTx(makeSlice(m->rawtransaction()));
         uint256 txID = stx->getTransactionID();
         if (app_.getTxPool(schemaId).txExists(txID))
         {
@@ -1773,8 +1774,9 @@ PeerImp::onMessage(std::shared_ptr<protocol::TMTransactions> const& m)
 	    JLOG(p_journal_.info()) << "Got txs: " << m->transactions().size();
         for (int i = 0; i < m->transactions().size(); ++i)
         {
-            SerialIter sit(makeSlice(m->transactions(i).rawtransaction()));
-            auto stx = std::make_shared<STTx const>(sit);
+            //SerialIter sit(makeSlice(m->transactions(i).rawtransaction()));
+            //auto stx = std::make_shared<STTx const>(sit);
+            auto stx = makeSTTx(makeSlice(m->transactions(i).rawtransaction()));
             uint256 txID = stx->getTransactionID();
             if (app_.getTxPool(schemaId).txExists(txID))
             {

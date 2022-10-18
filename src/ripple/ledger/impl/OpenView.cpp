@@ -19,6 +19,7 @@
 
 #include <ripple/basics/contract.h>
 #include <ripple/ledger/OpenView.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -60,8 +61,9 @@ public:
     {
         value_type result;
         {
-            SerialIter sit(iter_->second.first->slice());
-            result.first = std::make_shared<STTx const>(sit);
+            //SerialIter sit(iter_->second.first->slice());
+            //result.first = std::make_shared<STTx const>(sit);
+            result.first = makeSTTx(iter_->second.first->slice());
         }
         if (metadata_)
         {
@@ -200,7 +202,8 @@ OpenView::txRead(key_type const& key) const -> tx_type
     if (iter == txs_.end())
         return base_->txRead(key);
     auto const& item = iter->second;
-    auto stx = std::make_shared<STTx const>(SerialIter{item.first->slice()});
+    //auto stx = std::make_shared<STTx const>(SerialIter{item.first->slice()});
+    auto stx = makeSTTx(item.first->slice());
     decltype(tx_type::second) sto;
     if (item.second)
         sto = std::make_shared<STObject const>(
@@ -249,6 +252,34 @@ OpenView::rawTxInsert(
     auto const result = txs_.emplace(key, std::make_pair(txn, metaData));
     if (!result.second)
         LogicError("rawTxInsert: duplicate TX id" + to_string(key));
+}
+
+boost::optional<ContractValueType>
+OpenView::fetchFromStateCache(
+    AccountID const& contract, 
+    uint256 const& key)
+{
+    if (mStateCache.find(contract) != mStateCache.end() &&
+        mStateCache[contract].find(key) != mStateCache[contract].end())
+    {
+        return mStateCache[contract][key];
+    }
+    return boost::none;
+}
+
+void
+OpenView::setStateCache(
+    AccountID const& contract,
+    uint256 const& key,
+    ContractValueType const& value)
+{
+    mStateCache[contract][key] = value;
+}
+
+std::map<AccountID, map256Contract> const&
+OpenView::getStateCache()
+{
+    return mStateCache;
 }
 
 }  // namespace ripple

@@ -180,6 +180,35 @@ ApplyViewBase::rawDestroyZXC(ZXCAmount const& fee)
     items_.destroyZXC(fee);
 }
 
+boost::optional<uint256>
+ApplyViewBase::fetchFromDirty(AccountID const& contract, uint256 const& key)
+{
+    if (mDirtyCache.find(contract) != mDirtyCache.end())
+    {
+        if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
+            return mDirtyCache[contract][key].value;
+    }
+    return boost::none;
+}
+
+void
+ApplyViewBase::setDirtyValue(
+    AccountID const& contract,
+    uint256 const& key,
+    uint256 const& value)
+{
+    mDirtyCache[contract][key].value = value;
+}
+
+void
+ApplyViewBase::setDirtyExistInDB(
+    AccountID const& contract,
+    uint256 const& key,
+    bool exist)
+{
+    mDirtyCache[contract][key].existInDB = exist;
+}
+
 //---
 
 CashDiff

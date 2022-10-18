@@ -27,6 +27,7 @@
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/range/adaptor/transformed.hpp>
 
 namespace ripple {
@@ -232,8 +233,7 @@ debugTostr(SHAMap const& set)
     {
         try
         {
-            SerialIter sit(item.slice());
-            auto const tx = std::make_shared<STTx const>(sit);
+            auto const tx = makeSTTx(item.slice());
             ss << debugTxstr(tx) << ", ";
         }
         catch (std::exception const&)

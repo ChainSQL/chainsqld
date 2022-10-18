@@ -1691,6 +1691,10 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
+    ter = Transactor::checkDeleted(*pcctx);
+    if (ter.ter != tesSUCCESS)
+        return ter;
+    
     ter = Transactor::checkFrozen(*pcctx);
     if (ter.ter != tesSUCCESS)
         return ter;
@@ -1941,7 +1945,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     << " from " << (e.local ? "local" : "remote");
                 e.transaction->setStatus(OBSOLETE);
             }
-            else if (isTerRetry(e.result.ter))
+            else if (terPRE_SEQ == e.result.ter)
             {
                 if (e.failType != FailHard::yes)
                 {

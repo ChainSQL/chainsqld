@@ -25,6 +25,7 @@
 #include <ripple/protocol/Serializer.h>
 #include <ripple/protocol/UintTypes.h>
 #include <peersafe/schema/Schema.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/format.hpp>
 #include <memory>
 
@@ -41,8 +42,9 @@ convertBlobsToTxResult(
     Blob const& rawMeta,
     Schema& app)
 {
-    SerialIter it(makeSlice(rawTxn));
-    auto txn = std::make_shared<STTx const>(it);
+    //SerialIter it(makeSlice(rawTxn));
+    //auto txn = std::make_shared<STTx const>(it);
+    auto txn = makeSTTx(makeSlice(rawTxn));
     std::string reason;
 
     auto tr = std::make_shared<Transaction>(txn, reason, app);
@@ -125,9 +127,8 @@ processTransRes(Schema& app,DatabaseCon& connection,std::function<
             {
                 lgr = ledgerCache[seq];
             }
-            else if (
-                lgr =
-                    app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0)))
+            else if ((
+                lgr = app.getLedgerMaster().getLedgerBySeq(ledgerSeq.value_or(0))))
             {
                 ledgerCache.emplace(seq, lgr);
             }

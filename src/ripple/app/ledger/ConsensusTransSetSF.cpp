@@ -27,6 +27,7 @@
 #include <ripple/nodestore/Database.h>
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/digest.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
@@ -58,8 +59,8 @@ ConsensusTransSetSF::gotNode(
         {
             // skip prefix
             Serializer s(nodeData.data() + 4, nodeData.size() - 4);
-            SerialIter sit(s.slice());
-            auto stx = std::make_shared<STTx const>(std::ref(sit));
+            //SerialIter sit(s.slice());
+            auto stx = makeSTTx(s.slice());
             assert(stx->getTransactionID() == nodeHash.as_uint256());
             auto const pap = &app_;
             app_.getJobQueue().addJob(
@@ -88,11 +89,23 @@ ConsensusTransSetSF::getNode(SHAMapHash const& nodeHash) const
     {
         // this is a transaction, and we have it
         JLOG(j_.trace()) << "Node in our acquiring TX set is TXN we have";
-        Serializer s;
-        s.add32(HashPrefix::transactionID);
-        txn->getSTransaction()->add(s);
-        assert(sha512Half(s.slice()) == nodeHash.as_uint256());
-        nodeData = s.peekData();
+        Serializer sTmp;
+        txn->getSTransaction()->add(sTmp);
+        auto sTmpSlice = sTmp.slice();
+        if((sTmpSlice.begin())[0] == 0)
+        {
+            auto ethId = uint256::fromVoid(sTmpSlice.substr(1, 32).data());
+            assert(ethId == nodeHash.as_uint256());
+            nodeData = sTmp.peekData();
+        }
+        else
+        {
+            Serializer s;
+            s.add32(HashPrefix::transactionID);
+            txn->getSTransaction()->add(s);
+            assert(sha512Half(s.slice()) == nodeHash.as_uint256());
+            nodeData = s.peekData();
+        }
         return nodeData;
     }
 

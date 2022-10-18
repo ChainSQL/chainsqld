@@ -67,7 +67,6 @@
           )
 
       get_filename_component(MYSQL_NAME ${MYSQL_LIBRARY} NAME)
-      #message("MYSQL_NAME: ${MYSQL_NAME}")
       FIND_PATH(MYSQL_LIBRARY_DIR ${MYSQL_NAME}
           ${SEARCH_PATHS} 
           )
