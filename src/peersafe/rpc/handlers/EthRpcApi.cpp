@@ -365,11 +365,11 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             return jvResult;
         }
         auto tx = txn->getSTransaction();
-        auto ledger =
+        auto ledger = 
             context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
         jvResult["transactionHash"] = "0x" + txHash;
         jvResult["transactionIndex"] = "0x01";
-        if (txn->getLedger() == 0)
+        if (ledger == nullptr)
         {
             jvResult["blockHash"] = Json::nullValue;
             jvResult["blockNumber"] = Json::nullValue;
@@ -395,22 +395,35 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         {
             auto meta = std::make_shared<TxMeta>(
                 txn->getID(), txn->getLedger(), txn->getMeta());
+            bool txSuccess = meta->getResultTER() == tesSUCCESS;
             auto key = keylet::account(accountID);
             try
             {
                 auto node = meta->getAffectedNode(key.key);
                 auto preBalance = node.getFieldObject(sfPreviousFields)
-                    .getFieldAmount(sfBalance).zxc().drops();
-                auto finalBalance = 
-                    node.getFieldObject(sfFinalFields)
-                    .getFieldAmount(sfBalance).zxc().drops(); 
+                                      .getFieldAmount(sfBalance)
+                                      .zxc()
+                                      .drops();
+                auto finalBalance = node.getFieldObject(sfFinalFields)
+                                        .getFieldAmount(sfBalance)
+                                        .zxc()
+                                        .drops();
                 auto fee = tx->getFieldAmount(sfFee).zxc().drops();
                 uint64_t value = 0;
-                if (tx->isFieldPresent(sfContractValue))
+                if (tx->isFieldPresent(sfContractValue) && txSuccess)
                     value = tx->getFieldAmount(sfContractValue).zxc().drops();
-                auto gasUsed = (preBalance - finalBalance - fee - value) * std::uint64_t(1e3) / ledger->fees().gas_price ;
-                jvResult["cumulativeGasUsed"] = toHexString(gasUsed);
-                jvResult["gasUsed"] = toHexString(gasUsed);
+                if (ledger != nullptr)
+                {
+                    auto gasUsed = (preBalance - finalBalance - fee - value) *
+                        std::uint64_t(1e3) / ledger->fees().gas_price;
+                    jvResult["cumulativeGasUsed"] = toHexString(gasUsed);
+                    jvResult["gasUsed"] = toHexString(gasUsed);
+                }
+                else
+                {
+                    jvResult["cumulativeGasUsed"] = "0x0";
+                    jvResult["gasUsed"] = "0x0";
+                }                
                 
                 Blob ctrLogData = meta->getContractLogData();
                 if(!ctrLogData.empty())
@@ -445,7 +458,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             {
             }
 
-            jvResult[jss::status] =  meta->getResultTER() == tesSUCCESS ? "0x1" : "0x0";
+            jvResult[jss::status] = txSuccess ? "0x1" : "0x0";
         }
         
         if (!tx->isFieldPresent(sfContractAddress) &&

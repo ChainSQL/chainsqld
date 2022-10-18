@@ -237,7 +237,7 @@ public:
     bool                        DEFAULT_AUTHORITY_ENABLED = false;
     
     //genesis
-    std::uint64_t               CHAINID = 718;
+    boost::optional<std::uint64_t>  CHAINID;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}

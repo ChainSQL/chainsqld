@@ -644,10 +644,6 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error> ("chainID is invalid in genesis section");
         }
     }
-    else
-    {
-        Throw<std::runtime_error> ("genesis section is empty in config file");
-    }
 
     {
         std::string dbPath;
