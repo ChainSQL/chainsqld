@@ -19,6 +19,7 @@
 #include <ripple/app/ledger/OpenLedger.h>
 #include <peersafe/app/util/Common.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
