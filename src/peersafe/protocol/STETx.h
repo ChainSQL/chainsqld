@@ -71,6 +71,7 @@ public:
     add(Serializer& s) const override
     {
         s.add8(0);
+        s.add256(tid_);
         s.addRaw(m_rlpData);
     }
 

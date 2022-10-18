@@ -112,15 +112,15 @@ SHAMapAbstractNode::makeTransaction(
     // FIXME: using a Serializer results in a copy; avoid it?
     Serializer s(data.begin(), data.size());
     bool isETHTx = false;
+    uint256 ethId;
     if((data.begin())[0] == ethTxPrefix)
     {
         isETHTx = true;
-        data.remove_prefix(1);
+        ethId = uint256::fromVoid(data.substr(1, 32).data());
     }
 
-    auto item = isETHTx ?
-        std::make_shared<SHAMapItem const>(
-                sha512Half<CommonKey::sha3>(data), s) :
+    auto item = isETHTx ? std::make_shared<SHAMapItem const>(ethId, s)
+                        :
         std::make_shared<SHAMapItem const>(
                 sha512Half(HashPrefix::transactionID, data), s);
 
@@ -428,8 +428,7 @@ SHAMapTreeNode::updateHash(CommonKey::HashType hashType)
         auto dataSlice = makeSlice(mItem->peekData());
         if((dataSlice.begin())[0] == 0)
         {
-            dataSlice.remove_prefix(1);
-            nh = sha512Half<CommonKey::sha3>(dataSlice);
+            nh = uint256::fromVoid(dataSlice.substr(1, 32).data());
         }
         else
         {
