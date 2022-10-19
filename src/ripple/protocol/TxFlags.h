@@ -78,6 +78,7 @@ const std::uint32_t asfDeployContractAuth = 13;
 const std::uint32_t asfCreateTableAuth = 14;
 const std::uint32_t asfIssueCoinsAuth = 15;
 const std::uint32_t asfAdminAuth = 16;
+const std::uint32_t asfRealNameAuth = 17;
 
 // OfferCreate flags:
 const std::uint32_t tfPassive = 0x00010000;

@@ -44,7 +44,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (setFlag != asfPaymentAuth && setFlag != asfDeployContractAuth &&
             setFlag != asfCreateTableAuth && setFlag != asfIssueCoinsAuth &&
-            setFlag != asfAdminAuth)
+            setFlag != asfAdminAuth && setFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -54,7 +54,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (clearFlag != asfPaymentAuth && clearFlag != asfDeployContractAuth &&
             clearFlag != asfCreateTableAuth && clearFlag != asfIssueCoinsAuth &&
-            clearFlag != asfAdminAuth)
+            clearFlag != asfAdminAuth && clearFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -152,6 +152,9 @@ AccountAuthorize::doApply()
         case asfIssueCoinsAuth:
             setAuthority(uFlagsOut, lsfIssueCoinsAuth);
             break;
+        case asfRealNameAuth:
+            uFlagsOut |= lsfRealNameAuth;
+            break;
         case asfAdminAuth:
             setAuthority(uFlagsOut, lsfPaymentAuth);
             setAuthority(uFlagsOut, lsfDeployContractAuth);
@@ -177,6 +180,9 @@ AccountAuthorize::doApply()
         case asfIssueCoinsAuth:
             clearAuthority(uFlagsOut, lsfIssueCoinsAuth);
             break;
+        case asfRealNameAuth:
+            uFlagsOut &= ~lsfRealNameAuth;
+            break;
         case asfAdminAuth:
             clearAuthority(uFlagsOut, lsfPaymentAuth);
             clearAuthority(uFlagsOut, lsfDeployContractAuth);
@@ -193,7 +199,7 @@ AccountAuthorize::doApply()
     // flag权限位被清除时，从超级管理员的目录中移除该账户。
     if (uFlagsOut &
         (lsfPaymentAuth | lsfDeployContractAuth | lsfCreateTableAuth |
-         lsfIssueCoinsAuth | lsfAdminAuth))
+         lsfIssueCoinsAuth | lsfAdminAuth | lsfRealNameAuth))
     {
         auto admin = ctx_.app.config().ADMIN;
         if (!admin)

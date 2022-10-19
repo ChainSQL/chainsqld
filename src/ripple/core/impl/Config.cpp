@@ -1041,6 +1041,11 @@ Config::loadFromString(std::string const& fileContents)
         "default_authority_enabled",
         DEFAULT_AUTHORITY_ENABLED);
 
+    get_if_exists(
+        section(SECTION_GOVERNANCE),
+        "real_name_authorize_enabled",
+        REAL_NAME_AUTHORITY_ENABLED);
+
     if (exists(SECTION_GOVERNANCE))
     {
         auto result = section(SECTION_GOVERNANCE).find("admin");

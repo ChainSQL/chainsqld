@@ -243,6 +243,7 @@ public:
 
     std::uint32_t               REQ_MAP_COUNT;
     bool                        ENABLE_STATE_HASH_SET = false;
+    bool                        REAL_NAME_AUTHORITY_ENABLED = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}

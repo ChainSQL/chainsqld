@@ -213,6 +213,10 @@ Payment::preclaim(PreclaimContext const& ctx)
         checkAuthority(ctx, ctx.tx[sfAccount], lsfPaymentAuth, uDstAccountID);
     if (checkRet != tesSUCCESS)
         return checkRet;
+    checkRet =
+        checkAuthority(ctx, ctx.tx[sfAccount], lsfRealNameAuth, uDstAccountID);
+    if (checkRet != tesSUCCESS)
+        return checkRet;
     // Ripple if source or destination is non-native or if there are paths.
     std::uint32_t const uTxFlags = ctx.tx.getFlags();
     bool const partialPaymentAllowed = uTxFlags & tfPartialPayment;

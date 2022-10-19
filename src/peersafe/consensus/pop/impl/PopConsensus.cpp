@@ -146,6 +146,8 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
                             << ":" << prevLedgerID_;
 
+            adaptor_.app_.getLedgerMaster().checkUpdateOpenLedger(newLedger->ledger_);
+
             adaptor_.removePoolTxs(
                 newLedger->ledger_->txMap(),
                 newLedger->ledger_->info().seq,
@@ -580,6 +582,8 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
     {
         JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
+
+        adaptor_.app_.getLedgerMaster().checkUpdateOpenLedger(newLedger->ledger_);
 
         adaptor_.removePoolTxs(
             newLedger->ledger_->txMap(),
