@@ -57,7 +57,8 @@ HTTPReply(
     int nStatus,
     std::string const& content,
     Json::Output const& output,
-    beast::Journal j)
+    beast::Journal j,
+    bool isAllowRemote)
 {
     JLOG(j.trace()) << "HTTP Reply " << nStatus << " " << content;
 
@@ -120,8 +121,13 @@ HTTPReply(
     output(getHTTPHeaderTimestamp());
 
     // VFALCO TODO Determine if/when this header should be added
-    // if (context.app.config().RPC_ALLOW_REMOTE)
-    output ("Access-Control-Allow-Origin: *\r\n");
+    if (isAllowRemote)
+    {
+        output ("Access-Control-Allow-Origin: *\r\n");
+        output ("Access-Control-Allow-Methods: POST, OPTIONS\r\n");
+        output ("Access-Control-Allow-Headers: *\r\n");
+        output ("Access-Control-Max-Age: 86400\r\n");
+    }
     
     output(
         "Connection: Keep-Alive\r\n"

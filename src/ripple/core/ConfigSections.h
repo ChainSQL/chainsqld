@@ -66,6 +66,11 @@ struct ConfigSection
         return "crypto_alg";
     }
     static std::string
+    allowRemote()
+    {
+        return "allow_remote";
+    }
+    static std::string
     prometheus()
     {
         return "prometheus";
@@ -111,6 +116,7 @@ struct ConfigSection
 #define SECTION_VALIDATOR_KEYS "validator_keys"
 #define SECTION_GM_SELF_CHECK           "gm_self_check"
 #define SECTION_HASH_ALG                "hash_alg"
+#define SECTION_ALLOW_REMOTE            "allow_remote"
 
 //#define SECTION_FEE_OFFER               "fee_offer"
 
