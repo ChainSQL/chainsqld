@@ -317,7 +317,7 @@ DeleteAccount::doApply()
             LedgerEntryType const nodeType{safe_cast<LedgerEntryType>(
                 sleItem->getFieldU16(sfLedgerEntryType))};
 
-            if (auto deleter = nonObligationDeleter(nodeType))
+            if (nonObligationDeleter(nodeType))
             {
 //                TER const result{
 //                    deleter(ctx_.app, view(), account_, dirEntry, sleItem, j_)};

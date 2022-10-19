@@ -468,8 +468,10 @@ InboundLedger::tryDB(NodeStore::Database& srcDB)
             mHaveContracts = haveContractNodes();
 
             if (!mHaveContracts)
+            {
                 JLOG(m_journal.trace())
                     << "In tryDB, still " << mContractMapInfo.size() << " contracts needs to sync."; 
+            }
         }
     }
     
