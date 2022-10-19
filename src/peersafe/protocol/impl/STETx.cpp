@@ -120,11 +120,21 @@ STETx::streamRLP(
 uint256
 STETx::sha3(RlpDecoded const& _decoded, IncludeSignature _sig)
 {
-    RLPStream s;
-    bool isReplayProtected = ((uint64_t)_decoded.v > 36);
-    streamRLP(s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
     uint256 ret;
-    eth::sha3(s.out().data(),s.out().size(),ret.data());
+    if (_sig == WithSignature)
+    {
+        eth::sha3(m_rlpData.data(), m_rlpData.size(), ret.data());
+    }
+    else
+    {
+        RLPStream s;
+        bool isReplayProtected = ((uint64_t)_decoded.v > 36);
+        streamRLP(
+            s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
+
+        eth::sha3(s.out().data(), s.out().size(), ret.data());
+    }
+
     return ret;
 }
 

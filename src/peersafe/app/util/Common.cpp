@@ -56,7 +56,7 @@ makeSTTx(Slice sit)
 {
     if (*sit.begin() == 0)
     {
-        sit.remove_prefix(33);
+        sit.remove_prefix(1);
         return std::make_shared<STETx const>(sit);
     }
     else
