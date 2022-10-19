@@ -119,13 +119,13 @@ HTTPReply(
 
     output(getHTTPHeaderTimestamp());
 
+    // VFALCO TODO Determine if/when this header should be added
+    // if (context.app.config().RPC_ALLOW_REMOTE)
+    output ("Access-Control-Allow-Origin: *\r\n");
+    
     output(
         "Connection: Keep-Alive\r\n"
         "Content-Length: ");
-
-    // VFALCO TODO Determine if/when this header should be added
-    // if (context.app.config().RPC_ALLOW_REMOTE)
-    //    output ("Access-Control-Allow-Origin: *\r\n");
 
     output(std::to_string(content.size() + 2));
     output(
