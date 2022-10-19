@@ -23,18 +23,17 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <unordered_set>
 #include <ripple/basics/base_uint.h>
-#include <ripple/protocol/STTx.h>
 #include <ripple/protocol/ErrorCodes.h>
 #include <ripple/basics/Slice.h>
 #include <boost/format.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
 #include <eth/vm/utils/keccak.h>
 #include <ripple/basics/StringUtilities.h>
-#include <ripple/app/ledger/OpenLedger.h>
 
 namespace ripple {
 
-
+class STTx;
+class OpenView;
 using H256Set = std::unordered_set<uint256>;
 
 const int defaultEthErrorCode = -32000;
@@ -91,6 +90,7 @@ ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
 
 uint64_t
 getChainID(std::shared_ptr<OpenView const> const& ledger);
+
 }
 
 #endif

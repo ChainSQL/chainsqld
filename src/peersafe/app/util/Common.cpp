@@ -22,6 +22,8 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <chrono>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/protocol/STETx.h>
+#include <ripple/ledger/OpenView.h>
+#include <ripple/protocol/STTx.h>
 
 namespace ripple {
 
