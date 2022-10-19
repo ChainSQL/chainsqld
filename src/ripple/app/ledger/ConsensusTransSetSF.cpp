@@ -94,8 +94,8 @@ ConsensusTransSetSF::getNode(SHAMapHash const& nodeHash) const
         auto sTmpSlice = sTmp.slice();
         if((sTmpSlice.begin())[0] == 0)
         {
-            auto ethId = uint256::fromVoid(sTmpSlice.substr(1, 32).data());
-            assert(ethId == nodeHash.as_uint256());
+            sTmpSlice.remove_prefix(1);
+            assert(sha512Half<CommonKey::sha3>(sTmpSlice) == nodeHash.as_uint256());
             nodeData = sTmp.peekData();
         }
         else
