@@ -97,7 +97,8 @@ AccountAuthorize::preclaim(PreclaimContext const& ctx)
     if (!sleDst)
         return tecNO_DST;
 
-    if (uSetFlag == asfAdminAuth || uClearFlag == asfAdminAuth)
+    if (uSetFlag == asfAdminAuth || uClearFlag == asfAdminAuth
+        || uSetFlag == asfRealNameAuth || uClearFlag == asfRealNameAuth)
     {
         // Supper admin check
         if (!ctx.app.config().ADMIN)
@@ -105,6 +106,13 @@ AccountAuthorize::preclaim(PreclaimContext const& ctx)
 
         if (uSrcAccountID != *ctx.app.config().ADMIN)
             return tecNO_PERMISSION;
+
+        if (uSetFlag == asfRealNameAuth || uClearFlag == asfRealNameAuth)
+        {
+            if (!ctx.app.config().REAL_NAME_AUTHORITY_ENABLED)
+                return tefNO_NEED_AUTHORIZE;
+
+        }
     }
     else
     {
