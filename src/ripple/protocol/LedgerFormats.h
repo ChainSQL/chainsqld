@@ -136,7 +136,7 @@ enum LedgerSpecificFlags {
     lsfCreateTableAuth = 0x00000004,  // True, Create table authorize 
     lsfIssueCoinsAuth = 0x00000008,  // True, Token issuance authority
     lsfAdminAuth = 0x00000010,  // True, admin Authorize
-    lsfAccountDeleted = 0x00000020,  // True, account is deleted
+    lsfAccountDeleted = 0x00000040,  // True, account is deleted
     lsfRealNameAuth = 0x00000020,  // True, real name Authorize 
 
     // ltOFFER
