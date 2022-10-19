@@ -30,7 +30,8 @@ HTTPReply(
     int nStatus,
     std::string const& strMsg,
     Json::Output const&,
-    beast::Journal j);
+    beast::Journal j,
+    bool isAllowRemote = false);
 
 }  // namespace ripple
 

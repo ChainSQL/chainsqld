@@ -287,6 +287,13 @@ ServerHandlerImp::onRequest(Session& session)
     }
 
     std::shared_ptr<Session> detachedSession = session.detach();
+    
+    if(session.request().method() == boost::beast::http::verb::options)
+    {
+        HTTPReply(200, "", makeOutput(session), app_.journal("RPC"), app_.config().IS_ALLOW_REMOTE);
+        return;
+    }
+    
     auto const postResult = m_jobQueue.postCoro(
         jtCLIENT,
         "RPC-Client",
@@ -1074,7 +1081,7 @@ ServerHandlerImp::processRequest(
             stream << "Reply: " << response.substr(0, maxSize);
     }
 
-    HTTPReply(200, response, output, rpcJ);
+    HTTPReply(200, response, output, rpcJ, app_.config().IS_ALLOW_REMOTE);
 }
 
 //------------------------------------------------------------------------------
