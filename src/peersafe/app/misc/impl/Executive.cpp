@@ -375,7 +375,7 @@ bool Executive::go()
 		}
 		catch (eth::VMException const& _e)
 		{
-			JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
+			//JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
 			formatOutput(_e.what());
 			m_gas = 0;
 			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
