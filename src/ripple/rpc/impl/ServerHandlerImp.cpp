@@ -618,7 +618,9 @@ Json::Int constexpr wrong_version = -32606;
 
 bool checkIfEthApi(std::string strMethod)
 {
-    return strMethod.find("eth_") != std::string::npos || strMethod.find("net_") != std::string::npos;
+    return strMethod.find("eth_") != std::string::npos || 
+        strMethod.find("net_") != std::string::npos ||
+        strMethod.find("web3_") != std::string::npos;
 }
 
 void
