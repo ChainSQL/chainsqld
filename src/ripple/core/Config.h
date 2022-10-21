@@ -201,6 +201,7 @@ public:
 
     std::size_t NODE_SIZE = 0;
 
+    bool IS_ALLOW_REMOTE = false;
     bool SSL_VERIFY = true;
     std::string SSL_VERIFY_FILE;
     std::string SSL_VERIFY_DIR;

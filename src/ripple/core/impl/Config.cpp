@@ -695,6 +695,10 @@ Config::loadFromString(std::string const& fileContents)
 
     if (getSingleSection(secConfig, SECTION_SSL_VERIFY, strTemp, j_))
         SSL_VERIFY = beast::lexicalCastThrow<bool>(strTemp);
+    if (getSingleSection(secConfig, SECTION_ALLOW_REMOTE, strTemp, j_))
+    {
+        IS_ALLOW_REMOTE = beast::lexicalCastThrow<bool>(strTemp);
+    }
 
     auto cmdSSLCertSection = section( SECTION_CMD_SSL_CERT );
     if (!cmdSSLCertSection.empty ())

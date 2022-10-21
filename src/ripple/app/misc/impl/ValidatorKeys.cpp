@@ -90,7 +90,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 if (CommonKey::chainAlgTypeG == KeyType::gmalg)
                 {
                     configInvalid_ = true;
-                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED
+                                        "] don't match node_alg_type config]";
                 }
                 else
                 {
@@ -98,7 +99,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                     if (!seed)
                     {
                         configInvalid_ = true;
-                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] or publickey in [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED
+                                        "] or publickey in [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
                     else
                     {
@@ -113,7 +115,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 if (CommonKey::chainAlgTypeG != KeyType::gmalg)
                 {
                     configInvalid_ = true;
-                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED
+                                        "] don't match node_alg_type config]";
                 }
                 else
                 {
@@ -121,7 +124,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                     if (privateKeyStrDe58.empty())
                     {
                         configInvalid_ = true;
-                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
+                        JLOG(j.fatal()) << "Invalid seed specified in [" SECTION_VALIDATION_SEED
+                                            "] and [" SECTION_VALIDATION_PUBLIC_KEY "]";
                     }
                     secretKey = SecretKey(Slice(privateKeyStrDe58.c_str(), privateKeyStrDe58.size()), KeyType::gmalg);
                     publicKey = derivePublicKey(KeyType::gmalg, secretKey);
@@ -132,7 +136,8 @@ ValidatorKeys::ValidatorKeys(Config const& config, beast::Journal j)
                 if (CommonKey::chainAlgTypeG != KeyType::gmalg)
                 {
                     configInvalid_ = true;
-                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED "] don't match node_alg_type config]";
+                    JLOG(j.fatal()) << "seed specified in [" SECTION_VALIDATION_SEED
+                                        "] don't match node_alg_type config]";
                 }
                 else
                 {
