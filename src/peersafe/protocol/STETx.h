@@ -55,10 +55,8 @@ public:
 
     STETx(STETx const& other) = default;
 
-    explicit STETx(
-        Slice const& sit,
-        CommonKey::HashType hashType =
-            CommonKey::chainHashTypeG) noexcept(false);
+    explicit STETx(Slice const& sit, std::uint32_t lastLedgerSeq = 0) noexcept(
+        false);
 
     /** Check the signature.
         @return `true` if valid signature. If invalid, the error message string.

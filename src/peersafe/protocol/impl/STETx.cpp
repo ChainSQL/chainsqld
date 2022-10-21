@@ -15,8 +15,8 @@
 
 namespace ripple {
 
-STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false) 
-: m_rlpData(sit.begin(),sit.end())
+STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
+    : m_rlpData(sit.begin(),sit.end())
 {
     setFName(sfTransaction);
     int length = sit.size();
@@ -83,6 +83,8 @@ STETx::STETx(Slice const& sit, CommonKey::HashType hashType) noexcept(false)
         setFieldAmount(sfContractValue, ZXCAmount(drops));
     if (receiveAddress != beast::zero)
         setAccountID(sfContractAddress, receiveAddress);
+    if (lastLedgerSeq > 0)
+        setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
 
     auto str = getJson().toStyledString();
 

@@ -18,6 +18,7 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/app/tx/impl/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/basics/StringUtilities.h>
 
@@ -310,9 +311,9 @@ doEthSendRawTransaction(RPC::JsonContext& context)
         if (!ret || !ret->size())
             return formatEthError(defaultEthErrorCode, rpcINVALID_PARAMS);
 
+        auto lastLedgerSeq = context.ledgerMaster.getCurrentLedgerIndex() + LAST_LEDGER_SEQ_OFFSET;
         //Construct STETx
-        auto stpTrans = std::make_shared<STETx>(makeSlice(*ret));
-
+        auto stpTrans = std::make_shared<STETx>(makeSlice(*ret), lastLedgerSeq);
 
         //Check validity
         auto [validity, reason] = checkValidity(
