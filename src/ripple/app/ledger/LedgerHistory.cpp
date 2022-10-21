@@ -424,51 +424,59 @@ LedgerHistory::handleMismatch(
                              << to_string(*builtConsensusHash);
     }
 
-    // Find differences between built and valid ledgers
-    auto const builtTx = leaves(builtLedger->txMap());
-    auto const validTx = leaves(validLedger->txMap());
-
-    if (builtTx == validTx)
-        JLOG(j_.error()) << "MISMATCH with same " << builtTx.size()
-                         << " transactions";
-    else
-        JLOG(j_.error()) << "MISMATCH with " << builtTx.size() << " built and "
-                         << validTx.size() << " valid transactions.";
-
-    JLOG(j_.error()) << "built\n" << getJson(*builtLedger);
-    JLOG(j_.error()) << "valid\n" << getJson(*validLedger);
-
-    // Log all differences between built and valid ledgers
-    auto b = builtTx.begin();
-    auto v = validTx.begin();
-    while (b != builtTx.end() && v != validTx.end())
+    try
     {
-        if ((*b)->key() < (*v)->key())
-        {
-            log_one(*builtLedger, (*b)->key(), "valid", j_);
-            ++b;
-        }
-        else if ((*b)->key() > (*v)->key())
-        {
-            log_one(*validLedger, (*v)->key(), "built", j_);
-            ++v;
-        }
+        // Find differences between built and valid ledgers
+        auto const builtTx = leaves(builtLedger->txMap());
+        auto const validTx = leaves(validLedger->txMap());
+
+        if (builtTx == validTx)
+            JLOG(j_.error()) << "MISMATCH with same " << builtTx.size()
+                             << " transactions";
         else
+            JLOG(j_.error()) << "MISMATCH with " << builtTx.size() << " built and "
+                             << validTx.size() << " valid transactions.";
+
+        JLOG(j_.error()) << "built\n" << getJson(*builtLedger);
+        JLOG(j_.error()) << "valid\n" << getJson(*validLedger);
+
+        // Log all differences between built and valid ledgers
+        auto b = builtTx.begin();
+        auto v = validTx.begin();
+        while (b != builtTx.end() && v != validTx.end())
         {
-            if ((*b)->peekData() != (*v)->peekData())
+            if ((*b)->key() < (*v)->key())
             {
-                // Same transaction with different metadata
-                log_metadata_difference(
-                    *builtLedger, *validLedger, (*b)->key(), j_);
+                log_one(*builtLedger, (*b)->key(), "valid", j_);
+                ++b;
             }
-            ++b;
-            ++v;
+            else if ((*b)->key() > (*v)->key())
+            {
+                log_one(*validLedger, (*v)->key(), "built", j_);
+                ++v;
+            }
+            else
+            {
+                if ((*b)->peekData() != (*v)->peekData())
+                {
+                    // Same transaction with different metadata
+                    log_metadata_difference(
+                        *builtLedger, *validLedger, (*b)->key(), j_);
+                }
+                ++b;
+                ++v;
+            }
         }
+        for (; b != builtTx.end(); ++b)
+            log_one(*builtLedger, (*b)->key(), "valid", j_);
+        for (; v != validTx.end(); ++v)
+            log_one(*validLedger, (*v)->key(), "built", j_);
     }
-    for (; b != builtTx.end(); ++b)
-        log_one(*builtLedger, (*b)->key(), "valid", j_);
-    for (; v != validTx.end(); ++v)
-        log_one(*validLedger, (*v)->key(), "built", j_);
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "LedgerHistory::handleMismatch exception:" << e.what();
+    }
+    
 }
 
 void
