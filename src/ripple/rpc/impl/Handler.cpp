@@ -225,6 +225,8 @@ Handler const handlerArray[]{
 
 Handler const ethHandlerArray[]{
     // Ethereum-compatible JSON RPC API
+    {"web3_clientVersion", byRef(&doWeb3CleintVersion), Role::USER, NO_CONDITION},
+    {"web3_sha3", byRef(&doWeb3Sha3), Role::USER, NO_CONDITION},
     {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
     {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
     {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},

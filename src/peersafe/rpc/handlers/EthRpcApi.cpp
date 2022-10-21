@@ -25,6 +25,33 @@
 namespace ripple {
 
 Json::Value
+doWeb3CleintVersion(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    std::string version = BuildInfo::getVersionString();
+    jvResult[jss::result] = "chainsql/" + version + "/linux-amd64/C++17";
+
+    return jvResult;
+}
+
+Json::Value
+doWeb3Sha3(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        std::string param =
+            context.params["realParams"][0u].asString();
+        jvResult[jss::result] = "0x" + to_string(sha512Half<CommonKey::sha3>(param));
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x0";
+    }
+    return jvResult;
+}
+
+Json::Value
 doEthChainId(RPC::JsonContext& context)
 {
     Json::Value jvResult;

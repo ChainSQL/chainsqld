@@ -214,6 +214,8 @@ Json::Value doCreateRandom(RPC::JsonContext&);
 Json::Value doCryptData(RPC::JsonContext&);
 
 // Ethereum-compatible JSON RPC API
+Json::Value doWeb3CleintVersion(RPC::JsonContext&);
+Json::Value doWeb3Sha3(RPC::JsonContext&);
 Json::Value doEthChainId(RPC::JsonContext&);
 Json::Value doNetVersion(RPC::JsonContext&);
 Json::Value doEthBlockNumber(RPC::JsonContext&);
