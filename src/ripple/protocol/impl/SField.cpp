@@ -144,8 +144,6 @@ SF_U64 const sfIssuerNode	    (access, STI_UINT64, 21, "IssuerNode");
 SF_U64 const sfView             (access, STI_UINT64, 23, "View");
 SF_U64 const sfGasPrice         (access, STI_UINT64, 24, "GasPrice");
 
-SF_U64 const sfChainID          (access, STI_UINT64, 25, "ChainID");
-
 
 // 128-bit
 SF_U128 const sfEmailHash (access, STI_HASH128, 1, "EmailHash");

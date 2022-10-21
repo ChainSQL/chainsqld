@@ -1001,7 +1001,7 @@ InboundLedger::trigger(std::shared_ptr<Peer> const& peer, TriggerReason reason)
     }
     else if (mHaveContracts)
     {
-        mComplete = true;
+        mComplete = checkComplete();
     }
 
     mCheckingContract.store(false);
