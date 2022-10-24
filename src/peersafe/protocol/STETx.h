@@ -25,6 +25,7 @@
 #include <eth/vm/Common.h>
 #include <peersafe/protocol/ContractDefines.h>
 
+
 using namespace eth;
 
 namespace ripple {
@@ -59,7 +60,9 @@ public:
         Slice const& sit,
         CommonKey::HashType hashType =
             CommonKey::chainHashTypeG) noexcept(false);
-
+    
+    explicit STETx(Json::Value& obj, CommonKey::HashType hashType = CommonKey::chainHashTypeG) noexcept(false);
+    
     /** Check the signature.
         @return `true` if valid signature. If invalid, the error message string.
     */

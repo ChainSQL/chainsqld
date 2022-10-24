@@ -179,6 +179,8 @@ sign(KeyType type, SecretKey const& sk, Slice const& message)
 {
     return sign(derivePublicKey(type, sk), sk, message);
 }
+
+Signature signEthDigest(SecretKey const& sk, uint256 const& digest);
 /** @} */
 
 Blob

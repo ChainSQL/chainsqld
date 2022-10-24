@@ -598,6 +598,7 @@ JSS ( node_size );
 JSS ( accounts_contract );
 JSS ( engine_result_message_detail );  // out: NetworkOPs, Submit
 JSS ( field );
+JSS ( gas );
 JSS ( gas_price );  // out: TxQ
 JSS ( OpType );     // out: Tx OpType
 JSS ( chainsql_tx );
@@ -719,11 +720,16 @@ JSS (val_signed);
 JSS (for_node);
 JSS (running);
 
-JSS(drops_per_byte);                       // out: LogLevel
-JSS(view);
-JSS(Authorize);
-JSS(EthTx);
+JSS (drops_per_byte);                       // out: LogLevel
+JSS (view);
+JSS (Authorize);
+JSS (EthTx);
 JSS (x509_subjects);
+JSS (nonce);
+JSS (gasPrice);
+JSS (to);
+
+
 #undef JSS
 
 }  // namespace jss

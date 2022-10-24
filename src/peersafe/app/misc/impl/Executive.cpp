@@ -122,16 +122,19 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 {
 	bool accountAlreadyExist = false;
 	uint32_t sequence = 1;
+    
+    CommonKey::HashType hashType = safe_cast<TxType>(m_s.getTx().getFieldU16(sfTransactionType)) == ttETH_TX ? CommonKey::sha3 : CommonKey::sha;
+    
 	if (m_depth == 1)
 	{
 		sequence = m_s.getTx().getFieldU32(sfSequence);
-		m_newAddress = Contract::calcNewAddress(_sender, sequence);
+		m_newAddress = Contract::calcNewAddress(_sender, sequence, hashType);
 	}
 	else
 	{
 		sequence = m_s.getSequence(_sender);
 		do {
-			m_newAddress = Contract::calcNewAddress(_sender, sequence);
+			m_newAddress = Contract::calcNewAddress(_sender, sequence, hashType);
 			// add sequence for sender
 			//m_s.incSequence(_sender);
 			sequence++;

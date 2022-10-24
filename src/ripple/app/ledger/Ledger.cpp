@@ -1676,8 +1676,10 @@ storePeersafeSql(
         AccountID addrContract;
         if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
         {
+            CommonKey::HashType hashType = safe_cast<TxType>(pTx->getFieldU16(sfTransactionType)) == ttETH_TX ? CommonKey::sha3 : CommonKey::sha;
+            
             addrContract = Contract::calcNewAddress(
-                pTx->getAccountID(sfAccount), pTx->getFieldU32(sfSequence));
+                pTx->getAccountID(sfAccount), pTx->getFieldU32(sfSequence), hashType);
         }
         else
         {
