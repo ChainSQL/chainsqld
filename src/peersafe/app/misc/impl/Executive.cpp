@@ -13,6 +13,7 @@
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/protocol/STETx.h>
 #include <peersafe/app/util/Common.h>
+#include <ripple/protocol/Feature.h>
 
 namespace ripple {
 
@@ -55,8 +56,14 @@ int64_t Executive::baseGasRequired(bool isCreation, eth::bytesConstRef const& da
 }
 
 void Executive::initialize() {
-//	initGasPrice();
-    m_gasPrice = getCurGasPrice(m_s.ctx());
+    if(m_s.ctx().view().rules().enabled(featureGasPriceCompress))
+    {
+        m_gasPrice = getCurGasPrice(m_s.ctx());
+    }
+    else
+    {
+        initGasPrice();
+    }
 
 	auto& tx = m_s.ctx().tx;
 	auto data = tx.getFieldVL(sfContractData);
