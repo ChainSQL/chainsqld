@@ -570,39 +570,7 @@ doEthGasPrice(RPC::JsonContext& context)
 Json::Value
 doEthFeeHistory(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
-    jvResult[jss::result] = "0x";
-    //try
-    //{
-    //    auto blockCount = (int64_t) std::stoll(
-    //        context.params["realParams"][0u].asString().substr(2), 0, 16);
-    //    auto gasPrice =
-    //        dropsToWeiHex(context.app.openLedger().current()->fees().gas_price);
-
-    //    auto maxVal = context.app.getLedgerMaster().getValidLedgerIndex(); 
-    //    Json::Value& jvBaseFeePerGas =
-    //        (jvResult[jss::result]["baseFeePerGas"] = Json::arrayValue);
-    //    for (int i = 0; i <= blockCount && maxVal-i>0; i++)
-    //    {
-    //        jvBaseFeePerGas.append(gasPrice);
-    //    }
-
-    //    Json::Value& jvGasUsedRatio =
-    //        (jvResult[jss::result]["gasUsedRatio"] = Json::arrayValue);
-    //    for (int i = 0; i < blockCount && maxVal - i > 0; i++)
-    //    {
-    //        jvGasUsedRatio.append(0.99);
-    //    }
-    //    auto oldest = maxVal - blockCount > 0 ? maxVal - blockCount : 1;
-    //    jvResult[jss::result]["oldestBlock"] = toHexString(oldest);
-    //}
-    //catch (std::exception&)
-    //{
-    //    //        jvResult = RPC::make_error(rpcINTERNAL,
-    //    //            "Exception occurred during JSON handling.");
-    //    jvResult[jss::result] = "0x";
-    //}
-    return jvResult;
+    return formatEthError(ethMethodNotFound, "Method not found");
 }
 
 Json::Value

@@ -997,11 +997,18 @@ ServerHandlerImp::processRequest(
 
             if(checkIfEthApi(strMethod))
             {
-                r[jss::result] = result[jss::result];
                 r["id"] = jsonRPC["id"];
                 if(jsonRPC.isMember("jsonrpc"))
                 {
                     r["jsonrpc"] = jsonRPC["jsonrpc"];
+                }
+                if (result.isMember(jss::error))
+                {
+                    r[jss::error] = result[jss::error];
+                }
+                else
+                {
+                    r[jss::result] = result[jss::result];
                 }
             }
             else

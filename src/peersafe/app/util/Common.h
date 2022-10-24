@@ -37,6 +37,7 @@ class OpenView;
 using H256Set = std::unordered_set<uint256>;
 
 const int defaultEthErrorCode = -32000;
+const int ethMethodNotFound = -32601;
 const std::uint64_t weiPerDrop = std::uint64_t(1e12);
 const std::uint64_t compressDrop = std::uint64_t(1e4);
 
