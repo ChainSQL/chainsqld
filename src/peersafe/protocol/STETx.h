@@ -25,6 +25,7 @@
 #include <eth/vm/Common.h>
 #include <peersafe/protocol/ContractDefines.h>
 
+
 using namespace eth;
 
 namespace ripple {
@@ -55,9 +56,11 @@ public:
 
     STETx(STETx const& other) = default;
 
-    explicit STETx(Slice const& sit, std::uint32_t lastLedgerSeq = 0) noexcept(
-        false);
 
+    explicit STETx(Slice const& sit, std::uint32_t lastLedgerSeq = 0) noexcept(false);
+    
+    explicit STETx(Json::Value& obj) noexcept(false);
+    
     /** Check the signature.
         @return `true` if valid signature. If invalid, the error message string.
     */

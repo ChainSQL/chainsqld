@@ -26,8 +26,10 @@
 #include <ed25519-donna/ed25519.h>
 #include <peersafe/crypto/ECIES.h>
 #include <type_traits>
+#include <eth/tools/Common.h>
 
 namespace ripple {
+using namespace eth;
 
 std::ostream&
 operator<<(std::ostream& os, PublicKey const& pk)
@@ -47,11 +49,6 @@ bool publicKeyComp(PublicKey const& lhs, PublicKey const& rhs)
 {
     return lhs < rhs;
 }
-
-using uint264 = boost::multiprecision::number<
-    boost::multiprecision::cpp_int_backend<
-        264, 264, boost::multiprecision::signed_magnitude,
-            boost::multiprecision::unchecked, void>>;
 
 template<>
 boost::optional<PublicKey>
@@ -144,15 +141,7 @@ sliceToHex(Slice const& slice)
 boost::optional<ECDSACanonicality>
 ecdsaCanonicality(Slice const& sig)
 {
-    using uint264 =
-        boost::multiprecision::number<boost::multiprecision::cpp_int_backend<
-            264,
-            264,
-            boost::multiprecision::signed_magnitude,
-            boost::multiprecision::unchecked,
-            void>>;
-
-    static uint264 const G(
+    static u264 const G(
         "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
 
     // The format of a signature should be:
@@ -167,11 +156,11 @@ ecdsaCanonicality(Slice const& sig)
     if (!r || !s || !p.empty())
         return boost::none;
 
-    uint264 R(sliceToHex(*r));
+    u264 R(sliceToHex(*r));
     if (R >= G)
         return boost::none;
 
-    uint264 S(sliceToHex(*s));
+    u264 S(sliceToHex(*s));
     if (S >= G)
         return boost::none;
 

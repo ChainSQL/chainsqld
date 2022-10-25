@@ -7,10 +7,15 @@
 
 #include <ripple/protocol/HashPrefix.h>
 #include <ripple/protocol/Protocol.h>
+#include <ripple/protocol/jss.h>
+#include <ripple/protocol/PublicKey.h>
 #include <peersafe/protocol/STETx.h>
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <utility>
+#include <ripple/protocol/STParsedJSON.h>
+#include <ripple/basics/StringUtilities.h>
+
 
 
 namespace ripple {
@@ -18,13 +23,9 @@ namespace ripple {
 STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     : m_rlpData(sit.begin(),sit.end())
 {
-    setFName(sfTransaction);
     int length = sit.size();
-
     if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
         Throw<std::runtime_error>("Transaction length invalid");
-
-    tx_type_ = ttETH_TX;
 
     RlpDecoded decoded;
     //Decode RLP and set fields
@@ -49,6 +50,10 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     decoded.r = rlp[7].toInt<u256>();
     decoded.s = rlp[8].toInt<u256>();
 
+    
+    setFName(sfTransaction);
+    tx_type_ = ttETH_TX;
+    
     m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
 
     // Check signature and get sender.
@@ -90,6 +95,51 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
 
     pTxs_ = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();
+}
+
+
+STETx::STETx(Json::Value& obj) noexcept(false)
+{
+    m_type = obj.isMember(jss::Destination) ? MessageCall :ContractCreation;
+    
+    RlpDecoded decoded;
+    //RLP const rlp(bytesConstRef(sit.data(),sit.size()));
+    if(obj.isMember(jss::nonce))
+        decoded.nonce               = u256(obj[jss::nonce].asString());
+    if(obj.isMember(jss::gasPrice))
+        decoded.gasPrice            = u256(obj[jss::gasPrice].asString());
+    if(obj.isMember(jss::gas))
+        decoded.gas                 = u256(obj[jss::gas].asString());
+    if(obj.isMember(jss::to))
+        decoded.receiveAddress      = u160(obj[jss::to].asString());
+    if(obj.isMember(jss::value))
+        decoded.value               = u256(obj[jss::value].asString());
+    if(obj.isMember(jss::date))
+        decoded.data                = strUnHex(obj[jss::date].asString()).get();
+    
+    //set default value for v
+    decoded.v = u256(27);
+    
+    //sign calculate rsv
+    std::string sSecret = obj[jss::secret].asString();
+    SecretKey sk(Slice(sSecret.c_str(), sSecret.size()));
+    //used for sign
+    auto digest = sha3(decoded, WithoutSignature);
+    auto sig = signEthDigest(sk, digest);
+    SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
+    if (sigStruct.isValid())
+    {
+        decoded.r = u256(sigStruct.r);
+        decoded.s = u256(sigStruct.s);
+        decoded.v = u256(sigStruct.v);
+    }
+    
+    RLPStream s;
+    streamRLP(s, decoded, WithSignature, false);
+    m_rlpData = std::move(s.out());
+
+    //transaction id
+    tid_ = sha3(decoded, WithSignature);
 }
 
 void
