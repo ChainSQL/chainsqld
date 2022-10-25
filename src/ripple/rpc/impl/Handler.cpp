@@ -241,7 +241,7 @@ Handler const ethHandlerArray[]{
     {"eth_getTransactionByHash", byRef(&doEthGetTransactionByHash), Role::USER, NO_CONDITION},
     {"eth_getTransactionCount", byRef(&doEthGetTransactionCount), Role::USER, NO_CONDITION},
     {"eth_gasPrice", byRef(&doEthGasPrice), Role::USER, NO_CONDITION},
-   // {"eth_feeHistory", byRef(&doEthFeeHistory), Role::USER, NO_CONDITION},
+    {"eth_feeHistory", byRef(&doEthFeeHistory), Role::USER, NO_CONDITION},
     {"eth_getCode", byRef(&doEthGetCode), Role::USER, NO_CONDITION},
 };
 
