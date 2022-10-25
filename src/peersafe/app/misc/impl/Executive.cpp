@@ -383,9 +383,9 @@ bool Executive::go()
 		catch (eth::VMException const& _e)
 		{
 			//JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
-			formatOutput(_e.what());
+            formatOutput(_e.what());
 			m_gas = 0;
-			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
+            m_excepted = exceptionToTerCode(_e);
 			//revert();
 		}
 		catch (eth::InternalVMError const& _e)
@@ -555,6 +555,15 @@ std::string Executive::getRevertErr(int64_t errCode)
 	default:
 		return std::string("Unkown errCode for assert");
 	}
+}
+
+TER
+Executive::exceptionToTerCode(eth::VMException const& _e)
+{
+    // VM execution exceptions
+    if (!!dynamic_cast<OutOfGas const*>(&_e))
+        return tefGAS_INSUFFICIENT;
+    return tefCONTRACT_EXEC_EXCEPTION;
 }
 
 } // namespace ripple

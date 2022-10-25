@@ -173,6 +173,7 @@ namespace eth {
         evmcResult.status_code = result.status;
         evmcResult.gas_left = static_cast<int64_t>(gas);
         evmcResult.release = nullptr;
+        evmcResult.exception = result.exception;
 
         if (result.status == EVMC_SUCCESS)
         {
@@ -189,24 +190,7 @@ namespace eth {
             // of bytes is moved. See `.takeBytes()` below.
             evmcResult.output_data = result.output.data();
             evmcResult.output_size = result.output.size();
-
-#ifdef DEBUG
-            if (evmcResult.output_size) {
-                // fix an issue that Stack around the variable 'result' was corrupted
-                evmc_get_optional_storage(&evmcResult)->pointer = std::malloc(evmcResult.output_size);
-                new(evmc_get_optional_storage(&evmcResult)->pointer) bytes(result.output.takeBytes());
-
-                evmcResult.release = [](evmc_result const* _result)
-                {
-                    uint8_t* data = (uint8_t*)evmc_get_const_optional_storage(_result)->pointer;
-                    auto& output = reinterpret_cast<bytes const&>(*data);
-                    // Explicitly call vector's destructor to release its data.
-                    // This is normal pattern when placement new operator is used.
-                    output.~bytes();
-                    std::free(data);
-                };
-            }
-#else
+ 
             // Place a new vector of bytes containing output in result's reserved memory.
             auto* data = evmc_get_optional_storage(&evmcResult);
             //static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
@@ -220,7 +204,6 @@ namespace eth {
                 // This is normal pattern when placement new operator is used.
                 output.~bytes();
             };
-#endif // DEBUG
         }
         return evmc::result{ evmcResult };
     }
@@ -263,23 +246,6 @@ namespace eth {
         evmcResult.output_data = result.output.data();
         evmcResult.output_size = result.output.size();
 
-//#ifdef DEBUG
-//        if (evmcResult.output_size) {
-//            // fix an issue that Stack around the variable 'result' was corrupted
-//            evmc_get_optional_storage(&evmcResult)->pointer = std::malloc(evmcResult.output_size);
-//            new(evmc_get_optional_storage(&evmcResult)->pointer) bytes(result.output.takeBytes());
-//
-//            evmcResult.release = [](evmc_result const* _result)
-//            {
-//                uint8_t* data = (uint8_t*)evmc_get_const_optional_storage(_result)->pointer;
-//                auto& output = reinterpret_cast<bytes const&>(*data);
-//                // Explicitly call vector's destructor to release its data.
-//                // This is normal pattern when placement new operator is used.
-//                output.~bytes();
-//                std::free(data);
-//            };
-//        }
-//#else
         // Place a new vector of bytes containing output in result's reserved memory.
         auto* data = evmc_get_optional_storage(&evmcResult);
         //static_assert(sizeof(bytes) <= sizeof(*data), "Vector is too big");
@@ -294,7 +260,6 @@ namespace eth {
             // This is normal pattern when placement new operator is used.
             output.~bytes();
         };
-//#endif
         return evmc::result{ evmcResult };
     }
 

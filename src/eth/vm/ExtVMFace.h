@@ -133,9 +133,13 @@ struct CreateResult
         evmc_status_code status;
         owning_bytes_ref output;
         evmc_address address; //h160 address
+        int exception;
 
-        CreateResult(evmc_status_code status, owning_bytes_ref&& output, evmc_address const& address)
-                : status{ status }, output{ std::move(output) }, address(address)
+        CreateResult(evmc_status_code status, owning_bytes_ref&& output, evmc_address const& address, int exception)
+            : status{status}
+            , output{std::move(output)}
+            , address(address)
+            , exception(exception)
         {}
 };
 
