@@ -629,7 +629,9 @@ doEthGasPrice(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {}
-    jvResult[jss::result] = compressDrops2Str(gasPrice);
+    jvResult[jss::result] =
+        compressDrops2Str(gasPrice, 
+            context.app.openLedger().current()->rules().enabled(featureGasPriceCompress));
     return jvResult;
 }
 

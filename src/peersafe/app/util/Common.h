@@ -40,6 +40,7 @@ const int defaultEthErrorCode = -32000;
 const int ethMethodNotFound = -32601;
 const std::uint64_t weiPerDrop = std::uint64_t(1e12);
 const std::uint64_t compressDrop = std::uint64_t(1e3);
+const std::uint64_t weiPerDropWithFeature = std::uint64_t(1e9);
 
 // Get the current time in seconds since the epoch in UTC(ms)
 uint64_t
@@ -68,11 +69,14 @@ inline dropsToWeiHex(uint64_t drops)
 }
 
 std::string
-inline compressDrops2Str(uint64_t drops)
+inline compressDrops2Str(uint64_t drops,bool bGasPriceFeatureEnabled)
 {
     boost::multiprecision::uint128_t cDrops;
     //1e9 = 1e(-3) * weiPerDrop
-    boost::multiprecision::multiply(cDrops, drops, std::uint64_t(1e9));
+    if (bGasPriceFeatureEnabled)
+        boost::multiprecision::multiply(cDrops, drops, weiPerDropWithFeature);
+    else
+        boost::multiprecision::multiply(cDrops, drops, weiPerDrop);
     
     return toHexString(cDrops);
 }
