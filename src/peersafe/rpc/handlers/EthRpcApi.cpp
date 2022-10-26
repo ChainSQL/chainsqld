@@ -322,6 +322,68 @@ doEthGetBalance(RPC::JsonContext& context)
 }
 
 Json::Value
+doEthSendTransaction(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    
+    if (context.role != Role::ADMIN && !context.app.config().canSign())
+    return RPC::make_error(
+        rpcNOT_SUPPORTED, "Signing is not supported by this server.");
+    
+    Json::Value jsonParams = context.params;
+    Json::Value ethParams = jsonParams["realParams"][0u];
+    
+    try
+    {
+        //check the params
+        if (!ethParams.isMember("from"))
+        {
+            return RPC::missing_field_error("from");
+        }
+        if (!ethParams.isMember("to") && !ethParams.isMember("data"))
+        {
+            return RPC::missing_field_error("to");
+        }
+        
+        //Construct STETx
+        auto stpTrans = std::make_shared<STETx>(ethParams);
+
+        //Check validity
+        auto [validity, reason] = checkValidity(
+            context.app,
+            context.app.getHashRouter(),
+            *stpTrans,
+            context.ledgerMaster.getCurrentLedger()->rules(),
+            context.app.config());
+        if (validity != Validity::Valid)
+        {
+            return formatEthError(defaultEthErrorCode, "Check validity failed.");
+        }
+
+        std::string reason2;
+        auto tpTrans =
+            std::make_shared<Transaction>(stpTrans, reason2, context.app);
+        if (tpTrans->getStatus() != NEW)
+        {
+            jvResult[jss::result] = "0x00";
+            return jvResult;
+        }
+
+        context.netOps.processTransaction(
+            tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
+
+        std::string txIdStr = to_string(stpTrans->getTransactionID());
+        jvResult[jss::result] = "0x" + toLowerStr(txIdStr);
+    }
+    catch (std::exception& e)
+    {
+        JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
+        jvResult[jss::result] = "0x00";
+    }
+    return jvResult;
+}
+
+Json::Value
 doEthSendRawTransaction(RPC::JsonContext& context)
 {
     Json::Value jvResult;
@@ -490,7 +552,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             {
             }
 
-            jvResult[jss::status] = txSuccess ? "0x1" : "0x0";
+            jvResult[jss::status] = txSuccess ? "0x01" : "0x00";
         }
         
         if (!tx->isFieldPresent(sfContractAddress) &&
@@ -498,7 +560,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         {
             // calculate contract address
             auto newAddress = Contract::calcNewAddress(
-                accountID, tx->getFieldU32(sfSequence));
+                accountID, tx->getFieldU32(sfSequence), CommonKey::sha3);
             jvResult["contractAddress"] = "0x" + ethAddrChecksum(to_string(uint160(newAddress)));
         }
         jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());

@@ -124,16 +124,19 @@ bool Executive::createOpcode(AccountID const& _sender, uint256 const& _endowment
 {
 	bool accountAlreadyExist = false;
 	uint32_t sequence = 1;
+    
+    CommonKey::HashType hashType = safe_cast<TxType>(m_s.getTx().getFieldU16(sfTransactionType)) == ttETH_TX ? CommonKey::sha3 : CommonKey::sha;
+    
 	if (m_depth == 1)
 	{
 		sequence = m_s.getTx().getFieldU32(sfSequence);
-		m_newAddress = Contract::calcNewAddress(_sender, sequence);
+		m_newAddress = Contract::calcNewAddress(_sender, sequence, hashType);
 	}
 	else
 	{
 		sequence = m_s.getSequence(_sender);
 		do {
-			m_newAddress = Contract::calcNewAddress(_sender, sequence);
+			m_newAddress = Contract::calcNewAddress(_sender, sequence, hashType);
 			// add sequence for sender
 			//m_s.incSequence(_sender);
 			sequence++;
@@ -383,9 +386,9 @@ bool Executive::go()
 		catch (eth::VMException const& _e)
 		{
 			//JLOG(j.warn()) << "Safe VM Exception. " << diagnostic_information(_e);
-			formatOutput(_e.what());
+            formatOutput(_e.what());
 			m_gas = 0;
-			m_excepted = tefCONTRACT_EXEC_EXCEPTION;
+            m_excepted = exceptionToTerCode(_e);
 			//revert();
 		}
 		catch (eth::InternalVMError const& _e)
@@ -555,6 +558,15 @@ std::string Executive::getRevertErr(int64_t errCode)
 	default:
 		return std::string("Unkown errCode for assert");
 	}
+}
+
+TER
+Executive::exceptionToTerCode(eth::VMException const& _e)
+{
+    // VM execution exceptions
+    if (!!dynamic_cast<OutOfGas const*>(&_e))
+        return tefGAS_INSUFFICIENT;
+    return tefCONTRACT_EXEC_EXCEPTION;
 }
 
 } // namespace ripple

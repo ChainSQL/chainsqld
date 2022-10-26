@@ -253,7 +253,9 @@ ExtVM::create(
     return {
         terToEvmcStatusCode(e.getException()),
         e.takeOutput(),
-        toEvmC(e.newAddress())};
+        toEvmC(e.newAddress()),
+        TERtoInt(e.getException())
+    };
 }
 
 eth::CallResult

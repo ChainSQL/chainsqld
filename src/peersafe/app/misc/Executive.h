@@ -4,6 +4,7 @@
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
 #include <eth/vm/Common.h>
+#include <eth/vm/VMFace.h>
 
 namespace ripple {
 	const std::string ERRFUNSIG = "08C379A0";
@@ -114,6 +115,8 @@ private:
 	void formatOutput(std::string msg);
 	void formatOutput(eth::owning_bytes_ref output);
 	std::string getRevertErr(int64_t errCode);
+    TER exceptionToTerCode(eth::VMException const& _e);
+
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										

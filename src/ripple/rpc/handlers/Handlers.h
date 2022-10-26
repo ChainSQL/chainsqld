@@ -223,6 +223,7 @@ Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
 Json::Value doEthGetBlockByHash(RPC::JsonContext&);
 Json::Value doEthGetBalance(RPC::JsonContext&);
 Json::Value doEthCall(RPC::JsonContext&);
+Json::Value doEthSendTransaction(RPC::JsonContext&);
 Json::Value doEthSendRawTransaction(RPC::JsonContext&);
 Json::Value doEthGetTransactionReceipt(RPC::JsonContext&);
 Json::Value doEthGetTransactionByHash(RPC::JsonContext&);
