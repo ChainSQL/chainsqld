@@ -35,7 +35,7 @@ double Executive::getCurGasPrice(ApplyContext& ctx)
     std::uint64_t scaledGasPrice = scaleGasLoad(ctx.app.getFeeTrack(), ctx.view().fees());
     
     double curGasPrice;
-    curGasPrice = (double)scaledGasPrice/std::uint64_t(1e3);
+    curGasPrice = (double)scaledGasPrice/compressDrop;
 
     return curGasPrice;
 }

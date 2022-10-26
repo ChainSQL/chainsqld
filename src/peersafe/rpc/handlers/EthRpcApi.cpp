@@ -21,6 +21,7 @@
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/basics/StringUtilities.h>
+#include <ripple/protocol/Feature.h>
 
 namespace ripple {
 
@@ -442,8 +443,11 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                     value = tx->getFieldAmount(sfContractValue).zxc().drops();
                 if (ledger != nullptr)
                 {
-                    auto gasUsed = (preBalance - finalBalance - fee - value) *
-                        std::uint64_t(1e3) / ledger->fees().gas_price;
+                    std::uint64_t gasUsed = preBalance - finalBalance - fee - value;
+                    if(ledger->rules().enabled(featureGasPriceCompress))
+                        gasUsed = gasUsed * compressDrop / ledger->fees().gas_price;
+                    else gasUsed = gasUsed / ledger->fees().gas_price;
+                    
                     jvResult["cumulativeGasUsed"] = toHexString(gasUsed);
                     jvResult["gasUsed"] = toHexString(gasUsed);
                 }
