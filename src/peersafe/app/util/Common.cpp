@@ -24,6 +24,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/protocol/STETx.h>
 #include <ripple/ledger/OpenView.h>
 #include <ripple/protocol/STTx.h>
+#include <ripple/protocol/ErrorCodes.h>
 
 namespace ripple {
 
@@ -91,6 +92,19 @@ ethAddrChecksum(std::string addr)
     }
     
     return ret;
+}
+
+Json::Value
+formatEthError(int code)
+{
+    Json::Value jvResult;
+    Json::Value jvError;
+    jvError["code"] = code;
+    jvError["message"] = RPC::get_error_msg(error_code_eth(code));
+    jvError["data"] = {};
+    jvResult["error"] = jvError;
+
+    return jvResult;
 }
 
 Json::Value

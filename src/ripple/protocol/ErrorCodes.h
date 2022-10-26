@@ -201,6 +201,11 @@ enum warning_code_i {
     warnRPC_AMENDMENT_BLOCKED = 1002,
 };
 
+enum error_code_eth {
+    ethERROR_DEFAULT            = -32000,
+    ethMETHOD_NOT_FOUND         = -32601,
+};
+
 //------------------------------------------------------------------------------
 
 // VFALCO NOTE these should probably not be in the RPC namespace.
@@ -232,6 +237,9 @@ struct ErrorInfo
 /** Returns an ErrorInfo that reflects the error code. */
 ErrorInfo const&
 get_error_info(error_code_i code);
+
+std::string const&
+get_error_msg(error_code_eth code);
 
 /** Add or update the json update to reflect the error code. */
 /** @{ */

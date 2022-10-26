@@ -36,8 +36,6 @@ class STTx;
 class OpenView;
 using H256Set = std::unordered_set<uint256>;
 
-const int defaultEthErrorCode = -32000;
-const int ethMethodNotFound = -32601;
 const std::uint64_t weiPerDrop = std::uint64_t(1e12);
 const std::uint64_t compressDrop = std::uint64_t(1e3);
 const std::uint64_t weiPerDropWithFeature = std::uint64_t(1e9);
@@ -83,6 +81,9 @@ inline compressDrops2Str(uint64_t drops,bool bGasPriceFeatureEnabled)
 
 std::string
 ethAddrChecksum(std::string addr);
+
+Json::Value
+formatEthError(int code);
 
 Json::Value 
 formatEthError(int code, std::string const& msg);

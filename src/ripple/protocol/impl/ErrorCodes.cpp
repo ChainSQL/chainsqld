@@ -174,7 +174,14 @@ constexpr static ErrorInfo unorderedErrorInfos[]{
     // add (rpcWRONG_SEED,            "wrongSeed",         "The regular key does not point as the master key.");
 };
 
-// C++ does not allow you to return an array from a function.  You must
+static std::map<
+    error_code_eth, std::string> const eth_codes
+{
+    { ethERROR_DEFAULT,     "Internal error" },
+    { ethMETHOD_NOT_FOUND,  "Method not found" },
+
+ };
+    // C++ does not allow you to return an array from a function.  You must
 // return an object which may in turn contain an array.  The following
 // struct is simply defined so the enclosed array can be returned from a
 // constexpr function.
@@ -259,6 +266,15 @@ get_error_info(error_code_i code)
         return detail::unknownError;
     return detail::sortedErrorInfos.infos[code - 1];
 }
+
+std::string const&
+get_error_msg(error_code_eth code)
+{
+    if (detail::eth_codes.find(code) != detail::eth_codes.end())
+        return detail::eth_codes.at(code);
+    return detail::eth_codes.at(ethERROR_DEFAULT);
+}
+
 
 Json::Value
 make_error(error_code_i code)

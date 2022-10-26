@@ -69,7 +69,7 @@ Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, s
 	{
         auto errMsg = "Exception occurred during JSON handling.";
         if (isEthCall)
-            return formatEthError(defaultEthErrorCode, "Exception occurred during JSON handling.");
+            return formatEthError(ethERROR_DEFAULT, "Exception occurred during JSON handling.");
         else
             return RPC::make_error(rpcINTERNAL, errMsg);
 	}
@@ -178,7 +178,7 @@ doContractCall(RPC::JsonContext& context)
     if (isRpcError(checkResult))
     {
         if (isEthCall)
-            return formatEthError(defaultEthErrorCode, checkResult[jss::error_message].asString());
+            return formatEthError(ethERROR_DEFAULT, checkResult[jss::error_message].asString());
         return checkResult;
     }
 
@@ -190,7 +190,7 @@ doContractCall(RPC::JsonContext& context)
             auto accId = parseHex<AccountID>(ethParams["from"].asString());
             if (!accId)
                 return formatEthError(
-                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+                    ethERROR_DEFAULT, rpcDST_ACT_MALFORMED);
             accountID = *accId;
         }
     }
@@ -210,7 +210,7 @@ doContractCall(RPC::JsonContext& context)
     {
         if (isEthCall && result.isMember(jss::error_message))
             return formatEthError(
-                defaultEthErrorCode, result[jss::error_message].asString());
+                ethERROR_DEFAULT, result[jss::error_message].asString());
         return result;
     }
 
@@ -220,7 +220,7 @@ doContractCall(RPC::JsonContext& context)
     {
         auto optID = parseHex<AccountID>(ethParams["to"].asString());
         if (!optID)
-            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+            return formatEthError(ethERROR_DEFAULT, rpcDST_ACT_MALFORMED);
         contractAddrID = *optID;
         
         if(!ethParams.isMember("from"))
@@ -248,7 +248,7 @@ doContractCall(RPC::JsonContext& context)
     {
         errMsgStr = "contract_data is invalid.";
         if (isEthCall)
-            return formatEthError(defaultEthErrorCode, errMsgStr);
+            return formatEthError(ethERROR_DEFAULT, errMsgStr);
         return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
     }
     auto contractDataBlob = *strUnHexRes;
@@ -297,7 +297,7 @@ doEstimateGas(RPC::JsonContext& context)
         
         auto optID = RPC::accountFromStringStrict(ethParams["from"].asString());
         if (!optID)
-            return formatEthError(defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+            return formatEthError(ethERROR_DEFAULT, rpcDST_ACT_MALFORMED);
 
         accountID = *optID;
         
@@ -306,7 +306,7 @@ doEstimateGas(RPC::JsonContext& context)
         if (!ledger)
             return result;
         if (!ledger->exists(keylet::account(accountID)))
-            return formatEthError(defaultEthErrorCode, rpcACT_NOT_FOUND);
+            return formatEthError(ethERROR_DEFAULT, rpcACT_NOT_FOUND);
         
         std::shared_ptr<OpenView> openViewTemp =
             std::make_shared<OpenView>(ledger.get());
@@ -319,7 +319,7 @@ doEstimateGas(RPC::JsonContext& context)
             auto optID = parseHex<AccountID>(ethParams["to"].asString());
             if (!optID)
                 return formatEthError(
-                    defaultEthErrorCode, rpcDST_ACT_MALFORMED);
+                    ethERROR_DEFAULT, rpcDST_ACT_MALFORMED);
 
             contractAddrID = *optID;
             isCreation = false;
@@ -347,7 +347,7 @@ doEstimateGas(RPC::JsonContext& context)
             if (!strUnHexRes)
             {
                 return formatEthError(
-                    defaultEthErrorCode, "contract_data is not in hex");
+                    ethERROR_DEFAULT, "contract_data is not in hex");
             }
             contractDataBlob = *strUnHexRes;
             if (contractDataBlob.size() == 0)
@@ -443,7 +443,7 @@ doEstimateGas(RPC::JsonContext& context)
             }
             else
             { 
-                return formatEthError(defaultEthErrorCode, errMsg);
+                return formatEthError(ethERROR_DEFAULT, errMsg);
             }
             
             //JLOG(context.j.warn())

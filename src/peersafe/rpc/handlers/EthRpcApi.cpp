@@ -107,12 +107,12 @@ getTxByHash(std::string txHash, Schema& app)
         auto hash = from_hex_text<uint256>(txHash);
         auto txn = app.getMasterTransaction().fetch(hash);
         if (!txn)
-            return formatEthError(defaultEthErrorCode, rpcTXN_NOT_FOUND);
+            return formatEthError(ethERROR_DEFAULT, rpcTXN_NOT_FOUND);
         
         auto tx =
             std::dynamic_pointer_cast<STETx const>(txn->getSTransaction());
         if (!tx)
-            return formatEthError(defaultEthErrorCode, "Not a eth tx.");
+            return formatEthError(ethERROR_DEFAULT, "Not a eth tx.");
 
         auto ledger = app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
         jvResult["hash"] = "0x" + txHash;
@@ -154,7 +154,7 @@ getTxByHash(std::string txHash, Schema& app)
         jvResult["r"] = toHexString(r);
         jvResult["s"] = toHexString(s);
     } catch (std::exception& ex) {
-        return formatEthError(defaultEthErrorCode, ex.what());
+        return formatEthError(ethERROR_DEFAULT, ex.what());
     }
     
     return jvResult;
@@ -357,7 +357,7 @@ doEthSendTransaction(RPC::JsonContext& context)
             context.app.config());
         if (validity != Validity::Valid)
         {
-            return formatEthError(defaultEthErrorCode, "Check validity failed.");
+            return formatEthError(ethERROR_DEFAULT, "Check validity failed.");
         }
 
         std::string reason2;
@@ -395,11 +395,11 @@ doEthSendRawTransaction(RPC::JsonContext& context)
         // 500KB
         if (ret->size() > RPC::Tuning::max_txn_size)
         {
-            return formatEthError(defaultEthErrorCode,rpcTXN_BIGGER_THAN_MAXSIZE);
+            return formatEthError(ethERROR_DEFAULT,rpcTXN_BIGGER_THAN_MAXSIZE);
         }
 
         if (!ret || !ret->size())
-            return formatEthError(defaultEthErrorCode, rpcINVALID_PARAMS);
+            return formatEthError(ethERROR_DEFAULT, rpcINVALID_PARAMS);
 
         auto lastLedgerSeq = context.ledgerMaster.getCurrentLedgerIndex() + LAST_LEDGER_SEQ_OFFSET;
         //Construct STETx
@@ -414,7 +414,7 @@ doEthSendRawTransaction(RPC::JsonContext& context)
             context.app.config());
         if (validity != Validity::Valid)
         {
-            return formatEthError(defaultEthErrorCode, "Check validity failed.");
+            return formatEthError(ethERROR_DEFAULT, "Check validity failed.");
         }
 
         std::string reason2;
@@ -638,7 +638,7 @@ doEthGasPrice(RPC::JsonContext& context)
 Json::Value
 doEthFeeHistory(RPC::JsonContext& context)
 {
-    return formatEthError(ethMethodNotFound, "Method not found");
+    return formatEthError(ethMETHOD_NOT_FOUND);
 }
 
 Json::Value
