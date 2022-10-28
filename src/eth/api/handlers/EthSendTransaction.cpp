@@ -84,10 +84,11 @@ signTransaction(RPC::JsonContext& context)
             
         setTransactionDefaults(ts, context);
 
+        auto chainID = getChainID(context.app.openLedger().current());
         auto lastLedgerSeq = context.ledgerMaster.getCurrentLedgerIndex() +
             LAST_LEDGER_SEQ_OFFSET;
         // Construct STETx
-        pTx = std::make_shared<STETx>(ts, secret, lastLedgerSeq);
+        pTx = std::make_shared<STETx>(ts, secret,chainID,lastLedgerSeq);
         return std::make_pair(pTx, jvResult);
     }
     catch (std::exception& e)

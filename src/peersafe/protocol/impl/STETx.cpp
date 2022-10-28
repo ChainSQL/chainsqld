@@ -70,31 +70,38 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
 STETx::STETx(
     TransactionSkeleton const& ts,
     std::string secret,
+    std::uint64_t chainID,
     std::uint32_t lastLedgerSeq) noexcept(false)
 {
     
     RlpDecoded decoded(ts);
    
+    int const vOffset = chainID * 2 + 35;
+    int recovery = 1;
     //set default value for v
-    decoded.v = u256(27);
-    
+    decoded.v = u256(recovery + vOffset);
+
+    m_type = ts.creation ? ContractCreation : MessageCall;
     //sign calculate rsv
-    SecretKey sk(Slice(secret.c_str(), secret.size()));
+    auto priData = *strUnHex(secret.substr(2));
+    SecretKey sk(Slice(priData.data(),priData.size()));
     //used for sign
     auto digest = sha3(decoded, WithoutSignature);
+
+    auto sDigest = to_string(digest);
+
     auto sig = signEthDigest(sk, digest);
     SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
     if (sigStruct.isValid())
     {
-        decoded.r = u256(sigStruct.r);
-        decoded.s = u256(sigStruct.s);
-        decoded.v = u256(sigStruct.v);
+        decoded.r = u256("0x" + to_string(sigStruct.r));
+        decoded.s = u256("0x" + to_string(sigStruct.s));
+        decoded.v = u256(recovery + vOffset);
     }
     
     RLPStream s;
-    streamRLP(s, decoded, WithSignature, false);
+    streamRLP(s, decoded, WithSignature, true);
     m_rlpData = std::move(s.out());
-    m_type = ts.creation ? ContractCreation : MessageCall;
     
     makeWithDecoded(decoded, lastLedgerSeq);
 }
@@ -120,6 +127,7 @@ STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
 
     // Tx-Hash
     tid_ = sha3(decoded, WithSignature);
+    auto sTid = to_string(tid_);
 
     // Set fields
     set(getTxFormat(tx_type_)->getSOTemplate());
@@ -139,7 +147,7 @@ STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
     if (lastLedgerSeq > 0)
         setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
 
-    //auto str = getJson().toStyledString();
+    auto str = getJson().toStyledString();
 
     pTxs_ = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();
@@ -159,6 +167,12 @@ void STETx::streamRLP(
         _s << "";
     _s << _decoded.value << _decoded.data;
 
+    std::cout << "nonce:" << uint64_t(_decoded.nonce) << std::endl
+              << "gasPrice:" << uint64_t(_decoded.gasPrice) << std::endl
+              << "gas:" << uint64_t(_decoded.gas) << std::endl
+              << "to:" << _decoded.receiveAddress.hex() << std::endl
+              << "value:" << uint64_t(_decoded.value) << std::endl
+              << "data:" << strHex(_decoded.data) << std::endl;
     if (_sig)
     {
         _s << _decoded.v;
@@ -182,7 +196,7 @@ STETx::sha3(RlpDecoded const& _decoded, IncludeSignature _sig)
     else
     {
         RLPStream s;
-        bool isReplayProtected = ((uint64_t)_decoded.v > 36);
+        bool isReplayProtected = true;
         streamRLP(
             s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
 
@@ -256,6 +270,12 @@ Blob const&
 STETx::getRlpData() const
 {
     return m_rlpData;
+}
+
+std::string
+STETx::getTxBinary() const
+{
+    return strHex(m_rlpData);
 }
 
 }  // namespace ripple

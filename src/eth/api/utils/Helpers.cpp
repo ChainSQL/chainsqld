@@ -113,7 +113,7 @@ eth::h160
 addressFromSecret(std::string const& sSecret)
 {
     eth::h160 ret;
-    auto secret = strUnHex(sSecret);
+    auto secret = strUnHex(sSecret.substr(2));
     if (secret)
     {
         eth::Secret secret(sSecret);

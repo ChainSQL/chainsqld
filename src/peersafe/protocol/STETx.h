@@ -60,9 +60,7 @@ public:
 
     explicit STETx(Slice const& sit, std::uint32_t lastLedgerSeq = 0) noexcept(false);
     
-    explicit STETx(
-        TransactionSkeleton const& ts,
-        std::string secret,
+    explicit STETx(TransactionSkeleton const& ts, std::string secret, std ::uint64_t chainID,
         std::uint32_t lastLedgerSeq = 0) noexcept(false);
     
     /** Check the signature.
@@ -81,6 +79,9 @@ public:
 
     Blob const&
     getRlpData() const;
+
+    virtual std::string
+    getTxBinary() const override;
 
 private:
     struct RlpDecoded
