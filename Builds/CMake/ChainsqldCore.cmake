@@ -784,7 +784,6 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/MallocTrim.cpp
   src/peersafe/rpc/handlers/NodeSize.cpp
   src/peersafe/rpc/handlers/MonitorStatis.cpp
-  src/peersafe/rpc/handlers/EthRpcApi.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp
@@ -805,6 +804,10 @@ target_sources (chainsqld PRIVATE
   src/eth/tools/RLP.cpp
   src/eth/tools/CommonData.cpp
   src/eth/tools/FixedHash.cpp
+  src/eth/api/handlers/EthRpcApi.cpp
+  src/eth/api/handlers/EthSendTransaction.cpp
+  src/eth/api/utils/Helpers.cpp
+  src/eth/api/utils/KeyPair.cpp
   #[===============================[
       wasmvm sources:
         subdir: wasmvm

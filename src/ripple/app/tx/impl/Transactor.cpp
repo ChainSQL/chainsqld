@@ -44,7 +44,7 @@
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/STMap256.h>
-#include <peersafe/protocol/STETx.h>
+#include <peersafe/app/util/Common.h>
 
 
 namespace ripple {

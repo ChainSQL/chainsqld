@@ -22,23 +22,17 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #define RIPPLE_RPC_COMMON_UTIL_H_INCLUDED
 
 #include <unordered_set>
-#include <ripple/basics/base_uint.h>
-#include <ripple/protocol/ErrorCodes.h>
 #include <ripple/basics/Slice.h>
+#include <ripple/basics/base_uint.h>
 #include <boost/format.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <eth/vm/utils/keccak.h>
-#include <ripple/basics/StringUtilities.h>
 
 namespace ripple {
 
+class STObject;
 class STTx;
-class OpenView;
-using H256Set = std::unordered_set<uint256>;
 
-const std::uint64_t weiPerDrop = std::uint64_t(1e12);
-const std::uint64_t compressDrop = std::uint64_t(1e3);
-const std::uint64_t weiPerDropWithFeature = std::uint64_t(1e9);
+using H256Set = std::unordered_set<uint256>;
 
 // Get the current time in seconds since the epoch in UTC(ms)
 uint64_t
@@ -58,44 +52,9 @@ inline toHexString(T value)
     return (boost::format("0x%x") % value).str();
 }
 
-std::string
-inline dropsToWeiHex(uint64_t drops)
-{
-    boost::multiprecision::uint128_t wei;
-    boost::multiprecision::multiply(wei, drops, weiPerDrop);
-    return toHexString(wei);
-}
-
-std::string
-inline compressDrops2Str(uint64_t drops,bool bGasPriceFeatureEnabled)
-{
-    boost::multiprecision::uint128_t cDrops;
-    //1e9 = 1e(-3) * weiPerDrop
-    if (bGasPriceFeatureEnabled)
-        boost::multiprecision::multiply(cDrops, drops, weiPerDropWithFeature);
-    else
-        boost::multiprecision::multiply(cDrops, drops, weiPerDrop);
-    
-    return toHexString(cDrops);
-}
-
-std::string
-ethAddrChecksum(std::string addr);
-
-Json::Value
-formatEthError(int code);
-
-Json::Value 
-formatEthError(int code, std::string const& msg);
-
-Json::Value
-formatEthError(int code, error_code_i rpcCode);
-
-void
-ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
-
-uint64_t
-getChainID(std::shared_ptr<OpenView const> const& ledger);
+/** Check whether a transaction is a eth-transaction */
+bool
+isEthTx(STObject const& tx);
 
 }
 

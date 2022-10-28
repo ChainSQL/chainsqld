@@ -15,13 +15,24 @@
 #include <utility>
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/basics/StringUtilities.h>
+#include <eth/api/utils/TransactionSkeleton.h>
 
 
 
 namespace ripple {
 
+STETx::RlpDecoded::RlpDecoded(TransactionSkeleton const& ts): 
+    nonce(ts.nonce)
+    , gasPrice(ts.gasPrice)
+    , gas(ts.gas)
+    , receiveAddress(ts.to)
+    , value(ts.value)
+    , data(ts.data)
+{
+}
+
 STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
-    : m_rlpData(sit.begin(),sit.end())
+    : m_rlpData(sit.begin(), sit.end())
 {
     int length = sit.size();
     if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
@@ -50,79 +61,25 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     decoded.r = rlp[7].toInt<u256>();
     decoded.s = rlp[8].toInt<u256>();
 
-    
-    setFName(sfTransaction);
-    tx_type_ = ttETH_TX;
-    
     m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
 
-    // Check signature and get sender.
-    auto sender = getSender(decoded);
-    if (!sender.first)
-        Throw<std::runtime_error>("check signature failed when get sender");
-
-    uint64_t drops = uint64_t(decoded.value / u256(1e+12));
-    if (decoded.value > 0 && drops == 0)
-        Throw<std::runtime_error>("value too small to divide by 1e+12.");
-
-    uint160 receive = fromH160(decoded.receiveAddress);
-    auto realOpType = (receive == beast::zero) ? ContractCreation : MessageCall;
-    AccountID receiveAddress;
-    memcpy(receiveAddress.data(), receive.data(), receive.size());
-
-    //Tx-Hash
-    tid_ = sha3(decoded, WithSignature);
-
-    // Set fields
-    set(getTxFormat(tx_type_)->getSOTemplate());
-    setFieldU16(sfTransactionType, ttETH_TX);
-    setAccountID(sfAccount, sender.second);
-    setFieldU32(sfSequence, (uint32_t)decoded.nonce);
-    setFieldU32(sfGas, (uint32_t)decoded.gas);
-    setFieldU16(sfContractOpType, realOpType);
-    setFieldVL(sfSigningPubKey, Blob{});
-    setFieldAmount(sfFee, ZXCAmount(10));
-    if (!decoded.data.empty())
-        setFieldVL(sfContractData, decoded.data);
-    if (drops > 0)
-        setFieldAmount(sfContractValue, ZXCAmount(drops));
-    if (receiveAddress != beast::zero)
-        setAccountID(sfContractAddress, receiveAddress);
-    if (lastLedgerSeq > 0)
-        setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
-
-    auto str = getJson().toStyledString();
-
-    pTxs_ = std::make_shared<std::vector<STTx>>();
-    paJsonLog_ = std::make_shared<Json::Value>();
+    makeWithDecoded(decoded, lastLedgerSeq);
 }
 
 
-STETx::STETx(Json::Value& obj) noexcept(false)
+STETx::STETx(
+    TransactionSkeleton const& ts,
+    std::string secret,
+    std::uint32_t lastLedgerSeq) noexcept(false)
 {
-    m_type = obj.isMember(jss::Destination) ? MessageCall :ContractCreation;
     
-    RlpDecoded decoded;
-    //RLP const rlp(bytesConstRef(sit.data(),sit.size()));
-    if(obj.isMember(jss::nonce))
-        decoded.nonce               = u256(obj[jss::nonce].asString());
-    if(obj.isMember(jss::gasPrice))
-        decoded.gasPrice            = u256(obj[jss::gasPrice].asString());
-    if(obj.isMember(jss::gas))
-        decoded.gas                 = u256(obj[jss::gas].asString());
-    if(obj.isMember(jss::to))
-        decoded.receiveAddress      = u160(obj[jss::to].asString());
-    if(obj.isMember(jss::value))
-        decoded.value               = u256(obj[jss::value].asString());
-    if(obj.isMember(jss::date))
-        decoded.data                = strUnHex(obj[jss::date].asString()).get();
-    
+    RlpDecoded decoded(ts);
+   
     //set default value for v
     decoded.v = u256(27);
     
     //sign calculate rsv
-    std::string sSecret = obj[jss::secret].asString();
-    SecretKey sk(Slice(sSecret.c_str(), sSecret.size()));
+    SecretKey sk(Slice(secret.c_str(), secret.size()));
     //used for sign
     auto digest = sha3(decoded, WithoutSignature);
     auto sig = signEthDigest(sk, digest);
@@ -137,13 +94,58 @@ STETx::STETx(Json::Value& obj) noexcept(false)
     RLPStream s;
     streamRLP(s, decoded, WithSignature, false);
     m_rlpData = std::move(s.out());
-
-    //transaction id
-    tid_ = sha3(decoded, WithSignature);
+    m_type = ts.creation ? ContractCreation : MessageCall;
+    
+    makeWithDecoded(decoded, lastLedgerSeq);
 }
 
-void
-STETx::streamRLP(
+void 
+STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
+{
+    setFName(sfTransaction);
+    tx_type_ = ttETH_TX;
+
+    // Check signature and get sender.
+    auto sender = getSender(decoded);
+    if (!sender.first)
+        Throw<std::runtime_error>("check signature failed when get sender");
+
+    uint64_t drops = uint64_t(decoded.value / u256(1e+12));
+    if (decoded.value > 0 && drops == 0)
+        Throw<std::runtime_error>("value too small to divide by 1e+12.");
+
+    uint160 receive = fromH160(decoded.receiveAddress);
+    AccountID receiveAddress;
+    memcpy(receiveAddress.data(), receive.data(), receive.size());
+
+    // Tx-Hash
+    tid_ = sha3(decoded, WithSignature);
+
+    // Set fields
+    set(getTxFormat(tx_type_)->getSOTemplate());
+    setFieldU16(sfTransactionType, ttETH_TX);
+    setAccountID(sfAccount, sender.second);
+    setFieldU32(sfSequence, (uint32_t)decoded.nonce);
+    setFieldU32(sfGas, (uint32_t)decoded.gas);
+    setFieldU16(sfContractOpType, m_type);
+    setFieldVL(sfSigningPubKey, Blob{});
+    setFieldAmount(sfFee, ZXCAmount(10));
+    if (!decoded.data.empty())
+        setFieldVL(sfContractData, decoded.data);
+    if (drops > 0)
+        setFieldAmount(sfContractValue, ZXCAmount(drops));
+    if (receiveAddress != beast::zero)
+        setAccountID(sfContractAddress, receiveAddress);
+    if (lastLedgerSeq > 0)
+        setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
+
+    //auto str = getJson().toStyledString();
+
+    pTxs_ = std::make_shared<std::vector<STTx>>();
+    paJsonLog_ = std::make_shared<Json::Value>();
+}
+
+void STETx::streamRLP(
     RLPStream& _s,
     RlpDecoded const& _decoded,
     IncludeSignature _sig,
@@ -254,16 +256,6 @@ Blob const&
 STETx::getRlpData() const
 {
     return m_rlpData;
-}
-
-bool
-isEthTx(STObject const& tx)
-{
-    auto t = tx[~sfTransactionType];
-    if (!t)
-        return false;
-    auto tt = safe_cast<TxType>(*t);
-    return tt == ttETH_TX;
 }
 
 }  // namespace ripple

@@ -17,7 +17,7 @@
 #include <ripple/app/misc/Transaction.h>
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
-#include <peersafe/app/util/Common.h>
+#include <eth/api/utils/Helpers.h>
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/basics/StringUtilities.h>
@@ -39,15 +39,24 @@ Json::Value
 doWeb3Sha3(RPC::JsonContext& context)
 {
     Json::Value jvResult;
+    jvResult[jss::result] = "0x0";
     try
     {
-        std::string param =
-            context.params["realParams"][0u].asString();
-        jvResult[jss::result] = "0x" + to_string(sha512Half<CommonKey::sha3>(param));
+        if (context.params["realParams"].size()>0)
+        {
+            std::string param =
+                context.params["realParams"][0u].asString().substr(2);
+            auto data = strUnHex(param);
+            if (data)
+            {
+                jvResult[jss::result] =
+                    "0x" + to_string(sha512Half<CommonKey::sha3>(*data));
+            }
+
+        }
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
     }
     return jvResult;
 }
@@ -265,31 +274,37 @@ doEthGetBlockByHash(RPC::JsonContext& context)
     return jvResult;
 }
 
+
 std::pair<std::shared_ptr<SLE const>, int>
 getAccountData(RPC::JsonContext& context)
 {
-    try {
+    try
+    {
         auto optID =
             parseHex<AccountID>(context.params["realParams"][0u].asString());
         if (!optID)
             return std::make_pair(nullptr, rpcDST_ACT_MALFORMED);
         AccountID accountID = *optID;
-        
-        std::string ledgerIndexStr = context.params["realParams"][1u].asString();
+
+        std::string ledgerIndexStr =
+            context.params["realParams"][1u].asString();
         ethLdgIndex2chainsql(context.params, ledgerIndexStr);
-        
+
         std::shared_ptr<ReadView const> ledger;
         auto result = RPC::lookupLedger(ledger, context);
-        
-        //check if the new openLedger not created.
+
+        // check if the new openLedger not created.
         auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
-        if(ledger == nullptr)
+        if (ledger == nullptr)
             return std::make_pair(nullptr, rpcINTERNAL);
         if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
             ledger = ledgerVal;
 
-        return std::make_pair(ledger->read(keylet::account(accountID)), rpcSUCCESS);
-    } catch (std::exception&) {
+        return std::make_pair(
+            ledger->read(keylet::account(accountID)), rpcSUCCESS);
+    }
+    catch (std::exception&)
+    {
         return std::make_pair(nullptr, rpcINTERNAL);
     }
 }
@@ -305,137 +320,13 @@ doEthGetBalance(RPC::JsonContext& context)
 
         if(accDataRet.second == rpcSUCCESS && accDataRet.first)
         {
-            Json::Value jvAccepted;
-            RPC::injectSLE(jvAccepted, *(accDataRet.first));
-                
-            if(jvAccepted.isMember("Balance"))
-            {
-                jvResult[jss::result] =
-                    dropsToWeiHex(jvAccepted["Balance"].asUInt64());
-            }
+            auto balance =
+                (*accDataRet.first).getFieldAmount(sfBalance).zxc().drops();
+            jvResult[jss::result] = dropsToWeiHex(balance);
         }
     }
     catch (std::exception&)
     {
-    }
-    return jvResult;
-}
-
-Json::Value
-doEthSendTransaction(RPC::JsonContext& context)
-{
-    Json::Value jvResult;
-    
-    if (context.role != Role::ADMIN && !context.app.config().canSign())
-    return RPC::make_error(
-        rpcNOT_SUPPORTED, "Signing is not supported by this server.");
-    
-    Json::Value jsonParams = context.params;
-    Json::Value ethParams = jsonParams["realParams"][0u];
-    
-    try
-    {
-        //check the params
-        if (!ethParams.isMember("from"))
-        {
-            return RPC::missing_field_error("from");
-        }
-        if (!ethParams.isMember("to") && !ethParams.isMember("data"))
-        {
-            return RPC::missing_field_error("to");
-        }
-        
-        //Construct STETx
-        auto stpTrans = std::make_shared<STETx>(ethParams);
-
-        //Check validity
-        auto [validity, reason] = checkValidity(
-            context.app,
-            context.app.getHashRouter(),
-            *stpTrans,
-            context.ledgerMaster.getCurrentLedger()->rules(),
-            context.app.config());
-        if (validity != Validity::Valid)
-        {
-            return formatEthError(ethERROR_DEFAULT, "Check validity failed.");
-        }
-
-        std::string reason2;
-        auto tpTrans =
-            std::make_shared<Transaction>(stpTrans, reason2, context.app);
-        if (tpTrans->getStatus() != NEW)
-        {
-            jvResult[jss::result] = "0x00";
-            return jvResult;
-        }
-
-        context.netOps.processTransaction(
-            tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
-
-        std::string txIdStr = to_string(stpTrans->getTransactionID());
-        jvResult[jss::result] = "0x" + toLowerStr(txIdStr);
-    }
-    catch (std::exception& e)
-    {
-        JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
-        jvResult[jss::result] = "0x00";
-    }
-    return jvResult;
-}
-
-Json::Value
-doEthSendRawTransaction(RPC::JsonContext& context)
-{
-    Json::Value jvResult;
-    try
-    {
-        auto ret =
-            strUnHex(context.params["realParams"][0u].asString().substr(2));
-
-        // 500KB
-        if (ret->size() > RPC::Tuning::max_txn_size)
-        {
-            return formatEthError(ethERROR_DEFAULT,rpcTXN_BIGGER_THAN_MAXSIZE);
-        }
-
-        if (!ret || !ret->size())
-            return formatEthError(ethERROR_DEFAULT, rpcINVALID_PARAMS);
-
-        auto lastLedgerSeq = context.ledgerMaster.getCurrentLedgerIndex() + LAST_LEDGER_SEQ_OFFSET;
-        //Construct STETx
-        auto stpTrans = std::make_shared<STETx>(makeSlice(*ret), lastLedgerSeq);
-
-        //Check validity
-        auto [validity, reason] = checkValidity(
-            context.app,
-            context.app.getHashRouter(),
-            *stpTrans,
-            context.ledgerMaster.getCurrentLedger()->rules(),
-            context.app.config());
-        if (validity != Validity::Valid)
-        {
-            return formatEthError(ethERROR_DEFAULT, "Check validity failed.");
-        }
-
-        std::string reason2;
-        auto tpTrans =
-            std::make_shared<Transaction>(stpTrans, reason2, context.app);
-        if (tpTrans->getStatus() != NEW)
-        {
-            jvResult[jss::result] = "0x00";
-            return jvResult;
-        }
-
-        context.netOps.processTransaction(
-            tpTrans, isUnlimited(context.role), true, NetworkOPs::FailHard::no);
-
-        std::string txIdStr = to_string(stpTrans->getTransactionID());
-        jvResult[jss::result] = "0x" + toLowerStr(txIdStr);
-    }
-    catch (std::exception& e)
-    {
-        JLOG(context.j.warn()) << "Exception when construct STETx:" << e.what();
-        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
@@ -603,13 +494,8 @@ doEthGetTransactionCount(RPC::JsonContext& context)
 
         if(accDataRet.second == rpcSUCCESS && accDataRet.first)
         {
-            Json::Value jvAccepted;
-            RPC::injectSLE(jvAccepted, *(accDataRet.first));
-                
-            if(jvAccepted.isMember("Sequence"))
-            {
-                jvResult[jss::result] = toHexString(jvAccepted["Sequence"].asUInt64());
-            }
+            auto sequence = (*accDataRet.first).getFieldU32(sfSequence);
+            jvResult[jss::result] = toHexString(sequence);
         }            
     }
     catch (std::exception&)
@@ -633,12 +519,6 @@ doEthGasPrice(RPC::JsonContext& context)
         compressDrops2Str(gasPrice, 
             context.app.openLedger().current()->rules().enabled(featureGasPriceCompress));
     return jvResult;
-}
-
-Json::Value
-doEthFeeHistory(RPC::JsonContext& context)
-{
-    return formatEthError(ethMETHOD_NOT_FOUND);
 }
 
 Json::Value
