@@ -237,6 +237,10 @@ Json::Value doEthMining(RPC::JsonContext&);
 Json::Value doEthAccounts(RPC::JsonContext&);
 Json::Value doEthGetStorageAt(RPC::JsonContext&);
 Json::Value doEthSign(RPC::JsonContext&);
+Json::Value doEthTxCountByHash(RPC::JsonContext&);
+Json::Value doEthTxCountByNumber(RPC::JsonContext&);
+Json::Value doEthTxByHashAndIndex(RPC::JsonContext&);
+Json::Value doEthTxByNumberAndIndex(RPC::JsonContext&);
 
 }  // namespace ripple
 

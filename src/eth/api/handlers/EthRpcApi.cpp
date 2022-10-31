@@ -25,9 +25,22 @@
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/protocol/SecretKey.h>
 
 namespace ripple {
+
+std::shared_ptr<ReadView const>
+getLedgerByParam(RPC::JsonContext& context,std::string const& ledgerParamStr)
+{
+    if (ledgerParamStr.length() > 64)
+        context.params[jss::ledger_hash] = ledgerParamStr.substr(2);
+    else
+        ethLdgIndex2chainsql(context.params, ledgerParamStr);
+    std::shared_ptr<ReadView const> ledger;
+    RPC::lookupLedger(ledger, context);
+    return ledger;
+}
 
 Json::Value
 doWeb3CleintVersion(RPC::JsonContext& context)
@@ -320,14 +333,9 @@ getAccountData(RPC::JsonContext& context)
         if (!optID)
             return std::make_pair(nullptr, rpcDST_ACT_MALFORMED);
         AccountID accountID = *optID;
-
-        std::string ledgerIndexStr =
-            context.params["realParams"][1u].asString();
-        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
-
-        std::shared_ptr<ReadView const> ledger;
-        auto result = RPC::lookupLedger(ledger, context);
-
+        auto ledger =
+            getLedgerByParam(context,context.params["realParams"][1u].asString());
+        
         // check if the new openLedger not created.
         auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
         if (ledger == nullptr)
@@ -614,15 +622,14 @@ doEthAccounts(RPC::JsonContext& context)
 Json::Value
 doEthGetStorageAt(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
+    Json::Value jvResult(Json::objectValue);
     try
     {
         //get the right ledger
-        std::string ledgerIndexStr = context.params["realParams"][2u].asString();
-        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
-        std::shared_ptr<ReadView const> ledger;
-        auto result = RPC::lookupLedger(ledger, context);
-        if(ledger == nullptr)     return jvResult;
+        auto ledger = getLedgerByParam(
+            context, context.params["realParams"][2u].asString());
+        if(ledger == nullptr)     
+            return jvResult;
         
         //get contract sle
         auto optID =parseHex<AccountID>(context.params["realParams"][0u].asString());
@@ -630,7 +637,7 @@ doEthGetStorageAt(RPC::JsonContext& context)
         auto pSle = ledger->read(keylet::account(*optID));
         auto const&  mapStore = pSle->getFieldM256(sfStorageOverlay);
         
-        //get info from contracthelper
+        //get info from contract-helper
         uint256 uKey = from_hex_text<uint256>(context.params["realParams"][1u].asString());
         ContractHelper& helper = context.app.getContractHelper();
         auto value = helper.fetchFromDB(*optID, mapStore.rootHash(), uKey, true);
@@ -647,7 +654,7 @@ doEthGetStorageAt(RPC::JsonContext& context)
 Json::Value
 doEthSign(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
+    Json::Value jvResult(Json::objectValue);
     try
     {
         auto address = context.params["realParams"][0u].asString();
@@ -681,6 +688,141 @@ doEthSign(RPC::JsonContext& context)
             Blob ret(sig.begin(), sig.end());
             jvResult[jss::result] = "0x" + strHex(ret);
         }
+    }
+    catch (std::exception&)
+    {
+    }
+    return jvResult;
+}
+
+Json::Value
+getTxCountBySeq(
+    RPC::JsonContext& context,
+    int64_t seq)
+{
+    Json::Value jvResult(Json::objectValue);
+    std::string prefix = "SELECT COUNT(*) FROM Transactions WHERE ";
+    std::string sql = boost::str(
+        boost::format(prefix + (R"(LedgerSeq = %d)")) %
+        seq);
+    sql += ";";
+    boost::optional<int> txCount;
+    {
+        auto db = context.app.getTxnDB().checkoutDbRead();
+        *db << sql, soci::into(txCount);
+
+        if (!db->got_data() || !txCount)
+            return jvResult;
+    }
+    jvResult[jss::result] = toHexString(*txCount);
+    return jvResult;
+}
+
+Json::Value
+doEthTxCountByHash(RPC::JsonContext& context)
+{
+    Json::Value jvResult = Json::objectValue;
+    try
+    {
+        auto ledger =
+            getLedgerByParam(context, context.params["realParams"][0u].asString());
+        if (ledger == nullptr)
+            return jvResult;
+
+        return getTxCountBySeq(context, ledger->info().seq);
+    }
+    catch (std::exception&)
+    {
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthTxCountByNumber(RPC::JsonContext& context)
+{
+    if (!context.app.config().useTxTables())
+        return formatEthError(ethERROR_DEFAULT, rpcNOT_ENABLED);
+
+    Json::Value jvResult(Json::objectValue);
+    try
+    {
+        auto sSequence = context.params["realParams"][0u].asString();
+        auto seq = (int64_t)std::stoll(sSequence.substr(2), 0, 16);
+
+        return getTxCountBySeq(context,seq);
+    }
+    catch (std::exception&)
+    {
+    }
+    return jvResult;
+}
+
+Json::Value
+getTransactionBySeqAndIndex(RPC::JsonContext& context,int64_t seq,int64_t index)
+{
+    if (!context.app.config().useTxTables())
+        return formatEthError(ethERROR_DEFAULT, rpcNOT_ENABLED);
+
+    Json::Value jvResult(Json::objectValue);
+    std::string prefix = "SELECT TransID FROM AccountTransactions where ";
+    std::string sql = boost::str(boost::format(prefix +
+                (R"(LedgerSeq = %d AND TxnSeq = %d)"))
+                % seq
+                % index);
+    sql += ";";
+    boost::optional<std::string> txID;
+    {
+        auto db = context.app.getTxnDB().checkoutDbRead();
+        *db << sql, soci::into(txID);
+
+        if (!db->got_data() || !txID)
+            return jvResult;
+    }
+    jvResult[jss::result] = getTxByHash(*txID, context.app);
+    return jvResult;
+}
+
+Json::Value
+doEthTxByHashAndIndex(RPC::JsonContext& context)
+{
+    if (!context.app.config().useTxTables())
+        return formatEthError(ethERROR_DEFAULT,rpcNOT_ENABLED);
+
+    Json::Value jvResult(Json::objectValue);
+    try
+    {
+        auto ledger = getLedgerByParam(
+            context, context.params["realParams"][0u].asString());
+        if (ledger == nullptr)
+            return jvResult;
+        auto seq = ledger->info().seq;
+        auto sIndex = context.params["realParams"][1u].asString();
+        auto index = (int64_t)std::stoll(sIndex.substr(2), 0, 16);
+        
+        return getTransactionBySeqAndIndex(context, seq, index);
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = Json::objectValue;
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthTxByNumberAndIndex(RPC::JsonContext& context)
+{
+    if (!context.app.config().useTxTables())
+        return formatEthError(ethERROR_DEFAULT, rpcNOT_ENABLED);
+
+    Json::Value jvResult(Json::objectValue);
+    try
+    {
+        auto sSequence = context.params["realParams"][0u].asString();
+        auto seq = (int64_t)std::stoll(sSequence.substr(2), 0, 16);
+        auto sIndex = context.params["realParams"][1u].asString();
+        auto index = (int64_t)std::stoll(sIndex.substr(2), 0, 16);
+
+        return getTransactionBySeqAndIndex(context, seq, index);
     }
     catch (std::exception&)
     {
