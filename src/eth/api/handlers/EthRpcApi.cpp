@@ -30,6 +30,8 @@
 
 namespace ripple {
 
+const std::string ETH_ERROR_NUM_RETURN = "0x00";
+
 std::shared_ptr<ReadView const>
 getLedgerByParam(RPC::JsonContext& context,std::string const& ledgerParamStr)
 {
@@ -56,7 +58,7 @@ Json::Value
 doWeb3Sha3(RPC::JsonContext& context)
 {
     Json::Value jvResult;
-    jvResult[jss::result] = "0x0";
+    jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     try
     {
         if (context.params["realParams"].size()>0)
@@ -87,7 +89,7 @@ doEthChainId(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
+        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     }
     return jvResult;
 }
@@ -151,7 +153,7 @@ doEthBlockNumber(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x0";
+        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     }
     return jvResult;
 }
@@ -294,7 +296,7 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x00";
+        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     }
     return jvResult;
 }
@@ -317,7 +319,7 @@ doEthGetBlockByHash(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x00";
+        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     }
     return jvResult;
 }
@@ -356,7 +358,7 @@ Json::Value
 doEthGetBalance(RPC::JsonContext& context)
 {
     Json::Value jvResult;
-    jvResult[jss::result] = "0x00";
+    jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     try
     {
         auto accDataRet = getAccountData(context);
@@ -386,7 +388,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         auto txn = context.app.getMasterTransaction().fetch(hash);
         if (!txn)
         {
-            jvResult[jss::status] = "0x00";
+            jvResult[jss::status] = ETH_ERROR_NUM_RETURN;
             return jvResult;
         }
         auto tx = txn->getSTransaction();
@@ -449,8 +451,8 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                 }
                 else
                 {
-                    jvResult["cumulativeGasUsed"] = "0x0";
-                    jvResult["gasUsed"] = "0x0";
+                    jvResult["cumulativeGasUsed"] = ETH_ERROR_NUM_RETURN;
+                    jvResult["gasUsed"] = ETH_ERROR_NUM_RETURN;
                 }                
                 
                 Blob ctrLogData = meta->getContractLogData();
@@ -486,7 +488,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             {
             }
 
-            jvResult[jss::status] = txSuccess ? "0x01" : "0x00";
+            jvResult[jss::status] = txSuccess ? "0x01" : ETH_ERROR_NUM_RETURN;
         }
         
         if (!tx->isFieldPresent(sfContractAddress) &&
@@ -530,7 +532,7 @@ Json::Value
 doEthGetTransactionCount(RPC::JsonContext& context)
 {
     Json::Value jvResult;
-    jvResult[jss::result] = "0x0";
+    jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     try
     {
         auto accDataRet = getAccountData(context);
@@ -570,7 +572,7 @@ doEthGetCode(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = "0x";
+        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
         auto accDataRet = getAccountData(context);
 
         if (accDataRet.second == rpcSUCCESS && accDataRet.first)
@@ -623,7 +625,7 @@ Json::Value
 doEthGetStorageAt(RPC::JsonContext& context)
 {
     Json::Value jvResult(Json::objectValue);
-    jvResult[jss::result] = "0x00";
+    jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
     try
     {
         //get the right ledger
@@ -648,7 +650,6 @@ doEthGetStorageAt(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }

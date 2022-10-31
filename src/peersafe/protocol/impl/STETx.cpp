@@ -220,7 +220,7 @@ STETx::getSender(RlpDecoded const& decoded)
         ? byte(v - (uint64_t{*chainId} * 2 + 35))
         : byte(v - 27);
 
-    ripple::SignatureStruct sig(r, s, recoveryID);
+    ripple::SignatureStruct sig(r, s, recoveryID-1);
     if (sig.isValid())
     {
         try
