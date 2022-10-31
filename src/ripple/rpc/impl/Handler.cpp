@@ -229,6 +229,8 @@ Handler const ethHandlerArray[]{
     {"web3_sha3", byRef(&doWeb3Sha3), Role::USER, NO_CONDITION},
     {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
     {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
+    {"net_peerCount", byRef (&doNetPeerCount), Role::USER, NO_CONDITION},
+    {"net_listening", byRef (&doNetListening), Role::USER, NO_CONDITION},
     {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
     {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
     {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
@@ -243,8 +245,9 @@ Handler const ethHandlerArray[]{
     {"eth_getTransactionCount", byRef(&doEthGetTransactionCount), Role::USER, NO_CONDITION},
     {"eth_gasPrice", byRef(&doEthGasPrice), Role::USER, NO_CONDITION},
     {"eth_getCode", byRef(&doEthGetCode), Role::USER, NO_CONDITION},
-    //Interfaces will not implement
-
+    {"eth_mining", byRef(&doEthMining), Role::USER, NO_CONDITION},
+    {"eth_accounts", byRef(&doEthAccounts), Role::USER, NO_CONDITION},
+    {"eth_getStorageAt", byRef(&doEthGetStorageAt), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

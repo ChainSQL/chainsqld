@@ -18,10 +18,13 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/app/ledger/OpenLedger.h>
 #include <eth/api/utils/Helpers.h>
+#include <peersafe/app/util/Common.h>
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <ripple/json/json_reader.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/protocol/Feature.h>
+#include <peersafe/schema/PeerManager.h>
+#include <peersafe/protocol/STMap256.h>
 
 namespace ripple {
 
@@ -90,6 +93,38 @@ doNetVersion(RPC::JsonContext& context)
     }
     return jvResult;
 }
+
+Json::Value
+doNetPeerCount(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        jvResult[jss::result] = toHexString(context.app.peerManager().size());
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0x00";
+    }
+    return jvResult;
+}
+
+
+Json::Value
+doNetListening(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        jvResult[jss::result] = context.netOps.getServerStatus() == "normal";
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = false;
+    }
+    return jvResult;
+}
+
 
 Json::Value
 doEthBlockNumber(RPC::JsonContext& context)
@@ -546,4 +581,61 @@ doEthGetCode(RPC::JsonContext& context)
     return jvResult;
 }
 
+Json::Value
+doEthMining(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+
+    jvResult[jss::result] = false;
+    
+    return jvResult;
+}
+
+Json::Value
+doEthAccounts(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        jvResult[jss::result] = std::to_string(getChainID(context.app.openLedger().current()));
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0";
+    }
+    return jvResult;
+}
+
+Json::Value
+doEthGetStorageAt(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        //get the right ledger
+        std::string ledgerIndexStr = context.params["realParams"][2u].asString();
+        ethLdgIndex2chainsql(context.params, ledgerIndexStr);
+        std::shared_ptr<ReadView const> ledger;
+        auto result = RPC::lookupLedger(ledger, context);
+        if(ledger == nullptr)     return jvResult;
+        
+        //get contract sle
+        auto optID =parseHex<AccountID>(context.params["realParams"][0u].asString());
+        if (!optID)               return jvResult;
+        auto pSle = ledger->read(keylet::account(*optID));
+        auto const&  mapStore = pSle->getFieldM256(sfStorageOverlay);
+        
+        //get info from contracthelper
+        uint256 uKey = from_hex_text<uint256>(context.params["realParams"][1u].asString());
+        ContractHelper& helper = context.app.getContractHelper();
+        auto value = helper.fetchFromDB(*optID, mapStore.rootHash(), uKey, true);
+        
+        jvResult[jss::result] = "0x" + to_string(uint256());
+    }
+    catch (std::exception&)
+    {
+        jvResult[jss::result] = "0";
+    }
+    return jvResult;
+}
 } // ripple

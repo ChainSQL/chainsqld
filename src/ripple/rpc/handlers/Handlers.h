@@ -218,6 +218,8 @@ Json::Value doWeb3CleintVersion(RPC::JsonContext&);
 Json::Value doWeb3Sha3(RPC::JsonContext&);
 Json::Value doEthChainId(RPC::JsonContext&);
 Json::Value doNetVersion(RPC::JsonContext&);
+Json::Value doNetPeerCount(RPC::JsonContext&);
+Json::Value doNetListening(RPC::JsonContext&);
 Json::Value doEthBlockNumber(RPC::JsonContext&);
 Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
 Json::Value doEthGetBlockByHash(RPC::JsonContext&);
@@ -231,6 +233,9 @@ Json::Value doEthGetTransactionByHash(RPC::JsonContext&);
 Json::Value doEthGetTransactionCount(RPC::JsonContext&);
 Json::Value doEthGasPrice(RPC::JsonContext&);
 Json::Value doEthGetCode(RPC::JsonContext&);
+Json::Value doEthMining(RPC::JsonContext&);
+Json::Value doEthAccounts(RPC::JsonContext&);
+Json::Value doEthGetStorageAt(RPC::JsonContext&);
 
 }  // namespace ripple
 
