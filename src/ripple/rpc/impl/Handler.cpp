@@ -248,6 +248,7 @@ Handler const ethHandlerArray[]{
     {"eth_mining", byRef(&doEthMining), Role::USER, NO_CONDITION},
     {"eth_accounts", byRef(&doEthAccounts), Role::USER, NO_CONDITION},
     {"eth_getStorageAt", byRef(&doEthGetStorageAt), Role::USER, NO_CONDITION},
+    {"eth_sign", byRef(&doEthSign), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

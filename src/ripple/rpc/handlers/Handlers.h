@@ -236,6 +236,7 @@ Json::Value doEthGetCode(RPC::JsonContext&);
 Json::Value doEthMining(RPC::JsonContext&);
 Json::Value doEthAccounts(RPC::JsonContext&);
 Json::Value doEthGetStorageAt(RPC::JsonContext&);
+Json::Value doEthSign(RPC::JsonContext&);
 
 }  // namespace ripple
 

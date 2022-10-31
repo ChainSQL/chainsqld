@@ -87,9 +87,6 @@ STETx::STETx(
     SecretKey sk(Slice(priData.data(),priData.size()));
     //used for sign
     auto digest = sha3(decoded, WithoutSignature);
-
-    auto sDigest = to_string(digest);
-
     auto sig = signEthDigest(sk, digest);
     SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
     if (sigStruct.isValid())
@@ -127,7 +124,7 @@ STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
 
     // Tx-Hash
     tid_ = sha3(decoded, WithSignature);
-    auto sTid = to_string(tid_);
+    //auto sTid = to_string(tid_);
 
     // Set fields
     set(getTxFormat(tx_type_)->getSOTemplate());
@@ -147,7 +144,7 @@ STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
     if (lastLedgerSeq > 0)
         setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
 
-    auto str = getJson().toStyledString();
+    //auto str = getJson().toStyledString();
 
     pTxs_ = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();
@@ -167,12 +164,6 @@ void STETx::streamRLP(
         _s << "";
     _s << _decoded.value << _decoded.data;
 
-    std::cout << "nonce:" << uint64_t(_decoded.nonce) << std::endl
-              << "gasPrice:" << uint64_t(_decoded.gasPrice) << std::endl
-              << "gas:" << uint64_t(_decoded.gas) << std::endl
-              << "to:" << _decoded.receiveAddress.hex() << std::endl
-              << "value:" << uint64_t(_decoded.value) << std::endl
-              << "data:" << strHex(_decoded.data) << std::endl;
     if (_sig)
     {
         _s << _decoded.v;

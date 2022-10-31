@@ -25,6 +25,7 @@
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/protocol/STMap256.h>
+#include <ripple/protocol/SecretKey.h>
 
 namespace ripple {
 
@@ -55,7 +56,6 @@ doWeb3Sha3(RPC::JsonContext& context)
                 jvResult[jss::result] =
                     "0x" + to_string(sha512Half<CommonKey::sha3>(*data));
             }
-
         }
     }
     catch (std::exception&)
@@ -595,13 +595,18 @@ Json::Value
 doEthAccounts(RPC::JsonContext& context)
 {
     Json::Value jvResult;
+    jvResult[jss::result] = Json::arrayValue;
     try
     {
-        jvResult[jss::result] = std::to_string(getChainID(context.app.openLedger().current()));
+        auto oSecret = context.app.config().ETH_DEFAULT_ACCOUNT_PRIVATE;
+        if (oSecret)
+        {
+            auto address = addressFromSecret(*oSecret);
+            jvResult[jss::result].append("0x" + address.hex());
+        }
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0";
     }
     return jvResult;
 }
@@ -638,4 +643,49 @@ doEthGetStorageAt(RPC::JsonContext& context)
     }
     return jvResult;
 }
+
+Json::Value
+doEthSign(RPC::JsonContext& context)
+{
+    Json::Value jvResult;
+    try
+    {
+        auto address = context.params["realParams"][0u].asString();
+        auto param = context.params["realParams"][1u].asString().substr(2);
+        auto optData = strUnHex(param);
+        if (optData)
+        {
+            std::string secret =
+                *context.app.config().ETH_DEFAULT_ACCOUNT_PRIVATE;
+            if (eth::h160(address) != addressFromSecret(secret))
+            {
+                return formatEthError(
+                    ethERROR_DEFAULT,
+                    "Address not matching configured private-key.");
+            }
+
+            auto data = *optData;
+            std::string signData =
+                boost::str(boost::format("\x19%s%d%s") % "Ethereum Signed Message:\n" % data.size() %
+                std::string(data.begin(), data.end()).c_str());
+            auto digest = sha512Half<CommonKey::sha3>(signData);
+
+            auto priData = *strUnHex(secret.substr(2));
+            SecretKey sk(Slice(priData.data(), priData.size()));
+            auto sig = signEthDigest(sk, digest);
+            SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
+            if (sigStruct.isValid())
+            {
+                sigStruct.v += 27;
+            }
+            Blob ret(sig.begin(), sig.end());
+            jvResult[jss::result] = "0x" + strHex(ret);
+        }
+    }
+    catch (std::exception&)
+    {
+    }
+    return jvResult;
+}
+
 } // ripple
