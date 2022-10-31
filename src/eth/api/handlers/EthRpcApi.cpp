@@ -98,11 +98,11 @@ doNetVersion(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = std::to_string(getChainID(context.app.openLedger().current()));
+        jvResult[jss::result] = toHexString(getChainID(context.app.openLedger().current()));
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0";
+        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
@@ -623,6 +623,7 @@ Json::Value
 doEthGetStorageAt(RPC::JsonContext& context)
 {
     Json::Value jvResult(Json::objectValue);
+    jvResult[jss::result] = "0x00";
     try
     {
         //get the right ledger
@@ -635,6 +636,7 @@ doEthGetStorageAt(RPC::JsonContext& context)
         auto optID =parseHex<AccountID>(context.params["realParams"][0u].asString());
         if (!optID)               return jvResult;
         auto pSle = ledger->read(keylet::account(*optID));
+        if(pSle == nullptr)       return jvResult;
         auto const&  mapStore = pSle->getFieldM256(sfStorageOverlay);
         
         //get info from contract-helper
@@ -642,11 +644,11 @@ doEthGetStorageAt(RPC::JsonContext& context)
         ContractHelper& helper = context.app.getContractHelper();
         auto value = helper.fetchFromDB(*optID, mapStore.rootHash(), uKey, true);
         
-        jvResult[jss::result] = "0x" + to_string(uint256());
+        jvResult[jss::result] = "0x" + to_string(value);
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0";
+        jvResult[jss::result] = "0x00";
     }
     return jvResult;
 }
