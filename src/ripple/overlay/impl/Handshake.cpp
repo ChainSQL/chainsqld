@@ -332,7 +332,7 @@ verifyHandshake(
             }
         }
 
-        throw std::runtime_error("Bad node public key");
+        throw std::runtime_error("Bad consensus public key");
     }();
 
     if (publicValidate == app.getValidationPublicKey())
