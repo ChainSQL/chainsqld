@@ -544,14 +544,20 @@ PopConsensus::checkLedger()
 
     if (netLgr != prevLedgerID_)
     {
-        JLOG(j_.warn()) << "View of consensus changed during "
-                        << to_string(phase_) << " status=" << to_string(phase_)
-                        << ", "
-                        << " mode=" << to_string(mode_.get());
-        JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
-        JLOG(j_.warn()) << previousLedger_.getJson();
-        JLOG(j_.debug()) << "State on consensus change " << getJson(true);
+        //if (adaptor_.proposersValidated(netLgr) < adaptor_.getQuorum())
+        //    return;
+
         handleWrongLedger(netLgr);
+        if (prevLedgerID_ == netLgr)
+        {
+            JLOG(j_.warn())
+                << "View of consensus changed during " << to_string(phase_)
+                << " status=" << to_string(phase_) << ", "
+                << " mode=" << to_string(mode_.get());
+            JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
+            JLOG(j_.warn()) << previousLedger_.getJson();
+            JLOG(j_.debug()) << "State on consensus change " << getJson(true);
+        }
     }
     else if (previousLedger_.id() != prevLedgerID_)
         handleWrongLedger(netLgr);
@@ -562,6 +568,20 @@ void
 PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
     assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
+
+    auto newLedger = adaptor_.acquireLedger(lgrId);
+    if (!newLedger)
+        return;
+
+    // check compatibility with newest valid ledger.
+    if (!adaptor_.app_.getLedgerMaster().isCompatible(
+            *(newLedger->ledger_),
+            j_.warn(),
+            "Not switching preferedLedger,"))
+    {
+        return;
+    }
+
 
     // Stop proposing because we are out of sync
     leaveConsensus();
@@ -578,8 +598,8 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         return;
 
     // we need to switch the ledger we're working from
-    if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-    {
+    // if (auto newLedger = adaptor_.acquireLedger(lgrId))
+    // {
         JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
 
@@ -592,11 +612,11 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 
         startRoundInternal(
             now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
-    }
-    else
-    {
-        mode_.set(ConsensusMode::wrongLedger, adaptor_);
-    }
+    // }
+    // else
+    // {
+    //     mode_.set(ConsensusMode::wrongeLdger, adaptor_);
+    // }
 }
 
 void
