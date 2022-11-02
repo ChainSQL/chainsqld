@@ -544,8 +544,8 @@ PopConsensus::checkLedger()
 
     if (netLgr != prevLedgerID_)
     {
-        //if (adaptor_.proposersValidated(netLgr) < adaptor_.getQuorum())
-        //    return;
+        if (adaptor_.proposersValidated(netLgr) < adaptor_.getQuorum())
+            return;
 
         handleWrongLedger(netLgr);
         if (prevLedgerID_ == netLgr)

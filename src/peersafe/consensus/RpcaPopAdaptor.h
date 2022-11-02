@@ -116,6 +116,17 @@ public:
         RCLCxLedger const& ledger,
         ConsensusMode mode);
 
+    /** Number of proposers that have vallidated the given ledger
+
+        @param h The hash of the ledger of interest
+        @return the number of proposers that validated a ledger
+    */
+    inline std::size_t
+    proposersValidated(LedgerHash const& h) const
+    {
+        return app_.getValidations().numTrustedForLedger(h);
+    }
+
 protected:
     /** Report that the consensus process built a particular ledger */
     void
