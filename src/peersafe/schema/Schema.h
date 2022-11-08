@@ -77,6 +77,7 @@ class SHAMapStore;
 class SchemaManager;
 class ConnectionPool;
 class PrometheusClient;
+class BloomManager;
 using NodeCache = TaggedCache<SHAMapHash, Blob>;
 
 template <class StalePolicy, class Adaptor>
@@ -223,6 +224,8 @@ public:
     getConnectionPool() = 0;
     virtual PrometheusClient&
     getPrometheusClient() = 0;
+    virtual BloomManager&
+    getBloomManager() = 0;
 
     virtual PathRequests&
     getPathRequests() = 0;

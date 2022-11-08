@@ -63,6 +63,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
@@ -166,6 +167,7 @@ private:
     std::unique_ptr<TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
+    std::unique_ptr<BloomManager> m_pBloomManager;
     std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
@@ -355,6 +357,11 @@ public:
               *this,
               SchemaImp::journal("StateManager")))
 
+        , m_pBloomManager(std::make_unique<BloomManager>(
+                *this,
+                SchemaImp::journal("BloomManager")
+            ))
+
         , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
@@ -529,6 +536,12 @@ public:
     getStateManager() override
     {
         return *m_pStateManager;
+    }
+
+    BloomManager&
+    getBloomManager() override
+    {
+        return *m_pBloomManager;
     }
 
     ConnectionPool&

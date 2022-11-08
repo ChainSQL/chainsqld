@@ -677,6 +677,8 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/util/TableSyncUtil.cpp
   src/peersafe/app/prometh/impl/PrometheusClient.cpp
   src/peersafe/app/ledger/LedgerAdjust.cpp
+  src/peersafe/app/bloom/Bloom.cpp
+  src/peersafe/app/bloom/BloomManager.cpp
   src/peersafe/basics/impl/characterUtilities.cpp
   src/peersafe/crypto/impl/AES.cpp
   src/peersafe/crypto/impl/ECDSAKey.cpp
