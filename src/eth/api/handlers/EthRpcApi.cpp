@@ -461,27 +461,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                     std::string ctrLogDataStr = std::string(ctrLogData.begin(), ctrLogData.end());
                     Json::Value jvLogs;
                     Json::Reader().parse(ctrLogDataStr, jvLogs);
-                    for(auto it = jvLogs.begin(); it != jvLogs.end(); it++)
-                    {
-                        Json::Value jvLogItem;
-                        jvLogItem["logIndex"] = toHexString(it.index());
-                        jvLogItem["transactionIndex"] = jvResult["transactionIndex"];
-                        jvLogItem["transactionHash"] = jvResult["transactionHash"];
-                        jvLogItem["blockHash"] = jvResult["blockHash"];
-                        jvLogItem["blockNumber"] = jvResult["blockNumber"];
-                        jvLogItem["address"] = jvResult["to"];
-                        jvLogItem["data"] = "0x" + (*it)["contract_data"].asString();
-                        Json::Value jvLogItemTopics;
-                        Json::Value jvLogTopics = (*it)["contract_topics"];
-                        for(auto iter = jvLogTopics.begin(); iter != jvLogTopics.end(); iter++)
-                        {
-                            Json::Value jvTopic("0x" + toLowerStr((*iter).asString()));
-                            jvLogItemTopics.append(jvTopic);
-                        }
-                        jvLogItem["topics"] = jvLogItemTopics;
-                        jvLogItem["type"] = "mined";
-                        jvResult["logs"].append(jvLogItem);
-                    }
+                    jvResult["logs"] = parseContractLogs(jvLogs,jvResult);
                 }
             }
             catch (...)

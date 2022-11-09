@@ -156,4 +156,36 @@ toTransactionSkeleton(Json::Value const& _json)
     return ret;
 }
 
+Json::Value
+parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult)
+{
+    Json::Value ret(Json::arrayValue);
+    for (auto it = jvLogs.begin(); it != jvLogs.end(); it++)
+    {
+        Json::Value jvLogItem;
+        jvLogItem["logIndex"] = toHexString(it.index());
+        if (jvResult != Json::nullValue)
+        {
+            jvLogItem["transactionIndex"] = jvResult["transactionIndex"];
+            jvLogItem["transactionHash"] = jvResult["transactionHash"];
+            jvLogItem["blockHash"] = jvResult["blockHash"];
+            jvLogItem["blockNumber"] = jvResult["blockNumber"];
+            jvLogItem["address"] = jvResult["to"];
+            jvLogItem["data"] = "0x" + (*it)["contract_data"].asString();
+        }
+
+        Json::Value jvLogItemTopics;
+        Json::Value jvLogTopics = (*it)["contract_topics"];
+        for (auto iter = jvLogTopics.begin(); iter != jvLogTopics.end(); iter++)
+        {
+            Json::Value jvTopic("0x" + toLowerStr((*iter).asString()));
+            jvLogItemTopics.append(jvTopic);
+        }
+        jvLogItem["topics"] = jvLogItemTopics;
+        jvLogItem["type"] = "mined";
+        ret.append(jvLogItem);
+    }
+    return ret;
+}
+
 }  // namespace ripple

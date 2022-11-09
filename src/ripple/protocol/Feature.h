@@ -398,6 +398,7 @@ extern uint256 const featureContractStorage;
 extern uint256 const featureTableGrant;
 extern uint256 const featurePromethSLEHideInMeta;
 extern uint256 const featureGasPriceCompress;
+extern uint256 const featureBloomFilter;
 
 }  // namespace ripple
 

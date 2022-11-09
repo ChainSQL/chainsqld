@@ -251,6 +251,12 @@ public:
     }
 
     void
+    setBloom(uint2048 const& bloom)
+    {
+        info_.bloom = bloom;
+    }
+
+    void
     setAccepted(
         NetClock::time_point closeTime,
         NetClock::duration closeResolution,
@@ -500,17 +506,35 @@ uint256
 calculateLedgerHash(LedgerInfo const& info)
 {
     // VFALCO This has to match addRaw in View.h.
-    return sha512Half<hashType>(
-        HashPrefix::ledgerMaster,
-        std::uint32_t(info.seq),
-        std::uint64_t(info.drops.drops()),
-        info.parentHash,
-        info.txHash,
-        info.accountHash,
-        std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
-        std::uint32_t(info.closeTime.time_since_epoch().count()),
-        std::uint8_t(info.closeTimeResolution.count()),
-        std::uint8_t(info.closeFlags));
+    if (info.bloomEnabled)
+    {
+        return sha512Half<hashType>(
+            HashPrefix::ledgerMaster,
+            std::uint32_t(info.seq),
+            std::uint64_t(info.drops.drops()),
+            info.parentHash,
+            info.txHash,
+            info.accountHash,
+            info.bloom,
+            std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
+            std::uint32_t(info.closeTime.time_since_epoch().count()),
+            std::uint8_t(info.closeTimeResolution.count()),
+            std::uint8_t(info.closeFlags));
+    }
+    else
+    {
+        return sha512Half<hashType>(
+            HashPrefix::ledgerMaster,
+            std::uint32_t(info.seq),
+            std::uint64_t(info.drops.drops()),
+            info.parentHash,
+            info.txHash,
+            info.accountHash,
+            std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
+            std::uint32_t(info.closeTime.time_since_epoch().count()),
+            std::uint8_t(info.closeTimeResolution.count()),
+            std::uint8_t(info.closeFlags));
+    }
 }
 
 }  // namespace ripple

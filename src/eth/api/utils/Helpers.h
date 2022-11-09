@@ -67,6 +67,9 @@ addressFromSecret(std::string const& secret);
 TransactionSkeleton
 toTransactionSkeleton(Json::Value const& _json);
 
+Json::Value
+parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult = Json::nullValue);
+
 }  // namespace ripple
 
 #endif

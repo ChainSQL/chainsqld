@@ -297,6 +297,10 @@ Ledger::Ledger(Ledger const& prevLedger, NetClock::time_point closeTime)
         prevLedger.info_.closeTimeResolution,
         getCloseAgree(prevLedger.info()),
         info_.seq);
+    if (prevLedger.rules().enabled(featureBloomFilter))
+    {
+        info_.bloomEnabled = true;
+    }
 
     if (prevLedger.info_.closeTime == NetClock::time_point{})
     {
@@ -307,9 +311,6 @@ Ledger::Ledger(Ledger const& prevLedger, NetClock::time_point closeTime)
         info_.closeTime =
             prevLedger.info_.closeTime + info_.closeTimeResolution;
     }
-
-
-
 }
 
 Ledger::Ledger(LedgerInfo const& info, Config const& config, Family& family)

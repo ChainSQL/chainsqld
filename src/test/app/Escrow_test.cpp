@@ -1461,7 +1461,7 @@ struct Escrow_test : public beast::unit_test::suite
                 *jtx.stx,
                 tapNONE,
                 env.journal);
-            BEAST_EXPECT(pf.ter == tesSUCCESS);
+            BEAST_EXPECT(pf == tesSUCCESS);
             auto const conseq = calculateConsequences(pf);
             BEAST_EXPECT(conseq.category == TxConsequences::normal);
             BEAST_EXPECT(conseq.fee == drops(10));
@@ -1476,7 +1476,7 @@ struct Escrow_test : public beast::unit_test::suite
                 *jtx.stx,
                 tapNONE,
                 env.journal);
-            BEAST_EXPECT(pf.ter == tesSUCCESS);
+            BEAST_EXPECT(pf == tesSUCCESS);
             auto const conseq = calculateConsequences(pf);
             BEAST_EXPECT(conseq.category == TxConsequences::normal);
             BEAST_EXPECT(conseq.fee == drops(10));
@@ -1491,7 +1491,7 @@ struct Escrow_test : public beast::unit_test::suite
                 *jtx.stx,
                 tapNONE,
                 env.journal);
-            BEAST_EXPECT(pf.ter == tesSUCCESS);
+            BEAST_EXPECT(pf == tesSUCCESS);
             auto const conseq = calculateConsequences(pf);
             BEAST_EXPECT(conseq.category == TxConsequences::normal);
             BEAST_EXPECT(conseq.fee == drops(10));
