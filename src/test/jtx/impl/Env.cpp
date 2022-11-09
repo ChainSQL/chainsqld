@@ -79,6 +79,7 @@ Env::AppBundle::AppBundle(
     }
     auto timeKeeper_ = std::make_unique<ManualTimeKeeper>();
     timeKeeper = timeKeeper_.get();
+    auto jornal = logs->journal("SchemaManager");
     // Hack so we don't have to call Config::setup
     HTTPClient::initializeSSLContext(*config, debugLog());
     owned = make_Application(
@@ -92,8 +93,7 @@ Env::AppBundle::AppBundle(
     thread = std::thread([&]() { app->run(); });
 
 	schemaManager = std::make_unique<SchemaManager>(
-		*app,
-		logs->journal("SchemaManager"));
+		*app,jornal);
 	std::shared_ptr<Config> pConfig;
 	pConfig.reset(&(app->config()));
 	schema = schemaManager->createSchemaMain(pConfig);
@@ -116,6 +116,11 @@ Env::AppBundle::~AppBundle()
 
     // Remove the debugLogSink before the suite goes out of scope.
     setDebugLogSink(nullptr);
+    
+    schemaManager.reset();
+    schema.reset();
+    
+    owned.reset(nullptr);
 }
 
 //------------------------------------------------------------------------------
