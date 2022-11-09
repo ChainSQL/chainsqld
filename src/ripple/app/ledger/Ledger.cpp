@@ -56,6 +56,7 @@
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -183,6 +184,8 @@ Ledger::Ledger(
     info_.drops = INITIAL_ZXC;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
+    if (rules_.enabled(featureBloomFilter))
+        info_.bloomEnabled = true;
     // KeyType keyType = KeyType::secp256k1;
 
     // if (nullptr != GmEncryptObj::getInstance())
@@ -1078,6 +1081,28 @@ saveValidatedLedger(
         addRaw(ledger->info(), s);
         app.getNodeStore().store(
             hotLEDGER, std::move(s.modData()), ledger->info().hash, seq);
+    }
+
+    //Check and save the first bloom-enabled ledger
+    {
+        if (!app.getBloomManager().getBloomStartSeq()&&
+            ledger->info().bloomEnabled)
+        {
+            bool bSave = false;
+            if (seq == 1)
+                bSave = true;
+            if (!bSave)
+            {
+                auto prevLedger = app.getLedgerMaster().getLedgerByHash(
+                    ledger->info().parentHash);
+                bSave = prevLedger && !prevLedger->info().bloomEnabled;
+            }
+            if (bSave)
+            {
+                app.getBloomManager().saveBloomStartLedger(
+                    seq, ledger->info().hash);
+            }
+        }
     }
 
     AcceptedLedger::pointer aLedger;

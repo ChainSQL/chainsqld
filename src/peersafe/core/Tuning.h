@@ -55,6 +55,8 @@ namespace ripple {
     uint256 const NODE_TYPE_AUTHORIZE = uint256(2);
     uint256 const NODE_TYPE_AUTHORIZER = uint256(3);
 
+    std::string const BLOOM_START_LEDGER_KEY = "bloom-start-ledger-key";
+
 } // ripple
 
 #endif

@@ -15,8 +15,16 @@ public:
     {
     }
 
+    // getBloomBits returns the bit vector belonging to the given bit index after all
+    // blooms have been added.
     Blob
     getBloomBits(uint32_t bit, uint64_t section, uint256 lastHash);
+
+    void
+    saveBloomStartLedger(uint32_t seq, uint256 const& hash);
+
+    void
+    loadBloomStartLedger();
 
     inline BloomHelper&
     bloomHelper()
@@ -24,9 +32,17 @@ public:
         return helper_;
     }
 
+    boost::optional<uint32_t>
+    getBloomStartSeq();
+
+private:
+    uint256
+    bloomStartLedgerKey();
+
 private:
     Schema& app_;
     beast::Journal j_;
     BloomHelper helper_;
+    boost::optional<uint32_t> bloomStartSeq_;
 };
 }
