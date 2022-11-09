@@ -679,6 +679,8 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/ledger/LedgerAdjust.cpp
   src/peersafe/app/bloom/Bloom.cpp
   src/peersafe/app/bloom/BloomManager.cpp
+  src/peersafe/app/bloom/Matcher.cpp
+  src/peersafe/app/bloom/Filter.cpp
   src/peersafe/basics/impl/characterUtilities.cpp
   src/peersafe/crypto/impl/AES.cpp
   src/peersafe/crypto/impl/ECDSAKey.cpp
@@ -1100,14 +1102,14 @@ if(enableTest)
    src/test/shamap/FetchPack_test.cpp
    src/test/shamap/SHAMapSync_test.cpp
    src/test/shamap/SHAMap_test.cpp
+   #[===============================[
+      test sources:
+        subdir: bloom
+   #]===============================]
+   src/test/bloom/Matcher_test.cpp
+   src/test/bloom/Filter_test.cpp
   )
 endif()
-
-#   #[===============================[
-#      test sources:
-#        subdir: unit_test
-#   #]===============================]
-#   src/test/unit_test/multi_runner.cpp)
 
 target_include_directories (chainsqld
   PUBLIC
