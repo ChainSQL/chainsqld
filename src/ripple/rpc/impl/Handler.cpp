@@ -253,6 +253,7 @@ Handler const ethHandlerArray[]{
     {"eth_getBlockTransactionCountByNumber", byRef(&doEthTxCountByNumber), Role::USER, NO_CONDITION},
     {"eth_getTransactionByBlockHashAndIndex", byRef(&doEthTxByHashAndIndex), Role::USER, NO_CONDITION},
     {"eth_getTransactionByBlockNumberAndIndex", byRef(&doEthTxByNumberAndIndex), Role::USER, NO_CONDITION},
+    {"eth_getLogs", byRef(&doEthGetLogs), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

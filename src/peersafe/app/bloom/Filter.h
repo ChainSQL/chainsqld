@@ -24,12 +24,13 @@ public:
     std::tuple<Json::Value, bool> Logs();
     
     Filter() = delete;
-    ~Filter();
-private:
     Filter(
         Schema& schame,
         const std::vector<uint160>& addresses,
         const std::vector<std::vector<uint256>>& topics);
+    ~Filter();
+    
+private:
     
     std::tuple<Json::Value, bool> blockLogs(const Ledger* ledger);
     std::tuple<Json::Value, bool> checkMatches(const Ledger* ledger);

@@ -241,6 +241,7 @@ Json::Value doEthTxCountByHash(RPC::JsonContext&);
 Json::Value doEthTxCountByNumber(RPC::JsonContext&);
 Json::Value doEthTxByHashAndIndex(RPC::JsonContext&);
 Json::Value doEthTxByNumberAndIndex(RPC::JsonContext&);
+Json::Value doEthGetLogs(RPC::JsonContext&);
 
 }  // namespace ripple
 
