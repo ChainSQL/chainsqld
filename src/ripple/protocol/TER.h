@@ -727,6 +727,11 @@ struct STer {
 	}
 };
 
+constexpr TERUnderlyingType
+TERtoInt(const STer& v)
+{
+    return TERtoInt(v.ter);
+}
 
 } // ripple
 
