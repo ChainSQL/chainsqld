@@ -27,8 +27,12 @@ namespace ripple {
 namespace test {
 class Matcher_test : public beast::unit_test::suite {
 public:
+    void normal_matcher() {
+        BEAST_EXPECT(true);
+    }
+    
     void run() override {
-        
+        normal_matcher();
     }
 };
 
