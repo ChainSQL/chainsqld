@@ -1250,10 +1250,10 @@ saveValidatedLedger(
         static std::string const addLedger(
             R"sql(INSERT OR REPLACE INTO Ledgers
                 (LedgerHash,LedgerSeq,PrevHash,TotalCoins,ClosingTime,PrevClosingTime,
-                CloseTimeRes,CloseFlags,AccountSetHash,TransSetHash)
+                CloseTimeRes,CloseFlags,AccountSetHash,TransSetHash,Bloom)
             VALUES
                 (:ledgerHash,:ledgerSeq,:prevHash,:totalCoins,:closingTime,:prevClosingTime,
-                :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash);)sql");
+                :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash,:bloom);)sql");
 
         auto db(app.getLedgerDB().checkoutDb());
 
@@ -1271,11 +1271,14 @@ saveValidatedLedger(
         auto const closeFlags = ledger->info().closeFlags;
         auto const accountHash = to_string(ledger->info().accountHash);
         auto const txHash = to_string(ledger->info().txHash);
+        auto const bloom = (ledger->info().bloom == beast::zero)
+            ? std::string("")
+            : to_string(ledger->info().bloom);
 
         *db << addLedger, soci::use(hash), soci::use(seq),
             soci::use(parentHash), soci::use(drops), soci::use(closeTime),
             soci::use(parentCloseTime), soci::use(closeTimeResolution),
-            soci::use(closeFlags), soci::use(accountHash), soci::use(txHash);
+            soci::use(closeFlags), soci::use(accountHash), soci::use(txHash),soci::use(bloom);
 
         tr.commit();
     }
@@ -1399,20 +1402,22 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     auto db = app.getLedgerDB().checkoutDb();
 
     boost::optional<std::string> sLedgerHash, sPrevHash, sAccountHash,
-        sTransHash;
+        sTransHash,sBloom;
     boost::optional<std::uint64_t> totDrops, closingTime, prevClosingTime,
         closeResolution, closeFlags, ledgerSeq64;
 
     std::string const sql =
         "SELECT "
-        "LedgerHash, PrevHash, AccountSetHash, TransSetHash, "
+        "LedgerHash, PrevHash, AccountSetHash, TransSetHash, Bloom,"
         "TotalCoins,"
         "ClosingTime, PrevClosingTime, CloseTimeRes, CloseFlags,"
         "LedgerSeq from Ledgers " +
         sqlSuffix + ";";
 
+    //ToTest:null can convert to std::string("")?
     *db << sql, soci::into(sLedgerHash), soci::into(sPrevHash),
-        soci::into(sAccountHash), soci::into(sTransHash), soci::into(totDrops),
+        soci::into(sAccountHash), soci::into(sTransHash), 
+        soci::into(sBloom), soci::into(totDrops),
         soci::into(closingTime), soci::into(prevClosingTime),
         soci::into(closeResolution), soci::into(closeFlags),
         soci::into(ledgerSeq64);
@@ -1428,6 +1433,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     ledgerSeq = rangeCheckedCast<std::uint32_t>(ledgerSeq64.value_or(0));
 
     uint256 prevHash{}, accountHash{}, transHash{};
+    uint2048 bloom{};
     if (sLedgerHash)
         ledgerHash.SetHexExact(*sLedgerHash);
     if (sPrevHash)
@@ -1436,10 +1442,18 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
         accountHash.SetHexExact(*sAccountHash);
     if (sTransHash)
         transHash.SetHexExact(*sTransHash);
+    if (sBloom)
+    {
+        if ((*sBloom).empty())
+            bloom = beast::zero;
+        else
+            bloom.SetHexExact(*sBloom);
+    }
 
     using time_point = NetClock::time_point;
     using duration = NetClock::duration;
 
+    auto bloomStart = app.getBloomManager().getBloomStartSeq();
     LedgerInfo info;
     info.parentHash = prevHash;
     info.txHash = transHash;
@@ -1450,6 +1464,8 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     info.closeFlags = closeFlags.value_or(0);
     info.closeTimeResolution = duration{closeResolution.value_or(0)};
     info.seq = ledgerSeq;
+    info.bloom = bloom;
+    info.bloomEnabled = bloomStart ? (ledgerSeq >= *bloomStart) : false;
 
     bool loaded;
     auto ledger = std::make_shared<Ledger>(

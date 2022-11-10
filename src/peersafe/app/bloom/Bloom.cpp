@@ -43,6 +43,7 @@ Bloom::test(Slice const& data)
 std::tuple<uint32_t, uint8_t, uint32_t, uint8_t, uint32_t, uint8_t>
 Bloom::bloomValues(Slice const& data)
 {
+    //ToTest:is here the right algorithm
     auto hash = sha512Half<CommonKey::sha3>(data);
     uint8_t hashbuf[6];
     std::memcpy(hashbuf, hash.data(), sizeof(hashbuf));
