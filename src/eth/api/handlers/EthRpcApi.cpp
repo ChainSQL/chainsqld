@@ -27,6 +27,7 @@
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/protocol/SecretKey.h>
+#include <peersafe/app/bloom/Filter.h>
 
 namespace ripple {
 
@@ -811,6 +812,15 @@ doEthTxByNumberAndIndex(RPC::JsonContext& context)
     {
     }
     return jvResult;
+}
+
+Json::Value
+doEthGetLogs(RPC::JsonContext& context) {
+    Json::Value result;
+#include <iostream>
+    auto s = jsonAsString(context.params);
+    std::cout << s << std::endl;
+    return result;
 }
 
 } // ripple
