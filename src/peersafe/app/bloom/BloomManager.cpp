@@ -20,7 +20,12 @@ BloomManager::bloomStartLedgerKey()
 }
 
 void
-BloomManager::saveBloomStartLedger(uint32_t seq, uint256 const& hash)
+BloomManager::init()
+{
+    loadBloomStartLedger();
+}
+
+void BloomManager::saveBloomStartLedger(uint32_t seq, uint256 const& hash)
 {
     bloomStartSeq_ = seq;
     Serializer s(128);

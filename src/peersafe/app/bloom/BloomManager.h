@@ -21,6 +21,9 @@ public:
     getBloomBits(uint32_t bit, uint64_t section, uint256 lastHash);
 
     void
+    init();
+
+    void
     saveBloomStartLedger(uint32_t seq, uint256 const& hash);
 
     void

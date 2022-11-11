@@ -142,7 +142,8 @@ detail::supportedAmendments()
         "fixAmendmentMajorityCalc",
         //"NegativeUNL"      // Commented out to prevent automatic enablement
         "PromethSLEHideInMeta",
-        "GasPriceCompress"
+        "GasPriceCompress",
+        "BloomFilter"
     };
     return supported;
 }

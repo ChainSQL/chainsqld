@@ -122,7 +122,8 @@ class FeatureCollections
         "ContractStorage",
         "PromethSLEHideInMeta",
         "TableGrant",
-        "GasPriceCompress"
+        "GasPriceCompress",
+        "BloomFilter"
     };
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;

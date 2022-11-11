@@ -1982,7 +1982,7 @@ rpcClient(
     std::unordered_map<std::string, std::string> const& headers)
 {
     static_assert(
-        rpcBAD_SYNTAX == 1 && rpcSUCCESS == 0,
+        (int)rpcBAD_SYNTAX == 1 && (int)rpcSUCCESS == 0,
         "Expect specific rpc enum values.");
     if (args.empty())
         return {rpcBAD_SYNTAX, {}};  // rpcBAD_SYNTAX = print usage

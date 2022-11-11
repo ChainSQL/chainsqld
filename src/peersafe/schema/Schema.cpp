@@ -1402,7 +1402,7 @@ SchemaImp::setup()
         }
     }
 
-    getBloomManager().loadBloomStartLedger();
+    getBloomManager().init();
 
     //m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
 
