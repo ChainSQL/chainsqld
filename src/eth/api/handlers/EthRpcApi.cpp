@@ -4,6 +4,7 @@
 //
 //  Created by lascion on 2022/7/25.
 //
+#include <sstream>
 
 #include <ripple/json/json_value.h>
 #include <ripple/net/RPCErr.h>
@@ -814,12 +815,103 @@ doEthTxByNumberAndIndex(RPC::JsonContext& context)
     return jvResult;
 }
 
+void retriveAddressesAndTopics(const Json::Value& params,
+                               std::vector<uint160>& addresses,
+                               std::vector<std::vector<uint256>>& topics) {
+    
+    Json::Value addressObject = params["address"];
+    
+    // retrive addresses
+    if(addressObject.isString()) {
+        std::string address_str = addressObject.asString();
+        if(address_str[0] == '0'
+           && (address_str[1] == 'x' || address_str[1] == 'X')) {
+            address_str = address_str.substr(2);
+        }
+        addresses.push_back(from_hex_text<uint160>(address_str));
+    } else if (addressObject.isArray()) {
+        for(auto const& address: addressObject) {
+            assert(address.isString());
+            std::string address_str = address.asString();
+            if(address_str[0] == '0'
+               && (address_str[1] == 'x' || address_str[1] == 'X')) {
+                address_str = address_str.substr(2);
+            }
+            addresses.push_back(from_hex_text<uint160>(address_str));
+        }
+    }
+    
+    // retrive topics
+    Json::Value topicsObject = params["topics"];
+    
+    for(auto const& item: topicsObject) {
+        if (item.isString()) {
+            std::string topicStr = item.asString();
+            if(topicStr[0] == '0'
+               && (topicStr[1] == 'x' || topicStr[1] == 'X')) {
+                topicStr = topicStr.substr(2);
+            }
+            std::vector<uint256> topic;
+            topic.push_back(from_hex_text<uint256>(topicStr));
+            topics.push_back(topic);
+        } else if (item.isArray()) {
+            std::vector<uint256> topic;
+            for(auto const& t: item) {
+                std::string topicStr = t.asString();
+                if(topicStr[0] == '0'
+                   && (topicStr[1] == 'x' || topicStr[1] == 'X')) {
+                    topicStr = topicStr.substr(2);
+                }
+                topic.push_back(from_hex_text<uint256>(topicStr));
+            }
+            topics.push_back(topic);
+        }
+    }
+}
+
 Json::Value
 doEthGetLogs(RPC::JsonContext& context) {
+    
     Json::Value result;
-#include <iostream>
-    auto s = jsonAsString(context.params);
-    std::cout << s << std::endl;
+    Json::Value logs;
+    bool bok = false;
+    
+    Filter::pointer filter = nullptr;
+    std::vector<uint160> addresses;
+    std::vector<std::vector<uint256>> topics;
+    
+    Json::Value params = context.params["realParams"][0u];
+    
+    if(params["blockHash"] != Json::Value()) {
+        std::string hashStr = params["blockHash"].asString().substr(2);
+        auto blockHash = from_hex_text<uint256>(hashStr);
+        retriveAddressesAndTopics(params, addresses, topics);
+        filter = Filter::newBlockFilter(context.app, blockHash, addresses, topics);
+    } else {
+        LedgerIndex fromBlock = context.app.getLedgerMaster().getValidatedLedger()->info().seq;
+        LedgerIndex toBlock = fromBlock;
+        
+        if(params["fromBlock"].isNumeric()) {
+            fromBlock = params["fromBlock"].asUInt64();
+        } else if (params["fromBlock"].isString()) {
+            std::stringstream ss;
+            ss << std::hex << params["fromBlock"].asString();
+            ss >> fromBlock;
+        }
+        
+        if(params["toBlock"].isNumeric()) {
+            toBlock = params["toBlock"].asUInt64();
+        } else if (params["toBlock"].isString()) {
+            std::stringstream ss;
+            ss << std::hex << params["toBlock"].asString();
+            ss >> toBlock;
+        }
+
+        retriveAddressesAndTopics(params, addresses, topics);
+        filter = Filter::newRangeFilter(context.app, fromBlock, toBlock, addresses, topics);
+    }
+    std::tie(logs, bok) = filter->Logs();
+    result[jss::status] = logs;
     return result;
 }
 

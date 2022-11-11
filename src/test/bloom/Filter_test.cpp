@@ -20,6 +20,9 @@
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/beast/unit_test.h>
+
+#include <peersafe/app/bloom/Filter.h>
+
 #include <test/jtx.h>
 
 
@@ -27,8 +30,15 @@ namespace ripple {
 namespace test {
 class Filter_test : public beast::unit_test::suite {
 public:
+    void filter_test() {
+        jtx::Env env{*this};
+        Filter::pointer filter = Filter::newRangeFilter(env.app(), 1, 1, {}, {});
+        filter->Logs();
+        BEAST_EXPECT(true);
+    }
+    
     void run() override {
-        
+        filter_test();
     }
 };
 

@@ -13,10 +13,9 @@
 
 namespace ripple {
 
-bool bloomFilter(
-    const uint2048& bloom,
-    const std::vector<uint160>& addresses,
-    const std::vector<std::vector<uint256>>& topics) {
+bool bloomFilter(const uint2048& bloom,
+                 const std::vector<uint160>& addresses,
+                 const std::vector<std::vector<uint256>>& topics) {
     std::size_t size = addresses.size();
     if(size > 0) {
         bool included = false;
@@ -82,8 +81,9 @@ getLogsByLedger(Schema& schame, const Ledger* ledger) {
             }
             
             if(!txn->getMeta().empty()) {
-                auto meta = std::make_shared<TxMeta>(
-                    txn->getID(), txn->getLedger(), txn->getMeta());
+                auto meta = std::make_shared<TxMeta>(txn->getID(),
+                                                     txn->getLedger(),
+                                                     txn->getMeta());
                 if(meta == nullptr) {
                     return std::make_tuple(result, false);
                 }
@@ -162,12 +162,14 @@ Logs:
     return result;
 }
 
-Filter::Filter(
-    Schema& schame,
-    const std::vector<uint160>& addresses,
-    const std::vector<std::vector<uint256>>& topics)
+Filter::Filter(Schema& schame,
+               const std::vector<uint160>& addresses,
+               const std::vector<std::vector<uint256>>& topics)
 :schame_(schame)
 ,blockhash_(beast::zero)
+,matcher_(nullptr)
+,from_(0)
+,to_(0)
 ,addresses_(addresses)
 ,topics_(topics) {
     
@@ -177,11 +179,11 @@ Filter::~Filter() {
     
 }
 
-Filter::pointer Filter::newBlockFilter(
-    Schema& schame,
-    const uint256& blockHash,
-    const std::vector<uint160>& addresses,
-    const std::vector<std::vector<uint256>>& topics) {
+Filter::pointer
+Filter::newBlockFilter(Schema& schame,
+                       const uint256& blockHash,
+                       const std::vector<uint160>& addresses,
+                       const std::vector<std::vector<uint256>>& topics) {
     Filter::pointer f = std::make_shared<Filter>(schame, addresses, topics);
     if (f) {
         f->blockhash_ = blockHash;
@@ -189,15 +191,82 @@ Filter::pointer Filter::newBlockFilter(
     return f;
 }
 
+Filter::pointer
+Filter::newRangeFilter(Schema& schame,
+                       const LedgerIndex& from,
+                       const LedgerIndex& to,
+                       const std::vector<uint160>& addresses,
+                       const std::vector<std::vector<uint256>>& topics) {
+    std::vector<std::vector<Slice>> filters;
+    
+    std::vector<Slice> addressesFilter;
+    for(auto const& address: addresses) {
+        addressesFilter.push_back(Slice(address.data(), address.size()));
+    }
+    if(!addressesFilter.empty()) {
+        filters.push_back(addressesFilter);
+    }
+    
+    
+    for(auto const& topic: topics) {
+        std::vector<Slice> topicsFilter;
+        for(auto const& t: topic) {
+            topicsFilter.push_back(Slice(t.data(), t.size()));
+        }
+        if(!topicsFilter.empty()) {
+            filters.push_back(topicsFilter);
+        }
+    }
+
+    Filter::pointer f = std::make_shared<Filter>(schame, addresses, topics);
+    if(f) {
+        uint32_t sectionSize = 0;
+        uint32_t sections = 0;
+        std::tie(sectionSize, sections) = f->bloomStatus();
+        
+        f->matcher_ = Matcher::newMatcher(sectionSize, filters);
+        f->from_ = from;
+        f->to_ = to;
+    }
+    return f;
+}
+
 std::tuple<Json::Value, bool> Filter::Logs() {
     if(blockhash_ != beast::zero) {
         auto ledger = schame_.getLedgerMaster().getLedgerByHash(blockhash_);
-        if(ledger) {
-            return blockLogs(ledger.get());
+        if(ledger == nullptr) {
+            return std::make_tuple(Json::Value(), false);
+        }
+        return blockLogs(ledger.get());
+    }
+    
+    uint32_t size = 0;
+    uint32_t sectons = 0;
+    std::tie(size, sectons) = bloomStatus();
+    uint32_t indexed = sectons * size;
+    
+    Json::Value logs(Json::arrayValue);
+    bool bok = false;
+    if(indexed > from_) {
+        if(indexed > to_) {
+            std::tie(logs, bok) = indexedLogs(to_);
+        } else {
+            std::tie(logs, bok) = indexedLogs(indexed - 1);
+        }
+        if(!bok) {
+            return std::make_tuple(logs, bok);
         }
     }
     
-    return std::make_tuple(Json::Value(), false);
+    Json::Value uindexed;
+    std::tie(uindexed, bok) = unindexedLogs(to_);
+    if(bok) {
+        for(auto const& l: uindexed) {
+            logs.append(l);
+        }
+    }
+    
+    return std::make_tuple(logs, true);
 }
 
 std::tuple<Json::Value, bool> Filter::blockLogs(const Ledger* ledger) {
@@ -215,6 +284,33 @@ std::tuple<Json::Value, bool> Filter::checkMatches(const Ledger* ledger) {
     
     Json::Value filtered = filterLogs(std::get<0>(result), -1, -1, addresses_, topics_);
     return std::make_tuple(filtered, true);
+}
+
+std::tuple<Json::Value, bool> Filter::unindexedLogs(const LedgerIndex& end) {
+    Json::Value logs(Json::arrayValue);
+    for(auto seq = from_; seq < to_; seq++) {
+        auto block = schame_.getLedgerMaster().getLedgerBySeq(seq);
+        if (block == nullptr) {
+            continue;
+        }
+        auto result = blockLogs(block.get());
+        if(!std::get<1>(result)) {
+            return std::make_tuple(logs, false);
+        }
+        for(auto const& log: std::get<0>(result)) {
+            logs.append(log);
+        }
+    }
+    return std::make_tuple(logs, true);
+}
+
+std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
+    auto result = matcher_->execute(from_, to_);
+    return std::make_tuple(Json::Value(), false);
+}
+
+std::tuple<uint32_t, uint32_t> Filter::bloomStatus() {
+    return std::make_tuple(4096, 0);
 }
 
 }
