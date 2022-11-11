@@ -679,6 +679,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/ledger/LedgerAdjust.cpp
   src/peersafe/app/bloom/Bloom.cpp
   src/peersafe/app/bloom/BloomHelper.cpp
+  src/peersafe/app/bloom/BloomIndexer.cpp
   src/peersafe/app/bloom/BloomManager.cpp
   src/peersafe/app/bloom/Matcher.cpp
   src/peersafe/app/bloom/Filter.cpp

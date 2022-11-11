@@ -7,22 +7,29 @@
 #include <ripple/app/ledger/LedgerMaster.h>
 
 namespace ripple {
-Blob
-BloomManager::getBloomBits(uint32_t bit, uint64_t section, uint256 lastHash)
+
+BloomManager::BloomManager(Schema& app, beast::Journal j)
+    : app_(app), 
+    j_(j), 
+    inited_(false), 
+    indexer_(app,j)
 {
-    return Blob{};
 }
 
 uint256
 BloomManager::bloomStartLedgerKey()
 {
-    return sha512Half<CommonKey::sha>(BLOOM_START_LEDGER_KEY);
+    return sha512Half<CommonKey::sha>(BLOOM_PREFIX + BLOOM_START_LEDGER_KEY);
 }
 
 void
 BloomManager::init()
 {
+    if (inited_)
+        return;
+    inited_ = true;
     loadBloomStartLedger();
+    indexer_.init(bloomStartSeq_);
 }
 
 void BloomManager::saveBloomStartLedger(uint32_t seq, uint256 const& hash)

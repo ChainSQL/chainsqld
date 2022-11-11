@@ -36,6 +36,7 @@ enum NodeObjectType : std::uint32_t {
     hotTRANSACTION_NODE = 4,
     hotBLOOM_START_LEDGER = 5,
     hotBLOOM_SECTION_BIT = 6,
+    hotBLOOM_SAVED_SECTION = 7,
 };
 
 /** A simple object that the Ledger uses to store entries.

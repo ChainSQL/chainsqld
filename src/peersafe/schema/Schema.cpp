@@ -1402,8 +1402,6 @@ SchemaImp::setup()
         }
     }
 
-    getBloomManager().init();
-
     //m_orderBookDB.setup(getLedgerMaster().getCurrentLedger());
 
     if (!cluster_->load(config().section(SECTION_CLUSTER_NODES)))

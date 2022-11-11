@@ -79,6 +79,8 @@
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <peersafe/app/bloom/BloomIndexer.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -3892,6 +3894,8 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             checkSchemaTx(lpAccepted, *vt.second);
         }
     }
+
+    app_.getBloomManager().bloomIndexer().onPubLedger(lpAccepted);
 }
 
 void

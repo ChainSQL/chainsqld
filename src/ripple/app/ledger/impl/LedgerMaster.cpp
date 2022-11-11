@@ -64,6 +64,7 @@
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -295,6 +296,8 @@ LedgerMaster::onConsensusReached(
     }
     checkSubChains();
     checkLoadLedger();
+
+    app_.getBloomManager().init();
     app_.getTableSync().TryTableSync();
     app_.getTableSync().InitTableItems();
     tryAdvance();

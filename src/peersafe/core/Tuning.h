@@ -55,7 +55,13 @@ namespace ripple {
     uint256 const NODE_TYPE_AUTHORIZE = uint256(2);
     uint256 const NODE_TYPE_AUTHORIZER = uint256(3);
 
-    std::string const BLOOM_START_LEDGER_KEY = "bloom-start-ledger-key";
+    uint32_t const BLOOM_LENGTH = 2048;
+    uint32_t const DEFAULT_SECTION_SIZE = 4096;
+
+    std::string const BLOOM_PREFIX = "BLOOM-FILTER_";
+    std::string const BLOOM_START_LEDGER_KEY = "start-ledger-key";
+    std::string const BLOOM_SAVED_SECTION_COUNT = "saved_section_count";
+    std::string const BLOOM_BIT_PREFIX = "B";
 
 } // ripple
 

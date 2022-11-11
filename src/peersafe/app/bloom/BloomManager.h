@@ -4,6 +4,7 @@
 #include <ripple/basics/base_uint.h>
 #include <ripple/beast/utility/Journal.h>
 #include <peersafe/app/bloom/BloomHelper.h>
+#include <peersafe/app/bloom/BloomIndexer.h>
 
 namespace ripple {
 class Schema;
@@ -11,14 +12,7 @@ class Schema;
 class BloomManager
 {
 public:
-    BloomManager(Schema& app, beast::Journal j) : app_(app), j_(j)
-    {
-    }
-
-    // getBloomBits returns the bit vector belonging to the given bit index after all
-    // blooms have been added.
-    Blob
-    getBloomBits(uint32_t bit, uint64_t section, uint256 lastHash);
+    BloomManager(Schema& app, beast::Journal j); 
 
     void
     init();
@@ -35,6 +29,12 @@ public:
         return helper_;
     }
 
+    inline BloomIndexer&
+    bloomIndexer()
+    {
+        return indexer_;
+    }
+
     boost::optional<uint32_t>
     getBloomStartSeq();
 
@@ -46,6 +46,8 @@ private:
     Schema& app_;
     beast::Journal j_;
     BloomHelper helper_;
+    BloomIndexer indexer_; 
+    bool inited_;
     boost::optional<uint32_t> bloomStartSeq_;
 };
 }
