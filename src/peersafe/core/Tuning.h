@@ -61,7 +61,6 @@ namespace ripple {
     std::string const BLOOM_PREFIX = "BLOOM-FILTER_";
     std::string const BLOOM_START_LEDGER_KEY = "start-ledger-key";
     std::string const BLOOM_SAVED_SECTION_COUNT = "saved_section_count";
-    std::string const BLOOM_BIT_PREFIX = "B";
 
 } // ripple
 

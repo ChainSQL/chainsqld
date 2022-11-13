@@ -11,8 +11,8 @@ namespace ripple {
 BloomManager::BloomManager(Schema& app, beast::Journal j)
     : app_(app), 
     j_(j), 
-    inited_(false), 
-    indexer_(app,j)
+    indexer_(app, j), 
+    inited_(false)
 {
 }
 

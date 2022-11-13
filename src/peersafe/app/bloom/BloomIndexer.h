@@ -42,7 +42,7 @@ private:
     void
     processSections();
 
-    void
+    bool
     processSection(uint32_t section);
 
     void

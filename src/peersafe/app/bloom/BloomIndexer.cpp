@@ -22,9 +22,9 @@ BloomGenerator::~BloomGenerator()
 {
     for (int i=0; i<BLOOM_LENGTH; i++)
     {
-        delete [DEFAULT_SECTION_SIZE]blooms[i];
+        delete blooms[i];
     }
-    delete [BLOOM_LENGTH]blooms;
+    delete blooms;
 }
 
 void
@@ -67,7 +67,7 @@ BloomIndexer::BloomIndexer(Schema& app, beast::Journal j)
 void
 BloomIndexer::init(boost::optional<uint32_t> startSeq)
 {
-    if(bloomStartSeq_ = startSeq)
+    if(bloomStartSeq_ = startSeq,bloomStartSeq_)
     {
         readStoredSection();
     }        
@@ -104,12 +104,15 @@ BloomIndexer::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
     }
 }
 
-void
+bool
 BloomIndexer::processSection(uint32_t section)
 {
-    BloomGenerator bin;
     auto start = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE;
     auto end = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE;
+    if (!app_.getLedgerMaster().haveLedger(start,end-1))
+        return false;
+
+    BloomGenerator bin;
     uint256 lastHash;
     for (auto seq = start; seq < end; seq++)
     {
@@ -132,6 +135,7 @@ BloomIndexer::processSection(uint32_t section)
             bloomBitsKey(i, section, lastHash), 
             0);
     }
+    return true;
 }
 
 void
@@ -141,7 +145,8 @@ BloomIndexer::processSections()
     {
         while (storedSections_ < knownSections_)
         {
-            processSection(storedSections_);
+            if (!processSection(storedSections_))
+                break;
             saveStoredSection(storedSections_);
             JLOG(j_.info()) << "BloomIndexer saved section:" + storedSections_;
             storedSections_++;
