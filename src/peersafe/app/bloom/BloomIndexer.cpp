@@ -73,6 +73,12 @@ BloomIndexer::init(boost::optional<uint32_t> startSeq)
     }        
 }
 
+std::pair<uint32_t, uint32_t>
+BloomIndexer::bloomStatus()
+{
+    return std::make_pair(DEFAULT_SECTION_SIZE, storedSections_);
+}
+
 Blob
 BloomIndexer::getBloomBits(uint32_t bit, uint32_t section)
 {

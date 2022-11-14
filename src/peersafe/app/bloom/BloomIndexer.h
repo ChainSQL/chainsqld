@@ -38,6 +38,9 @@ public:
     Blob
     getBloomBits(uint32_t bit, uint32_t section);
 
+    std::pair<uint32_t, uint32_t>
+    bloomStatus();
+
 private:
     void
     processSections();
