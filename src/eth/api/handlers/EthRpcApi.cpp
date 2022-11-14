@@ -892,7 +892,7 @@ doEthGetLogs(RPC::JsonContext& context) {
         LedgerIndex toBlock = fromBlock;
         
         if(params["fromBlock"].isNumeric()) {
-            fromBlock = params["fromBlock"].asUInt64();
+            fromBlock = params["fromBlock"].asUInt();
         } else if (params["fromBlock"].isString()) {
             std::stringstream ss;
             ss << std::hex << params["fromBlock"].asString();
@@ -900,7 +900,7 @@ doEthGetLogs(RPC::JsonContext& context) {
         }
         
         if(params["toBlock"].isNumeric()) {
-            toBlock = params["toBlock"].asUInt64();
+            toBlock = params["toBlock"].asUInt();
         } else if (params["toBlock"].isString()) {
             std::stringstream ss;
             ss << std::hex << params["toBlock"].asString();
@@ -911,7 +911,11 @@ doEthGetLogs(RPC::JsonContext& context) {
         filter = Filter::newRangeFilter(context.app, fromBlock, toBlock, addresses, topics);
     }
     std::tie(logs, bok) = filter->Logs();
-    result[jss::status] = logs;
+    if(bok) {
+        result[jss::result] = logs;
+    } else {
+        result[jss::result] = Json::objectValue;
+    }
     return result;
 }
 

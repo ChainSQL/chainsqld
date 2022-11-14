@@ -8,6 +8,8 @@
 
 #include <peersafe/app/bloom/Filter.h>
 #include <peersafe/app/bloom/Bloom.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <peersafe/app/bloom/BloomIndexer.h>
 
 #include <eth/api/utils/Helpers.h>
 
@@ -224,7 +226,7 @@ Filter::newRangeFilter(Schema& schame,
         uint32_t sections = 0;
         std::tie(sectionSize, sections) = f->bloomStatus();
         
-        f->matcher_ = Matcher::newMatcher(sectionSize, filters);
+        f->matcher_ = Matcher::newMatcher(schame, sectionSize, filters);
         f->from_ = from;
         f->to_ = to;
     }
@@ -305,12 +307,29 @@ std::tuple<Json::Value, bool> Filter::unindexedLogs(const LedgerIndex& end) {
 }
 
 std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
-    auto result = matcher_->execute(from_, to_);
-    return std::make_tuple(Json::Value(), false);
+    Json::Value logs(Json::arrayValue);
+    std::vector<LedgerIndex> matchedLedgers = matcher_->execute(from_, to_);
+    for(auto const& seq: matchedLedgers) {
+        from_ = seq + 1;
+        auto block = schame_.getLedgerMaster().getLedgerBySeq(seq);
+        if (block == nullptr) {
+            continue;
+        }
+        
+        auto result = blockLogs(block.get());
+        if(!std::get<1>(result)) {
+            return std::make_tuple(logs, false);
+        }
+        
+        for(auto const& log: std::get<0>(result)) {
+            logs.append(log);
+        }
+    }
+    return std::make_tuple(logs, true);
 }
 
 std::tuple<uint32_t, uint32_t> Filter::bloomStatus() {
-    return std::make_tuple(4096, 0);
+    return schame_.getBloomManager().bloomIndexer().bloomStatus();
 }
 
 }
