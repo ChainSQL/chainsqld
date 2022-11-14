@@ -55,6 +55,7 @@ namespace ripple {
     uint256 const NODE_TYPE_AUTHORIZE = uint256(2);
     uint256 const NODE_TYPE_AUTHORIZER = uint256(3);
 
+    const int BloomByteLength = 256;
     uint32_t const BLOOM_LENGTH = 2048;
     uint32_t const DEFAULT_SECTION_SIZE = 4096;
 

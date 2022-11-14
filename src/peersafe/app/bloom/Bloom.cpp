@@ -1,10 +1,9 @@
 
 #include <peersafe/app/bloom/Bloom.h>
+#include <peersafe/core/Tuning.h>
 #include <ripple/protocol/digest.h>
 
 namespace ripple {
-
-const int BloomByteLength = 256;
 
 uint16_t
 toBigEndian(uint8_t* b)
@@ -24,9 +23,9 @@ void
 Bloom::add(Slice const& data)
 {
     auto tup = bloomValues(data);
-    bloom_.data()[std::get<0>(tup)] = std::get<1>(tup);
-    bloom_.data()[std::get<2>(tup)] = std::get<3>(tup);
-    bloom_.data()[std::get<4>(tup)] = std::get<5>(tup);
+    bloom_.data()[std::get<0>(tup)] |= std::get<1>(tup);
+    bloom_.data()[std::get<2>(tup)] |= std::get<3>(tup);
+    bloom_.data()[std::get<4>(tup)] |= std::get<5>(tup);
 }
 
 bool
@@ -56,6 +55,7 @@ Bloom::bloomValues(Slice const& data)
     uint32_t i1 = BloomByteLength - uint32_t((toBigEndian(hashbuf) & 0x7ff) >> 3) - 1;
     uint32_t i2 = BloomByteLength - uint32_t((toBigEndian(hashbuf + 2) & 0x7ff) >> 3) - 1;
     uint32_t i3 = BloomByteLength - uint32_t((toBigEndian(hashbuf + 4) & 0x7ff) >> 3) - 1;
+
     return std::make_tuple(i1, v1, i2, v2, i3, v3);
 }
 
