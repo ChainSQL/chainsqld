@@ -21,7 +21,8 @@ Matcher::calcBloomIndexes(const Slice& s) {
     auto hash = sha512Half<CommonKey::sha3>(s);
     auto bytes = hash.data();
     for(auto i = 0; i < idxs.size(); i++) {
-        idxs[i] = (uint(bytes[2*i])<<8)&2047 + uint(bytes[2*i+1]);
+        idxs[i] =
+            (uint32_t(bytes[2 * i]) << 8) & 2047 + uint32_t(bytes[2 * i + 1]);
     }
     return  idxs;
 }

@@ -36,7 +36,7 @@ public:
     // after all
     // blooms have been added.
     Blob
-    getBloomBits(uint32_t bit, uint32_t section, uint256 lastHash);
+    getBloomBits(uint32_t bit, uint32_t section);
 
 private:
     void

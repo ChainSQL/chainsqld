@@ -74,8 +74,16 @@ BloomIndexer::init(boost::optional<uint32_t> startSeq)
 }
 
 Blob
-BloomIndexer::getBloomBits(uint32_t bit, uint32_t section, uint256 lastHash)
+BloomIndexer::getBloomBits(uint32_t bit, uint32_t section)
 {
+    if (!bloomStartSeq_)
+        return Blob{};
+
+    uint32_t lastSeq = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE - 1;
+    auto ledger = app_.getLedgerMaster().getLedgerBySeq(lastSeq);
+    if (!ledger)
+        return Blob{};
+    uint256 lastHash = ledger->info().hash;
     if (auto obj = app_.getNodeFamily().db().fetch(bloomBitsKey(bit,section,lastHash), 0))
     {
         SerialIter s(makeSlice(obj->getData()));
