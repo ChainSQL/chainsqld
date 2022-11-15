@@ -894,17 +894,25 @@ doEthGetLogs(RPC::JsonContext& context) {
         if(params["fromBlock"].isNumeric()) {
             fromBlock = params["fromBlock"].asUInt();
         } else if (params["fromBlock"].isString()) {
-            std::stringstream ss;
-            ss << std::hex << params["fromBlock"].asString();
-            ss >> fromBlock;
+            Json::Value query;
+            RPC::JsonContext queryContext = context;
+            ethLdgIndex2chainsql(query, params["fromBlock"].asString());
+            queryContext.params = query;
+            std::shared_ptr<ReadView const> ledger;
+            RPC::lookupLedger(ledger, queryContext);
+            fromBlock = ledger->info().seq;
         }
         
         if(params["toBlock"].isNumeric()) {
             toBlock = params["toBlock"].asUInt();
         } else if (params["toBlock"].isString()) {
-            std::stringstream ss;
-            ss << std::hex << params["toBlock"].asString();
-            ss >> toBlock;
+            Json::Value query;
+            RPC::JsonContext queryContext = context;
+            ethLdgIndex2chainsql(query, params["toBlock"].asString());
+            queryContext.params = query;
+            std::shared_ptr<ReadView const> ledger;
+            RPC::lookupLedger(ledger, queryContext);
+            toBlock = ledger->info().seq;
         }
 
         retriveAddressesAndTopics(params, addresses, topics);

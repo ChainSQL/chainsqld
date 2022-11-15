@@ -39,7 +39,7 @@ bool bloomFilter(const uint2048& bloom,
             const std::vector<uint256>& sub = topics[i];
             std::size_t sub_size = sub.size();
             bool included = (sub_size == 0);
-            for(auto j = 0; i < sub_size; j++) {
+            for(auto j = 0; j < sub_size; j++) {
                 auto topic = sub[j];
                 if(bloomLookup(bloom, Slice(topic.data(), topic.size()))) {
                     included = true;
@@ -121,45 +121,48 @@ Json::Value filterLogs(const Json::Value& unfilteredLogs,
                        const std::uint32_t to,
                        const std::vector<uint160>& addresses,
                        const std::vector<std::vector<uint256>>& topics) {
+    std::string ss = Json::jsonAsString(unfilteredLogs);
     Json::Value result(Json::arrayValue);
 Logs:
-    for (auto const& log : unfilteredLogs) {
-        LedgerIndex seq = log["blockNumber"].asUInt();
-        if(from != -1 && from >= 0 && from > seq) {
-            continue;
-        }
-        if(to != -1 && to >=0 && to < seq) {
-            continue;
-        }
-        
-        uint160 address = from_hex_text<uint160>(log["address"].asString());
-        if(addresses.size() > 0 && !includes(addresses, address)) {
-            continue;
-        }
-        
-        Json::Value topicsObject = log["topics"];
-        assert(topicsObject.isArray());
-        // If the to filtered topics is greater than the amount of topics in logs, skip.
-        if(topics.size() > topicsObject.size()) {
-            continue;
-        }
-        
-        int topics_index = 0;
-        for(auto const& sub: topics) {
-            // empty rule set == wildcard
-            bool match = sub.size() == 0;
-            for(auto const& topic: sub) {
-                std::string hex_topic = "0x" + toLowerStr(to_string(topic));
-                if(topicsObject[topics_index].asString() == hex_topic) {
-                    match = true;
-                    break;
+    for (auto const& logs : unfilteredLogs) {
+        for(auto const& log: logs) {
+            LedgerIndex seq = log["blockNumber"].asUInt();
+            if(from != -1 && from >= 0 && from > seq) {
+                continue;
+            }
+            if(to != -1 && to >=0 && to < seq) {
+                continue;
+            }
+            
+            uint160 address = from_hex_text<uint160>(log["address"].asString());
+            if(addresses.size() > 0 && !includes(addresses, address)) {
+                continue;
+            }
+            
+            Json::Value topicsObject = log["topics"];
+            assert(topicsObject.isArray());
+            // If the to filtered topics is greater than the amount of topics in logs, skip.
+            if(topics.size() > topicsObject.size()) {
+                continue;
+            }
+            
+            int topics_index = 0;
+            for(auto const& sub: topics) {
+                // empty rule set == wildcard
+                bool match = sub.size() == 0;
+                for(auto const& topic: sub) {
+                    std::string hex_topic = "0x" + toLowerStr(to_string(topic));
+                    if(topicsObject[topics_index].asString() == hex_topic) {
+                        match = true;
+                        break;
+                    }
+                }
+                if(!match) {
+                    goto Logs;
                 }
             }
-            if(!match) {
-                goto Logs;
-            }
+            result.append(log);
         }
-        result.append(log);
     }
     return result;
 }
