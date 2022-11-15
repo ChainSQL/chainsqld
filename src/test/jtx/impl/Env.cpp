@@ -79,25 +79,19 @@ Env::AppBundle::AppBundle(
     }
     auto timeKeeper_ = std::make_unique<ManualTimeKeeper>();
     timeKeeper = timeKeeper_.get();
-    auto jornal = logs->journal("SchemaManager");
+    
     // Hack so we don't have to call Config::setup
     HTTPClient::initializeSSLContext(*config, debugLog());
-    owned = make_Application(
+    app = make_Application(
         std::move(config), std::move(logs), std::move(timeKeeper_));
-    app = owned.get();
     app->logs().threshold(thresh);
     if (!app->setup())
         Throw<std::runtime_error>("Env::AppBundle: setup failed");
     timeKeeper->set(app->getLedgerMaster().getClosedLedger()->info().closeTime);
     app->doStart(false /*don't start timers*/);
     thread = std::thread([&]() { app->run(); });
-
-	schemaManager = std::make_unique<SchemaManager>(
-		*app,jornal);
-	std::shared_ptr<Config> pConfig;
-	pConfig.reset(&(app->config()));
-	schema = schemaManager->createSchemaMain(pConfig);
-
+    schemaManager = &app->getSchemaManager();
+	schema = schemaManager->getSchema(beast::zero).get();
     client = makeJSONRPCClient(app->config());
 }
 
@@ -117,10 +111,9 @@ Env::AppBundle::~AppBundle()
     // Remove the debugLogSink before the suite goes out of scope.
     setDebugLogSink(nullptr);
     
-    schemaManager.reset();
-    schema.reset();
-    
-    owned.reset(nullptr);
+    //schemaManager.reset();
+    //schema.reset();
+    app.reset(nullptr);
 }
 
 //------------------------------------------------------------------------------
