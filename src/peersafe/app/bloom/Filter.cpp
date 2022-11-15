@@ -290,7 +290,7 @@ std::tuple<Json::Value, bool> Filter::checkMatches(const Ledger* ledger) {
 
 std::tuple<Json::Value, bool> Filter::unindexedLogs(const LedgerIndex& end) {
     Json::Value logs(Json::arrayValue);
-    for(auto seq = from_; seq < to_; seq++) {
+    for(auto seq = from_; seq <= to_; seq++) {
         auto block = schame_.getLedgerMaster().getLedgerBySeq(seq);
         if (block == nullptr) {
             continue;
