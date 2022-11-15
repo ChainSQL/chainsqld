@@ -1108,6 +1108,7 @@ if(enableTest)
       test sources:
         subdir: bloom
    #]===============================]
+   src/test/bloom/Bloom_test.cpp
    src/test/bloom/Matcher_test.cpp
    src/test/bloom/Filter_test.cpp
   )

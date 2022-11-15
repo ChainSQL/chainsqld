@@ -64,6 +64,9 @@ DecodedBlob::DecodedBlob(void const* key, void const* value, int valueBytes)
             case hotLEDGER:
             case hotACCOUNT_NODE:
             case hotTRANSACTION_NODE:
+            case hotBLOOM_START_LEDGER:
+            case hotBLOOM_SECTION_BIT:
+            case hotBLOOM_SAVED_SECTION:
                 m_success = true;
                 break;
         }

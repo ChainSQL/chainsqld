@@ -297,7 +297,6 @@ LedgerMaster::onConsensusReached(
     checkSubChains();
     checkLoadLedger();
 
-    app_.getBloomManager().init();
     app_.getTableSync().TryTableSync();
     app_.getTableSync().InitTableItems();
     tryAdvance();

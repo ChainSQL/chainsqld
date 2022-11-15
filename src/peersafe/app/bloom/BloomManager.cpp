@@ -54,9 +54,9 @@ BloomManager::loadBloomStartLedger()
         SerialIter s(makeSlice(obj->getData()));
         auto seq = s.get32();
         auto hash = s.get256();
+        bloomStartSeq_ = seq;
         auto ledger = app_.getLedgerMaster().getLedgerByHash(hash);
         assert(ledger != nullptr && ledger->info().seq == seq);
-        bloomStartSeq_ = seq;
     }
 }
 

@@ -5,7 +5,6 @@
 #include <ripple/protocol/jss.h>
 
 #include <peersafe/app/bloom/Bloom.h>
-#include <peersafe/app/bloom/BloomIndexer.h>
 
 #include <test/jtx.h>
 

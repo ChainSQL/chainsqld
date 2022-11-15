@@ -1301,6 +1301,8 @@ SchemaImp::setup()
     }
 
     Pathfinder::initPathTable();
+    
+    getBloomManager().init();
 
     auto const startUp = config_->START_UP;
     if (startUp == Config::FRESH)
