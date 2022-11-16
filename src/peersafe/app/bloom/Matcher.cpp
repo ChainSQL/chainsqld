@@ -111,7 +111,7 @@ Matcher::execute(const LedgerIndex& from,
                 if((i % 8) == 0) {
                     i += 7;
                 }
-                continue;;
+                continue;
             }
             
             // Some bit it set, do the actual submatching

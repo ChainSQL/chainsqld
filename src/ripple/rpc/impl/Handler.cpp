@@ -254,6 +254,12 @@ Handler const ethHandlerArray[]{
     {"eth_getTransactionByBlockHashAndIndex", byRef(&doEthTxByHashAndIndex), Role::USER, NO_CONDITION},
     {"eth_getTransactionByBlockNumberAndIndex", byRef(&doEthTxByNumberAndIndex), Role::USER, NO_CONDITION},
     {"eth_getLogs", byRef(&doEthGetLogs), Role::USER, NO_CONDITION},
+    {"eth_getFilterLogs", byRef(&doEthGetFilterLogs), Role::USER, NO_CONDITION},
+    {"eth_getFilterChanges", byRef(&doEthGetFilterChanges), Role::USER, NO_CONDITION},
+    {"eth_newFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
+    {"eth_newBlockFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
+    {"eth_newPendingTransactionFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
+    {"eth_uninstallFilter", byRef(&doEthUninstallFilter), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable

@@ -935,4 +935,32 @@ doEthGetLogs(RPC::JsonContext& context) {
     return result;
 }
 
+Json::Value
+doEthGetFilterLogs(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = Json::Value(Json::arrayValue);
+    return result;
+}
+
+Json::Value
+doEthGetFilterChanges(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = Json::Value(Json::arrayValue);
+    return result;
+}
+
+Json::Value
+doEthNewFilter(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = "0x01";
+    return result;
+}
+
+Json::Value
+doEthUninstallFilter(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = true;
+    return result;
+}
+
 } // ripple

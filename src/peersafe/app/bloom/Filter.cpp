@@ -121,7 +121,6 @@ Json::Value filterLogs(const Json::Value& unfilteredLogs,
                        const std::uint32_t to,
                        const std::vector<uint160>& addresses,
                        const std::vector<std::vector<uint256>>& topics) {
-    std::string ss = Json::jsonAsString(unfilteredLogs);
     Json::Value result(Json::arrayValue);
 Logs:
     for (auto const& logs : unfilteredLogs) {
