@@ -71,10 +71,8 @@ public:
             kvTable[key] = generator.bitSet(i);
         }
         
-        auto matcher = [&](const int32_t i) -> bool {
-            std::string queryStr = (boost::format(pattern) % i).str();
-            Slice query(queryStr.data(), queryStr.size());
-            Matcher::bloomIndexes indexes = Matcher::calcBloomIndexes(query);
+        auto matcher = [&](const int32_t i, const Slice& filter) -> bool {
+            Matcher::bloomIndexes indexes = Matcher::calcBloomIndexes(filter);
             uint256 key1 = bloomBitsKey(indexes[0], 0);
             uint256 key2 = bloomBitsKey(indexes[1], 0);
             uint256 key3 = bloomBitsKey(indexes[2], 0);
@@ -98,15 +96,18 @@ public:
         };
         
         for(auto i = 0; i < 10; i ++) {
-            BEAST_EXPECT(matcher(i));
+            std::string data = (boost::format(pattern) % i).str();
+            BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())));
         }
         
         for(auto i = 10; i < 110; i++) {
-            BEAST_EXPECT(matcher(i) == false);
+            std::string data = (boost::format(pattern) % i).str();
+            BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())) == false);
         }
         
         for(auto i = 10; i < 4096; i++) {
-            BEAST_EXPECT(matcher(i + 100) == false);
+            std::string data = (boost::format(pattern) % (i + 100)).str();
+            BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())));
         }
     }
     
