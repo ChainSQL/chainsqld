@@ -67,4 +67,11 @@ BloomManager::getBloomStartSeq()
     return bloomStartSeq_;
 }
 
+uint32_t
+BloomManager::getSectionBySeq(uint32_t seq)
+{
+    assert(bloomStartSeq_ != boost::none);
+    return (seq - *bloomStartSeq_) / DEFAULT_SECTION_SIZE;
+}
+
 }

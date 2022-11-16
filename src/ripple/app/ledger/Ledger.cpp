@@ -1721,7 +1721,7 @@ storePeersafeSql(
         AccountID addrContract = *getContractAddress(*pTx);
         std::string sAddress = txType == ttCONTRACT
             ? to_string(addrContract)
-            : to_string(uint160(addrContract));
+            : "0x" + to_string(uint160(addrContract));
         sqlBody = boost::str(
             boost::format(bfTrans) % to_string(pTx->getTransactionID()) %
             format->getName() % SeqInLedger % inLedger % sAddress % "");

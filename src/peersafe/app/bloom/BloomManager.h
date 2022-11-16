@@ -38,6 +38,9 @@ public:
     boost::optional<uint32_t>
     getBloomStartSeq();
 
+    uint32_t
+    getSectionBySeq(uint32_t seq);
+
 private:
     uint256
     bloomStartLedgerKey();
