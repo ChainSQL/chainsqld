@@ -80,7 +80,7 @@ Matcher::execute(const LedgerIndex& from,
     uint32_t toSections = to / sectionSize_;
     
     std::map<uint32_t, Blob> partialMatch;
-    for(uint32_t section = fromSections; section < toSections; section++) {
+    for(uint32_t section = fromSections; section <= toSections; section++) {
         Blob next(sectionSize_/8, '0xFF');
         for(auto const& bloom: filters_) {
             next = subMatch(next, section, bloom);
