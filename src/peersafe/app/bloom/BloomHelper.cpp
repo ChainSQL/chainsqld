@@ -30,7 +30,7 @@ BloomHelper::calcBloom()
     Bloom bloom;
     for (auto const& jvLog : vecLogs_)
     {
-        auto txLogs = parseContractLogs(jvLog.second);
+        auto txLogs = parseContractLogs(jvLog.second, "");
         for (auto const& log : txLogs)
         {
             bloom.add(Slice(jvLog.first.data(),jvLog.first.size()));

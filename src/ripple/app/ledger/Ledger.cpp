@@ -57,6 +57,7 @@
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/bloom/BloomManager.h>
+#include <eth/api/utils/Helpers.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -1642,7 +1643,9 @@ storePeersafeSql(
     if (pTx == nullptr)
         return false;
     TxType txType = pTx->getTxnType();
-    if (!pTx->isChainSqlTableType() && txType != ttCONTRACT)
+    if (!pTx->isChainSqlTableType() &&
+        txType != ttCONTRACT &&
+        txType != ttETH_TX)
         return false;
 
     static std::string const sqlHeader =
@@ -1713,25 +1716,15 @@ storePeersafeSql(
 
         *db << sqlExe;
     }
-    if (txType == ttCONTRACT)
+    if (txType == ttCONTRACT || txType == ttETH_TX)
     {
-        AccountID addrContract;
-        if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
-        {
-            CommonKey::HashType hashType = safe_cast<TxType>(pTx->getFieldU16(sfTransactionType)) == ttETH_TX ? CommonKey::sha3 : CommonKey::sha;
-            
-            addrContract = Contract::calcNewAddress(
-                pTx->getAccountID(sfAccount), pTx->getFieldU32(sfSequence), hashType);
-        }
-        else
-        {
-            addrContract = pTx->getAccountID(sfContractAddress);
-        }
-
+        AccountID addrContract = *getContractAddress(*pTx);
+        std::string sAddress = txType == ttCONTRACT
+            ? to_string(addrContract)
+            : to_string(uint160(addrContract));
         sqlBody = boost::str(
             boost::format(bfTrans) % to_string(pTx->getTransactionID()) %
-            format->getName() % SeqInLedger % inLedger %
-            toBase58(addrContract) % "");
+            format->getName() % SeqInLedger % inLedger % sAddress % "");
 
         sqlExe = sqlHeader + sqlBody;
 

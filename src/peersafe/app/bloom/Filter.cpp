@@ -71,17 +71,22 @@ getLogsByLedger(Schema& schame, const Ledger* ledger) {
                 continue;
             }
             
+            auto tx = txn->getSTransaction();
+            auto type = tx->getFieldU16(sfTransactionType);
+            if (type != ttETH_TX && type != ttCONTRACT)
+                continue;
+
             value["blockHash"] = "0x" + to_string(ledger->info().hash);
             value["blockNumber"] = txn->getLedger();
-            
-            auto tx = txn->getSTransaction();
             if (tx->isFieldPresent(sfContractAddress)) {
                 uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
                 value["to"] = "0x" + to_string(toAccount);
             } else {
                 value["to"] = Json::nullValue;
             }
-            
+
+            std::string contractAddress =
+                "0x" + to_string(uint160(*getContractAddress(*tx)));
             if(!txn->getMeta().empty()) {
                 auto meta = std::make_shared<TxMeta>(txn->getID(),
                                                      txn->getLedger(),
@@ -95,7 +100,7 @@ getLogsByLedger(Schema& schame, const Ledger* ledger) {
                     std::string logDataStr = std::string(logData.begin(), logData.end());
                     Json::Value logs;
                     Json::Reader().parse(logDataStr, logs);
-                    Json::Value parsedLog = parseContractLogs(logs, value);
+                    Json::Value parsedLog = parseContractLogs(logs,contractAddress, value);
                     result.append(parsedLog);
                 }
             }

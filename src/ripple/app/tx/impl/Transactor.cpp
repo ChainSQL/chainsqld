@@ -41,12 +41,14 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/Contract.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/STMap256.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/bloom/BloomHelper.h>
+#include <eth/api/utils/Helpers.h>
 
 
 namespace ripple {
@@ -1136,11 +1138,11 @@ Transactor::operator()()
         ctx_.apply(terResult);
         if (terResult == tesSUCCESS && 
             ctx_.view().rules().enabled(featureBloomFilter) &&
-            ctx_.tx.isFieldPresent(sfContractAddress))
+            ctx_.tx.getLogs().size() > 0)
         {
+            auto address = *getContractAddress(ctx_.tx);
             ctx_.app.getBloomManager().bloomHelper().addContractLog(
-                ctx_.tx.getAccountID(sfContractAddress),
-                ctx_.tx.getLogs());
+                address, ctx_.tx.getLogs());
         }
     }
 

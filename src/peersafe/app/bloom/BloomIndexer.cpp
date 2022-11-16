@@ -58,6 +58,8 @@ BloomGenerator::bitSet(uint32_t idx)
     return blooms[idx];
 }
 
+//-------------------------------------------------------------------
+
 BloomIndexer::BloomIndexer(Schema& app, beast::Journal j)
     : app_(app), j_(j),
     storedSections_(0), 
@@ -66,9 +68,16 @@ BloomIndexer::BloomIndexer(Schema& app, beast::Journal j)
 }
 
 void
+BloomIndexer::setBloomStartSeq(boost::optional<uint32_t> startSeq)
+{
+    bloomStartSeq_ = startSeq;
+}
+
+void
 BloomIndexer::init(boost::optional<uint32_t> startSeq)
 {
-    if(bloomStartSeq_ = startSeq,bloomStartSeq_)
+    setBloomStartSeq(startSeq);
+    if(bloomStartSeq_)
     {
         readStoredSection();
     }        
@@ -111,7 +120,7 @@ BloomIndexer::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
     {
         app_.getJobQueue().addJob(
             jtSAVE_SECTIONS,
-            "advanceLedger",
+            "saveSection",
             [this](Job&) { 
                 processSections(); 
             },

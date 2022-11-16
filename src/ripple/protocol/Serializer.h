@@ -380,6 +380,12 @@ public:
         return getBitString<256>();
     }
 
+    uint2048
+    get2048()
+    {
+        return getBitString<2048>();
+    }
+
     void
     getFieldID(int& type, int& name);
 

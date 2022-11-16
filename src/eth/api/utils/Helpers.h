@@ -68,7 +68,13 @@ TransactionSkeleton
 toTransactionSkeleton(Json::Value const& _json);
 
 Json::Value
-parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult = Json::nullValue);
+parseContractLogs(
+    Json::Value const& jvLogs, 
+    std::string address, 
+    Json::Value const& jvResult = Json::nullValue);
+
+boost::optional<AccountID>
+getContractAddress(STTx const& tx);
 
 }  // namespace ripple
 

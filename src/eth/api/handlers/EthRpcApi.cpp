@@ -394,6 +394,9 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
             return jvResult;
         }
         auto tx = txn->getSTransaction();
+        if (tx->getTxnType() != ttETH_TX)
+            return jvResult;
+
         auto ledger = 
             context.app.getLedgerMaster().getLedgerBySeq(txn->getLedger());
         jvResult["transactionHash"] = "0x" + txHash;
@@ -402,14 +405,18 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         {
             jvResult["blockHash"] = Json::nullValue;
             jvResult["blockNumber"] = Json::nullValue;
+            jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
         }
         else
         {
             jvResult["blockHash"] = "0x" + to_string(ledger->info().hash);
             jvResult["blockNumber"] = toHexString(txn->getLedger());
+            jvResult["logsBloom"] = "0x" + to_string(ledger->info().bloom);
         }
         auto accountID = tx->getAccountID(sfAccount);
         uint160 fromAccount = uint160(accountID);
+        auto contractAccount = *getContractAddress(*tx);
+        std::string contractAddress = "0x" + to_string(uint160(contractAccount));
         jvResult["from"] = "0x" + to_string(fromAccount);
         if (tx->isFieldPresent(sfContractAddress))
         {
@@ -463,7 +470,8 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
                     std::string ctrLogDataStr = std::string(ctrLogData.begin(), ctrLogData.end());
                     Json::Value jvLogs;
                     Json::Reader().parse(ctrLogDataStr, jvLogs);
-                    jvResult["logs"] = parseContractLogs(jvLogs,jvResult);
+                    jvResult["logs"] =
+                        parseContractLogs(jvLogs, contractAddress, jvResult);
                 }
             }
             catch (...)
@@ -476,12 +484,10 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         if (!tx->isFieldPresent(sfContractAddress) &&
             tx->isFieldPresent(sfContractData))
         {
-            // calculate contract address
-            auto newAddress = Contract::calcNewAddress(
-                accountID, tx->getFieldU32(sfSequence), CommonKey::sha3);
-            jvResult["contractAddress"] = "0x" + ethAddrChecksum(to_string(uint160(newAddress)));
+            jvResult["contractAddress"] =
+                "0x" + ethAddrChecksum(contractAddress);
         }
-        jvResult["logsBloom"] = "0x" + to_string(base_uint<8 * 256>());
+        
         jvResult["root"] = "0x" + to_string(uint256());
     }
     catch (std::exception&)

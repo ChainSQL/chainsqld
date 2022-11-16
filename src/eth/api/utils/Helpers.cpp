@@ -11,6 +11,8 @@
 #include <ripple/rpc/impl/RPCHelpers.h>
 #include <ripple/app/ledger/LedgerMaster.h>
 #include <eth/api/utils/TransactionSkeleton.h>
+#include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/Contract.h>
 
 namespace ripple {
 
@@ -157,7 +159,10 @@ toTransactionSkeleton(Json::Value const& _json)
 }
 
 Json::Value
-parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult)
+parseContractLogs(
+    Json::Value const& jvLogs,
+    std::string address,
+    Json::Value const& jvResult)
 {
     Json::Value ret(Json::arrayValue);
     for (auto it = jvLogs.begin(); it != jvLogs.end(); it++)
@@ -170,9 +175,10 @@ parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult)
             jvLogItem["transactionHash"] = jvResult["transactionHash"];
             jvLogItem["blockHash"] = jvResult["blockHash"];
             jvLogItem["blockNumber"] = jvResult["blockNumber"];
-            jvLogItem["address"] = jvResult["to"];
             jvLogItem["data"] = "0x" + (*it)["contract_data"].asString();
         }
+
+        jvLogItem["address"] = address;
 
         Json::Value jvLogItemTopics;
         Json::Value jvLogTopics = (*it)["contract_topics"];
@@ -186,6 +192,30 @@ parseContractLogs(Json::Value const& jvLogs, Json::Value const& jvResult)
         ret.append(jvLogItem);
     }
     return ret;
+}
+
+boost::optional<AccountID>
+getContractAddress(STTx const& tx)
+{
+    if (tx.isFieldPresent(sfContractAddress))
+    {
+        return tx.getAccountID(sfContractAddress);
+    }
+    else if (
+        tx.isFieldPresent(sfContractOpType) &&
+        tx.getFieldU16(sfContractOpType) == ContractCreation)
+    {
+        CommonKey::HashType hashType =
+            safe_cast<TxType>(tx.getFieldU16(sfTransactionType)) == ttETH_TX
+            ? CommonKey::sha3
+            : CommonKey::sha;
+        return Contract::calcNewAddress(
+            tx.getAccountID(sfAccount),
+            tx.getFieldU32(sfSequence),
+            hashType);
+    }
+    else
+        return boost::none;
 }
 
 }  // namespace ripple

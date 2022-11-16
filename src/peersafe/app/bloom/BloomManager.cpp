@@ -35,6 +35,7 @@ BloomManager::init()
 void BloomManager::saveBloomStartLedger(uint32_t seq, uint256 const& hash)
 {
     bloomStartSeq_ = seq;
+    indexer_.setBloomStartSeq(seq);
     Serializer s(128);
     s.add32(seq);
     s.add256(hash);

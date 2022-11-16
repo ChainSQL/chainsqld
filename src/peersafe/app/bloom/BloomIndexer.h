@@ -27,7 +27,11 @@ class BloomIndexer
 public:
     BloomIndexer(Schema& app, beast::Journal j);
 
-    void init(boost::optional<uint32_t> startSeq);
+    void
+    setBloomStartSeq(boost::optional<uint32_t> startSeq);
+
+    void
+    init(boost::optional<uint32_t> startSeq);
 
     void
     onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted);
