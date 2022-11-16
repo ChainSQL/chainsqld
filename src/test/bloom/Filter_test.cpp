@@ -19,6 +19,9 @@
 
 #include <string>
 #include <tuple>
+#include <map>
+
+#include <boost/algorithm/string/trim.hpp>
 
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/jss.h>
@@ -28,6 +31,7 @@
 #include <peersafe/app/bloom/Filter.h>
 #include <peersafe/app/bloom/Matcher.h>
 #include <peersafe/app/bloom/Bloom.h>
+#include <peersafe/app/bloom/BloomIndexer.h>
 
 #include <test/jtx.h>
 
@@ -42,30 +46,93 @@ public:
         filter->Logs();
         BEAST_EXPECT(true);
     }
+
+    uint256
+    bloomBitsKey(uint32_t bit,
+                 uint32_t section)
+    {
+        return sha512Half<CommonKey::sha>(BLOOM_PREFIX,
+                                          bit,
+                                          section);
+    }
     
-//    void bloomBit_test() {
-//        std::string s = "peersafe";
-//        Slice slice(s.data(), s.size());
-//        Bloom bloom;
-//        uint32_t i1,i2,i3;
-//        uint8_t v1,v2,v3;
-//        std::tie(i1, v1, i2, v2, i3, v3) = bloom.bloomValues(slice);
-//        
-//        Matcher::bloomIndexes indexes = Matcher::calcBloomIndexes(slice);
-//        
-//        uint32_t bit_v1 = i1*8 + v1;
-//        uint32_t bit_v2 = i2*8 + v2;
-//        uint32_t bit_v3 = i3*8 + v3;
-//        bool b1 = (2048 - bit_v1) == indexes[0] + 7;
-//        bool b2 = (2048 - bit_v2) == indexes[1] + 7;
-//        bool b3 = (2048 - bit_v3) == indexes[2] + 2;
-//        BEAST_EXPECT(b1);
-//        BEAST_EXPECT(b2);
-//        BEAST_EXPECT(b3);
-//    }
+    void generator_test() {
+        std::string pattern = "President Xi couple mask off, %1% but the entourage maks on. Anogher sign? ";
+        BloomGenerator generator;
+        for(auto i = 0; i < 10; i ++) {
+            std::string data = (boost::format(pattern) % i).str();
+            Bloom bloom;
+            bloom.add(Slice(data.data(), data.size()));
+            generator.addBloom(i, bloom.value());
+        }
+        
+        for(auto i = 10; i < 4096; i ++) {
+            std::string data = (boost::format(pattern) % (i+100)).str();
+            Bloom bloom;
+            bloom.add(Slice(data.data(), data.size()));
+            generator.addBloom(i, bloom.value());
+        }
+        
+        std::map<uint256, uint8_t*> kvTable;
+        for (int i = 0; i < BLOOM_LENGTH; i++) {
+            uint256 key = bloomBitsKey(i, 0);
+            kvTable[key] = generator.bitSet(i);
+        }
+        
+        for(auto i = 0; i < 10; i ++) {
+            std::string queryStr = (boost::format(pattern) % i).str();
+            Slice query(queryStr.data(), queryStr.size());
+            Matcher::bloomIndexes indexes = Matcher::calcBloomIndexes(query);
+            uint256 key1 = bloomBitsKey(indexes[0], 0);
+            uint256 key2 = bloomBitsKey(indexes[1], 0);
+            uint256 key3 = bloomBitsKey(indexes[2], 0);
+            
+            uint8_t* v1 = kvTable[key1];
+            uint8_t* v2 = kvTable[key2];
+            uint8_t* v3 = kvTable[key3];
+            
+            auto byteIndex = i / 8;
+            auto bit = 7 - i%8;
+            uint8_t byte1 = v1[byteIndex];
+            bool ok1 = (byte1 &(1<<bit)) != 0;
+            
+            uint8_t byte2 = v2[byteIndex];
+            bool ok2 = (byte2 &(1<<bit)) != 0;
+            
+            uint8_t byte3 = v3[byteIndex];
+            bool ok3 = (byte3 &(1<<bit)) != 0;
+            BEAST_EXPECT(ok1 && ok2 && ok3);
+        }
+        
+        
+        for(auto i = 10; i < 110; i++) {
+            std::string queryStr = (boost::format(pattern) % i).str();
+            Slice query(queryStr.data(), queryStr.size());
+            Matcher::bloomIndexes indexes = Matcher::calcBloomIndexes(query);
+            uint256 key1 = bloomBitsKey(indexes[0], 0);
+            uint256 key2 = bloomBitsKey(indexes[1], 0);
+            uint256 key3 = bloomBitsKey(indexes[2], 0);
+
+            uint8_t* v1 = kvTable[key1];
+            uint8_t* v2 = kvTable[key2];
+            uint8_t* v3 = kvTable[key3];
+
+            auto byteIndex = i / 8;
+            auto bit = 7 - i%8;
+            uint8_t byte1 = v1[byteIndex];
+            bool ok1 = (byte1 &(1<<bit)) != 0;
+
+            uint8_t byte2 = v2[byteIndex];
+            bool ok2 = (byte2 &(1<<bit)) != 0;
+
+            uint8_t byte3 = v3[byteIndex];
+            bool ok3 = (byte3 &(1<<bit)) != 0;
+            BEAST_EXPECT((ok1 && ok2 && ok3) == false);
+        }
+    }
     
     void run() override {
-        //bloomBit_test();
+        generator_test();
         filter_test();
     }
 };
