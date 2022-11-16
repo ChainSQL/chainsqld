@@ -76,12 +76,12 @@ std::vector<LedgerIndex>
 Matcher::execute(const LedgerIndex& from,
                  const LedgerIndex& to) {
     // 先计算 from 和 to 分布在哪些 sections 上
-    uint32_t fromSections = from / sectionSize_;
-    uint32_t toSections = to / sectionSize_;
+    uint32_t fromSections = schame_.getBloomManager().getSectionBySeq(from);
+    uint32_t toSections = schame_.getBloomManager().getSectionBySeq(to);
     
     std::map<uint32_t, Blob> partialMatch;
     for(uint32_t section = fromSections; section <= toSections; section++) {
-        Blob next(sectionSize_/8, '0xFF');
+        Blob next(sectionSize_/8, 0xFF);
         for(auto const& bloom: filters_) {
             next = subMatch(next, section, bloom);
         }
@@ -103,7 +103,7 @@ Matcher::execute(const LedgerIndex& from,
         
         // Iterate over all the blocks in the section
         // and return the matching ones
-        for(auto i = first; i < last; i ++) {
+        for(auto i = first; i <= last; i ++) {
             // Skip the entire byte if no matches
             // are found inside (and we're processing an entire byte!)
             unsigned char next = match.second[(i - sectionStart)/8];
@@ -134,7 +134,10 @@ Blob Matcher::subMatch(const Blob& next,
         Blob andResult;
         for(uint32_t const& bit: index) {
             Blob blob = schame_.getBloomManager().bloomIndexer().getBloomBits(bit, section);
-            assert(sectionSize_/8 == blob.size());
+            if(!blob.empty()) {
+                assert(sectionSize_/8 == blob.size());
+            }
+            
             if(andResult.empty()) {
                 andResult = blob;
             } else {
