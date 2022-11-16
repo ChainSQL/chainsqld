@@ -1111,6 +1111,7 @@ if(enableTest)
    src/test/bloom/Bloom_test.cpp
    src/test/bloom/Matcher_test.cpp
    src/test/bloom/Filter_test.cpp
+   src/test/bloom/BloomGenerator_test.cpp
   )
 endif()
 

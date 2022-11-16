@@ -24,6 +24,8 @@ public:
                               const uint32_t sectionSize,
                               const std::vector<std::vector<Slice>>& filters);
     
+    static bloomIndexes calcBloomIndexes(const Slice& s);
+    
     Matcher() = delete;
     Matcher(Schema& schame,
             const uint32_t sectionSize,
@@ -33,8 +35,9 @@ public:
     std::vector<LedgerIndex> execute(const LedgerIndex& from,
                                      const LedgerIndex& to);
     
+    
+    
 private:
-    static bloomIndexes calcBloomIndexes(const Slice& s);
     Blob subMatch(const Blob& next,
                   const uint32_t section,
                   const std::vector<bloomIndexes>& bloom);

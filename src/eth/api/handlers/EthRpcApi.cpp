@@ -906,7 +906,11 @@ doEthGetLogs(RPC::JsonContext& context) {
             queryContext.params = query;
             std::shared_ptr<ReadView const> ledger;
             RPC::lookupLedger(ledger, queryContext);
-            fromBlock = ledger->info().seq;
+            if(ledger) {
+                fromBlock = ledger->info().seq;
+            } else {
+                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+            }
         }
         
         if(params["toBlock"].isNumeric()) {
@@ -918,7 +922,11 @@ doEthGetLogs(RPC::JsonContext& context) {
             queryContext.params = query;
             std::shared_ptr<ReadView const> ledger;
             RPC::lookupLedger(ledger, queryContext);
-            toBlock = ledger->info().seq;
+            if(ledger) {
+                toBlock = ledger->info().seq;
+            } else {
+                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+            }
         }
 
         retriveAddressesAndTopics(params, addresses, topics);
@@ -930,6 +938,34 @@ doEthGetLogs(RPC::JsonContext& context) {
     } else {
         result[jss::result] = Json::objectValue;
     }
+    return result;
+}
+
+Json::Value
+doEthGetFilterLogs(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = Json::Value(Json::arrayValue);
+    return result;
+}
+
+Json::Value
+doEthGetFilterChanges(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = Json::Value(Json::arrayValue);
+    return result;
+}
+
+Json::Value
+doEthNewFilter(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = "0x01";
+    return result;
+}
+
+Json::Value
+doEthUninstallFilter(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = true;
     return result;
 }
 

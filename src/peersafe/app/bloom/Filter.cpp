@@ -126,7 +126,6 @@ Json::Value filterLogs(const Json::Value& unfilteredLogs,
                        const std::uint32_t to,
                        const std::vector<uint160>& addresses,
                        const std::vector<std::vector<uint256>>& topics) {
-    std::string ss = Json::jsonAsString(unfilteredLogs);
     Json::Value result(Json::arrayValue);
 Logs:
     for (auto const& logs : unfilteredLogs) {
@@ -305,7 +304,7 @@ std::tuple<Json::Value, bool> Filter::unindexedLogs(const LedgerIndex& end) {
         }
         auto result = blockLogs(block.get());
         if(!std::get<1>(result)) {
-            return std::make_tuple(logs, false);
+            continue;
         }
         for(auto const& log: std::get<0>(result)) {
             logs.append(log);
@@ -326,7 +325,7 @@ std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
         
         auto result = blockLogs(block.get());
         if(!std::get<1>(result)) {
-            return std::make_tuple(logs, false);
+            continue;
         }
         
         for(auto const& log: std::get<0>(result)) {
