@@ -900,7 +900,11 @@ doEthGetLogs(RPC::JsonContext& context) {
             queryContext.params = query;
             std::shared_ptr<ReadView const> ledger;
             RPC::lookupLedger(ledger, queryContext);
-            fromBlock = ledger->info().seq;
+            if(ledger) {
+                fromBlock = ledger->info().seq;
+            } else {
+                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+            }
         }
         
         if(params["toBlock"].isNumeric()) {
@@ -912,7 +916,11 @@ doEthGetLogs(RPC::JsonContext& context) {
             queryContext.params = query;
             std::shared_ptr<ReadView const> ledger;
             RPC::lookupLedger(ledger, queryContext);
-            toBlock = ledger->info().seq;
+            if(ledger) {
+                toBlock = ledger->info().seq;
+            } else {
+                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+            }
         }
 
         retriveAddressesAndTopics(params, addresses, topics);
