@@ -41,6 +41,9 @@ public:
     uint32_t
     getSectionBySeq(uint32_t seq);
 
+    std::pair<uint32_t, uint32_t>
+    getSectionRange(uint32_t section);
+
 private:
     uint256
     bloomStartLedgerKey();

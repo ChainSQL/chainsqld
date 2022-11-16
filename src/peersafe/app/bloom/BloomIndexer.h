@@ -45,6 +45,9 @@ public:
     std::pair<uint32_t, uint32_t>
     bloomStatus();
 
+    std::pair<uint32_t, uint32_t>
+    getSectionRange(uint32_t section);
+
 private:
     void
     processSections();

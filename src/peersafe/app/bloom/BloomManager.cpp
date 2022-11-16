@@ -74,4 +74,10 @@ BloomManager::getSectionBySeq(uint32_t seq)
     return (seq - *bloomStartSeq_) / DEFAULT_SECTION_SIZE;
 }
 
+std::pair<uint32_t, uint32_t>
+BloomManager::getSectionRange(uint32_t section)
+{
+    return indexer_.getSectionRange(section);
+}
+
 }

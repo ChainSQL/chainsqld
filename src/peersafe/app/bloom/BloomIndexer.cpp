@@ -89,13 +89,21 @@ BloomIndexer::bloomStatus()
     return std::make_pair(DEFAULT_SECTION_SIZE, storedSections_);
 }
 
+std::pair<uint32_t, uint32_t>
+BloomIndexer::getSectionRange(uint32_t section)
+{
+    auto start = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE;
+    auto end = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE - 1;
+    return std::make_pair(start,end);
+}
+
 Blob
 BloomIndexer::getBloomBits(uint32_t bit, uint32_t section)
 {
     if (!bloomStartSeq_)
         return Blob{};
 
-    uint32_t lastSeq = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE - 1;
+    uint32_t lastSeq = getSectionRange(section).second;
     auto ledger = app_.getLedgerMaster().getLedgerBySeq(lastSeq);
     if (!ledger)
         return Blob{};
@@ -131,8 +139,9 @@ BloomIndexer::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
 bool
 BloomIndexer::processSection(uint32_t section)
 {
-    auto start = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE;
-    auto end = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE - 1;
+    auto range = getSectionRange(section);
+    auto start = range.first;
+    auto end = range.second;
     if (!app_.getLedgerMaster().haveLedger(start,end))
         return false;
 
