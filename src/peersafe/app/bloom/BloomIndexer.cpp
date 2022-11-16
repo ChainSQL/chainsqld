@@ -14,7 +14,8 @@ BloomGenerator::BloomGenerator()
     blooms = new uint8_t*[BLOOM_LENGTH];
     for (int i=0; i<BLOOM_LENGTH; i++)
     {
-        blooms[i] = new uint8_t[DEFAULT_SECTION_SIZE];
+        blooms[i] = new uint8_t[DEFAULT_SECTION_SIZE/8];
+        memset(blooms[i], 0, DEFAULT_SECTION_SIZE/8);
     }
 }
 
@@ -22,9 +23,9 @@ BloomGenerator::~BloomGenerator()
 {
     for (int i=0; i<BLOOM_LENGTH; i++)
     {
-        delete blooms[i];
+        delete []blooms[i];
     }
-    delete blooms;
+    delete []blooms;
 }
 
 void
@@ -85,7 +86,7 @@ BloomIndexer::getBloomBits(uint32_t bit, uint32_t section)
     if (!bloomStartSeq_)
         return Blob{};
 
-    uint32_t lastSeq = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE - 1;
+    uint32_t lastSeq = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE - 1;
     auto ledger = app_.getLedgerMaster().getLedgerBySeq(lastSeq);
     if (!ledger)
         return Blob{};
@@ -105,11 +106,11 @@ BloomIndexer::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
         return;
 
     knownSections_ =
-        (lpAccepted->info().seq - *bloomStartSeq_) / DEFAULT_SECTION_SIZE;
+        (lpAccepted->info().seq - *bloomStartSeq_ + 1) / DEFAULT_SECTION_SIZE;
     if (knownSections_ > storedSections_)
     {
         app_.getJobQueue().addJob(
-            jtADVANCE,
+            jtSAVE_SECTIONS,
             "advanceLedger",
             [this](Job&) { 
                 processSections(); 
@@ -122,17 +123,17 @@ bool
 BloomIndexer::processSection(uint32_t section)
 {
     auto start = *bloomStartSeq_ + section * DEFAULT_SECTION_SIZE;
-    auto end = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE;
-    if (!app_.getLedgerMaster().haveLedger(start,end-1))
+    auto end = *bloomStartSeq_ + (section + 1) * DEFAULT_SECTION_SIZE - 1;
+    if (!app_.getLedgerMaster().haveLedger(start,end))
         return false;
 
     BloomGenerator bin;
     uint256 lastHash;
-    for (auto seq = start; seq < end; seq++)
+    for (auto seq = start; seq <= end; seq++)
     {
         auto ledger = app_.getLedgerMaster().getLedgerBySeq(seq);
         bin.addBloom(seq-start,ledger->info().bloom);
-        if (seq == end - 1)
+        if (seq == end)
             lastHash = ledger->info().hash;
     }
     //write to kv
@@ -141,7 +142,7 @@ BloomIndexer::processSection(uint32_t section)
         auto bits = bin.bitSet(i);
         
         Serializer s(128);
-        s.addVL(Slice(bits,DEFAULT_SECTION_SIZE));
+        s.addVL(Slice(bits,DEFAULT_SECTION_SIZE/8));
 
         app_.getNodeStore().store(
             hotBLOOM_SECTION_BIT, 
@@ -161,9 +162,9 @@ BloomIndexer::processSections()
         {
             if (!processSection(storedSections_))
                 break;
+            storedSections_++;
             saveStoredSection(storedSections_);
             JLOG(j_.info()) << "BloomIndexer saved section:" + storedSections_;
-            storedSections_++;
         }
     }
     catch (std::exception const& e)
