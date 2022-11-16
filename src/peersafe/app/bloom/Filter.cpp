@@ -300,7 +300,7 @@ std::tuple<Json::Value, bool> Filter::unindexedLogs(const LedgerIndex& end) {
         }
         auto result = blockLogs(block.get());
         if(!std::get<1>(result)) {
-            return std::make_tuple(logs, false);
+            continue;
         }
         for(auto const& log: std::get<0>(result)) {
             logs.append(log);
@@ -321,7 +321,7 @@ std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
         
         auto result = blockLogs(block.get());
         if(!std::get<1>(result)) {
-            return std::make_tuple(logs, false);
+            continue;
         }
         
         for(auto const& log: std::get<0>(result)) {
