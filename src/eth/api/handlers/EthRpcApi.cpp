@@ -882,11 +882,11 @@ doEthGetLogs(RPC::JsonContext& context) {
     Json::Value result;
     Json::Value logs;
     bool bok = false;
+    result[jss::result] = Json::Value(Json::arrayValue);
 
     auto bloomStartSeq = context.app.getBloomManager().getBloomStartSeq();
     if(!bloomStartSeq) {
         // Don't support bloom feature
-        result[jss::result] = Json::Value(Json::arrayValue);
         return result;
     }
     
@@ -917,7 +917,8 @@ doEthGetLogs(RPC::JsonContext& context) {
             if(ledger) {
                 fromBlock = ledger->info().seq;
             } else {
-                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+                result[jss::status] = ETH_ERROR_NUM_RETURN;
+                return result;
             }
         }
         
@@ -933,14 +934,14 @@ doEthGetLogs(RPC::JsonContext& context) {
             if(ledger) {
                 toBlock = ledger->info().seq;
             } else {
-                return result[jss::result] = ETH_ERROR_NUM_RETURN;
+                result[jss::status] = ETH_ERROR_NUM_RETURN;
+                return result;
             }
         }
         
         // query block is less than bloomStartSeq,
         // which don't support bloom feature
         if(toBlock < *bloomStartSeq) {
-            result[jss::result] = Json::Value(Json::arrayValue);
             return result;
         }
         
@@ -952,8 +953,6 @@ doEthGetLogs(RPC::JsonContext& context) {
     std::tie(logs, bok) = filter->Logs();
     if(bok) {
         result[jss::result] = logs;
-    } else {
-        result[jss::result] = Json::objectValue;
     }
     return result;
 }

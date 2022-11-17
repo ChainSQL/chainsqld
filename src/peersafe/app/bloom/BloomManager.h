@@ -38,11 +38,22 @@ public:
     boost::optional<uint32_t>
     getBloomStartSeq();
 
+    //Get section by ledger sequence
     uint32_t
     getSectionBySeq(uint32_t seq);
 
+    //Get section range
+    //first: start ledger sequence
+    //end: end ledger sequence(include)
     std::pair<uint32_t, uint32_t>
     getSectionRange(uint32_t section);
+
+    //Return ledger location
+    //0:section number(0-...)
+    //1:byte location (0-511)
+    //2:bit location (0-7)
+    std::tuple<uint32_t, uint32_t,uint8_t>
+    getLedgerLocation(uint32_t seq);
 
 private:
     uint256

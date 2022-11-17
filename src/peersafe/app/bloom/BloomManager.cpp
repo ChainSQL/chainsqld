@@ -80,4 +80,12 @@ BloomManager::getSectionRange(uint32_t section)
     return indexer_.getSectionRange(section);
 }
 
+std::tuple<uint32_t, uint32_t, uint8_t>
+BloomManager::getLedgerLocation(uint32_t seq)
+{
+    uint32_t section = getSectionBySeq(seq);
+    auto index = seq - (*bloomStartSeq_ + section * DEFAULT_SECTION_SIZE);
+    return std::make_tuple(section, index / 8, uint8_t(7 - index % 8));    
+}
+
 }
