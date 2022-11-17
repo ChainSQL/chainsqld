@@ -257,8 +257,8 @@ Handler const ethHandlerArray[]{
     {"eth_getFilterLogs", byRef(&doEthGetFilterLogs), Role::USER, NO_CONDITION},
     {"eth_getFilterChanges", byRef(&doEthGetFilterChanges), Role::USER, NO_CONDITION},
     {"eth_newFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
-    {"eth_newBlockFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
-    {"eth_newPendingTransactionFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
+    {"eth_newBlockFilter", byRef(&doEthNewBlockFilter), Role::USER, NO_CONDITION},
+    {"eth_newPendingTransactionFilter", byRef(&doEthNewPendingTransactionFilter), Role::USER, NO_CONDITION},
     {"eth_uninstallFilter", byRef(&doEthUninstallFilter), Role::USER, NO_CONDITION},
 };
 

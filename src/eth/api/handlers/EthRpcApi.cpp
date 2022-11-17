@@ -973,6 +973,20 @@ doEthNewFilter(RPC::JsonContext& context) {
 }
 
 Json::Value
+doEthNewPendingTransactionFilter(RPC::JsonContext& context) {
+    Json::Value result;
+    result[jss::result] = "0x01";
+    return result;
+}
+
+Json::Value
+doEthNewBlockFilter(RPC::JsonContext&) {
+    Json::Value result;
+    result[jss::result] = "0x01";
+    return result;
+}
+
+Json::Value
 doEthUninstallFilter(RPC::JsonContext& context) {
     Json::Value result;
     result[jss::result] = true;

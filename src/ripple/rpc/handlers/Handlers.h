@@ -245,6 +245,8 @@ Json::Value doEthGetLogs(RPC::JsonContext&);
 Json::Value doEthGetFilterLogs(RPC::JsonContext&);
 Json::Value doEthGetFilterChanges(RPC::JsonContext&);
 Json::Value doEthNewFilter(RPC::JsonContext&);
+Json::Value doEthNewPendingTransactionFilter(RPC::JsonContext&);
+Json::Value doEthNewBlockFilter(RPC::JsonContext&);
 Json::Value doEthUninstallFilter(RPC::JsonContext&);
 
 }  // namespace ripple
