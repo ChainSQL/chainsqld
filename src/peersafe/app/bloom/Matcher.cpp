@@ -105,12 +105,16 @@ Matcher::execute(const LedgerIndex& from,
         
         // Iterate over all the blocks in the section
         // and return the matching ones
-        first = first - sectionStart;
-        last = last - sectionStart;
         for(auto i = first; i <= last; i ++) {
             // Skip the entire byte if no matches
             // are found inside (and we're processing an entire byte!)
-            unsigned char next = match.second[i/8];
+            uint32_t section;
+            uint32_t byteIndex;
+            uint8_t bitIndex;
+            std::tie(section, byteIndex, bitIndex) = schame_.getBloomManager().getLedgerLocation(i);
+            assert(section == match.first);
+            
+            unsigned char next = match.second[byteIndex];
             if(next == 0) {
                 if((i % 8) == 0) {
                     i += 7;
@@ -119,10 +123,9 @@ Matcher::execute(const LedgerIndex& from,
             }
             
             // Some bit it set, do the actual submatching
-            uint32_t bit = 7 - i%8;
-            bool matched = (next & (1 << bit)) != 0;
+            bool matched = (next & (1 << bitIndex)) != 0;
             if(matched) {
-                matchedLedgers.push_back(i + sectionStart);
+                matchedLedgers.push_back(i);
             }
         }
     }
