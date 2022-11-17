@@ -122,7 +122,7 @@ Matcher::execute(const LedgerIndex& from,
             uint32_t bit = 7 - i%8;
             bool matched = (next & (1 << bit)) != 0;
             if(matched) {
-                matchedLedgers.push_back(i + 1);
+                matchedLedgers.push_back(i + sectionStart);
             }
         }
     }
