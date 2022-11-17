@@ -29,6 +29,7 @@
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/protocol/SecretKey.h>
 #include <peersafe/app/bloom/Filter.h>
+#include <peersafe/app/bloom/BloomManager.h>
 
 namespace ripple {
 
@@ -881,6 +882,13 @@ doEthGetLogs(RPC::JsonContext& context) {
     Json::Value result;
     Json::Value logs;
     bool bok = false;
+
+    auto bloomStartSeq = context.app.getBloomManager().getBloomStartSeq();
+    if(!bloomStartSeq) {
+        // Don't support bloom feature
+        result[jss::result] = Json::Value(Json::arrayValue);
+        return result;
+    }
     
     Filter::pointer filter = nullptr;
     std::vector<uint160> addresses;
@@ -928,10 +936,19 @@ doEthGetLogs(RPC::JsonContext& context) {
                 return result[jss::result] = ETH_ERROR_NUM_RETURN;
             }
         }
-
+        
+        // query block is less than bloomStartSeq,
+        // which don't support bloom feature
+        if(toBlock < *bloomStartSeq) {
+            result[jss::result] = Json::Value(Json::arrayValue);
+            return result;
+        }
+        
         retriveAddressesAndTopics(params, addresses, topics);
         filter = Filter::newRangeFilter(context.app, fromBlock, toBlock, addresses, topics);
     }
+    
+    
     std::tie(logs, bok) = filter->Logs();
     if(bok) {
         result[jss::result] = logs;
