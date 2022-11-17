@@ -252,15 +252,16 @@ std::tuple<Json::Value, bool> Filter::Logs() {
     uint32_t size = 0;
     uint32_t sectons = 0;
     std::tie(size, sectons) = bloomStatus();
-    uint32_t indexed = sectons * size;
+    auto curSectionRange = schame_.getBloomManager().getSectionRange(sectons - 1);
+    uint32_t indexed = std::get<1>(curSectionRange);
     
     Json::Value logs(Json::arrayValue);
     bool bok = false;
-    if(indexed > from_) {
+    if(indexed >= from_) {
         if(indexed > to_) {
             std::tie(logs, bok) = indexedLogs(to_);
         } else {
-            std::tie(logs, bok) = indexedLogs(indexed - 1);
+            std::tie(logs, bok) = indexedLogs(indexed);
         }
         if(!bok) {
             return std::make_tuple(logs, bok);

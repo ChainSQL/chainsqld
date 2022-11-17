@@ -75,7 +75,6 @@ Matcher::newMatcher(Schema& schame,
 std::vector<LedgerIndex>
 Matcher::execute(const LedgerIndex& from,
                  const LedgerIndex& to) {
-    // 先计算 from 和 to 分布在哪些 sections 上
     uint32_t fromSections = schame_.getBloomManager().getSectionBySeq(from);
     uint32_t toSections = schame_.getBloomManager().getSectionBySeq(to);
     
@@ -90,19 +89,25 @@ Matcher::execute(const LedgerIndex& from,
     
     std::vector<LedgerIndex> matchedLedgers;
     for(auto const& match: partialMatch) {
-        uint32_t sectionStart = match.first * sectionSize_;
+        LedgerIndex sectionStart = 0;
+        LedgerIndex sectionEnd = 0;
+        std::tie(sectionStart, sectionEnd) = schame_.getBloomManager().getSectionRange(match.first);
+        
         LedgerIndex first = sectionStart;
         if(from > first) {
             first = from;
         }
-        
-        LedgerIndex last = sectionStart + sectionSize_ - 1;
+    
+        LedgerIndex last = sectionEnd;
         if(to < last) {
             last = to;
         }
         
         // Iterate over all the blocks in the section
         // and return the matching ones
+        sectionStart = sectionStart - 1;
+        first = first - 1;
+        last = last - 1;
         for(auto i = first; i <= last; i ++) {
             // Skip the entire byte if no matches
             // are found inside (and we're processing an entire byte!)
@@ -118,7 +123,7 @@ Matcher::execute(const LedgerIndex& from,
             uint32_t bit = 7 - i%8;
             bool matched = (next & (1 << bit)) != 0;
             if(matched) {
-                matchedLedgers.push_back(i);
+                matchedLedgers.push_back(i + 1);
             }
         }
     }
