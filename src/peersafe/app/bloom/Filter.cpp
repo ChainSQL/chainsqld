@@ -318,7 +318,6 @@ std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
     Json::Value logs(Json::arrayValue);
     std::vector<LedgerIndex> matchedLedgers = matcher_->execute(from_, to_);
     for(auto const& seq: matchedLedgers) {
-        from_ = seq + 1;
         auto block = schame_.getLedgerMaster().getLedgerBySeq(seq);
         if (block == nullptr) {
             continue;
@@ -333,6 +332,7 @@ std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
             logs.append(log);
         }
     }
+    from_ = end + 1;
     return std::make_tuple(logs, true);
 }
 
