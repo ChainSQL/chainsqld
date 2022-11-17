@@ -28,11 +28,14 @@
 #include <ripple/protocol/digest.h>
 #include <ripple/beast/unit_test.h>
 
+#include <peersafe/schema/Schema.h>
 #include <peersafe/app/bloom/Matcher.h>
 #include <peersafe/app/bloom/Bloom.h>
 #include <peersafe/app/bloom/BloomIndexer.h>
+#include <peersafe/app/bloom/BloomManager.h>
 
 #include <test/jtx.h>
+#include <test/jtx/CheckMessageLogs.h>
 
 
 namespace ripple {
@@ -49,7 +52,7 @@ public:
     }
     
     void bloomseciton_test() {
-        std::string pattern = "President Xi couple mask off, %1% but the entourage maks on. Anogher sign? ";
+        std::string pattern = "President Xi couple mask off, %1% but the entourage makes on. Another sign? ";
         BloomGenerator generator;
         for(auto i = 0; i < 10; i ++) {
             std::string data = (boost::format(pattern) % i).str();
@@ -58,7 +61,7 @@ public:
             generator.addBloom(i, bloom.value());
         }
         
-        for(auto i = 10; i < 4096; i ++) {
+        for(auto i = 10; i < DEFAULT_SECTION_SIZE; i ++) {
             std::string data = (boost::format(pattern) % (i+100)).str();
             Bloom bloom;
             bloom.add(Slice(data.data(), data.size()));
@@ -100,19 +103,45 @@ public:
             BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())));
         }
         
-        for(auto i = 10; i < 110; i++) {
+        for (auto i = 10; i < DEFAULT_SECTION_SIZE; i++)
+        {
             std::string data = (boost::format(pattern) % i).str();
             BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())) == false);
         }
         
-        for(auto i = 10; i < 4096; i++) {
+        for (auto i = 10; i < DEFAULT_SECTION_SIZE; i++)
+        {
             std::string data = (boost::format(pattern) % (i + 100)).str();
             BEAST_EXPECT(matcher(i, Slice(data.data(), data.size())));
         }
     }
     
+    void bloom_util_test()
+    {
+        using namespace jtx;
+        bool found = false;
+        Env env{
+            *this,
+            envconfig(),
+            std::make_unique<CheckMessageLogs>("MISMATCH ", &found)};
+        
+        env.app().getBloomManager().saveBloomStartLedger(1,beast::zero);
+
+        auto sec1 = env.app().getBloomManager().getSectionBySeq(1);
+        BEAST_EXPECT(sec1 == 0);
+
+
+        auto range = env.app().getBloomManager().getSectionRange(0);
+        BEAST_EXPECT(range.first == 1 && range.second == DEFAULT_SECTION_SIZE);
+
+        uint32_t section, byteIndex, bitIndex;
+        std::tie(section,byteIndex,bitIndex) = env.app().getBloomManager().getLedgerLocation(1);
+        BEAST_EXPECT(section == 0 && byteIndex == 0 && bitIndex == 7);
+    }
+
     void run() override {
         bloomseciton_test();
+        bloom_util_test();
     }
 };
 
