@@ -916,9 +916,6 @@ doEthGetLogs(RPC::JsonContext& context) {
             RPC::lookupLedger(ledger, queryContext);
             if(ledger) {
                 fromBlock = ledger->info().seq;
-            } else {
-                result[jss::status] = ETH_ERROR_NUM_RETURN;
-                return result;
             }
         }
         
@@ -933,9 +930,6 @@ doEthGetLogs(RPC::JsonContext& context) {
             RPC::lookupLedger(ledger, queryContext);
             if(ledger) {
                 toBlock = ledger->info().seq;
-            } else {
-                result[jss::status] = ETH_ERROR_NUM_RETURN;
-                return result;
             }
         }
         
