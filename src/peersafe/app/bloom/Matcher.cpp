@@ -105,13 +105,12 @@ Matcher::execute(const LedgerIndex& from,
         
         // Iterate over all the blocks in the section
         // and return the matching ones
-        sectionStart = sectionStart - 1;
-        first = first - 1;
-        last = last - 1;
+        first = first - sectionStart;
+        last = last - sectionStart;
         for(auto i = first; i <= last; i ++) {
             // Skip the entire byte if no matches
             // are found inside (and we're processing an entire byte!)
-            unsigned char next = match.second[(i - sectionStart)/8];
+            unsigned char next = match.second[i/8];
             if(next == 0) {
                 if((i % 8) == 0) {
                     i += 7;
