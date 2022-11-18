@@ -382,7 +382,7 @@ doEthGetBalance(RPC::JsonContext& context)
 Json::Value
 doEthGetTransactionReceipt(RPC::JsonContext& context)
 {
-    Json::Value jvResult;
+    Json::Value jvResult(Json::objectValue);
     try
     {
         std::string txHash =
