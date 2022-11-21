@@ -1,12 +1,12 @@
 #include <ripple/app/ledger/LedgerMaster.h>
+#include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/basics/Slice.h>
+#include <ripple/basics/Blob.h>
 #include <ripple/json/json_value.h>
 #include <ripple/shamap/SHAMap.h>
-#include <ripple/app/ledger/TransactionMaster.h>
-#include <ripple/basics/Blob.h>
-#include <ripple/json/json_reader.h>
 
 #include <peersafe/app/bloom/Filter.h>
+#include <peersafe/app/bloom/FilterHelper.h>
 #include <peersafe/app/bloom/Bloom.h>
 #include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/bloom/BloomIndexer.h>
@@ -56,119 +56,28 @@ bool bloomFilter(const uint2048& bloom,
 }
 
 std::tuple<Json::Value, bool>
-getLogsByLedger(Schema& schame, const Ledger* ledger) {
-    Json::Value result(Json::arrayValue);
+getTxsFrom(const Ledger* ledger) {
+    Json::Value txs(Json::arrayValue);
     try {
         const SHAMap& txMap = ledger->txMap();
-        int index = 0;
         for(auto const& item: txMap) {
-            Json::Value value;
-            value["transactionHash"] = "0x" + to_string(item.key());
-            value["transactionIndex"] = std::to_string(++index);
-            
-            auto txn = schame.getMasterTransaction().fetch(item.key());
-            if(!txn) {
-                continue;
-            }
-            
-            auto tx = txn->getSTransaction();
-            auto type = tx->getFieldU16(sfTransactionType);
-            if (type != ttETH_TX && type != ttCONTRACT)
-                continue;
-
-            value["blockHash"] = "0x" + to_string(ledger->info().hash);
-            value["blockNumber"] = txn->getLedger();
-            if (tx->isFieldPresent(sfContractAddress)) {
-                uint160 toAccount = uint160(tx->getAccountID(sfContractAddress));
-                value["to"] = "0x" + to_string(toAccount);
-            } else {
-                value["to"] = Json::nullValue;
-            }
-
-            std::string contractAddress =
-                "0x" + to_string(uint160(*getContractAddress(*tx)));
-            if(!txn->getMeta().empty()) {
-                auto meta = std::make_shared<TxMeta>(txn->getID(),
-                                                     txn->getLedger(),
-                                                     txn->getMeta());
-                if(meta == nullptr) {
-                    return std::make_tuple(result, false);
-                }
-                Blob logData = meta->getContractLogData();
-                if(!logData.empty())
-                {
-                    std::string logDataStr = std::string(logData.begin(), logData.end());
-                    Json::Value logs;
-                    Json::Reader().parse(logDataStr, logs);
-                    Json::Value parsedLog = parseContractLogs(logs,contractAddress, value);
-                    result.append(parsedLog);
-                }
-            }
+            txs.append("0x" + to_string(item.key()));
         }
     } catch (std::exception& e) {
-        return std::make_tuple(result, false);
+        return std::make_tuple(txs, false);
     }
-    return std::make_tuple(result, true);
+    return std::make_tuple(txs, true);
 }
 
-
-bool includes(const std::vector<uint160>& addresses, const uint160& address) {
-    for(auto const& a: addresses) {
-        if (a == address) {
-            return true;
-        }
-    }
-    return false;
-}
-
-Json::Value filterLogs(const Json::Value& unfilteredLogs,
-                       const std::uint32_t from,
-                       const std::uint32_t to,
-                       const std::vector<uint160>& addresses,
-                       const std::vector<std::vector<uint256>>& topics) {
-    Json::Value result(Json::arrayValue);
-Logs:
-    for (auto const& logs : unfilteredLogs) {
-        for(auto const& log: logs) {
-            LedgerIndex seq = log["blockNumber"].asUInt();
-            if(from != -1 && from >= 0 && from > seq) {
-                continue;
-            }
-            if(to != -1 && to >=0 && to < seq) {
-                continue;
-            }
-            
-            uint160 address = from_hex_text<uint160>(log["address"].asString());
-            if(addresses.size() > 0 && !includes(addresses, address)) {
-                continue;
-            }
-            
-            Json::Value topicsObject = log["topics"];
-            assert(topicsObject.isArray());
-            // If the to filtered topics is greater than the amount of topics in logs, skip.
-            if(topics.size() > topicsObject.size()) {
-                continue;
-            }
-            
-            int topics_index = 0;
-            for(auto const& sub: topics) {
-                // empty rule set == wildcard
-                bool match = sub.size() == 0;
-                for(auto const& topic: sub) {
-                    std::string hex_topic = "0x" + toLowerStr(to_string(topic));
-                    if(topicsObject[topics_index].asString() == hex_topic) {
-                        match = true;
-                        break;
-                    }
-                }
-                if(!match) {
-                    goto Logs;
-                }
-            }
-            result.append(log);
-        }
-    }
-    return result;
+Filter::Filter(Schema& schame)
+:schame_(schame)
+,blockhash_(beast::zero)
+,matcher_(nullptr)
+,from_(0)
+,to_(0)
+,addresses_()
+,topics_() {
+    
 }
 
 Filter::Filter(Schema& schame,
@@ -186,6 +95,12 @@ Filter::Filter(Schema& schame,
 
 Filter::~Filter() {
     
+}
+
+Filter::pointer
+Filter::newFilter(Schema& schame) {
+    Filter::pointer f = std::make_shared<Filter>(schame);
+    return f;
 }
 
 Filter::pointer
@@ -287,12 +202,12 @@ std::tuple<Json::Value, bool> Filter::blockLogs(const Ledger* ledger) {
 }
 
 std::tuple<Json::Value, bool> Filter::checkMatches(const Ledger* ledger) {
-    auto result = getLogsByLedger(schame_, ledger);
+    auto result = Helper::getLogsByLedger(schame_, ledger);
     if(!std::get<1>(result)) {
         return result;
     }
-    
-    Json::Value filtered = filterLogs(std::get<0>(result), -1, -1, addresses_, topics_);
+
+    Json::Value filtered = Helper::filterLogs(std::get<0>(result), 0, 0, addresses_, topics_);
     return std::make_tuple(filtered, true);
 }
 
@@ -338,6 +253,16 @@ std::tuple<Json::Value, bool> Filter::indexedLogs(const LedgerIndex& end) {
 
 std::tuple<uint32_t, uint32_t> Filter::bloomStatus() {
     return schame_.getBloomManager().bloomIndexer().bloomStatus();
+}
+
+std::tuple<Json::Value, bool>
+Filter::getPendingTransactions() {
+    auto closed = schame_.getLedgerMaster().getClosedLedger();
+    if(closed == nullptr) {
+        return std::make_tuple(Json::Value(Json::arrayValue), false);
+    }
+    
+    return getTxsFrom(closed.get());
 }
 
 }

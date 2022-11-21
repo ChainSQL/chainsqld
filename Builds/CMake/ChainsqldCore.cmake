@@ -683,6 +683,8 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/bloom/BloomManager.cpp
   src/peersafe/app/bloom/Matcher.cpp
   src/peersafe/app/bloom/Filter.cpp
+  src/peersafe/app/bloom/FilterApi.cpp
+  src/peersafe/app/bloom/FilterHelper.cpp
   src/peersafe/basics/impl/characterUtilities.cpp
   src/peersafe/crypto/impl/AES.cpp
   src/peersafe/crypto/impl/ECDSAKey.cpp

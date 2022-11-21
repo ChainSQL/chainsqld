@@ -3896,6 +3896,7 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
     }
 
     app_.getBloomManager().bloomIndexer().onPubLedger(lpAccepted);
+    app_.getBloomManager().filterApi().onPubLedger(lpAccepted);
 }
 
 void

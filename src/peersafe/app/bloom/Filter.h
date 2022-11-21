@@ -16,6 +16,8 @@ class Filter {
 public:
     using pointer = std::shared_ptr<Filter>;
     
+    static pointer newFilter(Schema& schame);
+    
     static pointer newBlockFilter(Schema& schame,
                                   const uint256& blockHash,
                                   const std::vector<uint160>& addresses,
@@ -29,7 +31,28 @@ public:
     
     std::tuple<Json::Value, bool> Logs();
     
+    std::tuple<Json::Value, bool> getPendingTransactions();
+    
+    LedgerIndex fromBlock() const {
+        return from_;
+    }
+    
+    LedgerIndex toBlock() const {
+        return to_;
+    }
+    
+    const std::vector<uint160>&
+    addresses() const {
+        return addresses_;
+    }
+    
+    const std::vector<std::vector<uint256>>&
+    topics() const {
+        return topics_;
+    }
+    
     Filter() = delete;
+    Filter(Schema& schame);
     Filter(Schema& schame,
            const std::vector<uint160>& addresses,
            const std::vector<std::vector<uint256>>& topics);

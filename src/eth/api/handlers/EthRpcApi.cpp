@@ -29,6 +29,7 @@
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <ripple/protocol/SecretKey.h>
 #include <peersafe/app/bloom/Filter.h>
+#include <peersafe/app/bloom/FilterApi.h>
 #include <peersafe/app/bloom/BloomManager.h>
 
 namespace ripple {
@@ -876,31 +877,14 @@ void retriveAddressesAndTopics(const Json::Value& params,
     }
 }
 
-Json::Value
-doEthGetLogs(RPC::JsonContext& context) {
-    
-    Json::Value result;
-    Json::Value logs;
-    bool bok = false;
-    result[jss::result] = Json::Value(Json::arrayValue);
-
-    auto bloomStartSeq = context.app.getBloomManager().getBloomStartSeq();
-    if(!bloomStartSeq) {
-        // Don't support bloom feature
-        return result;
-    }
-    
-    Filter::pointer filter = nullptr;
-    std::vector<uint160> addresses;
-    std::vector<std::vector<uint256>> topics;
-    
+FilterQuery convertJsonParam(RPC::JsonContext& context) {
+    FilterQuery query;
     Json::Value params = context.params["realParams"][0u];
     
     if(params["blockHash"] != Json::Value()) {
         std::string hashStr = params["blockHash"].asString().substr(2);
-        auto blockHash = from_hex_text<uint256>(hashStr);
-        retriveAddressesAndTopics(params, addresses, topics);
-        filter = Filter::newBlockFilter(context.app, blockHash, addresses, topics);
+        query.blockHash = from_hex_text<uint256>(hashStr);
+        retriveAddressesAndTopics(params, query.addresses, query.topics);
     } else {
         LedgerIndex fromBlock = context.app.getLedgerMaster().getValidatedLedger()->info().seq;
         LedgerIndex toBlock = fromBlock;
@@ -933,16 +917,48 @@ doEthGetLogs(RPC::JsonContext& context) {
             }
         }
         
-        // query block is less than bloomStartSeq,
-        // which don't support bloom feature
-        if(toBlock < *bloomStartSeq) {
-            return result;
-        }
+        query.fromBlock = fromBlock;
+        query.toBlock = toBlock;
         
-        retriveAddressesAndTopics(params, addresses, topics);
-        filter = Filter::newRangeFilter(context.app, fromBlock, toBlock, addresses, topics);
+        retriveAddressesAndTopics(params, query.addresses, query.topics);
+    }
+    return query;
+}
+
+Json::Value
+doEthGetLogs(RPC::JsonContext& context) {
+    
+    Json::Value result;
+    Json::Value logs;
+    bool bok = false;
+    result[jss::result] = Json::Value(Json::arrayValue);
+
+    auto bloomStartSeq = context.app.getBloomManager().getBloomStartSeq();
+    if(!bloomStartSeq) {
+        // Don't support bloom feature
+        return result;
     }
     
+    Filter::pointer filter = nullptr;
+    FilterQuery query = convertJsonParam(context);
+    if(query.blockHash != beast::zero) {
+        filter = Filter::newBlockFilter(context.app,
+                                        query.blockHash,
+                                        query.addresses,
+                                        query.topics);
+    } else {
+        
+        if(query.toBlock < *bloomStartSeq) {
+            // query block is less than bloomStartSeq,
+            // which don't support bloom feature
+            return result;
+        }
+        filter = Filter::newRangeFilter(context.app,
+                                        query.fromBlock,
+                                        query.toBlock,
+                                        query.addresses,
+                                        query.topics);
+    }
     
     std::tie(logs, bok) = filter->Logs();
     if(bok) {
@@ -953,43 +969,58 @@ doEthGetLogs(RPC::JsonContext& context) {
 
 Json::Value
 doEthGetFilterLogs(RPC::JsonContext& context) {
-    Json::Value result;
-    result[jss::result] = Json::Value(Json::arrayValue);
-    return result;
+    return doEthGetFilterChanges(context);
 }
 
 Json::Value
 doEthGetFilterChanges(RPC::JsonContext& context) {
     Json::Value result;
-    result[jss::result] = Json::Value(Json::arrayValue);
+    Json::Value params = context.params["realParams"][0u];
+    assert(params.isString());
+    std::string id = params.asString();
+    FilterApi::FilterWrapper::pointer filter =context.app.getBloomManager().filterApi().getFilter(id);
+    if(filter) {
+        result[jss::result] = filter->result();
+    } else {
+        result[jss::result] = Json::Value(Json::arrayValue);
+    }
+    
     return result;
 }
 
 Json::Value
 doEthNewFilter(RPC::JsonContext& context) {
     Json::Value result;
-    result[jss::result] = "0x01";
+    FilterQuery query = convertJsonParam(context);
+    std::string id = context.app.getBloomManager().filterApi().installFilter(query);
+    result[jss::result] = id;
     return result;
 }
 
 Json::Value
 doEthNewPendingTransactionFilter(RPC::JsonContext& context) {
     Json::Value result;
-    result[jss::result] = "0x01";
+    std::string id = context.app.getBloomManager().filterApi().installPendingTransactionFilter();
+    result[jss::result] = id;
     return result;
 }
 
 Json::Value
-doEthNewBlockFilter(RPC::JsonContext&) {
+doEthNewBlockFilter(RPC::JsonContext& context) {
     Json::Value result;
-    result[jss::result] = "0x01";
+    std::string id = context.app.getBloomManager().filterApi().installBlockFilter();
+    result[jss::result] = id;
     return result;
 }
 
 Json::Value
 doEthUninstallFilter(RPC::JsonContext& context) {
     Json::Value result;
-    result[jss::result] = true;
+    Json::Value params = context.params["realParams"][0u];
+    assert(params.isString());
+    std::string id = params.asString();
+    bool released = context.app.getBloomManager().filterApi().uninstallFilter(id);
+    result[jss::result] = released;
     return result;
 }
 

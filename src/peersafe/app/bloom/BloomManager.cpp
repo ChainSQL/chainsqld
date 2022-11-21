@@ -10,9 +10,12 @@ namespace ripple {
 
 BloomManager::BloomManager(Schema& app, beast::Journal j)
     : app_(app), 
-    j_(j), 
-    indexer_(app, j), 
-    inited_(false)
+    j_(j),
+    helper_(),
+    indexer_(app, j),
+    filterApi_(app),
+    inited_(false),
+    bloomStartSeq_()
 {
 }
 

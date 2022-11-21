@@ -5,6 +5,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <peersafe/app/bloom/BloomHelper.h>
 #include <peersafe/app/bloom/BloomIndexer.h>
+#include <peersafe/app/bloom/FilterApi.h>
 
 namespace ripple {
 class Schema;
@@ -33,6 +34,12 @@ public:
     bloomIndexer()
     {
         return indexer_;
+    }
+    
+    inline FilterApi&
+    filterApi()
+    {
+        return filterApi_;
     }
 
     boost::optional<uint32_t>
@@ -63,7 +70,8 @@ private:
     Schema& app_;
     beast::Journal j_;
     BloomHelper helper_;
-    BloomIndexer indexer_; 
+    BloomIndexer indexer_;
+    FilterApi filterApi_;
     bool inited_;
     boost::optional<uint32_t> bloomStartSeq_;
 };
