@@ -180,7 +180,7 @@ FilterApi::onPubLedger(std::shared_ptr<ReadView const> const& lpAccepted) {
         .getJobQueue()
         .addJob(jtFilterAPI,
                 "FilterAPI",
-                [&, this](Job&) {
+                [lpAccepted, this](Job&) {
             handlePubLedger(lpAccepted);
         },schame_.doJobCounter());
 }
