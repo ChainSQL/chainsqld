@@ -96,8 +96,12 @@ ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr)
     }
     else
     {
-        ledgerIndexStr = ledgerIndexStr.substr(2);
-        params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
+        if(ledgerIndexStr[0] == '0' && (ledgerIndexStr[1] == 'x' || ledgerIndexStr['X'])) {
+            ledgerIndexStr = ledgerIndexStr.substr(2);
+            params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 16);
+        } else {
+            params[jss::ledger_index] = (int64_t)std::stoll(ledgerIndexStr, 0, 10);
+        }
     }
 }
 
