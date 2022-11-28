@@ -63,6 +63,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
@@ -166,6 +167,7 @@ private:
     std::unique_ptr<TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
+    std::unique_ptr<BloomManager> m_pBloomManager;
     std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
@@ -355,6 +357,11 @@ public:
               *this,
               SchemaImp::journal("StateManager")))
 
+        , m_pBloomManager(std::make_unique<BloomManager>(
+                *this,
+                SchemaImp::journal("BloomManager")
+            ))
+
         , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
@@ -529,6 +536,12 @@ public:
     getStateManager() override
     {
         return *m_pStateManager;
+    }
+
+    BloomManager&
+    getBloomManager() override
+    {
+        return *m_pBloomManager;
     }
 
     ConnectionPool&
@@ -911,7 +924,53 @@ public:
             mLedgerDB->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config_->getValueFor(SizedItem::lgrDBCache)));
+            {
+                std::string cid, name, type;
+                std::size_t notnull, dflt_value, pk;
+                soci::indicator ind;
+                {
+                    // Check if Transactions has field "TxResult"
+                    soci::statement st =
+                        (mLedgerDB->getSession().prepare
+                             << ("PRAGMA table_info(Ledgers);"),
+                         soci::into(cid),
+                         soci::into(name),
+                         soci::into(type),
+                         soci::into(notnull),
+                         soci::into(dflt_value, ind),
+                         soci::into(pk));
 
+                    st.execute();
+                    bool bHasBloom = false;
+                    while (st.fetch())
+                    {
+                        if (name == "Bloom")
+                        {
+                            bHasBloom = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!bHasBloom)
+                    {
+                        try
+                        {
+                            soci::statement st =
+                                mLedgerDB->getSession().prepare
+                                << LedgerAddBloom;
+                            st.execute(true);
+                        }
+                        catch (soci::soci_error&)
+                        {
+                            JLOG(m_journal.fatal())
+                                << "Ledgers database "
+                                   "add bloom field failed.";
+                            return false;
+                            // ignore errors
+                        }
+                    }
+                }
+            }
             // wallet database
             setup.useGlobalPragma = false;
             mWalletDB = std::make_unique<DatabaseCon>(
@@ -1242,6 +1301,8 @@ SchemaImp::setup()
     }
 
     Pathfinder::initPathTable();
+    
+    getBloomManager().init();
 
     auto const startUp = config_->START_UP;
     if (startUp == Config::FRESH)

@@ -51,6 +51,8 @@ addRaw(LedgerInfo const& info, Serializer& s)
     s.add32(info.closeTime.time_since_epoch().count());
     s.add8(info.closeTimeResolution.count());
     s.add8(info.closeFlags);
+    if (info.bloomEnabled)
+        s.addBitString(info.bloom);
 }
 
 bool

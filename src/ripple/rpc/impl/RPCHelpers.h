@@ -124,7 +124,7 @@ getLedger(T& ledger, LedgerShortcut shortcut, Context& context);
     been filled.
 */
 Json::Value
-lookupLedger(std::shared_ptr<ReadView const>&, JsonContext&);
+lookupLedger(std::shared_ptr<ReadView const>&, JsonContext&, bool bCheckOpenLedger = false);
 
 /** Look up a ledger from a request and fill a Json::Result with the data
     representing a ledger.

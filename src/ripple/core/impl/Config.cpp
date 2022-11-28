@@ -29,6 +29,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/protocol/CommonKey.h>
 #include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/core/string.hpp>
 #include <boost/format.hpp>
@@ -1058,6 +1059,18 @@ Config::loadFromString(std::string const& fileContents)
             ADMIN = ripple::parseBase58<AccountID>(result.first);
             if (!ADMIN)
                 Throw<std::runtime_error>("admin address is invalid");
+        }
+    }
+
+    if (exists(SECTION_ETH))
+    {
+        auto result = section(SECTION_ETH).find("account_private");
+        if (result.second && result.first.size() > 2)
+        {
+            if (isHexID(result.first.substr(2)))
+            {
+                ETH_DEFAULT_ACCOUNT_PRIVATE = result.first;
+            }
         }
     }
 

@@ -528,6 +528,7 @@ JSS(total_bytes_recv);        // out: Peers
 JSS(total_bytes_sent);        // out: Peers
 JSS(total_coins);             // out: LedgerToJson
 JSS(transTreeHash);           // out: ledger/Ledger.cpp
+JSS(bloom);
 JSS(transaction);             // in: Tx
                               // out: NetworkOPs, AcceptedLedgerTx,
 JSS(transaction_hash);        // out: RCLCxPeerPos, LedgerToJson

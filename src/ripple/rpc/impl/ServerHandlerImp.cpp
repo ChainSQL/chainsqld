@@ -45,6 +45,7 @@
 #include <peersafe/basics/characterUtilities.h>
 #include <ripple/server/impl/JSONRPCUtil.h>
 #include <peersafe/app/tx/impl/Tuning.h>
+#include <eth/api/utils/Helpers.h>
 // #include <beast/core/detail/base64.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -1004,7 +1005,15 @@ ServerHandlerImp::processRequest(
                 }
                 if (result.isMember(jss::error))
                 {
-                    r[jss::error] = result[jss::error];
+                    if (result.isMember(jss::error_code) &&
+                        result[jss::error_code].asInt() == rpcUNKNOWN_COMMAND)
+                    {
+                        r[jss::error] = formatEthError(ethMETHOD_NOT_FOUND)[jss::error];
+                    }
+                    else
+                    {
+                        r[jss::error] = result[jss::error];
+                    }
                 }
                 else
                 {

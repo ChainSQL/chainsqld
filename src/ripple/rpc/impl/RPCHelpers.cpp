@@ -535,11 +535,19 @@ lookupLedger(
 }
 
 Json::Value
-lookupLedger(std::shared_ptr<ReadView const>& ledger, JsonContext& context)
+lookupLedger(std::shared_ptr<ReadView const>& ledger, JsonContext& context, bool bCheckOpenLedger)
 {
     Json::Value result;
     if (auto status = lookupLedger(ledger, context, result))
         status.inject(result);
+    
+    if(bCheckOpenLedger)
+    {
+        //check if the new openLedger not created.
+        auto ledgerVal = context.app.getLedgerMaster().getValidatedLedger();
+        if (ledger->open() && ledger->info().seq <= ledgerVal->info().seq)
+            ledger = ledgerVal;
+    }
 
     return result;
 }

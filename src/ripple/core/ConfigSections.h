@@ -157,6 +157,8 @@ struct ConfigSection
 
 #define SECTION_GENESIS                 "genesis"
 
+#define SECTION_ETH                     "eth"
+
 }  // namespace ripple
 
 #endif

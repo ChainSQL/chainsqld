@@ -11,9 +11,8 @@
 #include <eth/vm/utils/keccak.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
 #include <peersafe/protocol/STMap256.h>
-#include <peersafe/protocol/STETx.h>
-#include <peersafe/app/util/Common.h>
 #include <ripple/protocol/Feature.h>
+#include <eth/api/utils/Helpers.h>
 
 namespace ripple {
 
@@ -564,7 +563,7 @@ TER
 Executive::exceptionToTerCode(eth::VMException const& _e)
 {
     // VM execution exceptions
-    if (!!dynamic_cast<OutOfGas const*>(&_e))
+    if (!!dynamic_cast<eth::OutOfGas const*>(&_e))
         return tefGAS_INSUFFICIENT;
     return tefCONTRACT_EXEC_EXCEPTION;
 }

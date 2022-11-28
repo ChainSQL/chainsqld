@@ -320,7 +320,11 @@ deserializeHeader(Slice data)
     info.closeTime = NetClock::time_point{NetClock::duration{sit.get32()}};
     info.closeTimeResolution = NetClock::duration{sit.get8()};
     info.closeFlags = sit.get8();
-
+    if (sit.getBytesLeft() > 0)
+    {
+        info.bloom = sit.get2048();
+        info.bloomEnabled = true;
+    }
     return info;
 }
 

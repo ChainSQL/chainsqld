@@ -34,7 +34,7 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
-#include <peersafe/app/util/Common.h>
+#include <eth/api/utils/Helpers.h>
 #include <iostream> 
 
 namespace ripple {

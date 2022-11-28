@@ -241,6 +241,9 @@ public:
     //genesis
     boost::optional<std::uint64_t>  CHAINID;
 
+    //eth
+    boost::optional<std::string>  ETH_DEFAULT_ACCOUNT_PRIVATE;
+
 
     std::uint32_t               REQ_MAP_COUNT;
     bool                        ENABLE_STATE_HASH_SET = false;

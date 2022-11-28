@@ -90,8 +90,7 @@ doSubmit(RPC::JsonContext& context)
         {
             context.j.info() << "sign-and-submit mode, return "
                              << RPC::contains_error(ret)
-                ? "non engine errors"
-                : "engine temBAD_PUT error";
+                ? "non engine errors" : "engine temBAD_PUT error";
 
             auto const srcAccountID =
                 parseBase58<AccountID>(tx_json[jss::Account].asString());

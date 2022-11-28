@@ -30,6 +30,7 @@ using namespace eth;
 
 namespace ripple {
 
+class TransactionSkeleton;
 
 /// Named-boolean type to encode whether a signature be included in the
 /// serialization process.
@@ -59,7 +60,8 @@ public:
 
     explicit STETx(Slice const& sit, std::uint32_t lastLedgerSeq = 0) noexcept(false);
     
-    explicit STETx(Json::Value& obj) noexcept(false);
+    explicit STETx(TransactionSkeleton const& ts, std::string secret, std ::uint64_t chainID,
+        std::uint32_t lastLedgerSeq = 0) noexcept(false);
     
     /** Check the signature.
         @return `true` if valid signature. If invalid, the error message string.
@@ -78,6 +80,9 @@ public:
     Blob const&
     getRlpData() const;
 
+    virtual std::string
+    getTxBinary() const override;
+
 private:
     struct RlpDecoded
     {
@@ -90,12 +95,22 @@ private:
         u256 v;
         h256 r;
         h256 s;
+        RlpDecoded()
+            : nonce(Invalid256)
+            , gasPrice(Invalid256)
+            , gas(Invalid256)
+            , receiveAddress(0)
+            , value(0)
+        {
+        }
+        RlpDecoded(TransactionSkeleton const& ts);
     };
 
     std::pair<bool, AccountID>
     getSender(RlpDecoded const& decoded);
 
-
+    void
+    makeWithDecoded(RlpDecoded const& decoded,std::uint32_t lastLedgerSeq);
 
     // Serializes this transaction to an RLPStream.
     /// @throws TransactionIsUnsigned if including signature was requested but
@@ -113,10 +128,6 @@ private:
     Blob m_rlpData;
     ContractOpType m_type;
 };
-
-/** Check whether a transaction is a eth-transaction */
-bool
-isEthTx(STObject const& tx);
 
 }
 

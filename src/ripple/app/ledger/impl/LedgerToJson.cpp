@@ -70,6 +70,8 @@ fillJson(Object& json, bool closed, LedgerInfo const& info, bool bFull)
     json[jss::transaction_hash] = to_string(info.txHash);
     json[jss::account_hash] = to_string(info.accountHash);
     json[jss::total_coins] = to_string(info.drops);
+    if (info.bloomEnabled)
+        json[jss::bloom] = to_string(info.bloom);
 
     // These next three are DEPRECATED.
     json[jss::hash] = to_string(info.hash);
@@ -319,6 +321,15 @@ fromJson(LedgerInfo &info, Json::Value json)
     if (!isHexID(id))
         return false;
     info.accountHash = from_hex_text<uint256>(id);
+
+    if (json.isMember(jss::bloom))
+    {
+        id = json[jss::bloom].asString();
+        if (!isHexID(id))
+            return false;
+        info.bloom = from_hex_text<uint256>(id);
+        info.bloomEnabled = true;
+    }
 
     info.parentCloseTime = NetClock::time_point{
         NetClock::duration{json[jss::parent_close_time].asUInt()}};

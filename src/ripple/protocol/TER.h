@@ -710,10 +710,10 @@ struct STer {
 	operator TER()const {
 		return ter;
 	}
-	bool operator==(TER const& rhs)
-	{
-		return this->ter == rhs;
-	}
+ //   bool operator==(TERUnderlyingType const& rhs)
+	//{
+ //       return TERtoInt(this->ter) == rhs;
+	//}
 
     bool operator!=(TER const& rhs)
     {
@@ -727,6 +727,11 @@ struct STer {
 	}
 };
 
+constexpr TERUnderlyingType
+TERtoInt(const STer& v)
+{
+    return TERtoInt(v.ter);
+}
 
 } // ripple
 

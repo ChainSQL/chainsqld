@@ -503,6 +503,7 @@ public:
 using uint128 = base_uint<128>;
 using uint160 = base_uint<160>;
 using uint256 = base_uint<256>;
+using uint2048 = base_uint<2048>;
 
 template <std::size_t Bits, class Tag>
 inline int

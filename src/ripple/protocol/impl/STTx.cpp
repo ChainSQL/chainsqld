@@ -536,8 +536,7 @@ STTx::getJson(JsonOptions options, bool binary) const
     if (binary)
     {
         Json::Value ret;
-        Serializer s = STObject::getSerializer();
-        ret[jss::tx] = strHex(s.peekData());
+        ret[jss::tx] = getTxBinary();
         ret[jss::hash] = to_string(getTransactionID());
         return ret;
     }
@@ -795,6 +794,13 @@ STTx::checkCertificate() const
     }
 
     return {false, "certificate public key and signing public key not match"};
+}
+
+std::string
+STTx::getTxBinary() const
+{
+    Serializer s = STObject::getSerializer();
+    return strHex(s.peekData());
 }
 
 //------------------------------------------------------------------------------

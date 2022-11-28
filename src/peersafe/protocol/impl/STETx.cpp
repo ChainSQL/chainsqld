@@ -15,13 +15,24 @@
 #include <utility>
 #include <ripple/protocol/STParsedJSON.h>
 #include <ripple/basics/StringUtilities.h>
+#include <eth/api/utils/TransactionSkeleton.h>
 
 
 
 namespace ripple {
 
+STETx::RlpDecoded::RlpDecoded(TransactionSkeleton const& ts): 
+    nonce(ts.nonce)
+    , gasPrice(ts.gasPrice)
+    , gas(ts.gas)
+    , receiveAddress(ts.to)
+    , value(ts.value)
+    , data(ts.data)
+{
+}
+
 STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
-    : m_rlpData(sit.begin(),sit.end())
+    : m_rlpData(sit.begin(), sit.end())
 {
     int length = sit.size();
     if ((length < txMinSizeBytes) || (length > txMaxSizeBytes))
@@ -50,11 +61,53 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     decoded.r = rlp[7].toInt<u256>();
     decoded.s = rlp[8].toInt<u256>();
 
+    m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
+
+    makeWithDecoded(decoded, lastLedgerSeq);
+}
+
+
+STETx::STETx(
+    TransactionSkeleton const& ts,
+    std::string secret,
+    std::uint64_t chainID,
+    std::uint32_t lastLedgerSeq) noexcept(false)
+{
     
+    RlpDecoded decoded(ts);
+   
+    int const vOffset = chainID * 2 + 35;
+    int recovery = 1;
+    //set default value for v
+    decoded.v = u256(recovery + vOffset);
+
+    m_type = ts.creation ? ContractCreation : MessageCall;
+    //sign calculate rsv
+    auto priData = *strUnHex(secret.substr(2));
+    SecretKey sk(Slice(priData.data(),priData.size()));
+    //used for sign
+    auto digest = sha3(decoded, WithoutSignature);
+    auto sig = signEthDigest(sk, digest);
+    SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
+    if (sigStruct.isValid())
+    {
+        decoded.r = u256("0x" + to_string(sigStruct.r));
+        decoded.s = u256("0x" + to_string(sigStruct.s));
+        decoded.v = u256(recovery + vOffset);
+    }
+    
+    RLPStream s;
+    streamRLP(s, decoded, WithSignature, true);
+    m_rlpData = std::move(s.out());
+    
+    makeWithDecoded(decoded, lastLedgerSeq);
+}
+
+void 
+STETx::makeWithDecoded(RlpDecoded const& decoded, std::uint32_t lastLedgerSeq)
+{
     setFName(sfTransaction);
     tx_type_ = ttETH_TX;
-    
-    m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
 
     // Check signature and get sender.
     auto sender = getSender(decoded);
@@ -66,12 +119,12 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
         Throw<std::runtime_error>("value too small to divide by 1e+12.");
 
     uint160 receive = fromH160(decoded.receiveAddress);
-    auto realOpType = (receive == beast::zero) ? ContractCreation : MessageCall;
     AccountID receiveAddress;
     memcpy(receiveAddress.data(), receive.data(), receive.size());
 
-    //Tx-Hash
+    // Tx-Hash
     tid_ = sha3(decoded, WithSignature);
+    //auto sTid = to_string(tid_);
 
     // Set fields
     set(getTxFormat(tx_type_)->getSOTemplate());
@@ -79,7 +132,7 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     setAccountID(sfAccount, sender.second);
     setFieldU32(sfSequence, (uint32_t)decoded.nonce);
     setFieldU32(sfGas, (uint32_t)decoded.gas);
-    setFieldU16(sfContractOpType, realOpType);
+    setFieldU16(sfContractOpType, m_type);
     setFieldVL(sfSigningPubKey, Blob{});
     setFieldAmount(sfFee, ZXCAmount(10));
     if (!decoded.data.empty())
@@ -91,59 +144,13 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     if (lastLedgerSeq > 0)
         setFieldU32(sfLastLedgerSequence, lastLedgerSeq);
 
-    auto str = getJson().toStyledString();
+    //auto str = getJson().toStyledString();
 
     pTxs_ = std::make_shared<std::vector<STTx>>();
     paJsonLog_ = std::make_shared<Json::Value>();
 }
 
-
-STETx::STETx(Json::Value& obj) noexcept(false)
-{
-    m_type = obj.isMember(jss::Destination) ? MessageCall :ContractCreation;
-    
-    RlpDecoded decoded;
-    //RLP const rlp(bytesConstRef(sit.data(),sit.size()));
-    if(obj.isMember(jss::nonce))
-        decoded.nonce               = u256(obj[jss::nonce].asString());
-    if(obj.isMember(jss::gasPrice))
-        decoded.gasPrice            = u256(obj[jss::gasPrice].asString());
-    if(obj.isMember(jss::gas))
-        decoded.gas                 = u256(obj[jss::gas].asString());
-    if(obj.isMember(jss::to))
-        decoded.receiveAddress      = u160(obj[jss::to].asString());
-    if(obj.isMember(jss::value))
-        decoded.value               = u256(obj[jss::value].asString());
-    if(obj.isMember(jss::date))
-        decoded.data                = strUnHex(obj[jss::date].asString()).get();
-    
-    //set default value for v
-    decoded.v = u256(27);
-    
-    //sign calculate rsv
-    std::string sSecret = obj[jss::secret].asString();
-    SecretKey sk(Slice(sSecret.c_str(), sSecret.size()));
-    //used for sign
-    auto digest = sha3(decoded, WithoutSignature);
-    auto sig = signEthDigest(sk, digest);
-    SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
-    if (sigStruct.isValid())
-    {
-        decoded.r = u256(sigStruct.r);
-        decoded.s = u256(sigStruct.s);
-        decoded.v = u256(sigStruct.v);
-    }
-    
-    RLPStream s;
-    streamRLP(s, decoded, WithSignature, false);
-    m_rlpData = std::move(s.out());
-
-    //transaction id
-    tid_ = sha3(decoded, WithSignature);
-}
-
-void
-STETx::streamRLP(
+void STETx::streamRLP(
     RLPStream& _s,
     RlpDecoded const& _decoded,
     IncludeSignature _sig,
@@ -180,7 +187,7 @@ STETx::sha3(RlpDecoded const& _decoded, IncludeSignature _sig)
     else
     {
         RLPStream s;
-        bool isReplayProtected = ((uint64_t)_decoded.v > 36);
+        bool isReplayProtected = true;
         streamRLP(
             s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
 
@@ -256,14 +263,10 @@ STETx::getRlpData() const
     return m_rlpData;
 }
 
-bool
-isEthTx(STObject const& tx)
+std::string
+STETx::getTxBinary() const
 {
-    auto t = tx[~sfTransactionType];
-    if (!t)
-        return false;
-    auto tt = safe_cast<TxType>(*t);
-    return tt == ttETH_TX;
+    return strHex(m_rlpData);
 }
 
 }  // namespace ripple

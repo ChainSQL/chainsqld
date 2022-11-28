@@ -116,22 +116,31 @@ namespace ripple {
         bool bQuery /*=false*/
     )
     {
-        std::shared_ptr<SHAMap> mapPtr = nullptr;
-        if (mShaMapCache.find(contract) == mShaMapCache.end() || bQuery)
-        {
-            mapPtr = std::make_shared<SHAMap>(
-                SHAMapType::CONTRACT, app_.getNodeFamily());
+        auto funMakeShamap = [&, this](){
+            auto mapPtr = std::make_shared<SHAMap>(SHAMapType::CONTRACT, app_.getNodeFamily());
             if (root && !mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
             {
                 JLOG(mJournal.warn()) << "Get storage root failed for contract: "
                                       << to_string(contract) << ",root hash: "<<*root;
-                return nullptr;
+                mapPtr = nullptr;
             }
-            if (!bQuery)
-                mShaMapCache[contract] = mapPtr;
+            return mapPtr;
+        };
+        
+        std::shared_ptr<SHAMap> mapPtr = nullptr;
+        //!!!!! potential threat, please consider the thread conflict about mShaMapCache
+        if(bQuery)
+        {
+            mapPtr = funMakeShamap();
         }
         else
+        {
+            if(mShaMapCache.find(contract) == mShaMapCache.end())
+            {
+                mShaMapCache[contract] = funMakeShamap();
+            }
             mapPtr = mShaMapCache[contract];
+        }
 
         return mapPtr;
     }

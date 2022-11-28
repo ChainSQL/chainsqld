@@ -41,10 +41,14 @@
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/misc/CertList.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <peersafe/protocol/Contract.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/STMap256.h>
-#include <peersafe/protocol/STETx.h>
+#include <peersafe/app/util/Common.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <peersafe/app/bloom/BloomHelper.h>
+#include <eth/api/utils/Helpers.h>
 
 
 namespace ripple {
@@ -999,19 +1003,19 @@ Transactor::operator()()
 //#endif
 
     auto terResult = STer(ctx_.preclaimResult);
-	if (terResult.ter == terPRE_SEQ)
+	if (terResult == terPRE_SEQ)
 	{
         // ctx_.app.getTxPool().removeAvoid(ctx_.tx.getTransactionID(),ctx_.view().seq());
 		return { terResult, false };
 	}
-	else if (terResult.ter == tefPAST_SEQ)
+	else if (terResult == tefPAST_SEQ)
 	{
 		//If continue, there will be a bug : claimFee will set sequence to  ctx_.tx.getSequence() + 1
 		JLOG(j_.info()) << "Transaction " << ctx_.tx.getTransactionID() << " tefPAST_SEQ";
 		ctx_.app.getTxPool().removeTx(ctx_.tx.getTransactionID());
 		return { terResult, false };
 	}
-	if (terResult.ter == tesSUCCESS)
+	if (terResult == tesSUCCESS)
     {
 		terResult = apply();
 	}
@@ -1053,7 +1057,7 @@ Transactor::operator()()
 			"Reprocessing tx " << ctx_.tx.getTransactionID() << " to only claim fee";
 
 		std::vector<uint256> removedOffers;
-		if (terResult.ter == tecOVERSIZE)
+		if (terResult == tecOVERSIZE)
 		{
 			ctx_.visit(
 				[&removedOffers](
@@ -1080,7 +1084,7 @@ Transactor::operator()()
 		fee = reset(fee);
 
 		// If necessary, remove any offers found unfunded during processing
-		if ((terResult.ter == tecOVERSIZE) || (terResult.ter == tecKILLED))
+		if ((terResult == tecOVERSIZE) || (terResult == tecKILLED))
 			removeUnfundedOffers(view(), removedOffers, ctx_.app.journal("View"));
 
 		//applied = true;
@@ -1091,7 +1095,7 @@ Transactor::operator()()
         // Check invariants
         // if `tecINVARIANT_FAILED` not returned, we can proceed to apply the tx
         terResult.ter = ctx_.checkInvariants(terResult, fee);
-		if (terResult.ter == tecINVARIANT_FAILED)
+		if (terResult == tecINVARIANT_FAILED)
 		{
 			// if invariants checking failed again, reset the context and
 			// attempt to only claim a fee.
@@ -1132,6 +1136,14 @@ Transactor::operator()()
 
         // Once we call apply, we will no longer be able to look at view()
         ctx_.apply(terResult);
+        if (terResult == tesSUCCESS && 
+            ctx_.view().rules().enabled(featureBloomFilter) &&
+            ctx_.tx.getLogs().size() > 0)
+        {
+            auto address = *getContractAddress(ctx_.tx);
+            ctx_.app.getBloomManager().bloomHelper().addContractLog(
+                address, ctx_.tx.getLogs());
+        }
     }
 
     JLOG(j_.trace()) << (applied ? "applied" : "not applied") << transToken(terResult.ter);

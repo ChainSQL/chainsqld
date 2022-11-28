@@ -267,6 +267,9 @@ public:
         return !tidParent_.isZero();
     }
 
+    virtual std::string
+    getTxBinary() const;
+
 protected:
     std::pair<bool, std::string>
     checkSingleSign(RequireFullyCanonicalSig requireCanonicalSig) const;
