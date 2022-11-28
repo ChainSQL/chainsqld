@@ -125,6 +125,12 @@ STLedgerEntry::isHideInMeta() const
 }
 
 bool
+STLedgerEntry::isDeletedAccount() const
+{
+    return (getFieldU32(sfFlags) & lsfAccountDeleted);
+}
+
+bool
 STLedgerEntry::thread(
     uint256 const& txID,
     std::uint32_t ledgerSeq,

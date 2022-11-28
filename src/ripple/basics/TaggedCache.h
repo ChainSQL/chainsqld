@@ -25,7 +25,6 @@
 #include <ripple/basics/hardened_hash.h>
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/insight/Insight.h>
-#include <peersafe/app/util/Common.h>
 #include <functional>
 #include <mutex>
 #include <vector>
@@ -191,7 +190,7 @@ public:
         {
             clock_type::time_point const now(m_clock.now());
             clock_type::time_point when_expire;
-            auto start = utcTime();
+            auto const before = std::chrono::steady_clock::now();
 
             readlock_type lock(m_mutex);
             if (m_cache_threshold > 0 && m_cache.size() >= m_cache_threshold)
@@ -268,8 +267,12 @@ public:
                     ++cit;
                 }
             }
-            auto end = utcTime();
-            if (end - start > 1000 &&
+
+            auto const after = std::chrono::steady_clock::now();
+            auto const elapsed =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    after - before);
+            if (elapsed.count() > 1000 &&
                 (m_cache_threshold == 0 || m_cache_threshold > m_cache.size()))
             {
                 m_cache_threshold = m_cache.size();

@@ -103,6 +103,12 @@ public:
         acquire(hash, seq);
     }
 
+    bool
+    stateNodeHashSetEnabled() override
+    {
+        return false;
+    }
+
 private:
     Schema& app_;
     NodeStore::Database& db_;

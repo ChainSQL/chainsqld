@@ -183,10 +183,10 @@ checkPayment(
     if (!tx_json.isMember(jss::Destination))
         return RPC::missing_field_error("tx_json.Destination");
 
-    auto const dstAccountID =
-        parseBase58<AccountID>(tx_json[jss::Destination].asString());
+    auto const dstAccountID = parseHexOrBase58<AccountID>(tx_json[jss::Destination].asString());
     if (!dstAccountID)
         return RPC::invalid_field_error("tx_json.Destination");
+    
 
     if ((doPath == false) && params.isMember(jss::build_path))
         return RPC::make_error(
@@ -421,6 +421,30 @@ transactionPreProcessImpl(
                         << "in current ledger: " << toBase58(srcAddressID);
 
         return rpcError(rpcSRC_ACT_NOT_FOUND);
+    }
+    else if(sle->isDeletedAccount())
+    {
+        return rpcError(rpcACCOUNT_ALREADY_DELETED);
+    }
+    
+    if(tx_json.isMember(jss::Destination))
+    {
+        auto const dstID =
+            parseHexOrBase58<AccountID>(tx_json[jss::Destination].asString());
+
+        if (!dstID)
+        {
+            return RPC::make_error(
+                rpcDST_ACT_MALFORMED,
+                RPC::invalid_field_message("tx_json.Destination"));
+        }
+        std::shared_ptr<SLE const> dstSle =
+            ledger->read(keylet::account(*dstID));
+
+        if(dstSle && dstSle->isDeletedAccount())
+        {
+            return RPC::make_error(rpcACCOUNT_ALREADY_DELETED, "Destination was already deleted.");
+        }
     }
 
     {

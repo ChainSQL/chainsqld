@@ -141,7 +141,9 @@ detail::supportedAmendments()
         "HardenedValidations",
         "fixAmendmentMajorityCalc",
         //"NegativeUNL"      // Commented out to prevent automatic enablement
-        "PromethSLEHideInMeta"
+        "PromethSLEHideInMeta",
+        "GasPriceCompress",
+        "BloomFilter"
     };
     return supported;
 }
@@ -203,6 +205,8 @@ featureTableSleChange = *getRegisteredFeature("TableSLEChange"),
 featureContractStorage = *getRegisteredFeature("ContractStorage"),
 featurePromethSLEHideInMeta = *getRegisteredFeature("PromethSLEHideInMeta"),
 featureTableGrant = *getRegisteredFeature("TableGrant"),
+featureGasPriceCompress = *getRegisteredFeature("GasPriceCompress"),
+featureBloomFilter = *getRegisteredFeature("BloomFilter");
 // uint256 const featureTrustSetAuth = *getRegisteredFeature("TrustSetAuth");
 featureFeeEscalation = *getRegisteredFeature("FeeEscalation");
 // uint256 const featureCompareFlowV1V2 = *getRegisteredFeature("CompareFlowV1V2");

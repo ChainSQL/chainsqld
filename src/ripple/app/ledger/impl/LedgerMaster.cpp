@@ -65,6 +65,7 @@
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -285,7 +286,8 @@ LedgerMaster::onConsensusReached(
 
     if (waitingConsensusReach &&
         previousLedger &&
-        previousLedger->info().seq != mValidLedgerSeq)
+        previousLedger->info().seq != mValidLedgerSeq &&
+        isCompatible(*previousLedger, m_journal.warn(), "Not switching when waitingConsensusReach,"))
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
@@ -296,6 +298,7 @@ LedgerMaster::onConsensusReached(
     }
     checkSubChains();
     checkLoadLedger();
+
     app_.getTableSync().TryTableSync();
     app_.getTableSync().InitTableItems();
     tryAdvance();
@@ -1391,25 +1394,36 @@ LedgerMaster::heldTransactionSize()
 }
 
 void
-LedgerMaster::checkUpdateOpenLedger()
+LedgerMaster::checkUpdateOpenLedger(
+    std::shared_ptr<Ledger const> swichLedger)
 {
+    std::shared_ptr<Ledger const> lastClosed = nullptr;
+    if (swichLedger != nullptr)
+    {
+        if (app_.openLedger().current()->seq() - 1 == swichLedger->info().seq &&
+            app_.openLedger().current()->info().parentHash !=swichLedger->info().hash)
+        {
+            lastClosed = swichLedger;
+        }
+    }
     if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
     {
         JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
                                << app_.openLedger().current()->seq()
                                << "<= mValidLedgerSeq:" << mValidLedgerSeq;
-        auto const lastVal = getValidatedLedger();
+        lastClosed = getValidatedLedger();
+        
+    }
+    if (lastClosed)
+    {
         boost::optional<Rules> rules;
-        if (lastVal)
-            rules.emplace(*lastVal, app_.config().features);
-        else
-            rules.emplace(app_.config().features);
+        rules.emplace(*lastClosed, app_.config().features);
 
         auto retries = CanonicalTXSet({});
         app_.openLedger().accept(
             app_,
             *rules,
-            lastVal,
+            lastClosed,
             OrderedTxs({}),
             false,
             retries,

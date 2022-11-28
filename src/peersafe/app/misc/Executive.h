@@ -3,6 +3,8 @@
 
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
+#include <eth/vm/Common.h>
+#include <eth/vm/VMFace.h>
 
 namespace ripple {
 	const std::string ERRFUNSIG = "08C379A0";
@@ -40,6 +42,9 @@ public:
 	//Cannot copy from another object
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
+    
+    static int64_t baseGasRequired(bool isCreation, eth::bytesConstRef const& code);
+    static double getCurGasPrice(ApplyContext& ctx);
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
 	//void initialize(BlobRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
@@ -110,6 +115,8 @@ private:
 	void formatOutput(std::string msg);
 	void formatOutput(eth::owning_bytes_ref output);
 	std::string getRevertErr(int64_t errCode);
+    TER exceptionToTerCode(eth::VMException const& _e);
+
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
@@ -129,7 +136,7 @@ private:
 
 	//std::shared_ptr<const STTx> m_t;        ///< The original transaction.
 	int64_t m_gasCost;
-	uint32_t m_gasPrice;
+    double m_gasPrice;
 
 	bool m_isCreation = false;
 	AccountID m_newAddress;

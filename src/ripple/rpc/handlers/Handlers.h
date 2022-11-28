@@ -202,15 +202,54 @@ Json::Value doTxInPool(RPC::JsonContext&);
 Json::Value doSyncInfo(RPC::JsonContext&);
 Json::Value doLedgerProof(RPC::JsonContext&);
 Json::Value doMonitorStatis(RPC::JsonContext&);
+Json::Value doShamapDump(RPC::JsonContext&);
 
 //for contract
 Json::Value doContractCall(RPC::JsonContext&);
+Json::Value doEstimateGas(RPC::JsonContext&);
 
 Json::Value doGenCsr(RPC::JsonContext&); // for humans
 
 //for gm algorithm data generation
 Json::Value doCreateRandom(RPC::JsonContext&);
 Json::Value doCryptData(RPC::JsonContext&);
+
+// Ethereum-compatible JSON RPC API
+Json::Value doWeb3CleintVersion(RPC::JsonContext&);
+Json::Value doWeb3Sha3(RPC::JsonContext&);
+Json::Value doEthChainId(RPC::JsonContext&);
+Json::Value doNetVersion(RPC::JsonContext&);
+Json::Value doNetPeerCount(RPC::JsonContext&);
+Json::Value doNetListening(RPC::JsonContext&);
+Json::Value doEthBlockNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByNumber(RPC::JsonContext&);
+Json::Value doEthGetBlockByHash(RPC::JsonContext&);
+Json::Value doEthGetBalance(RPC::JsonContext&);
+Json::Value doEthCall(RPC::JsonContext&);
+Json::Value doEthSignTransaction(RPC::JsonContext&);
+Json::Value doEthSendTransaction(RPC::JsonContext&);
+Json::Value doEthSendRawTransaction(RPC::JsonContext&);
+Json::Value doEthGetTransactionReceipt(RPC::JsonContext&);
+Json::Value doEthGetTransactionByHash(RPC::JsonContext&);
+Json::Value doEthGetTransactionCount(RPC::JsonContext&);
+Json::Value doEthGasPrice(RPC::JsonContext&);
+Json::Value doEthGetCode(RPC::JsonContext&);
+Json::Value doEthMining(RPC::JsonContext&);
+Json::Value doEthAccounts(RPC::JsonContext&);
+Json::Value doEthGetStorageAt(RPC::JsonContext&);
+Json::Value doEthSign(RPC::JsonContext&);
+Json::Value doEthTxCountByHash(RPC::JsonContext&);
+Json::Value doEthTxCountByNumber(RPC::JsonContext&);
+Json::Value doEthTxByHashAndIndex(RPC::JsonContext&);
+Json::Value doEthTxByNumberAndIndex(RPC::JsonContext&);
+Json::Value doEthGetLogs(RPC::JsonContext&);
+Json::Value doEthGetFilterLogs(RPC::JsonContext&);
+Json::Value doEthGetFilterChanges(RPC::JsonContext&);
+Json::Value doEthNewFilter(RPC::JsonContext&);
+Json::Value doEthNewPendingTransactionFilter(RPC::JsonContext&);
+Json::Value doEthNewBlockFilter(RPC::JsonContext&);
+Json::Value doEthUninstallFilter(RPC::JsonContext&);
+
 }  // namespace ripple
 
 #endif

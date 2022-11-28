@@ -97,6 +97,9 @@ public:
         acquire(hash, seq);
     }
 
+    bool
+    stateNodeHashSetEnabled() override;
+
 private:
     Schema& app_;
     NodeStore::Database& db_;

@@ -80,6 +80,8 @@
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
 #include <peersafe/app/util/NetworkUtil.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <peersafe/app/bloom/BloomIndexer.h>
 #include <boost/asio/ip/host_name.hpp>
 #include <string>
 #include <tuple>
@@ -1611,7 +1613,7 @@ NetworkOPsImp::doTransactionCheck(
 
     auto ter = check(pfctx, view);
 
-    if (ter.ter == tesSUCCESS)
+    if (ter == tesSUCCESS)
     {
         // after check and transaction's check result is tesSUCCESS add it to
         // TxPool:
@@ -1692,6 +1694,10 @@ NetworkOPsImp::check(PreflightContext const& pfctx, OpenView const& view)
     boost::optional<PreclaimContext const> pcctx;
     pcctx.emplace(app_, view, ter, pfctx.tx, pfctx.flags, m_journal);
 
+    ter = Transactor::checkDeleted(*pcctx);
+    if (ter.ter != tesSUCCESS)
+        return ter;
+    
     ter = Transactor::checkFrozen(*pcctx);
     if (ter.ter != tesSUCCESS)
         return ter;
@@ -1868,7 +1874,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                 e.result = result.first;
                 e.applied = result.second;
 
-                if (e.result.ter == tefTABLE_STORAGEERROR)
+                if (e.result == tefTABLE_STORAGEERROR)
                     e.failType = FailHard::yes;
                 changed = changed || result.second;
             }
@@ -1915,7 +1921,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
             //bool addLocal = e.local;
 
-            if (e.result.ter == tesSUCCESS)
+            if (e.result == tesSUCCESS)
             {
                 JLOG(m_journal.debug())
                     << "Transaction is now included in open ledger";
@@ -1934,7 +1940,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     tx->setApplying();
                 }
             }
-            else if (e.result.ter == tefPAST_SEQ)
+            else if (e.result == tefPAST_SEQ)
             {
                 // duplicate or conflict
                 JLOG(m_journal.info())
@@ -1942,7 +1948,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                     << " from " << (e.local ? "local" : "remote");
                 e.transaction->setStatus(OBSOLETE);
             }
-            else if (isTerRetry(e.result.ter))
+            else if (terPRE_SEQ == e.result.ter)
             {
                 if (e.failType != FailHard::yes)
                 {
@@ -1953,7 +1959,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
 
                     if (txCur->getSequence() > seq + 2*MAX_ACCOUNT_HELD_COUNT)
                     {
-                        JLOG(m_journal.warn())
+                        JLOG(m_journal.info())
                             << "Account sequence too large,accountId="
                             << txCur->getAccountID(sfAccount)
                             << ", curSeq = " << seq
@@ -2029,7 +2035,7 @@ NetworkOPsImp::apply(std::unique_lock<std::mutex>& batchLock)
                        tx.set_status(protocol::tsCURRENT);
                        tx.set_receivetimestamp(
                            app_.timeKeeper().now().time_since_epoch().count());
-                       tx.set_deferred(e.result.ter == terQUEUED);
+                       tx.set_deferred(e.result == terQUEUED);
                        tx.set_schemaid(app_.schemaId().begin(), uint256::size());
                        // FIXME: This should be when we received it
                        app_.peerManager().foreach(send_if_not(
@@ -3879,6 +3885,9 @@ NetworkOPsImp::pubLedger(std::shared_ptr<ReadView const> const& lpAccepted)
             checkSchemaTx(lpAccepted, *vt.second);
         }
     }
+
+    app_.getBloomManager().bloomIndexer().onPubLedger(lpAccepted);
+    app_.getBloomManager().filterApi().onPubLedger(lpAccepted);
 }
 
 void

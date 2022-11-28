@@ -20,13 +20,15 @@
 #ifndef RIPPLE_PROTOCOL_CONTRACT_H_INCLUDED
 #define RIPPLE_PROTOCOL_CONTRACT_H_INCLUDED
 
+#include <ripple/protocol/CommonKey.h>
 #include <ripple/protocol/AccountID.h>
+
 namespace ripple {
 
     class Contract
     {
     public:
-        static AccountID calcNewAddress(AccountID sender, int nonce);
+        static AccountID calcNewAddress(AccountID sender, int nonce, CommonKey::HashType hashType = CommonKey::sha);
     private:
         Contract();
     };

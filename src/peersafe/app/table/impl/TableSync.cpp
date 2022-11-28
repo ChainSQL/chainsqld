@@ -114,37 +114,45 @@ bool TableSync::MakeTableDataReply(std::string sAccountID, bool bStop, uint32_t 
         auto hash = ledger->info().hash;
         m.set_ledgerhash(hash.begin(), hash.size());
         
-        std::shared_ptr<AcceptedLedger> alpAccepted =
-            app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
-        if (alpAccepted != nullptr)
+        try
         {
-            for (auto const& vt : alpAccepted->getMap())
+            std::shared_ptr<AcceptedLedger> alpAccepted =
+                app_.getAcceptedLedgerCache().fetch(ledger->info().hash);
+            if (alpAccepted != nullptr)
             {
-                if (vt.second->getResult() != tesSUCCESS)
+                for (auto const& vt : alpAccepted->getMap())
                 {
-                    continue;
+                    if (vt.second->getResult() != tesSUCCESS)
+                    {
+                        continue;
+                    }
+                    MakeDataForTx(
+                        vt.second->getTxn(), m, sNameInDB, ledger, txnCount);
                 }
-                MakeDataForTx(
-                    vt.second->getTxn(), m, sNameInDB, ledger, txnCount);
             }
-        }
-        else
-        {
-            for (auto& item : ledger->txs)
+            else
             {
-                std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
-                    item.first->getTransactionID(),
-                    ledger->seq(),
-                    *(item.second));
+                for (auto& item : ledger->txs)
+                {
+                    std::shared_ptr<TxMeta> meta = std::make_shared<TxMeta>(
+                        item.first->getTransactionID(),
+                        ledger->seq(),
+                        *(item.second));
 
-                TER result = meta->getResultTER();
-                if (result != tesSUCCESS)
-                {
-                    continue;
+                    TER result = meta->getResultTER();
+                    if (result != tesSUCCESS)
+                    {
+                        continue;
+                    }
+                    MakeDataForTx(item.first, m, sNameInDB, ledger, txnCount);
                 }
-                MakeDataForTx(item.first, m,sNameInDB,ledger,txnCount);
-            }
-        }        
+            }   
+        }
+        catch (std::exception const& e)
+        {
+            JLOG(journal_.warn()) << "TableSync::MakeTableDataReply exception:" << e.what();
+            return false;
+        } 
 
         if (txnCount == 0)
         {

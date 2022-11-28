@@ -21,6 +21,9 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <cctype>
 #include <chrono>
 #include <peersafe/app/util/Common.h>
+#include <peersafe/protocol/STETx.h>
+#include <ripple/protocol/STTx.h>
+
 namespace ripple {
 
 
@@ -46,5 +49,30 @@ isHexID(std::string const& txid)
 
     return (ret == txid.end());
 }
+
+std::shared_ptr<STTx const>
+makeSTTx(Slice sit)
+{
+    if (*sit.begin() == 0)
+    {
+        sit.remove_prefix(1);
+        return std::make_shared<STETx const>(sit);
+    }
+    else
+        return std::make_shared<STTx const>(sit);
+}
+
+
+
+bool
+isEthTx(STObject const& tx)
+{
+    auto t = tx[~sfTransactionType];
+    if (!t)
+        return false;
+    auto tt = safe_cast<TxType>(*t);
+    return tt == ttETH_TX;
+}
+
 
 }

@@ -140,6 +140,9 @@ third_party/
 #*.a
 *.lib
 
+# patch files
+*.patch
+
 # Executables
 *.exe
 *.out

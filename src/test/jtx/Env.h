@@ -115,18 +115,12 @@ public:
 /** A transaction testing environment. */
 class Env
 {
-public:
-    beast::unit_test::suite& test;
-
-    Account const& master = Account::master;
-
 private:
     struct AppBundle
     {
-        Application* app = nullptr;
-		std::shared_ptr<Schema> schema = nullptr;
-		std::unique_ptr<SchemaManager> schemaManager;
-        std::unique_ptr<Application> owned;
+        std::unique_ptr<Application> app;
+        SchemaManager* schemaManager = nullptr;
+        Schema* schema = nullptr;
         ManualTimeKeeper* timeKeeper = nullptr;
         std::thread thread;
         std::unique_ptr<AbstractClient> client;
@@ -140,10 +134,19 @@ private:
         ~AppBundle();
     };
 
-    AppBundle bundle_;
-
+    
 public:
+    
+    beast::unit_test::suite& test;
+    Account const& master = Account::master;
+    AppBundle bundle_;
     beast::Journal const journal;
+    
+    int trace_ = 0;
+    TestStopwatch stopwatch_;
+    uint256 txid_;
+    TER ter_ = tesSUCCESS;
+    
 
     Env() = delete;
     Env&
@@ -171,8 +174,13 @@ public:
         std::unique_ptr<Logs> logs = nullptr,
         beast::severities::Severity thresh = beast::severities::kError)
         : test(suite_)
+        , master(Account::master)
         , bundle_(suite_, std::move(config), std::move(logs), thresh)
         , journal{bundle_.app->journal("Env")}
+        , trace_(0)
+        , stopwatch_()
+        , txid_()
+        , ter_(tesSUCCESS)
     {
         memoize(Account::master);
         Pathfinder::initPathTable();
@@ -640,10 +648,7 @@ public:
     /** @} */
 
 protected:
-    int trace_ = 0;
-    TestStopwatch stopwatch_;
-    uint256 txid_;
-    TER ter_ = tesSUCCESS;
+
 
     Json::Value
     do_rpc(

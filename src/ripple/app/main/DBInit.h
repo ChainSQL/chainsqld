@@ -89,6 +89,8 @@ inline constexpr std::array<char const*, 10> LgrDBInit{
 
      "END TRANSACTION;"}};
 
+inline constexpr const char* LedgerAddBloom =
+    "ALTER TABLE Ledgers ADD Bloom VARCHAR(2048);";  
 ////////////////////////////////////////////////////////////////////////////////
 
 // Transaction database holds transactions and public keys

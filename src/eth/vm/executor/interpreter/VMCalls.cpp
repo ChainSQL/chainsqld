@@ -165,6 +165,8 @@ void VM::caseCreate()
 
         m_io_gas -= (msg.gas - result.gas_left);
 
+        m_exception = result.exception;
+
         if (result.release)
             result.release(&result);
     }

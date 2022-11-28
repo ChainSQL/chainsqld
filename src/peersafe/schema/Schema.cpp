@@ -63,6 +63,7 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <openssl/evp.h>
 #include <boost/asio/steady_timer.hpp>
@@ -92,7 +93,7 @@ public:
     nodeToShards();
     bool
     validateShards();
-    void
+    bool
     startGenesisLedger();
     bool
     setSynTable();
@@ -168,6 +169,8 @@ private:
     std::unique_ptr<TableTxAccumulator> m_pTableTxAccumulator;
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
+    std::unique_ptr<BloomManager> m_pBloomManager;
+    std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
     std::unique_ptr<TxnDBCon> mTxnDB;
@@ -353,6 +356,13 @@ public:
               *this,
               SchemaImp::journal("StateManager")))
 
+        , m_pBloomManager(std::make_unique<BloomManager>(
+                *this,
+                SchemaImp::journal("BloomManager")
+            ))
+
+        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
+
         , m_peerManager(make_PeerManager(*this))
         , m_pPrometheusClient(std::make_unique<PrometheusClient>(
               *this,
@@ -525,6 +535,12 @@ public:
     getStateManager() override
     {
         return *m_pStateManager;
+    }
+
+    BloomManager&
+    getBloomManager() override
+    {
+        return *m_pBloomManager;
     }
 
     ConnectionPool&
@@ -908,7 +924,53 @@ public:
             mLedgerDB->getSession() << boost::str(
                 boost::format("PRAGMA cache_size=-%d;") %
                 kilobytes(config_->getValueFor(SizedItem::lgrDBCache)));
+            {
+                std::string cid, name, type;
+                std::size_t notnull, dflt_value, pk;
+                soci::indicator ind;
+                {
+                    // Check if Transactions has field "TxResult"
+                    soci::statement st =
+                        (mLedgerDB->getSession().prepare
+                             << ("PRAGMA table_info(Ledgers);"),
+                         soci::into(cid),
+                         soci::into(name),
+                         soci::into(type),
+                         soci::into(notnull),
+                         soci::into(dflt_value, ind),
+                         soci::into(pk));
 
+                    st.execute();
+                    bool bHasBloom = false;
+                    while (st.fetch())
+                    {
+                        if (name == "Bloom")
+                        {
+                            bHasBloom = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!bHasBloom)
+                    {
+                        try
+                        {
+                            soci::statement st =
+                                mLedgerDB->getSession().prepare
+                                << LedgerAddBloom;
+                            st.execute(true);
+                        }
+                        catch (soci::soci_error&)
+                        {
+                            JLOG(m_journal.fatal())
+                                << "Ledgers database "
+                                   "add bloom field failed.";
+                            return false;
+                            // ignore errors
+                        }
+                    }
+                }
+            }
             // wallet database
             setup.useGlobalPragma = false;
             mWalletDB = std::make_unique<DatabaseCon>(
@@ -1251,13 +1313,16 @@ SchemaImp::setup()
     }
 
     Pathfinder::initPathTable();
+    
+    getBloomManager().init();
 
     auto const startUp = config_->START_UP;
     if (startUp == Config::FRESH)
     {
         JLOG(m_journal.info()) << "Starting new Ledger";
 
-        startGenesisLedger();
+        if (!startGenesisLedger())
+            return false;
     }
     else if (
         startUp == Config::LOAD || startUp == Config::LOAD_FILE ||
@@ -1282,7 +1347,8 @@ SchemaImp::setup()
         if (!config_->standalone())
             m_networkOPs->setNeedNetworkLedger();
 
-        startGenesisLedger();
+        if (!startGenesisLedger())
+            return false;
     }
     else
     {
@@ -1344,7 +1410,8 @@ SchemaImp::setup()
             }
             else
             {
-                startGenesisLedger();
+                if (!startGenesisLedger())
+                    return false;
             }            
         }
     }
@@ -1541,9 +1608,18 @@ SchemaImp::setup()
     return true;
 }
 
-void
+bool
 SchemaImp::startGenesisLedger()
 {
+    if (boost::none == config_->CHAINID)
+    {
+        JLOG(m_journal.fatal()) << "chainID mot configured in cfg.";
+        return false;
+    }
+    std::vector<uint256> initialAmendments =
+        (config_->START_UP == Config::FRESH) ? m_amendmentTable->getDesired()
+                                             : std::vector<uint256>{};
+
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
         create_genesis, *config_, nodeFamily_);
     m_ledgerMaster->storeLedger(genesis);
@@ -1553,6 +1629,7 @@ SchemaImp::startGenesisLedger()
     m_ledgerMaster->switchLCL(genesis);
     // set valid ledger
     m_ledgerMaster->initGenesisLedger(genesis);
+    return true;
     /*
     auto const next = std::make_shared<Ledger>(
             *genesis, timeKeeper().closeTime());
@@ -1943,8 +2020,13 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         JLOG(m_journal.fatal()) << "Ledger is not sane.";
         return false;
     }
+<<<<<<< HEAD
     
     auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_);
+=======
+
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, schema_params_.schemaId());
+>>>>>>> develop
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));

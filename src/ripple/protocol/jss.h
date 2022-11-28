@@ -528,6 +528,7 @@ JSS(total_bytes_recv);        // out: Peers
 JSS(total_bytes_sent);        // out: Peers
 JSS(total_coins);             // out: LedgerToJson
 JSS(transTreeHash);           // out: ledger/Ledger.cpp
+JSS(bloom);
 JSS(transaction);             // in: Tx
                               // out: NetworkOPs, AcceptedLedgerTx,
 JSS(transaction_hash);        // out: RCLCxPeerPos, LedgerToJson
@@ -598,6 +599,7 @@ JSS ( node_size );
 JSS ( accounts_contract );
 JSS ( engine_result_message_detail );  // out: NetworkOPs, Submit
 JSS ( field );
+JSS ( gas );
 JSS ( gas_price );  // out: TxQ
 JSS ( OpType );     // out: Tx OpType
 JSS ( chainsql_tx );
@@ -722,10 +724,16 @@ JSS (val_signed);
 JSS (for_node);
 JSS (running);
 
-JSS(drops_per_byte);                       // out: LogLevel
-JSS(view);
-JSS(Authorize);
+JSS (drops_per_byte);                       // out: LogLevel
+JSS (view);
+JSS (Authorize);
+JSS (EthTx);
 JSS (x509_subjects);
+JSS (nonce);
+JSS (gasPrice);
+JSS (to);
+
+
 #undef JSS
 
 }  // namespace jss

@@ -562,7 +562,7 @@ Reader::decodeNumber(Token& token)
         sizeof(value) > sizeof(Value::maxUInt),
         "The JSON integer overflow logic will need to be reworked.");
 
-    while (current < token.end_ && (value <= Value::maxUInt))
+    while (current < token.end_ && (value <= Value::maxLargestInt))
     {
         Char c = *current++;
 
@@ -590,7 +590,7 @@ Reader::decodeNumber(Token& token)
     {
         value = -value;
 
-        if (value < Value::minInt || value > Value::maxInt)
+        if (value < Value::minInt || value > Value::maxLargestInt)
         {
             return addError(
                 "'" + std::string(token.start_, token.end_) +
@@ -598,11 +598,11 @@ Reader::decodeNumber(Token& token)
                 token);
         }
 
-        currentValue() = static_cast<Value::Int>(value);
+        currentValue() = static_cast<Value::LargestInt>(value);
     }
     else
     {
-        if (value > Value::maxUInt)
+        if (value > Value::maxLargestUInt)
         {
             return addError(
                 "'" + std::string(token.start_, token.end_) +
@@ -611,10 +611,10 @@ Reader::decodeNumber(Token& token)
         }
 
         // If it's representable as a signed integer, construct it as one.
-        if (value <= Value::maxInt)
-            currentValue() = static_cast<Value::Int>(value);
+        if (value <= Value::maxLargestInt)
+            currentValue() = static_cast<Value::LargestInt>(value);
         else
-            currentValue() = static_cast<Value::UInt>(value);
+            currentValue() = static_cast<Value::LargestUInt>(value);
     }
 
     return true;

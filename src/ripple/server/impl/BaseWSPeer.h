@@ -26,6 +26,7 @@
 #include <ripple/protocol/BuildInfo.h>
 #include <ripple/server/impl/BasePeer.h>
 #include <ripple/server/impl/LowestLayer.h>
+#include <ripple/rpc/impl/WSInfoSub.h>
 #include <boost/beast/core/multi_buffer.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/websocket.hpp>

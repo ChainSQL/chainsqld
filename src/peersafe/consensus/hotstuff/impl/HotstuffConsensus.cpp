@@ -516,8 +516,7 @@ HotstuffConsensus::compute(
     {
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            retriableTxs.insert(makeSTTx(item.slice()));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)

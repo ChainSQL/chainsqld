@@ -1284,7 +1284,8 @@ SHAMap::dump(bool hash) const
         JLOG(journal_.info()) << node->getString(nodeID);
         if (hash)
         {
-            JLOG(journal_.info()) << "Hash: " << node->getNodeHash();
+            std::string hashPrefix = node->isInner() ? "InnerHash:" : "LeafHash: ";
+            JLOG(journal_.info()) << hashPrefix << node->getNodeHash();
         }
 
         if (node->isInner())
@@ -1337,8 +1338,9 @@ SHAMap::canonicalizeChild(
     SHAMapInnerNode* parent,
     int branch) const
 {
-    if (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
-        ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE)
+    if (f_.stateNodeHashSetEnabled() &&
+        (ptr->getType() == SHAMapAbstractNode::tnACCOUNT_STATE ||
+        ptr->getType() == SHAMapAbstractNode::tnCONTRACT_STATE))
         f_.getStateNodeHashSet()->insert(ptr->getNodeHash().as_uint256());
     else
         ptr = parent->canonicalizeChild(branch, std::move(ptr));

@@ -42,10 +42,11 @@
 #include <ripple/json/json_reader.h>
 #include <peersafe/protocol/TableDefines.h>
 #include <peersafe/crypto/X509.h>
+#include <peersafe/app/util/Common.h>
 
 namespace ripple {
 
-static auto
+const KnownFormats<TxType>::Item*
 getTxFormat(TxType type)
 {
     auto format = TxFormats::getInstance().findByType(type);
@@ -535,8 +536,7 @@ STTx::getJson(JsonOptions options, bool binary) const
     if (binary)
     {
         Json::Value ret;
-        Serializer s = STObject::getSerializer();
-        ret[jss::tx] = strHex(s.peekData());
+        ret[jss::tx] = getTxBinary();
         ret[jss::hash] = to_string(getTransactionID());
         return ret;
     }
@@ -796,6 +796,13 @@ STTx::checkCertificate() const
     return {false, "certificate public key and signing public key not match"};
 }
 
+std::string
+STTx::getTxBinary() const
+{
+    Serializer s = STObject::getSerializer();
+    return strHex(s.peekData());
+}
+
 //------------------------------------------------------------------------------
 
 static bool
@@ -929,8 +936,9 @@ sterilize(STTx const& stx)
 {
     Serializer s;
     stx.add(s);
-    SerialIter sit(s.slice());
-    return std::make_shared<STTx const>(std::ref(sit));
+//    SerialIter sit(s.slice());
+//    return std::make_shared<STTx const>(std::ref(sit));
+    return makeSTTx(s.slice());
 }
 
 bool

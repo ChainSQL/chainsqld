@@ -28,6 +28,8 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
 #include <peersafe/app/misc/ContractHelper.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <peersafe/app/bloom/BloomHelper.h>
 
 namespace ripple {
 
@@ -62,12 +64,16 @@ buildLedgerImpl(
         OpenView accum(&*built);
         assert(!accum.open());
         app.getContractHelper().clearCache();
+        app.getBloomManager().bloomHelper().clearLogCache();
         applyTxs(accum, built);
         auto count = accum.newAccountCount(*built);
         LedgerAdjust::updateAccountCount(app, accum, count);
         app.getContractHelper().apply(accum);
         accum.apply(*built);
     }
+
+    if (built->info().bloomEnabled)
+        built->setBloom(app.getBloomManager().bloomHelper().calcBloom());
 
     built->updateSkipList();
     {

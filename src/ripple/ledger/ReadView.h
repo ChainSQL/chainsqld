@@ -104,6 +104,7 @@ struct LedgerInfo
     uint256 txHash = beast::zero;
     uint256 accountHash = beast::zero;
     uint256 parentHash = beast::zero;
+    uint2048 bloom = beast::zero;
 
     ZXCAmount drops = beast::zero;
 
@@ -112,6 +113,7 @@ struct LedgerInfo
     // VFALCO TODO Make this not mutable
     bool mutable validated = false;
     bool accepted = false;
+    bool bloomEnabled = false;
 
     // flags indicating how this ledger close took place
     int closeFlags = 0;

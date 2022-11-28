@@ -45,6 +45,7 @@
 #include <peersafe/basics/characterUtilities.h>
 #include <ripple/server/impl/JSONRPCUtil.h>
 #include <peersafe/app/tx/impl/Tuning.h>
+#include <eth/api/utils/Helpers.h>
 // #include <beast/core/detail/base64.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/http/fields.hpp>
@@ -287,6 +288,13 @@ ServerHandlerImp::onRequest(Session& session)
     }
 
     std::shared_ptr<Session> detachedSession = session.detach();
+    
+    if(session.request().method() == boost::beast::http::verb::options)
+    {
+        HTTPReply(200, "", makeOutput(session), app_.journal("RPC"), app_.config().IS_ALLOW_REMOTE);
+        return;
+    }
+    
     auto const postResult = m_jobQueue.postCoro(
         jtCLIENT,
         "RPC-Client",
@@ -609,6 +617,13 @@ Json::Int constexpr forbidden = -32605;
 Json::Int constexpr wrong_version = -32606;
 //Json::Int constexpr schema_not_found  = -32608;
 
+bool checkIfEthApi(std::string strMethod)
+{
+    return strMethod.find("eth_") != std::string::npos || 
+        strMethod.find("net_") != std::string::npos ||
+        strMethod.find("web3_") != std::string::npos;
+}
+
 void
 ServerHandlerImp::processRequest(
     Port const& port,
@@ -817,13 +832,21 @@ ServerHandlerImp::processRequest(
             params = jsonRPC[jss::params];
             if (!params)
                 params = Json::Value(Json::objectValue);
-
-            else if (!params.isArray() || params.size() != 1)
+            
+            else if (
+                params.isArray() &&
+                (params.size() != 1 || (params.size() == 1 && checkIfEthApi(strMethod))))
             {
-                usage.charge(Resource::feeInvalidRPC);
-                HTTPReply(400, "params unparseable", output, rpcJ);
-                return;
+                Json::Value paramsTemp;
+                paramsTemp["realParams"] = params;
+                params = paramsTemp;
             }
+//            else if (!params.isArray() || params.size() != 1)
+//            {
+//                usage.charge(Resource::feeInvalidRPC);
+//                HTTPReply(400, "params unparseable", output, rpcJ);
+//                return;
+//            }
             else
             {
                 params = std::move(params[0u]);
@@ -972,7 +995,35 @@ ServerHandlerImp::processRequest(
             {
                 result[jss::status]  = jss::success;
             }
-            r[jss::result] = std::move(result);
+
+            if(checkIfEthApi(strMethod))
+            {
+                r["id"] = jsonRPC["id"];
+                if(jsonRPC.isMember("jsonrpc"))
+                {
+                    r["jsonrpc"] = jsonRPC["jsonrpc"];
+                }
+                if (result.isMember(jss::error))
+                {
+                    if (result.isMember(jss::error_code) &&
+                        result[jss::error_code].asInt() == rpcUNKNOWN_COMMAND)
+                    {
+                        r[jss::error] = formatEthError(ethMETHOD_NOT_FOUND)[jss::error];
+                    }
+                    else
+                    {
+                        r[jss::error] = result[jss::error];
+                    }
+                }
+                else
+                {
+                    r[jss::result] = result[jss::result];
+                }
+            }
+            else
+            {
+                r[jss::result] = std::move(result);
+            }
         }
 		//if trasaction operation,
 		//remove tx_blob & tx_json field,and make tx_id parallel with result
@@ -1025,7 +1076,11 @@ ServerHandlerImp::processRequest(
             reply.append(std::move(r));
         else
             reply = std::move(r);
+        
+        JLOG(m_journal.trace())
+            << "doRpcCommand:" << strMethod << ":" << reply;
     }
+    
     auto response = to_string(reply);
 
     rpc_time_.notify(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -1044,7 +1099,7 @@ ServerHandlerImp::processRequest(
             stream << "Reply: " << response.substr(0, maxSize);
     }
 
-    HTTPReply(200, response, output, rpcJ);
+    HTTPReply(200, response, output, rpcJ, app_.config().IS_ALLOW_REMOTE);
 }
 
 //------------------------------------------------------------------------------

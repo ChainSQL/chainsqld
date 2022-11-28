@@ -22,6 +22,7 @@
 #include <ripple/json/impl/json_assert.h>
 #include <ripple/json/json_writer.h>
 #include <ripple/json/to_string.h>
+#include <cmath>
 
 namespace Json {
 
@@ -88,6 +89,29 @@ static struct DummyValueAllocatorInitializer
                            // before main().
     }
 } dummyValueAllocatorInitializer;
+
+#if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
+template <typename T, typename U>
+static inline bool InRange(double d, T min, U max) {
+  // The casts can lose precision, but we are looking only for
+  // an approximate range. Might fail on edge cases though. ~cdunn
+  return d >= static_cast<double>(min) && d <= static_cast<double>(max);
+}
+#else  // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
+static inline double integerToDouble(Json::UInt64 value) {
+  return static_cast<double>(Int64(value / 2)) * 2.0 +
+         static_cast<double>(Int64(value & 1));
+}
+
+template <typename T> static inline double integerToDouble(T value) {
+  return static_cast<double>(value);
+}
+
+template <typename T, typename U>
+static inline bool InRange(double d, T min, U max) {
+  return d >= integerToDouble(min) && d <= integerToDouble(max);
+}
+#endif // if !defined(JSON_USE_INT64_DOUBLE_CONVERSION)
 
 // //////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////
@@ -220,6 +244,17 @@ Value::Value(UInt value) : type_(uintValue)
 {
     value_.uint_ = value;
 }
+
+#if defined(JSON_HAS_INT64)
+Value::Value(Int64 value) : type_(intValue)
+{
+    value_.int_ = value;
+}
+Value::Value(UInt64 value) : type_(intValue)
+{
+    value_.uint_ = value;
+}
+#endif // defined(JSON_HAS_INT64)
 
 Value::Value(double value) : type_(realValue)
 {
@@ -596,6 +631,71 @@ Value::asUInt() const
     }
 
     return 0;  // unreachable;
+}
+
+#if defined(JSON_HAS_INT64)
+
+Value::Int64 Value::asInt64() const {
+    switch (type()) {
+    case intValue:
+        return Int64(value_.int_);
+    case uintValue:
+        JSON_ASSERT_MESSAGE(isInt64(), "LargestUInt out of Int64 range");
+        return Int64(value_.uint_);
+    case realValue:
+        JSON_ASSERT_MESSAGE(InRange(value_.real_, minInt64, maxInt64),
+                        "double out of Int64 range");
+        return Int64(value_.real_);
+    case nullValue:
+        return 0;
+    case booleanValue:
+        return value_.bool_ ? 1 : 0;
+    default:
+        break;
+    }
+    return 0;
+}
+
+Value::UInt64 Value::asUInt64() const {
+    switch (type()) {
+    case intValue:
+        JSON_ASSERT_MESSAGE(isUInt64(), "LargestInt out of UInt64 range");
+        return UInt64(value_.int_);
+    case uintValue:
+        return UInt64(value_.uint_);
+    case realValue:
+        JSON_ASSERT_MESSAGE(InRange(value_.real_, 0, maxUInt64),
+                        "double out of UInt64 range");
+        return UInt64(value_.real_);
+    case nullValue:
+        return 0;
+    case booleanValue:
+        return value_.bool_ ? 1 : 0;
+    case stringValue: {
+            char const* const str{value_.string_ ? value_.string_ : ""};
+            return beast::lexicalCastThrow<std::uint64_t>(str);
+        }
+    default:
+        break;
+    }
+    return 0;
+}
+#endif // if defined(JSON_HAS_INT64)
+
+LargestInt Value::asLargestInt() const {
+#if defined(JSON_NO_INT64)
+  return asInt();
+#else
+  return asInt64();
+#endif
+}
+
+LargestUInt Value::asLargestUInt() const {
+#if defined(JSON_NO_INT64)
+  return asUInt();
+#else
+  return asUInt64();
+#endif
 }
 
 double
@@ -978,6 +1078,11 @@ Value::getMemberNames() const
     return members;
 }
 
+static bool IsIntegral(double d) {
+  double integral_part;
+  return modf(d, &integral_part) == 0.0;
+}
+
 bool
 Value::isNull() const
 {
@@ -1000,6 +1105,46 @@ bool
 Value::isUInt() const
 {
     return type_ == uintValue;
+}
+
+bool Value::isInt64() const {
+#if defined(JSON_HAS_INT64)
+  switch (type()) {
+  case intValue:
+    return true;
+  case uintValue:
+    return value_.uint_ <= UInt64(maxInt64);
+  case realValue:
+    // Note that maxInt64 (= 2^63 - 1) is not exactly representable as a
+    // double, so double(maxInt64) will be rounded up to 2^63. Therefore we
+    // require the value to be strictly less than the limit.
+    return value_.real_ >= double(minInt64) &&
+           value_.real_ < double(maxInt64) && IsIntegral(value_.real_);
+  default:
+    break;
+  }
+#endif // JSON_HAS_INT64
+  return false;
+}
+
+bool Value::isUInt64() const {
+#if defined(JSON_HAS_INT64)
+  switch (type()) {
+  case intValue:
+    return value_.int_ >= 0;
+  case uintValue:
+    return true;
+  case realValue:
+    // Note that maxUInt64 (= 2^64 - 1) is not exactly representable as a
+    // double, so double(maxUInt64) will be rounded up to 2^64. Therefore we
+    // require the value to be strictly less than the limit.
+    return value_.real_ >= 0 && value_.real_ < maxUInt64AsDouble &&
+           IsIntegral(value_.real_);
+  default:
+    break;
+  }
+#endif // JSON_HAS_INT64
+  return false;
 }
 
 bool

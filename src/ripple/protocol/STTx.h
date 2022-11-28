@@ -41,7 +41,7 @@ enum TxnSql : char {
     txnSqlUnknown = 'U'
 };
 
-class STTx final : public STObject, public CountedObject<STTx>
+class STTx : public STObject, public CountedObject<STTx>
 {
 public:
     static char const*
@@ -54,7 +54,8 @@ public:
     static std::size_t const maxMultiSigners = 8;
 
 public:
-    STTx() = delete;
+    STTx()/* = delete*/{}
+
     STTx&
     operator=(STTx const& other) = delete;
 
@@ -167,7 +168,7 @@ public:
     static bool
     checkChainsqlContractType(TxType txType)
     {
-        return txType == ttCONTRACT;
+        return txType == ttCONTRACT || txType == ttETH_TX;
     }
 
     static std::pair<std::shared_ptr<STTx>, std::string>
@@ -226,7 +227,7 @@ public:
         @return `true` if valid signature. If invalid, the error message string.
     */
     enum class RequireFullyCanonicalSig : bool { no, yes };
-    std::pair<bool, std::string>
+    virtual std::pair<bool, std::string>
     checkSign(RequireFullyCanonicalSig requireCanonicalSig) const;
 
     // certificate sign
@@ -266,7 +267,10 @@ public:
         return !tidParent_.isZero();
     }
 
-private:
+    virtual std::string
+    getTxBinary() const;
+
+protected:
     std::pair<bool, std::string>
     checkSingleSign(RequireFullyCanonicalSig requireCanonicalSig) const;
 

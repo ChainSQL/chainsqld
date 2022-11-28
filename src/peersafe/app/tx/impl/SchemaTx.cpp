@@ -444,7 +444,7 @@ namespace ripple {
 
 	TER SchemaDelete::doApply()
 	{
-		auto j = ctx_.app.journal("schemaDeleteApply");
+//		auto j = ctx_.app.journal("schemaDeleteApply");
 		auto sleSchema = ctx_.view().peek(Keylet(ltSCHEMA, ctx_.tx.getFieldH256(sfSchemaID)));
 		if (sleSchema == nullptr)
 		{

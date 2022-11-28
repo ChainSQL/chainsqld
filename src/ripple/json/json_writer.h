@@ -27,6 +27,15 @@
 
 namespace Json {
 
+enum {
+  /// Constant that specify the size of the buffer that must be passed to
+  /// uintToString.
+  uintToStringBufferSize = 3 * sizeof(LargestUInt) + 1
+};
+
+// Defines a char buffer for use with uintToString().
+using UIntToStringBuffer = char[uintToStringBufferSize];
+
 class Value;
 
 /** \brief Abstract class for writers.

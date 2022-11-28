@@ -37,6 +37,8 @@
 
 namespace ripple {
 
+const int ethTxPrefix = 0;
+
 class Serializer
 {
 private:
@@ -376,6 +378,12 @@ public:
     get256()
     {
         return getBitString<256>();
+    }
+
+    uint2048
+    get2048()
+    {
+        return getBitString<2048>();
     }
 
     void

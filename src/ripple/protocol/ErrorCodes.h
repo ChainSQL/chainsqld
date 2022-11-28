@@ -187,7 +187,9 @@ enum error_code_i {
     rpcTX_NODEHASH_NOT_MATCH    = 131,
     rpcBAD_PROOF                = 132,
     
-    rpcLAST = rpcBAD_PROOF  // rpcLAST should always equal the last code.=
+    rpcACCOUNT_ALREADY_DELETED  = 133,
+    
+    rpcLAST = rpcACCOUNT_ALREADY_DELETED  // rpcLAST should always equal the last code.=
 };
 
 /** Codes returned in the `warnings` array of certain RPC commands.
@@ -197,6 +199,11 @@ enum error_code_i {
 enum warning_code_i {
     warnRPC_UNSUPPORTED_MAJORITY = 1001,
     warnRPC_AMENDMENT_BLOCKED = 1002,
+};
+
+enum error_code_eth {
+    ethERROR_DEFAULT            = -32000,
+    ethMETHOD_NOT_FOUND         = -32601,
 };
 
 //------------------------------------------------------------------------------
@@ -230,6 +237,9 @@ struct ErrorInfo
 /** Returns an ErrorInfo that reflects the error code. */
 ErrorInfo const&
 get_error_info(error_code_i code);
+
+std::string const&
+get_error_msg(error_code_eth code);
 
 /** Add or update the json update to reflect the error code. */
 /** @{ */

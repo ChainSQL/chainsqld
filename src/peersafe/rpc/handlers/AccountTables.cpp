@@ -47,9 +47,10 @@ getTableInfo(
     std::string str(blob.begin(), blob.end());
     tmp[jss::tablename] = str;
     LedgerIndex iInLedger = table.getFieldU32(sfCreateLgrSeq) + 1;
-    tmp[jss::ledger_index] = iInLedger;
+    tmp["create_ledger_seq"] = iInLedger;
     uint256 txHash = table.getFieldH256(sfCreatedTxnHash);
     tmp[jss::tx_hash] = to_string(txHash);
+    tmp["txn_ledger_seq"] = table.getFieldU32(sfTxnLgrSeq);
     if (bGetDetailInfo)
     {
         auto tx = context.app.getMasterTransaction().fetch(txHash);

@@ -111,9 +111,18 @@ SHAMapAbstractNode::makeTransaction(
 {
     // FIXME: using a Serializer results in a copy; avoid it?
     Serializer s(data.begin(), data.size());
+    bool isETHTx = false;
+    if ((data.begin())[0] == ethTxPrefix)
+    {
+        isETHTx = true;
+        data.remove_prefix(1);
+    }
 
-    auto item = std::make_shared<SHAMapItem const>(
-        sha512Half(HashPrefix::transactionID, data), s);
+    auto item = isETHTx ? 
+        std::make_shared<SHAMapItem const>(
+            sha512Half<CommonKey::sha3>(data), s) :
+        std::make_shared<SHAMapItem const>(
+                sha512Half(HashPrefix::transactionID, data), s);
 
     if (hashValid)
         return std::make_shared<SHAMapTreeNode>(
@@ -337,15 +346,24 @@ SHAMapAbstractNode::makeFromPrefix(Slice rawNode, SHAMapHash const& hash)
     if (rawNode.size() < 4)
         Throw<std::runtime_error>("prefix: short node");
 
-    // FIXME: Use SerialIter::get32?
-    // Extract the prefix
-    auto const type = safe_cast<HashPrefix>(
-        (safe_cast<std::uint32_t>(rawNode[0]) << 24) +
-        (safe_cast<std::uint32_t>(rawNode[1]) << 16) +
-        (safe_cast<std::uint32_t>(rawNode[2]) << 8) +
-        (safe_cast<std::uint32_t>(rawNode[3])));
-
-    rawNode.remove_prefix(4);
+    HashPrefix type = HashPrefix::transactionID;
+    if((rawNode.begin())[0] == 0)
+    {
+        type = HashPrefix::transactionID;
+    }
+    else
+    {
+        // FIXME: Use SerialIter::get32?
+        // Extract the prefix
+        type = safe_cast<HashPrefix>(
+            (safe_cast<std::uint32_t>(rawNode[0]) << 24) +
+            (safe_cast<std::uint32_t>(rawNode[1]) << 16) +
+            (safe_cast<std::uint32_t>(rawNode[2]) << 8) +
+            (safe_cast<std::uint32_t>(rawNode[3])));
+        
+        rawNode.remove_prefix(4);
+    }
+    
 
     bool const hashValid = true;
     std::uint32_t const seq = 0;
@@ -407,8 +425,16 @@ SHAMapTreeNode::updateHash(CommonKey::HashType hashType)
     uint256 nh;
     if (mType == tnTRANSACTION_NM)
     {
-        nh =
-            sha512Half(HashPrefix::transactionID, makeSlice(mItem->peekData()));
+        auto dataSlice = makeSlice(mItem->peekData());
+        if ((dataSlice.begin())[0] == 0)
+        {
+            dataSlice.remove_prefix(1);
+            nh = sha512Half<CommonKey::sha3>(dataSlice);
+        }
+        else
+        {
+            nh = sha512Half(HashPrefix::transactionID, dataSlice);
+        }
     }
     else if (mType == tnACCOUNT_STATE)
     {

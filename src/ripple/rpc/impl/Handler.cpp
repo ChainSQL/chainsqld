@@ -221,6 +221,46 @@ Handler const handlerArray[]{
     {"tx_in_pool", byRef (&doTxInPool), Role::USER,  NO_CONDITION },
     {"sync_info", byRef (&doSyncInfo), Role::USER,  NO_CONDITION },
     {"monitor_statis", byRef (&doMonitorStatis), Role::USER, NO_CONDITION},
+    {"shamap_dump", byRef(&doShamapDump), Role::USER, NO_CONDITION},
+};
+
+Handler const ethHandlerArray[]{
+    // Ethereum-compatible JSON RPC API
+    {"web3_clientVersion", byRef(&doWeb3CleintVersion), Role::USER, NO_CONDITION},
+    {"web3_sha3", byRef(&doWeb3Sha3), Role::USER, NO_CONDITION},
+    {"eth_chainId", byRef (&doEthChainId), Role::USER, NO_CONDITION},
+    {"net_version", byRef (&doNetVersion), Role::USER, NO_CONDITION},
+    {"net_peerCount", byRef (&doNetPeerCount), Role::USER, NO_CONDITION},
+    {"net_listening", byRef (&doNetListening), Role::USER, NO_CONDITION},
+    {"eth_blockNumber", byRef (&doEthBlockNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
+    {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
+    {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
+    {"eth_call", byRef(&doContractCall), Role::USER, NO_CONDITION},
+    {"eth_estimateGas", byRef(&doEstimateGas), Role::USER, NO_CONDITION},
+    {"eth_signTransaction", byRef(&doEthSignTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
+    {"eth_sendTransaction", byRef(&doEthSendTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
+    {"eth_sendRawTransaction", byRef(&doEthSendRawTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
+    {"eth_getTransactionReceipt", byRef(&doEthGetTransactionReceipt), Role::USER, NO_CONDITION},
+    {"eth_getTransactionByHash", byRef(&doEthGetTransactionByHash), Role::USER, NO_CONDITION},
+    {"eth_getTransactionCount", byRef(&doEthGetTransactionCount), Role::USER, NO_CONDITION},
+    {"eth_gasPrice", byRef(&doEthGasPrice), Role::USER, NO_CONDITION},
+    {"eth_getCode", byRef(&doEthGetCode), Role::USER, NO_CONDITION},
+    {"eth_mining", byRef(&doEthMining), Role::USER, NO_CONDITION},
+    {"eth_accounts", byRef(&doEthAccounts), Role::USER, NO_CONDITION},
+    {"eth_getStorageAt", byRef(&doEthGetStorageAt), Role::USER, NO_CONDITION},
+    {"eth_sign", byRef(&doEthSign), Role::USER, NO_CONDITION},
+    {"eth_getBlockTransactionCountByHash", byRef(&doEthTxCountByHash), Role::USER, NO_CONDITION},
+    {"eth_getBlockTransactionCountByNumber", byRef(&doEthTxCountByNumber), Role::USER, NO_CONDITION},
+    {"eth_getTransactionByBlockHashAndIndex", byRef(&doEthTxByHashAndIndex), Role::USER, NO_CONDITION},
+    {"eth_getTransactionByBlockNumberAndIndex", byRef(&doEthTxByNumberAndIndex), Role::USER, NO_CONDITION},
+    {"eth_getLogs", byRef(&doEthGetLogs), Role::USER, NO_CONDITION},
+    {"eth_getFilterLogs", byRef(&doEthGetFilterLogs), Role::USER, NO_CONDITION},
+    {"eth_getFilterChanges", byRef(&doEthGetFilterChanges), Role::USER, NO_CONDITION},
+    {"eth_newFilter", byRef(&doEthNewFilter), Role::USER, NO_CONDITION},
+    {"eth_newBlockFilter", byRef(&doEthNewBlockFilter), Role::USER, NO_CONDITION},
+    {"eth_newPendingTransactionFilter", byRef(&doEthNewPendingTransactionFilter), Role::USER, NO_CONDITION},
+    {"eth_uninstallFilter", byRef(&doEthUninstallFilter), Role::USER, NO_CONDITION},
 };
 
 class HandlerTable
@@ -237,6 +277,15 @@ private:
             {
                 auto& innerTable = table_[versionToIndex(v)];
                 auto const& entry = entries[i];
+                assert(innerTable.find(entry.name_) == innerTable.end());
+                innerTable[entry.name_] = entry;
+            }
+            
+            std::size_t ethArrayLen = sizeof(ethHandlerArray)/sizeof(ethHandlerArray[0]);
+            for (std::size_t j = 0; j < ethArrayLen; ++j)
+            {
+                auto& innerTable = table_[versionToIndex(v)];
+                auto const& entry = ethHandlerArray[j];
                 assert(innerTable.find(entry.name_) == innerTable.end());
                 innerTable[entry.name_] = entry;
             }

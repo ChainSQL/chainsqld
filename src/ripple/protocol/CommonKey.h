@@ -10,7 +10,7 @@
 namespace ripple {
 	class CommonKey {
 	public:
-        enum HashType { unknown = -1, sha, sm3};
+        enum HashType { unknown = -1, sha, sm3, sha3};
         static KeyType chainAlgTypeG;
         static HashType chainHashTypeG;
         KeyType keyTypeInt_;

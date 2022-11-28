@@ -116,6 +116,13 @@ inline static std::string toUpper(const std::string& str)
 	return dst;
 }
 
+inline static std::string toLowerStr(const std::string& inStr)
+{
+    std::string dstStr;
+    transform(inStr.begin(),inStr.end(), back_inserter(dstStr),::tolower);
+    return dstStr;
+}
+
 uint64_t
 uintFromHex(std::string const& strSrc);
 

@@ -66,6 +66,11 @@ struct ConfigSection
         return "crypto_alg";
     }
     static std::string
+    allowRemote()
+    {
+        return "allow_remote";
+    }
+    static std::string
     prometheus()
     {
         return "prometheus";
@@ -123,6 +128,7 @@ struct ConfigSection
 #define SECTION_VALIDATOR_KEYS "validator_keys"
 #define SECTION_GM_SELF_CHECK           "gm_self_check"
 #define SECTION_HASH_ALG                "hash_alg"
+#define SECTION_ALLOW_REMOTE            "allow_remote"
 
 //#define SECTION_FEE_OFFER               "fee_offer"
 
@@ -148,11 +154,17 @@ struct ConfigSection
 
 #define SECTION_GOVERNANCE              "governance"
 
+#define SECTION_FETCH_LEDGER            "ledger_sync"
+
 #define SECTION_PEER_X509_ROOT_PATH     "peer_x509_root_path"
 #define SECTION_PEER_X509_CRED_PATH     "peer_x509_cred_path"
 
 #define SECTOIN_TRUSTED_CA_LIST         "trusted_ca_list"
 #define SECTION_CMD_SSL_CERT            "cmd_ssl_cert"
+
+#define SECTION_GENESIS                 "genesis"
+
+#define SECTION_ETH                     "eth"
 
 }  // namespace ripple
 

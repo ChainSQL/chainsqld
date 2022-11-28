@@ -2,6 +2,7 @@
 #include <peersafe/precompiled/ABI.h>
 #include <peersafe/precompiled/ToolsPrecompiled.h>
 #include <peersafe/precompiled/Utils.h>
+#include <eth/tools/ripemd160.h>
 
 namespace ripple {
 
@@ -10,6 +11,7 @@ const char* const PUBLIC_TO_ADDRESS = "publicToAddress(string)";
 const char* const STRING_CONCAT = "stringConcat(string[])";
 const char* const SHA256_COMMON = "eth_sha256(bytes)";
 const char* const RIPEMD160 = "eth_ripemd160(bytes)";
+const char* const TX_HASH = "txHash()";
 
 ToolsPrecompiled::ToolsPrecompiled()
 {
@@ -19,6 +21,7 @@ ToolsPrecompiled::ToolsPrecompiled()
     name2Selector_[STRING_CONCAT] = getFuncSelector(STRING_CONCAT);
     name2Selector_[SHA256_COMMON] = getFuncSelector(SHA256_COMMON);
     name2Selector_[RIPEMD160] = getFuncSelector(RIPEMD160);
+    name2Selector_[TX_HASH] = getFuncSelector(TX_HASH);
 }
 
 std::string
@@ -39,7 +42,8 @@ ToolsPrecompiled::execute(
     ContractABI abi;
     if (func)
     {
-        int64_t ter(0), runGas(0);
+        int ter(0);
+        int64_t runGas(0);
         Blob ret;
         if (func == name2Selector_[VERIFY_SIGNATURE_STR])
         {
@@ -101,12 +105,17 @@ ToolsPrecompiled::execute(
             std::string param;
             abi.abiOut(data, param);
             //ret = eth_ripemd160(makeSlice(param));
-            auto accID = eth_ripemd160(makeSlice(param));
+            auto accID = eth::eth_ripemd160(makeSlice(param));
             uint256 retValue(0);
             std::copy(
                 accID.begin(),
                 accID.end(),
                 retValue.begin());
+            ret = Blob(retValue.begin(), retValue.end());
+        }
+        else if (func == name2Selector_[TX_HASH])
+        {
+            uint256 retValue = _s.getTx().getTransactionID();
             ret = Blob(retValue.begin(), retValue.end());
         }
 

@@ -19,25 +19,38 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include <peersafe/protocol/Contract.h>
 #include <eth/vm/Common.h>
+#include <eth/tools/RLP.h>
 #include <ripple/protocol/digest.h>
 
 namespace ripple {
 
-    AccountID Contract::calcNewAddress(AccountID sender, int nonce)
+    AccountID Contract::calcNewAddress(AccountID sender, int nonce, CommonKey::HashType hashType)
     {
         eth::bytes data(sender.begin(), sender.end());
-        data.push_back((eth::byte)((nonce >> 24) & 0xff));
-        data.push_back((eth::byte)((nonce >> 16) & 0xff));
-        data.push_back((eth::byte)((nonce >> 8) & 0xff));
-        data.push_back((eth::byte)(nonce & 0xff));
-
-        ripesha_hasher rsh;
-        rsh(data.data(), data.size());
-        auto const d = static_cast<
-            ripesha_hasher::result_type>(rsh);
         AccountID id;
-        static_assert(sizeof(d) == id.size(), "");
-        std::memcpy(id.data(), d.data(), d.size());
+        if(hashType == CommonKey::HashType::sha3)
+        {
+            auto rlplist = eth::rlpList(data, nonce);
+            uint256 shaData;
+            eth::sha3(rlplist.data(), rlplist.size(), shaData.data());
+            
+            std::memcpy(id.data(), shaData.begin() + 12, 20);
+        }
+        else{
+            
+            data.push_back((eth::byte)((nonce >> 24) & 0xff));
+            data.push_back((eth::byte)((nonce >> 16) & 0xff));
+            data.push_back((eth::byte)((nonce >> 8) & 0xff));
+            data.push_back((eth::byte)(nonce & 0xff));
+            
+            ripesha_hasher rsh;
+            rsh(data.data(), data.size());
+            auto const d = static_cast<
+                ripesha_hasher::result_type>(rsh);
+            
+            static_assert(sizeof(d) == id.size(), "");
+            std::memcpy(id.data(), d.data(), d.size());
+        }
         return id;
     }
 
