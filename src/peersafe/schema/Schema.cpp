@@ -170,7 +170,6 @@ private:
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
     std::unique_ptr<BloomManager> m_pBloomManager;
-    std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
     std::unique_ptr<TxnDBCon> mTxnDB;
@@ -360,8 +359,6 @@ public:
                 *this,
                 SchemaImp::journal("BloomManager")
             ))
-
-        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
         , m_pPrometheusClient(std::make_unique<PrometheusClient>(
@@ -2020,13 +2017,8 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         JLOG(m_journal.fatal()) << "Ledger is not sane.";
         return false;
     }
-<<<<<<< HEAD
-    
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_);
-=======
 
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, schema_params_.schemaId());
->>>>>>> develop
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_, schema_params_.schemaId());
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));
