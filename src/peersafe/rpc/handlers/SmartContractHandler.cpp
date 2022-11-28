@@ -289,6 +289,9 @@ doEstimateGas(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
+        //This is a high burden interface
+        context.loadType = Resource::feeHighBurdenRPC;
+
         Schema& appTemp = context.app;
         Json::Value jsonParams = context.params;
         Json::Value ethParams = jsonParams["realParams"][0u];

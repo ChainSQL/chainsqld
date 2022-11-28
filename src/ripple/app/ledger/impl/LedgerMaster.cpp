@@ -285,7 +285,8 @@ LedgerMaster::onConsensusReached(
 
     if (waitingConsensusReach &&
         previousLedger &&
-        previousLedger->info().seq != mValidLedgerSeq)
+        previousLedger->info().seq != mValidLedgerSeq &&
+        isCompatible(*previousLedger, m_journal.warn(), "Not switching when waitingConsensusReach,"))
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
