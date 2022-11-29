@@ -83,6 +83,12 @@ public:
     virtual std::string
     getTxBinary() const override;
 
+    boost::optional<uint64_t>
+    getChainID()
+    {
+        return m_chainId;
+    }
+
 private:
     struct RlpDecoded
     {
@@ -127,6 +133,7 @@ private:
 private:
     Blob m_rlpData;
     ContractOpType m_type;
+    boost::optional<uint64_t> m_chainId;
 };
 
 }

@@ -189,6 +189,12 @@ doEthSendRawTransaction(RPC::JsonContext& context)
         // Construct STETx
         auto stpTrans = std::make_shared<STETx>(makeSlice(*ret), lastLedgerSeq);
 
+        //check chainID to prevent replay.
+        auto chainIDTx = stpTrans->getChainID();
+        auto chainID = getChainID(context.app.openLedger().current());
+        if (chainIDTx && chainIDTx != chainID)
+            return formatEthError(ethERROR_DEFAULT, "chainID not match,replay is not allowed.");
+
         jvResult = processEtxTransaction(context, stpTrans);
     }
     catch (std::exception& e)
