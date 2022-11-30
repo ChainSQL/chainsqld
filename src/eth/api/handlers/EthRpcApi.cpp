@@ -102,14 +102,15 @@ doEthChainId(RPC::JsonContext& context)
 Json::Value
 doNetVersion(RPC::JsonContext& context)
 {
+    //This interface will decimal string,not hex!
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = toHexString(getChainID(context.app.openLedger().current()));
+        jvResult[jss::result] = to_string(getChainID(context.app.openLedger().current()));
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x00";
+        jvResult[jss::result] = "0";
     }
     return jvResult;
 }
