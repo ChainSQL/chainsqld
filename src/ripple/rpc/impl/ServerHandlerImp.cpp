@@ -641,7 +641,7 @@ ServerHandlerImp::processRequest(
         Json::Reader reader;
         if ((request.size() > RPC::Tuning::maxRequestSize) ||
             !reader.parse(request, jsonOrig) || !jsonOrig ||
-            !jsonOrig.isObject())
+            (!jsonOrig.isObject() && !jsonOrig.isArray()))
         {
             HTTPReply(
                 400,
@@ -662,6 +662,14 @@ ServerHandlerImp::processRequest(
             HTTPReply(400, "Malformed batch request", output, rpcJ);
             return;
         }
+        size = jsonOrig[jss::params].size();
+    }//check eth batch request
+    else if (jsonOrig.isArray() && jsonOrig.size() > 0)
+    {
+        batch = true;
+        auto obj = jsonOrig;
+        jsonOrig = Json::Value();
+        jsonOrig[jss::params] = obj;
         size = jsonOrig[jss::params].size();
     }
 
