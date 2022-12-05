@@ -80,7 +80,6 @@ filterLogs(const Json::Value& unfilteredLogs,
            const std::vector<uint160>& addresses,
            const std::vector<std::vector<uint256>>& topics) {
     Json::Value result(Json::arrayValue);
-Logs:
     for (auto const& logs : unfilteredLogs) {
         for(auto const& log: logs) {
             LedgerIndex seq = log["blockNumber"].asUInt();
@@ -103,13 +102,14 @@ Logs:
                 continue;
             }
             
-            int topics_index = 0;
-            for(auto const& sub: topics) {
+            std::size_t topics_size = topics.size();
+            for(std::size_t index = 0; index < topics_size; index++) {
+                auto const& sub = topics[index];
                 // empty rule set == wildcard
                 bool match = sub.size() == 0;
                 for(auto const& topic: sub) {
                     std::string hex_topic = "0x" + toLowerStr(to_string(topic));
-                    if(topicsObject[topics_index].asString() == hex_topic) {
+                    if(topicsObject[static_cast<unsigned int>(index)].asString() == hex_topic) {
                         match = true;
                         break;
                     }
@@ -120,6 +120,8 @@ Logs:
             }
             result.append(log);
         }
+    Logs:
+        continue;
     }
     return result;
 }
