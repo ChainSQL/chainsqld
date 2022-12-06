@@ -689,6 +689,7 @@ JSS (db_noAutoSync);
 JSS (db_acctSecretError);
 JSS (db_notInSync);
 JSS (db_noSyncTable);
+JSS (db_lostConnection);
 JSS (transaction_result);			// out: doLedgerTxs
 JSS(include_success);			    // out: doLedgerTxs
 JSS(include_failure);			    // out: doLedgerTxs
@@ -707,6 +708,8 @@ JSS ( TableChain );                  // out:
 JSS ( ContractChain );               // out: 
 JSS ( PreviousHash );               // out: 
 JSS (PreviousSeq);                  // out:
+JSS (PublicKey);
+JSS (ValidatedSeq);    
 JSS ( NextHash );                   // out: 
 JSS ( log );
 

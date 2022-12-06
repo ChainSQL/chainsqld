@@ -641,7 +641,7 @@ ServerHandlerImp::processRequest(
         Json::Reader reader;
         if ((request.size() > RPC::Tuning::maxRequestSize) ||
             !reader.parse(request, jsonOrig) || !jsonOrig ||
-            !jsonOrig.isObject())
+            (!jsonOrig.isObject() && !jsonOrig.isArray()))
         {
             HTTPReply(
                 400,
@@ -662,6 +662,14 @@ ServerHandlerImp::processRequest(
             HTTPReply(400, "Malformed batch request", output, rpcJ);
             return;
         }
+        size = jsonOrig[jss::params].size();
+    }//check eth batch request
+    else if (jsonOrig.isArray() && jsonOrig.size() > 0)
+    {
+        batch = true;
+        auto obj = jsonOrig;
+        jsonOrig = Json::Value();
+        jsonOrig[jss::params] = obj;
         size = jsonOrig[jss::params].size();
     }
 
@@ -827,12 +835,11 @@ ServerHandlerImp::processRequest(
         // Otherwise, that field must be an array of length 1 (why?)
         // and we take that first entry and validate that it's an object.
         Json::Value params;
-        if (!batch)
-        {
+        //if (!batch)
+        //{
             params = jsonRPC[jss::params];
             if (!params)
                 params = Json::Value(Json::objectValue);
-            
             else if (
                 params.isArray() &&
                 (params.size() != 1 || (params.size() == 1 && checkIfEthApi(strMethod))))
@@ -857,11 +864,11 @@ ServerHandlerImp::processRequest(
                     return;
                 }
             }
-        }
-        else  // batch
-        {
-            params = jsonRPC;
-        }
+        //}
+        //else  // batch
+        //{
+        //    params = jsonRPC;
+        //}
 
         std::string ripplerpc = "1.0";
         if (params.isMember(jss::ripplerpc))

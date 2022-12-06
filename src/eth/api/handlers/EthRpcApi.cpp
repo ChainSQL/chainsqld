@@ -35,6 +35,7 @@
 namespace ripple {
 
 const std::string ETH_ERROR_NUM_RETURN = "0x00";
+const std::string ETH_ERROR_OBJ_RETURN = "0x";
 
 std::shared_ptr<ReadView const>
 getLedgerByParam(RPC::JsonContext& context,std::string const& ledgerParamStr)
@@ -101,14 +102,15 @@ doEthChainId(RPC::JsonContext& context)
 Json::Value
 doNetVersion(RPC::JsonContext& context)
 {
+    //This interface will decimal string,not hex!
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = toHexString(getChainID(context.app.openLedger().current()));
+        jvResult[jss::result] = to_string(getChainID(context.app.openLedger().current()));
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = "0x00";
+        jvResult[jss::result] = "0";
     }
     return jvResult;
 }
@@ -300,7 +302,7 @@ doEthGetBlockByNumber(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
+        jvResult[jss::result] = ETH_ERROR_OBJ_RETURN;
     }
     return jvResult;
 }
@@ -323,7 +325,7 @@ doEthGetBlockByHash(RPC::JsonContext& context)
     }
     catch (std::exception&)
     {
-        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
+        jvResult[jss::result] = ETH_ERROR_OBJ_RETURN;
     }
     return jvResult;
 }
@@ -392,7 +394,7 @@ doEthGetTransactionReceipt(RPC::JsonContext& context)
         auto txn = context.app.getMasterTransaction().fetch(hash);
         if (!txn)
         {
-            jvResult[jss::status] = ETH_ERROR_NUM_RETURN;
+            jvResult[jss::status] = ETH_ERROR_OBJ_RETURN;
             return jvResult;
         }
         auto tx = txn->getSTransaction();
@@ -562,7 +564,7 @@ doEthGetCode(RPC::JsonContext& context)
     Json::Value jvResult;
     try
     {
-        jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
+        jvResult[jss::result] = ETH_ERROR_OBJ_RETURN;
         auto accDataRet = getAccountData(context);
 
         if (accDataRet.second == rpcSUCCESS && accDataRet.first)
@@ -615,7 +617,7 @@ Json::Value
 doEthGetStorageAt(RPC::JsonContext& context)
 {
     Json::Value jvResult(Json::objectValue);
-    jvResult[jss::result] = ETH_ERROR_NUM_RETURN;
+    jvResult[jss::result] = ETH_ERROR_OBJ_RETURN;
     try
     {
         //get the right ledger

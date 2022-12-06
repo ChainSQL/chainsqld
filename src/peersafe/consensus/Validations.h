@@ -113,9 +113,9 @@ public:
         @return Whether the validation satisfies the invariant
     */
     bool
-    operator()(time_point now, Seq s, ValidationParms const& p)
+    operator()(time_point now, Seq s, std::chrono::milliseconds valSetExpires)
     {
-        if (now > (when_ + p.validationSET_EXPIRES))
+        if (now > (when_ + valSetExpires))
             seq_ = Seq{0};
         if (s <= seq_)
             return false;
@@ -296,6 +296,7 @@ class Validations
 
     // Manages concurrent access to members
     mutable Mutex mutex_;
+    mutable Mutex lastValmutex_;
 
     // Validations from currently listed and trusted nodes (partial and full)
     hash_map<NodeID, Validation> current_;
@@ -337,13 +338,16 @@ class Validations
 
     // Parameters to determine validation staleness
     ValidationParms const parms_;
-
+    std::chrono::milliseconds valSeqExpires_;
     // Adaptor instance
     // Is NOT managed by the mutex_ above
     Adaptor adaptor_;
 
     StalePolicy stalePolicy_;
 
+    std::tuple<std::uint32_t, uint256, std::vector<std::shared_ptr<STValidation>>>
+        lastValidations_;
+    
 private:
     // Remove support of a validated ledger
     void
@@ -388,7 +392,7 @@ private:
             }
             else
                 ++it;
-        }
+        } 
     }
 
     // Update the trie to reflect a new validated ledger
@@ -572,6 +576,7 @@ public:
         , parms_(p)
         , adaptor_(std::forward<Ts>(ts)...)
         , stalePolicy_(std::forward<Ts>(ts)...)
+        , lastValidations_(std::make_tuple(0,0,std::vector<std::shared_ptr<STValidation>>()))
     {
     }
 
@@ -590,6 +595,14 @@ public:
     {
         return parms_;
     }
+    /**
+    * Set the expiration time of validation seq
+    */
+    void
+    setValSeqExpires(std::chrono::milliseconds valSeqExpires)
+    {
+        valSeqExpires_ = valSeqExpires;
+    }
 
     /** Return whether the local node can issue a validation for the given
        sequence number
@@ -602,7 +615,7 @@ public:
     canValidateSeq(Seq const s)
     {
         std::lock_guard lock{mutex_};
-        return localSeqEnforcer_(byLedger_.clock().now(), s, parms_);
+        return localSeqEnforcer_(byLedger_.clock().now(), s, valSeqExpires_);
     }
 
     /** Add a new validation
@@ -640,14 +653,14 @@ public:
                     std::max(seqit->second.signTime(), val.signTime()) -
                     std::min(seqit->second.signTime(), val.signTime());
 
-                if (diff > parms_.validationCURRENT_WALL &&
+                if (diff > valSeqExpires_ &&
                     val.signTime() > seqit->second.signTime())
                     seqit->second = val;
             }
 
             // Enforce monotonically increasing sequences for validations
             // by a given node:
-            if (auto& enf = seqEnforcers_[nodeID]; !enf(now, val.seq(), parms_))
+            if (auto& enf = seqEnforcers_[nodeID]; !enf(now, val.seq(), valSeqExpires_))
             {
                 // If the validation is for the same sequence as one we are
                 // tracking, check it closely:
@@ -706,6 +719,44 @@ public:
     {
         std::lock_guard lock{mutex_};
         toKeep_ = s;
+    }
+
+    /**
+    * Set the latest validatedLedger related Validations
+    * @param validations
+    */
+    void
+    setLastValidations(std::vector<std::shared_ptr<STValidation>>const validations)
+    {
+        std::lock_guard lock{lastValmutex_};
+        if (validations.empty())
+            return;
+        auto seq = validations[0]->getFieldU32(sfLedgerSequence);
+        if (std::get<2>(lastValidations_).size() != 0)
+        {
+            if (seq >= std::get<0>(lastValidations_))
+                lastValidations_ = std::make_tuple(validations[0]->getFieldU32(sfLedgerSequence),validations[0]->getFieldH256(sfLedgerHash),
+                    validations);
+        }
+        else
+        {
+            lastValidations_ = std::make_tuple(validations[0]->getFieldU32(sfLedgerSequence),validations[0]->getFieldH256(sfLedgerHash),
+                    validations);
+        }
+    }
+
+    /**
+    * get the latest validatedLedger related Validations
+    * @param 
+    */
+    std::vector<std::shared_ptr<STValidation>>
+    getLastValidationsFromCache(std::uint32_t seq, uint256 id)
+    {
+        std::lock_guard lock{lastValmutex_};
+        if (seq == std::get<0>(lastValidations_) &&
+            id == std::get<1>(lastValidations_))
+            return std::get<2>(lastValidations_);
+        return std::vector<std::shared_ptr<STValidation>>();
     }
 
     /** Expire old validation sets

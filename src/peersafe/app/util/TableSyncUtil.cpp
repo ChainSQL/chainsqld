@@ -3,7 +3,11 @@
 #include <ripple/beast/clock/abstract_clock.h>
 #include <ripple/beast/clock/basic_seconds_clock.h>
 #include <ripple/beast/clock/manual_clock.h>
+#include <peersafe/app/sql/STTx2SQL.h>
+#include <peersafe/schema/Schema.h>
+#include <peersafe/app/sql/TxStore.h>
 #include <chrono>
+#include <errmsg.h>
 namespace ripple{
 
 uint256 TableSyncUtil::GetChainId(const ReadView * pView)
@@ -37,6 +41,37 @@ std::pair<bool, STEntry*> TableSyncUtil::IsTableSLEChanged(const STArray& aTable
 		return std::make_pair(bTableFound, nullptr);
 	else
 		return std::make_pair(bTableFound, (STEntry*)(&(*iter)));
+}
+
+bool
+TableSyncUtil::IsMysqlConnectionErr(DatabaseCon* conn)
+{
+    if (conn == nullptr)
+        return true;
+    int errNo = conn->getSession().last_error().first;
+    if (errNo == CR_SERVER_GONE_ERROR || errNo == CR_SERVER_LOST)
+        return true;
+    return false;
+}
+
+bool
+TableSyncUtil::IsTableExist(Schema& app, uint160 uTxDBName)
+{
+    bool bDBTableExist = false;
+    if (app.checkGlobalConnection())
+    {
+        bDBTableExist = STTx2SQL::IsTableExistBySelect(
+            app.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+        if (!bDBTableExist &&
+            TableSyncUtil::IsMysqlConnectionErr(
+                app.getTxStoreDBConn().GetDBConn()))
+        {
+            app.checkGlobalConnection(true);
+        }
+        bDBTableExist = STTx2SQL::IsTableExistBySelect(
+            app.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+    }
+    return bDBTableExist;
 }
 
 //----------------------------------------------------------------------------------

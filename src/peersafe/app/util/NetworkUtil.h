@@ -16,33 +16,24 @@ You should have received a copy of the GNU General Public License
 along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 */
 //==============================================================================
-#ifndef RIPPLE_RPC_TABLE_SYNC_UTIL_H_INCLUDED
-#define RIPPLE_RPC_TABLE_SYNC_UTIL_H_INCLUDED
 
-#include <ripple/ledger/ReadView.h>
-#include <peersafe/protocol/STEntry.h>
-#include <ripple/core/DatabaseCon.h>
+#ifndef RIPPLE_RPC_NETWORK_UTIL_H_INCLUDED
+#define RIPPLE_RPC_NETWORK_UTIL_H_INCLUDED
 
+#include <unordered_set>
+#include <ripple/basics/base_uint.h>
+#include <ripple/app/consensus/RCLCxLedger.h>
+#include <ripple/overlay/predicates.h>
 namespace ripple {
-	//table sync tool class
-	class Schema;
-	class TableSyncUtil {
-	public:
-		static uint256 GetChainId(const ReadView * pView);
-		static std::pair<bool, STEntry*> IsTableSLEChanged(const STArray& aTables, LedgerIndex iLastSeq, std::string sTableName, bool bStrictEqual);
-		static bool IsMysqlConnectionErr(DatabaseCon* conn);
-        static bool IsTableExist(Schema& app, uint160 nameInDB);
-	};
+class Schema;
+/** Notify peers of a consensus state change
 
-	struct SyncParam
-    {
-		std::uint32_t	ledgerSeq;
-        std::string		rules;
-        std::string		ledgerTime;
-
-		SyncParam(std::string const& rules);
-		SyncParam(std::uint32_t seq, std::string const& rules, std::uint32_t closetime);
-    };
+    @param ne Event type for notification
+    @param ledger The ledger at the time of the state change
+    @param haveCorrectLCL Whether we believ we have the correct LCL.
+*/
+void
+notify(Schema& app, protocol::NodeEvent ne, RCLCxLedger const& ledger, bool haveCorrectLCL, beast::Journal journal);
 }
 
 #endif

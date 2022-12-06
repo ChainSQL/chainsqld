@@ -79,6 +79,7 @@
 #include <peersafe/app/tx/impl/Tuning.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/app/prometh/PrometheusClient.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/app/bloom/BloomManager.h>
 #include <peersafe/app/bloom/BloomIndexer.h>
 #include <boost/asio/ip/host_name.hpp>
@@ -268,7 +269,7 @@ public:
         , mConsensus(
               app,
               make_FeeVote(
-                  setup_FeeVote(app_.config().section("voting")),
+                  setup_FeeVote(app_.config()),
                   app_.journal("FeeVote")),
               ledgerMaster,
               *m_localTX,
@@ -2310,17 +2311,7 @@ NetworkOPsImp::switchLastClosedLedger(
 
     m_ledgerMaster.switchLCL(newLCL);
 
-    protocol::TMStatusChange s;
-    s.set_newevent(protocol::neSWITCHED_LEDGER);
-    s.set_ledgerseq(newLCL->info().seq);
-    s.set_networktime(app_.timeKeeper().now().time_since_epoch().count());
-    s.set_ledgerhashprevious(
-        newLCL->info().parentHash.begin(), newLCL->info().parentHash.size());
-    s.set_ledgerhash(newLCL->info().hash.begin(), newLCL->info().hash.size());
-    s.set_schemaid(app_.schemaId().begin(), uint256::size());
-
-    app_.peerManager().foreach(
-        send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
+    notify(app_, protocol::neSWITCHED_LEDGER, newLCL, true, m_journal);
 }
 
 void

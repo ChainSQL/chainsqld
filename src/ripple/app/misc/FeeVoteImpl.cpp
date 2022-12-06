@@ -25,6 +25,7 @@
 #include <ripple/beast/utility/Journal.h>
 #include <ripple/protocol/STValidation.h>
 #include <ripple/protocol/st.h>
+#include <ripple/core/ConfigSections.h>
 
 namespace ripple {
 
@@ -261,7 +262,7 @@ FeeVoteImpl::doVoting(
         lastClosedLedger->fees().accountReserve(0));
     auto const incReserve = incReserveVote.getVotes().dropsAs<std::uint32_t>(
         lastClosedLedger->fees().increment);
-    constexpr FeeUnit32 feeUnits = Setup::reference_fee_units;
+    FeeUnit32 feeUnits = target_.reference_fee_units;
 	std::uint64_t const dropsPerByte = dropsPerByteVote.getVotes();
     std::uint64_t const gasPrice = gasPriceVote.getVotes();
     auto const seq = lastClosedLedger->info().seq + 1;
@@ -311,9 +312,12 @@ FeeVoteImpl::doVoting(
 //------------------------------------------------------------------------------
 
 FeeVote::Setup
-setup_FeeVote(Section const& section)
+setup_FeeVote(Config const& config)
 {
     FeeVote::Setup setup;
+
+    setup.reference_fee_units = config.TRANSACTION_FEE_BASE;
+    auto section = config.section(ConfigSection::voting());
     {
         std::uint64_t temp;
         if (set(temp, "reference_fee", section) &&
@@ -331,9 +335,10 @@ setup_FeeVote(Section const& section)
         std::uint32_t temp;
         if (set(temp, "drops_per_byte", section))
             setup.drops_per_byte = temp;
-            
+
         // drops_per_byte range in [0,10^6]
-        if (setup.drops_per_byte > 1000000) {
+        if (setup.drops_per_byte > 1000000)
+        {
             setup.drops_per_byte = (1000000 / 1024);
         }
     }

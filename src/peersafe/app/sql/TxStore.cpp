@@ -22,6 +22,7 @@
 
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/sql/STTx2SQL.h>
+#include <peersafe/core/Tuning.h>
 #include <ripple/json/Output.h>
 #include <ripple/protocol/jss.h>
 #include <ripple/protocol/ErrorCodes.h>
@@ -42,6 +43,8 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
     std::string dbName = "chainsql";
 
     DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(cfg);
+    if (setup.sync_db.lines().size() == 0)
+        return;
 
     std::pair<std::string, bool> dbNameCfg = setup.sync_db.find("db");
     if (dbNameCfg.second && !dbNameCfg.first.empty())
@@ -63,7 +66,7 @@ TxStoreDBConn::TxStoreDBConn(const Config& cfg)
         }
     }
 
-    for (int count = 0; count < 3; ++count)
+    for (int count = 0; count < MAX_CONN_RETRY_COUNT; ++count)
     {
         try
         {

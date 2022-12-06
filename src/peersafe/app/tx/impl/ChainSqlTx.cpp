@@ -142,8 +142,7 @@ namespace ripple {
 
 	std::pair<TxStoreDBConn*, TxStore*> ChainSqlTx::getTransactionDBEnv(ApplyContext& ctx)
 	{
-		if (ctx.app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			ctx.app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		if (!ctx.app.checkGlobalConnection())
 		{
 			return std::make_pair<TxStoreDBConn*, TxStore*>(nullptr, nullptr);
 		}

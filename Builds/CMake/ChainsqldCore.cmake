@@ -141,6 +141,7 @@ install (
     src/ripple/protocol/digest.h
     src/ripple/protocol/jss.h
     src/ripple/protocol/tokens.h
+    src/ripple/protocol/STValidationSet.h
   DESTINATION include/ripple/protocol)
 install (
   FILES
@@ -320,6 +321,7 @@ target_sources (chainsqld PRIVATE
   src/ripple/protocol/impl/UintTypes.cpp
   src/ripple/protocol/impl/digest.cpp
   src/ripple/protocol/impl/tokens.cpp
+  src/ripple/protocol/impl/STValidationSet.cpp
   #[===============================[
     main sources:
       subdir: crypto
@@ -675,6 +677,7 @@ target_sources (chainsqld PRIVATE
   src/peersafe/app/tx/impl/AccountAuthorize.cpp
   src/peersafe/app/util/Common.cpp
   src/peersafe/app/util/TableSyncUtil.cpp
+  src/peersafe/app/util/NetworkUtil.cpp
   src/peersafe/app/prometh/impl/PrometheusClient.cpp
   src/peersafe/app/ledger/LedgerAdjust.cpp
   src/peersafe/app/bloom/Bloom.cpp
@@ -763,7 +766,6 @@ target_sources (chainsqld PRIVATE
   src/peersafe/rpc/handlers/NodeSize.cpp
   src/peersafe/rpc/handlers/MonitorStatis.cpp
   src/peersafe/rpc/handlers/ShamapDump.cpp
-  src/peersafe/rpc/handlers/EthRpcApi.cpp
   src/peersafe/rpc/impl/TableAssistant.cpp
   src/peersafe/rpc/impl/TableUtils.cpp
   src/peersafe/rpc/impl/TxCommonPrepare.cpp

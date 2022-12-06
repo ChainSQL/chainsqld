@@ -270,6 +270,8 @@ public:
     getWaitinBeginConsensus() = 0;
     virtual Stoppable&
     getStoppable() = 0;
+    virtual bool
+    checkGlobalConnection(bool bForceUpdate = false) = 0;
 };
 
 std::shared_ptr<Schema>

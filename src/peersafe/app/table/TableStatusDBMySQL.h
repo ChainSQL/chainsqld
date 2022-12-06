@@ -104,6 +104,18 @@ public:
         const std::string& PreviousCommit) override;
 
     soci_ret
+    UpdateSyncDBNoCatch(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnLedgerHash,
+        const std::string& TxnLedgerSeq,
+        const std::string& LedgerHash,
+        const std::string& LedgerSeq,
+        const std::string& TxHash,
+        const std::string& TxnLedgerTime,
+        const std::string& PreviousCommit) override;
+
+    soci_ret
     UpdateSyncDB(
         const std::string& Owner,
         const std::string& TableNameInDB,
@@ -113,6 +125,13 @@ public:
 
     soci_ret
     UpdateSyncDB(
+        const std::string& Owner,
+        const std::string& TableNameInDB,
+        const std::string& TxnUpdateHash,
+        const std::string& PreviousCommit) override;
+
+    soci_ret
+    UpdateSyncDBNoCatch(
         const std::string& Owner,
         const std::string& TableNameInDB,
         const std::string& TxnUpdateHash,

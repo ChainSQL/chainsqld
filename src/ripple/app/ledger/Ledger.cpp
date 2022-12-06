@@ -29,6 +29,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
@@ -170,11 +171,35 @@ public:
 };
 
 //------------------------------------------------------------------------------
+std::shared_ptr<SLE>
+createFeesSle(Config const& config)
+{
+    auto const k = keylet::fees();
+
+    auto sle = std::make_shared<SLE>(k);
+    if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
+        sle->setFieldU64(sfBaseFee, *f);
+
+    sle->setFieldU32(
+        sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
+
+    if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(sfReserveBase, *f);
+
+    if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(
+            sfReserveIncrement, *f);
+
+    sle->setFieldU64(
+        sfDropsPerByte, config.DROPS_PER_BYTE);
+
+    sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
+    return sle;
+}
 
 Ledger::Ledger(
     create_genesis_t,
     Config const& config,
-    std::vector<uint256> const& amendments,
     Family& family)
     : mImmutable(false)
     , txMap_(std::make_shared<SHAMap>(SHAMapType::TRANSACTION, family))
@@ -217,10 +242,18 @@ Ledger::Ledger(
     sleChainID->setFieldH256(sfChainId, hash);
     rawInsert(sleChainID);
 
-    if (!amendments.empty())
     {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
         auto const sle = std::make_shared<SLE>(keylet::amendments());
-        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
+        rawInsert(sle);
+    }
+    
+
+    {
+        auto sle = createFeesSle(config);
         rawInsert(sle);
     }
 
@@ -347,7 +380,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, Family& f, uint256 schemaID)
+Ledger::Ledger(Ledger const& ledger, Family& f, Config const& config, uint256 schemaID)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -390,6 +423,20 @@ Ledger::Ledger(Ledger const& ledger, Family& f, uint256 schemaID)
             rawInsert(sleNew);
             count++;
         }
+    }
+    {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
+        auto const sle = std::make_shared<SLE>(keylet::amendments());
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
+        rawInsert(sle);
+    }
+    
+
+    {
+        auto sle = createFeesSle(config);
+        rawInsert(sle);
     }
     
     auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
@@ -1057,6 +1104,8 @@ saveValidatedLedger(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
 	boost::format deleteTrans3(
 		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
+    boost::format deleteLastValidations(
+            "DELETE FROM LastValidations;");
 
     if (!ledger->info().accountHash.isNonZero())
     {
@@ -1131,6 +1180,12 @@ saveValidatedLedger(
     {
         auto db = app.getLedgerDB().checkoutDb();
         *db << boost::str(deleteLedger % seq);
+        if (current)
+        {
+            auto db = app.getLedgerDB().checkoutDb();
+            *db << boost::str(deleteLastValidations);
+        }
+
     }
 
     if (app.config().useTxTables())
@@ -1256,7 +1311,14 @@ saveValidatedLedger(
                 (:ledgerHash,:ledgerSeq,:prevHash,:totalCoins,:closingTime,:prevClosingTime,
                 :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash,:bloom);)sql");
 
+        static std::string const insVal(
+        "INSERT OR REPLACE INTO LastValidations "
+        "(LedgerSeq, LedgerHash, NodePubKey, SignTime, RawData) "
+        "VALUES (:ledgerSeq, "
+        ":ledgerHash,:nodePubKey,:signTime,:rawData);");
+
         auto db(app.getLedgerDB().checkoutDb());
+
 
         soci::transaction tr(*db);
 
@@ -1281,6 +1343,36 @@ saveValidatedLedger(
             soci::use(parentCloseTime), soci::use(closeTimeResolution),
             soci::use(closeFlags), soci::use(accountHash), soci::use(txHash),soci::use(bloom);
 
+        if (current)
+        {
+            auto currentStale = app.getValidations().getLastValidationsFromCache(ledger->info().seq, ledger->info().hash);
+
+            Serializer s(1024);
+            for (auto const rclValidation : currentStale)
+                {
+                    auto ledgerSeq = rclValidation->getFieldU32(sfLedgerSequence);
+                    s.erase();
+                    STValidation::pointer const& val = rclValidation;
+                    val->add(s);
+
+                    auto const ledgerHash = to_string(val->getLedgerHash());
+
+                    auto const nodePubKey =
+                        toBase58(TokenType::NodePublic, val->getSignerPublic());
+                    auto const signTime =
+                        val->getSignTime().time_since_epoch().count();
+
+                    soci::blob rawData(*db);
+                    rawData.append(
+                        reinterpret_cast<const char*>(s.peekData().data()),
+                        s.peekData().size());
+                    assert(rawData.get_len() == s.peekData().size());
+
+                    *db << insVal, soci::use(ledgerSeq),
+                        soci::use(ledgerHash), soci::use(nodePubKey),
+                        soci::use(signTime), soci::use(rawData);
+                }
+        }
         tr.commit();
     }
 

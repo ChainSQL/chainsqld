@@ -158,9 +158,6 @@ public:
 
     // Network parameters
 
-    // The number of fee units a reference transaction costs
-    static constexpr FeeUnit32 TRANSACTION_FEE_BASE{10};
-
     // Note: The following parameters do not relate to the UNL or trust at all
     // Minimum number of nodes to consider the network present
     std::size_t NETWORK_QUORUM = 1;
@@ -185,14 +182,12 @@ public:
     boost::optional<std::size_t>
         VALIDATION_QUORUM;  // validations to consider ledger authoritative
 
-    ZXCAmount                      FEE_DEFAULT{10};
-
-    ZXCAmount                      FEE_ACCOUNT_RESERVE { 5*DROPS_PER_ZXC };
-    ZXCAmount                      FEE_OWNER_RESERVE { 1*DROPS_PER_ZXC };
-
-
-	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);
-
+    // The number of fee units a reference transaction costs
+    static constexpr FeeUnit32      TRANSACTION_FEE_BASE{10};
+    ZXCAmount                       FEE_DEFAULT{10};
+    ZXCAmount                       FEE_ACCOUNT_RESERVE { 5*DROPS_PER_ZXC };
+    ZXCAmount                       FEE_OWNER_RESERVE { 1*DROPS_PER_ZXC };
+	std::uint64_t                   DROPS_PER_BYTE = (1000000 / 1024);
     std::uint64_t                   GAS_PRICE = (10);
 
     // Node storage configuration
@@ -224,7 +219,7 @@ public:
     boost::optional<beast::IP::Endpoint> rpc_ip;
 
     std::unordered_set<uint256, beast::uhash<>> features;
-
+    std::vector<uint256> amendments;
 
 	// schema
 	std::string					 SCHEMA_PATH;

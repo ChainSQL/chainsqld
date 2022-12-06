@@ -88,6 +88,8 @@ public:
     bool
     available() override;
     bool
+    checkGlobalConnection(bool bForceUpdate = false) override;
+    bool
     nodeToShards();
     bool
     validateShards();
@@ -157,8 +159,8 @@ private:
     std::unique_ptr<HashRouter> mHashRouter;
     RCLValidations mValidations;
     std::unique_ptr<TxQ> txQ_;
-    std::unique_ptr<TxStoreDBConn> m_pTxStoreDBConn;
-    std::unique_ptr<TxStore> m_pTxStore;
+    std::unique_ptr<ConnectionPool> m_pConnectionPool;
+    std::shared_ptr<ConnectionUnit> m_pGlobalConnUnit;
     std::unique_ptr<TableStatusDB> m_pTableStatusDB;
     std::unique_ptr<TableSync> m_pTableSync;
     std::unique_ptr<TableStorage> m_pTableStorage;
@@ -168,7 +170,6 @@ private:
     std::unique_ptr<TxPool> m_pTxPool;
     std::unique_ptr<StateManager> m_pStateManager;
     std::unique_ptr<BloomManager> m_pBloomManager;
-    std::unique_ptr<ConnectionPool> m_pConnectionPool;
     ClosureCounter<void, boost::system::error_code const&> waitHandlerCounter_;
 
     std::unique_ptr<TxnDBCon> mTxnDB;
@@ -324,12 +325,9 @@ public:
               setup_TxQ(*config_),
               SchemaImp::journal("TxQ")))
 
-        , m_pTxStoreDBConn(std::make_unique<TxStoreDBConn>(*config_))
+        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
-        , m_pTxStore(std::make_unique<TxStore>(
-              m_pTxStoreDBConn->GetDBConn(),
-              *config_,
-              SchemaImp::journal("TxStore")))
+        , m_pGlobalConnUnit(m_pConnectionPool->getAvailable(true))
 
         , m_pTableSync(std::make_unique<TableSync>(
               *this,
@@ -361,8 +359,6 @@ public:
                 *this,
                 SchemaImp::journal("BloomManager")
             ))
-
-        , m_pConnectionPool(std::make_unique<ConnectionPool>(*this))
 
         , m_peerManager(make_PeerManager(*this))
         , m_pPrometheusClient(std::make_unique<PrometheusClient>(
@@ -481,13 +477,13 @@ public:
     TxStoreDBConn&
     getTxStoreDBConn() override
     {
-        return *m_pTxStoreDBConn;
+        return *m_pGlobalConnUnit->conn_;
     }
 
     TxStore&
     getTxStore() override
     {
-        return *m_pTxStore;
+        return *m_pGlobalConnUnit->store_;
     }
 
     TableStatusDB&
@@ -813,6 +809,7 @@ public:
         return *txQ_;
     }
 
+    // Need to judge useTxTables
     TxnDBCon&
     getTxnDB() override
     {
@@ -844,17 +841,17 @@ public:
         try
         {
             auto setup = setup_DatabaseCon(*config_, m_journal);
-
-            if (config_->useTxTables())
-            {
-                // transaction database
-                mTxnDB = std::make_unique<TxnDBCon>(
+            mTxnDB = std::make_unique<TxnDBCon>(
                     setup,
                     TxDBName,
                     TxDBPragma,
                     TxDBInit,
                     DatabaseCon::CheckpointerSetup{
                         &app_.getJobQueue(),&doJobCounter(), &logs()});
+            if (config_->useTxTables())
+            {
+                // transaction database
+                
                 mTxnDB->getSession() << boost::str(
                     boost::format("PRAGMA cache_size=-%d;") %
                     kilobytes(config_->getValueFor(SizedItem::txnDBCache)));
@@ -1253,6 +1250,27 @@ SchemaImp::available()
 }
 
 bool
+SchemaImp::checkGlobalConnection(bool bForceUpdate /* = false */)
+{
+    DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
+    if (setup.sync_db.lines().size() == 0)
+        return false;
+    if (m_pGlobalConnUnit->conn_->GetDBConn() == nullptr || 
+        m_pGlobalConnUnit->conn_->GetDBConn()->getSession().get_backend() == nullptr ||
+        bForceUpdate)
+    {
+        getConnectionPool().removeConnection(m_pGlobalConnUnit);
+        m_pGlobalConnUnit = getConnectionPool().getAvailable(true);
+        if (m_pTableStatusDB != nullptr)
+            m_pTableStatusDB->UpdateDatabaseConn(m_pGlobalConnUnit->conn_->GetDBConn());
+    }
+
+    return (m_pGlobalConnUnit->conn_->GetDBConn() != nullptr &&
+            m_pGlobalConnUnit->conn_->GetDBConn()->getSession().get_backend() !=
+            nullptr);
+}
+
+bool
 SchemaImp::setup()
 {
     if (!setSynTable())
@@ -1276,21 +1294,12 @@ SchemaImp::setup()
     }
 
     // Configure the amendments the server supports
-    {
-        auto const& sa = detail::supportedAmendments();
-        std::vector<std::string> saHashes;
-        saHashes.reserve(sa.size());
-        for (auto const& name : sa)
-        {
-            auto const f = getRegisteredFeature(name);
-            BOOST_ASSERT(f);
-            if (f)
-                saHashes.push_back(to_string(*f) + " " + name);
-        }
+    {        
         Section supportedAmendments("Supported Amendments");
-        supportedAmendments.append(saHashes);
+        supportedAmendments.append(getSupportedAmendments());
 
-        Section enabledAmendments = config_->section(SECTION_AMENDMENTS);
+        Section enabledAmendments("enable Amendments");
+
 
         m_amendmentTable = make_AmendmentTable(
             config().AMENDMENT_MAJORITY_TIME,
@@ -1609,7 +1618,7 @@ SchemaImp::startGenesisLedger()
                                              : std::vector<uint256>{};
 
     std::shared_ptr<Ledger> const genesis = std::make_shared<Ledger>(
-        create_genesis, *config_, initialAmendments, nodeFamily_);
+        create_genesis, *config_, nodeFamily_);
     m_ledgerMaster->storeLedger(genesis);
 
     genesis->setImmutable(*config_);
@@ -2009,7 +2018,7 @@ SchemaImp::startGenesisLedger(std::shared_ptr<Ledger const> loadLedger)
         return false;
     }
 
-    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, schema_params_.schemaId());
+    auto genesis = std::make_shared<Ledger>(*loadLedger, nodeFamily_, *config_, schema_params_.schemaId());
     genesis->setImmutable(*config_);
 
     openLedger_.emplace(genesis, cachedSLEs_, SchemaImp::journal("OpenLedger"));
@@ -2119,15 +2128,13 @@ SchemaImp::setMaxDisallowedLedger()
 bool
 SchemaImp::setSynTable()
 {
-    auto conn = m_pTxStoreDBConn->GetDBConn();
-
     DatabaseCon::Setup setup = ripple::setup_SyncDatabaseCon(*config_);
     // sync_db not configured
-    if (setup.sync_db.name() == "" && setup.sync_db.lines().size() == 0)
+    if (setup.sync_db.lines().size() == 0)
         return true;
 
     // sync_db configured,but not connected
-    if (conn == nullptr || conn->getSession().get_backend() == NULL)
+    if (!checkGlobalConnection())
     {
         m_pTableSync->SetHaveSyncFlag(false);
         m_pTableStorage->SetHaveSyncFlag(false);
@@ -2138,6 +2145,7 @@ SchemaImp::setSynTable()
     }
     else
     {
+        auto conn = m_pGlobalConnUnit->conn_->GetDBConn();
         std::pair<std::string, bool> result = setup.sync_db.find("type");
 
         if (result.first.compare("sqlite") == 0 || result.first.empty() ||

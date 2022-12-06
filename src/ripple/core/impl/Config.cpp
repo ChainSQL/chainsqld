@@ -311,6 +311,7 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
     removeSection("auto_sync");      //need separate configuration
     removeSection("sync_tables");    //need separate configuration
     removeSection("prometheus");
+    removeSection("voting");
     removeSection(SECTION_VALIDATOR_LIST_KEYS);
     removeSection(SECTION_VALIDATOR_LIST_SITES);
 
@@ -753,15 +754,6 @@ Config::loadFromString(std::string const& fileContents)
     if (getSingleSection(secConfig, SECTION_NETWORK_QUORUM, strTemp, j_))
         NETWORK_QUORUM = beast::lexicalCastThrow<std::size_t>(strTemp);
 
-    if (getSingleSection(secConfig, SECTION_FEE_ACCOUNT_RESERVE, strTemp, j_))
-        FEE_ACCOUNT_RESERVE = beast::lexicalCastThrow<std::uint64_t>(strTemp);
-
-    if (getSingleSection(secConfig, SECTION_FEE_OWNER_RESERVE, strTemp, j_))
-        FEE_OWNER_RESERVE = beast::lexicalCastThrow<std::uint64_t>(strTemp);
-
-    if (getSingleSection(secConfig, SECTION_FEE_DEFAULT, strTemp, j_))
-        FEE_DEFAULT = beast::lexicalCastThrow<std::uint64_t>(strTemp);
-
     if (getSingleSection(secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
         if (boost::iequals(strTemp, "full"))
@@ -1022,6 +1014,17 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error>(
                     "Unknown feature: " + s + "  in config file.");
         }
+
+        auto const partAmend = section("amendments");
+        for (auto const& s : partAmend.values())
+        {
+            if (auto const f = getRegisteredFeature(s))
+                amendments.push_back(*f);
+            else
+                Throw<std::runtime_error>(
+                    "Unknown feature: " + s + "  in config file.");
+        }
+
     }
 
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);

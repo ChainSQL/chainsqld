@@ -61,6 +61,17 @@ STETx::STETx(Slice const& sit, std::uint32_t lastLedgerSeq) noexcept(false)
     decoded.r = rlp[7].toInt<u256>();
     decoded.s = rlp[8].toInt<u256>();
 
+    if (decoded.v > 36)
+    {
+        auto const chainId = (decoded.v - 35) / 2;
+        if (chainId > std::numeric_limits<uint64_t>::max())
+            Throw<std::runtime_error>("invalid signature");
+        m_chainId = static_cast<uint64_t>(chainId);
+    }
+    // only values 27 and 28 are allowed for non-replay protected transactions
+    else if (decoded.v != 27 && decoded.v != 28)
+        Throw<std::runtime_error>("invalid signature");
+
     m_type = rlp[3].isEmpty() ? ContractCreation : MessageCall;
 
     makeWithDecoded(decoded, lastLedgerSeq);
@@ -75,12 +86,8 @@ STETx::STETx(
 {
     
     RlpDecoded decoded(ts);
-   
-    int const vOffset = chainID * 2 + 35;
-    int recovery = 1;
-    //set default value for v
-    decoded.v = u256(recovery + vOffset);
 
+    m_chainId = chainID;
     m_type = ts.creation ? ContractCreation : MessageCall;
     //sign calculate rsv
     auto priData = *strUnHex(secret.substr(2));
@@ -91,6 +98,8 @@ STETx::STETx(
     SignatureStruct sigStruct = *(SignatureStruct const*)&sig;
     if (sigStruct.isValid())
     {
+        int const vOffset = chainID * 2 + 35;
+        int recovery = 1;
         decoded.r = u256("0x" + to_string(sigStruct.r));
         decoded.s = u256("0x" + to_string(sigStruct.s));
         decoded.v = u256(recovery + vOffset);
@@ -187,7 +196,7 @@ STETx::sha3(RlpDecoded const& _decoded, IncludeSignature _sig)
     else
     {
         RLPStream s;
-        bool isReplayProtected = true;
+        bool isReplayProtected = m_chainId.has_value();
         streamRLP(
             s, _decoded, _sig, isReplayProtected && _sig == WithoutSignature);
 

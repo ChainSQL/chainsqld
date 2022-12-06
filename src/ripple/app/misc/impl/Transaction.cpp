@@ -218,6 +218,8 @@ Transaction::load(
 {
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
+    if (!app.config().useTxTables())
+        return {};
     if (app.config().SAVE_TX_RAW)
     {
 		std::string sql = "SELECT LedgerSeq,Status,RawTxn,TxnMeta "
@@ -246,7 +248,7 @@ Transaction::load(
 		return Transaction::transactionFromSQLValidated(
 			ledgerSeq, status, rawTxn,txnMeta, app);
     }
-    else
+    else 
     {
 		std::string sql = "SELECT LedgerSeq,Status "
 			"FROM Transactions WHERE TransID='";
@@ -263,7 +265,7 @@ Transaction::load(
 
 		return Transaction::transactionFromSHAMapValidated(
 			ledgerSeq, status, id, app);
-    }    
+    }
 }
 
 // options 1 to include the date of the transaction

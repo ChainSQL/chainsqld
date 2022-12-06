@@ -78,7 +78,7 @@ getTableInfo(
                 }
             }
         }
-        tmp[jss::confidential] = isConfidential(*view,ownerID, str);
+        tmp[jss::confidential] = isConfidential(*view, ownerID, str);
 
         auto ledger = context.app.getLedgerMaster().getLedgerBySeq(iInLedger);
         if (ledger != nullptr)
@@ -88,11 +88,7 @@ getTableInfo(
                 ledger->info().closeTime.time_since_epoch().count();
         }
 
-        if (context.app.getTxStoreDBConn().GetDBConn() != nullptr &&
-            context.app.getTxStoreDBConn()
-                    .GetDBConn()
-                    ->getSession()
-                    .get_backend() != nullptr)
+        if (context.app.checkGlobalConnection())
         {
             auto pConn = context.app.getTxStoreDBConn().GetDBConn();
             uint160 nameInDB = table.getFieldH160(sfNameInDB);

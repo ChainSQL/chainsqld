@@ -28,6 +28,8 @@
 #include <peersafe/consensus/ConsensusParams.h>
 #include <peersafe/consensus/pop/PopAdaptor.h>
 #include <peersafe/app/misc/StateManager.h>
+#include <peersafe/schema/PeerManagerImp.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/protocol/STETx.h>
 #include <peersafe/app/util/Common.h>
 
@@ -110,7 +112,7 @@ PopAdaptor::onCollectFinish(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+    notify(app_, protocol::neCLOSING_LEDGER, ledger, !wrongLCL, j_);
 
     auto const& prevLedger = ledger.ledger_;
 
@@ -123,7 +125,8 @@ PopAdaptor::onCollectFinish(
     initialSet->setUnbacked();
 
     // Build SHAMap containing all transactions in our open ledger
-    std::map<AccountID, int> mapAccount2Seq;
+    std::map<AccountID, int> mapTxAccount2Seq;
+    std::map<AccountID, int> mapSleAccount2Seq;
     for (auto const& txID : transactions)
     {
         auto tx = app_.getMasterTransaction().fetch(txID);
@@ -138,9 +141,29 @@ PopAdaptor::onCollectFinish(
         auto act = tx->getSTransaction()->getAccountID(sfAccount);
         auto seq = tx->getSTransaction()->getFieldU32(sfSequence);
         //save smallest account-sequence
-        if (mapAccount2Seq.find(act) == mapAccount2Seq.end() || seq < mapAccount2Seq[act])
+        if (mapTxAccount2Seq.find(act) == mapTxAccount2Seq.end())
         {
-            mapAccount2Seq[act] = seq;
+            mapTxAccount2Seq[act] = seq;
+
+            auto sle = prevLedger->read(keylet::account(act));
+            if (!sle)
+                continue;
+            std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
+            mapSleAccount2Seq[act] = a_seq;
+        }
+        else if (seq < mapTxAccount2Seq[act])
+        {
+            mapTxAccount2Seq[act] = seq;
+        }
+
+        if (mapSleAccount2Seq[act] > seq)
+        {
+            JLOG(j_.error())
+                << "has past sequence number, Account: "
+                << toBase58(act) << " a_seq=" << mapSleAccount2Seq[act]
+                << " t_seq=" << seq;
+            app_.getTxPool().removeTx(txID);
+            continue;
         }
 
         JLOG(j_.trace()) << "Adding open ledger TX " << txID;
@@ -149,15 +172,12 @@ PopAdaptor::onCollectFinish(
         initialSet->addItem(SHAMapItem(tx->getID(), std::move(s)), true, false);
     }
     //check empty tx-set
-    if(mapAccount2Seq.size() > 0 && parms_.omitEMPTY)
+    if(mapTxAccount2Seq.size() > 0 && parms_.omitEMPTY)
     {
         bool bHasSeqOk = false;
-        for (auto it = mapAccount2Seq.begin(); it != mapAccount2Seq.end(); it++)
+        for (auto it = mapTxAccount2Seq.begin(); it != mapTxAccount2Seq.end(); it++)
         {
-            auto sle = prevLedger->read(keylet::account(it->first));
-            if (!sle)
-                continue;
-            std::uint32_t const a_seq = sle->getFieldU32(sfSequence);
+            std::uint32_t const a_seq = mapSleAccount2Seq[it->first];
             if (a_seq == it->second)
             {
                 bHasSeqOk = true;
@@ -170,7 +190,6 @@ PopAdaptor::onCollectFinish(
             JLOG(j_.warn()) << "onCollectFinish no tx sequence ok,will use empty tx-set";
             initialSet = std::make_shared<SHAMap>(
                 SHAMapType::TRANSACTION, app_.getNodeFamily());
-            app_.getTxPool().clearAvoid();
         } 
     }       
 
@@ -219,8 +238,23 @@ PopAdaptor::launchViewChange(STViewChange const& viewChange)
     consensus.set_msg(&v[0], v.size());
     consensus.set_msgtype(ConsensusMessageType::mtVIEWCHANGE);
     consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
-
     signAndSendMessage(consensus);
+}
+
+void
+PopAdaptor::launchAcquirValidationSet(std::pair<std::uint32_t, PublicKey> pair)
+{
+    STObject obj(sfNewFields);
+    obj.setFieldU32(sfValidatedSequence, pair.first);
+    auto data = obj.getSerializer().peekData();
+
+    protocol::TMConsensus consensus;
+    consensus.set_msg(&data[0], data.size());
+    consensus.set_msgtype(ConsensusMessageType::mtACQUIRVALIDATIONSET);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+    auto peer = app_.peerManager().findPeerByValPublicKey(pair.second);
+    if (peer)
+        signAndSendMessage(peer, consensus);
 }
 
 void
@@ -352,7 +386,7 @@ PopAdaptor::doAccept(
     JLOG(j_.debug()) << "Built ledger #" << built.seq() << ": " << newLCLHash;
 
     // Tell directly connected peers that we have a new LCL
-    notify(protocol::neACCEPTED_LEDGER, built, haveCorrectLCL);
+    notify(app_, protocol::neACCEPTED_LEDGER, built, haveCorrectLCL, j_);
 
     //-------------------------------------------------------------------------
     {    

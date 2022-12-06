@@ -272,9 +272,9 @@ public:
         app_.getTxPool().updateAvoid(map, seq);
     }
     inline void
-    clearPoolAvoid(LedgerIndex seq)
+    clearPoolAvoid()
     {
-        app_.getTxPool().clearAvoid(seq);
+        app_.getTxPool().clearAvoid();
     }
     inline Json::Value
     getSyncStatusJson()
@@ -314,17 +314,6 @@ public:
         RCLCxLedger const& prevLedger,
         hash_set<NodeID> const& nowTrusted);
 
-    /** Notify peers of a consensus state change
-
-        @param ne Event type for notification
-        @param ledger The ledger at the time of the state change
-        @param haveCorrectLCL Whether we believ we have the correct LCL.
-    */
-    virtual void
-    notify(
-        protocol::NodeEvent ne,
-        RCLCxLedger const& ledger,
-        bool haveCorrectLCL);
 
     virtual void
     InitAnnounce(

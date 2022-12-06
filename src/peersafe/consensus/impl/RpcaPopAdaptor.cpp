@@ -27,11 +27,13 @@
 #include <ripple/app/misc/ValidatorKeys.h>
 #include <ripple/protocol/Feature.h>
 #include <ripple/protocol/digest.h>
+#include <ripple/protocol/STValidationSet.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/app/misc/TxPool.h>
 #include <peersafe/app/util/Common.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/RpcaPopAdaptor.h>
+#include <peersafe/protocol/STViewChange.h>
 
 namespace ripple {
 
@@ -103,9 +105,15 @@ RpcaPopAdaptor::checkLedgerAccept(LedgerInfo const& info)
     auto const tvc = validations.size();
     if (tvc < minVal)  // nothing we can do
     {
-        JLOG(j_.trace()) << "Only " << tvc << " validations for " << info.hash;
-        return nullptr;
+        validations = getLastValidations(ledger->info().seq, ledger->info().hash);
+        if (validations.size() < minVal)
+        {
+            JLOG(j_.trace()) << "Only " << tvc << " validations for " << info.hash;
+            return nullptr;
+        }
     }
+
+    app_.getValidations().setLastValidations(validations);
 
     JLOG(j_.info()) << "Advancing accepted ledger to " << info.seq
                     << " with >= " << minVal << " validations";
@@ -148,6 +156,7 @@ RpcaPopAdaptor::validate(
         valPublic_,
         nodeID_,
         [&](STValidation& v) {
+            v.setFieldVL(sfSigningPubKey, valPublic_);
             v.setFieldH256(sfLedgerHash, ledger.id());
             v.setFieldH256(sfConsensusHash, txns.id());
 
@@ -200,7 +209,7 @@ RpcaPopAdaptor::validate(
         });
 
     v->sign(valSecret_);
-
+    
     handleNewValidation(v, "local");
 
     Blob validation = v->getSerialized();
@@ -537,7 +546,7 @@ RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
 
         if (seq == getValidLedgerIndex())
             return {nullptr, false};
-
+        
         // Ledger could match the ledger we're already building
         if (seq == ledgerMaster_.getBuildingLedger())
             return {nullptr, false};
@@ -566,4 +575,134 @@ RpcaPopAdaptor::checkLedgerAccept(uint256 const& hash, std::uint32_t seq)
     return {nullptr, false};
 }
 
+bool
+RpcaPopAdaptor::peerAcquirValidationSet(std::uint32_t validatedSeq, std::shared_ptr<PeerImp>& peer)
+{
+    JLOG(j_.warn()) << "Processing peer AcquirValidation ValidatedSeq=" << validatedSeq;
+
+    auto ledger = getValidatedLedger();
+    if (ledger && ledger->info().seq == validatedSeq)
+    {
+        auto validations = getLastValidations(ledger->info().seq, ledger->info().hash);
+        if (validations.size() > 0 )
+            sendAcquirValidationSet(std::make_shared<STValidationSet>(ledger->info().seq,ledger->info().hash, valPublic_, validations), peer);
+    }
+    
+    return false;
+}
+
+bool
+RpcaPopAdaptor::sendAcquirValidationSet(std::shared_ptr<STValidationSet> const& validationSet, std::shared_ptr<PeerImp>& peer)
+{
+    Blob valSet =  validationSet->getSerialized();
+
+    protocol::TMConsensus consensus;
+
+    consensus.set_msg(&valSet[0], valSet.size());
+    consensus.set_msgtype(ConsensusMessageType::mtVALIDATIONSETDATA);
+    consensus.set_signflags(vfFullyCanonicalSig);
+    consensus.set_schemaid(app_.schemaId().begin(), uint256::size());
+
+    signAndSendMessage(peer, consensus);
+    return true;
+}
+
+bool
+RpcaPopAdaptor::peerValidationSetData(
+    STValidationSet::ref vaildationSet)
+{
+    JLOG(j_.warn()) << "Processing peer ValidationData seq="
+                    << vaildationSet->getFieldU32(sfSequence);
+
+    auto ledger = getValidatedLedger();
+    auto seq = vaildationSet->getFieldU32(sfSequence);
+    auto hash = vaildationSet->getFieldH256(sfLedgerHash);
+    if (ledger && ledger->info().seq < seq)
+    {
+        auto validations = std::vector<std::shared_ptr<STValidation>>();
+        auto valSet = vaildationSet->getValSet();
+        for (auto const& item : valSet)
+        {
+            if (seq != item->getFieldU32(sfLedgerSequence) || hash != item->getLedgerHash())
+                return false;
+            if (item->verify())
+            {
+                validations.push_back(item);
+            }
+        }
+        JLOG(j_.warn()) << "Processing peer ValidationData size = "
+                    << validations.size();
+        if (validations.size() >= app_.validators().quorum())
+        {
+            app_.getValidations().setLastValidations(validations);
+
+            auto ledger = app_.getInboundLedgers().acquire(
+            hash, seq, InboundLedger::Reason::GENERIC);
+            if (ledger)
+            {
+                if (!!checkLedgerAccept(ledger->info()))
+                {
+                    doValidLedger(ledger);
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+std::vector<std::shared_ptr<STValidation>>
+RpcaPopAdaptor::getLastValidations(std::uint32_t seq, uint256 id)
+{
+    auto valSet = app_.getValidations().getLastValidationsFromCache(seq, id);
+    if (valSet.size() == 0)
+        return getLastValidationsFromDB(seq, id);
+    return valSet;
+}
+std::vector<std::shared_ptr<STValidation>>
+RpcaPopAdaptor::getLastValidationsFromDB(std::uint32_t seq, uint256 id)
+{
+    auto valSet = std::vector<std::shared_ptr<STValidation>>();
+    auto db = app_.getLedgerDB().checkoutDb();
+        boost::optional<std::string> sNodePubKey;
+    Blob RawData;
+
+    soci::blob sRawData(*db);
+    soci::indicator rawDataPresent;
+
+    std::ostringstream sqlSuffix;
+    sqlSuffix << "WHERE LedgerSeq = " << seq
+                << " AND LedgerHash = '" << id << "'";
+    std::string const sql =
+        "SELECT NodePubKey, RawData "
+        "FROM LastValidations " +
+        sqlSuffix.str() + ";";
+
+    soci::statement st =
+        (db->prepare << sql,
+            soci::into(sNodePubKey),
+            soci::into(sRawData, rawDataPresent));
+
+    st.execute();
+    while (st.fetch())
+    {
+        if (sNodePubKey && rawDataPresent == soci::i_ok)
+        {
+            convert(sRawData, RawData);
+            SerialIter sit(makeSlice(RawData));
+            auto const publicKey =
+                parseBase58<PublicKey>(TokenType::NodePublic, *sNodePubKey);
+            if (!publicKey)
+            {
+                continue;
+            }
+            STValidation::pointer val = std::make_shared<STValidation>(
+                std::ref(sit), *publicKey, [&](PublicKey const& pk) {
+                    return calcNodeID(app_.validatorManifests().getMasterKey(pk));
+                });
+            valSet.push_back(val);
+        }
+    }
+
+    return valSet;
+}
 }  // namespace ripple

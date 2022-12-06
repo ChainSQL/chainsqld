@@ -58,6 +58,7 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
@@ -2119,7 +2120,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
-
+    notify(app_, protocol::neVALID_LEDGER, ledger, false, m_journal);
     checkSubChains();
 
     app_.getTxPool().removeTxs(
@@ -2171,8 +2172,8 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
         // The variable upgradeWarningPrevTime_ will be set when and only when
         // the warning is printed.
         if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
-        {
-            // Have not printed the warning before, check if need to print.
+        {     
+            // Have not printed the warning before, check if need to print.           
             auto const vals = app_.getValidations().getTrustedForLedger(
                 ledger->info().parentHash);
             std::size_t higherVersionCount = 0;
