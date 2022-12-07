@@ -234,6 +234,10 @@ LedgerMaster::isCompatible(
     char const* reason)
 {
     auto validLedger = getValidatedLedger();
+    //Fix: genesis ledger may change(because of features or other reason)
+    //     should not be used to judge compatibility.
+    if (validLedger->info().seq == ZXC_LEDGER_EARLIEST_SEQ)
+        return true;
 
     if (validLedger && !areCompatible(*validLedger, view, s, reason))
     {
