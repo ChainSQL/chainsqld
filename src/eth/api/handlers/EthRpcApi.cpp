@@ -637,8 +637,8 @@ doEthGetStorageAt(RPC::JsonContext& context)
         uint256 uKey = from_hex_text<uint256>(context.params["realParams"][1u].asString());
         ContractHelper& helper = context.app.getContractHelper();
         auto value = helper.fetchFromDB(*optID, mapStore.rootHash(), uKey, true);
-        
-        jvResult[jss::result] = "0x" + to_string(value);
+        uint256 retValue = value ? *value : beast::zero;
+        jvResult[jss::result] = "0x" + to_string(retValue);
     }
     catch (std::exception&)
     {
