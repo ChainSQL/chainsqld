@@ -1,5 +1,6 @@
 #include <ripple/app/ledger/TransactionMaster.h>
 #include <ripple/json/json_reader.h>
+#include <ripple/json/Output.h>
 
 #include <peersafe/app/bloom/FilterHelper.h>
 
@@ -119,9 +120,9 @@ filterLogs(const Json::Value& unfilteredLogs,
                 }
             }
             result.append(log);
+        Logs:
+            continue;
         }
-    Logs:
-        continue;
     }
     return result;
 }
