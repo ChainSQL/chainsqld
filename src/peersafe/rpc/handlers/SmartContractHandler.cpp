@@ -376,8 +376,10 @@ doEstimateGas(RPC::JsonContext& context)
         std::int64_t value = 0;
         if(ethParams.isMember("value"))
         {
-            std::string valueStrHex = ethParams["value"].asString().substr(2);
-            value = std::stoll(valueStrHex, 0, 16);
+            auto eValue = eth::u256(ethParams["value"].asString());
+            value = uint64_t(eValue / weiPerDrop);
+            //std::string valueStrHex = ethParams["value"].asString().substr(2);
+            //value = std::stoull(valueStrHex, 0, 16);
         }
         
         int64_t upperBound = 0;
@@ -402,7 +404,8 @@ doEstimateGas(RPC::JsonContext& context)
                     obj.setAccountID(sfContractAddress, contractAddrID);
                     obj.setFieldVL(sfContractData, contractDataBlob);
                     obj.setFieldU16(sfContractOpType, isCreation ? ContractCreation : MessageCall);
-                    if(value != 0) obj.setFieldAmount(sfAmount, ZXCAmount(value));
+                    if(value != 0) 
+                        obj.setFieldAmount(sfContractValue, ZXCAmount(value));
                     obj.setFieldU32(sfGas, mid);
                 });
             ApplyContext applyContext(
@@ -459,11 +462,12 @@ doEstimateGas(RPC::JsonContext& context)
         jvResult["result"] = toHexString(estimatedGas);
         return jvResult;
     }
-    catch (...)
+    catch (std::exception const& e)
     {
+        return formatEthError(ethERROR_DEFAULT, e.what());
         // TODO: Some sort of notification of failure.
-        jvResult["result"] = toHexString(eth::u256());
-        return jvResult;
+        //jvResult["result"] = toHexString(eth::u256());
+        //return jvResult;
     }
 }
 
