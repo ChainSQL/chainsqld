@@ -118,7 +118,8 @@ private:
 
     LedgerIndex               lastValidSeq_;
     std::chrono::milliseconds timerInterval_;
-    boost::asio::basic_waitable_timer<std::chrono::steady_clock> mTimer;
+    boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
+    std::atomic_bool          touching_{false};
 
     // Missing node handler
     LedgerIndex maxSeq_{0};

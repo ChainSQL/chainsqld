@@ -45,7 +45,7 @@ NodeFamily::NodeFamily(Schema& app, CollectorManager& cm)
     , stateNodeHashSet_(std::make_shared<StateNodeHashSet>())
     , lastValidSeq_(0)
     , timerInterval_(std::chrono::seconds(60))
-    , mTimer(app_.getIOService())
+    , timer_(app_.getIOService())
 {
     setTimer();
 }
@@ -121,38 +121,43 @@ NodeFamily::acquire(uint256 const& hash, std::uint32_t seq)
 void
 NodeFamily::setTimer()
 {
-    mTimer.expires_after(timerInterval_);
-    mTimer.async_wait(
+    timer_.expires_after(timerInterval_);
+    timer_.async_wait(
         [this](boost::system::error_code const& ec) {
             if (ec == boost::asio::error::operation_aborted)
                 return;
             trigger();
+            setTimer();
         });
 }
 
 void
 NodeFamily::trigger()
 {
+    std::cout << "NodeFamily::trigger" << std::endl;
     if (lastValidSeq_ != app_.getLedgerMaster().getValidLedgerIndex())
     {
         lastValidSeq_ = app_.getLedgerMaster().getValidLedgerIndex();
     }
     else
     {
+        if (touching_.load() == true)
+            return;
+
         app_.getJobQueue().addJob(
             jtFULLBELOW_TOUCH,
             "NodeFamily",
             [this](Job&) 
             {
+                touching_.store(true);
                 app_.getInboundLedgers().acquire(
                     app_.getLedgerMaster().getValidatedLedger()->info().hash,
                     app_.getLedgerMaster().getValidLedgerIndex(),
                     InboundLedger::Reason::GENERIC);
+                touching_.store(false);
             },
             app_.doJobCounter());
     }
-
-    setTimer();
 }
 
 }  // namespace ripple
