@@ -134,7 +134,6 @@ NodeFamily::setTimer()
 void
 NodeFamily::trigger()
 {
-    std::cout << "NodeFamily::trigger" << std::endl;
     if (lastValidSeq_ != app_.getLedgerMaster().getValidLedgerIndex())
     {
         lastValidSeq_ = app_.getLedgerMaster().getValidLedgerIndex();
