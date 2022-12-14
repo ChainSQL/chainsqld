@@ -155,7 +155,7 @@ toTransactionSkeleton(Json::Value const& _json)
         ret.gasPrice = u256(_json["gasPrice"].asString());
 
     if (!_json["data"].isNull())
-        ret.data = strUnHex(_json["data"].asString()).get();
+        ret.data = strUnHex(_json["data"].asString().substr(2)).get();
 
     if (!_json["nonce"].isNull())
         ret.nonce = u256(_json["nonce"].asString());
