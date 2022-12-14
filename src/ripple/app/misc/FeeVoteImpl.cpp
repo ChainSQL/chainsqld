@@ -317,6 +317,12 @@ setup_FeeVote(Config const& config)
     FeeVote::Setup setup;
 
     setup.reference_fee_units = config.TRANSACTION_FEE_BASE;
+    setup.reference_fee = config.FEE_DEFAULT;
+    setup.account_reserve = config.FEE_ACCOUNT_RESERVE;
+    setup.owner_reserve = config.FEE_OWNER_RESERVE;
+    setup.drops_per_byte = config.DROPS_PER_BYTE;
+    setup.gas_price = config.GAS_PRICE;
+
     auto section = config.section(ConfigSection::voting());
     {
         std::uint64_t temp;
