@@ -236,7 +236,7 @@ Handler const ethHandlerArray[]{
     {"eth_getBlockByNumber", byRef (&doEthGetBlockByNumber), Role::USER, NO_CONDITION},
     {"eth_getBlockByHash", byRef (&doEthGetBlockByHash), Role::USER, NO_CONDITION},
     {"eth_getBalance", byRef (&doEthGetBalance), Role::USER, NO_CONDITION},
-    {"eth_call", byRef(&doContractCall), Role::USER, NO_CONDITION},
+    {"eth_call", byRef(&doEthCall), Role::USER, NO_CONDITION},
     {"eth_estimateGas", byRef(&doEstimateGas), Role::USER, NO_CONDITION},
     {"eth_signTransaction", byRef(&doEthSignTransaction), Role::USER, NEEDS_CURRENT_LEDGER},
     {"eth_sendTransaction", byRef(&doEthSendTransaction), Role::USER, NEEDS_CURRENT_LEDGER},

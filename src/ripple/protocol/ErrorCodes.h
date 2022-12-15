@@ -202,6 +202,7 @@ enum warning_code_i {
 };
 
 enum error_code_eth {
+    ethERROR_REVERTED           = 3,
     ethERROR_DEFAULT            = -32000,
     ethMETHOD_NOT_FOUND         = -32601,
 };

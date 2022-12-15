@@ -74,6 +74,19 @@ formatEthError(int code, std::string const& msg)
 }
 
 Json::Value
+formatEthError(int code, std::string const& data, std::string const& msg)
+{
+    Json::Value jvResult;
+    Json::Value jvError;
+    jvError["code"] = code;
+    jvError["message"] = msg;
+    jvError["data"] = data;
+    jvResult["error"] = jvError;
+
+    return jvResult;
+}
+
+Json::Value
 formatEthError(int code, error_code_i rpcCode)
 {
     return formatEthError(code, RPC::get_error_info(rpcCode).message.c_str());
@@ -220,6 +233,12 @@ getContractAddress(STTx const& tx)
     }
     else
         return boost::none;
+}
+
+std::string
+revertMsg(std::string sMsg)
+{
+    return "execution reverted:" + sMsg;
 }
 
 }  // namespace ripple

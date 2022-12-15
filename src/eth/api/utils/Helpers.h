@@ -55,6 +55,9 @@ formatEthError(int code, std::string const& msg);
 Json::Value
 formatEthError(int code, error_code_i rpcCode);
 
+Json::Value
+formatEthError(int code, std::string const& data, std::string const& msg);
+
 void
 ethLdgIndex2chainsql(Json::Value& params, std::string ledgerIndexStr);
 
@@ -75,6 +78,9 @@ parseContractLogs(
 
 boost::optional<AccountID>
 getContractAddress(STTx const& tx);
+
+std::string
+revertMsg(std::string sMsg);
 
 }  // namespace ripple
 

@@ -103,6 +103,7 @@ public:
 	int64_t gasUsed() const;
 
 	eth::owning_bytes_ref takeOutput() { return std::move(m_output); }
+    eth::owning_bytes_ref takeRevertData() { return std::move(m_revertOri); }
 
 	/// @returns The exception that has happened during the execution if any.
 	TER getException() const noexcept { return m_excepted; }
@@ -123,8 +124,9 @@ private:
 	eth::EnvInfo const& m_envInfo;					///< Information on the runtime environment.
     PreContractFace const& m_PreContractFace;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
-	eth::owning_bytes_ref m_output;			///< Execution output.
-	eth::bytes m_input;						///< Execution input.
+	eth::owning_bytes_ref m_output;		///< Execution output.
+    eth::owning_bytes_ref m_revertOri;	///< Origin revert data.
+	eth::bytes m_input;					///< Execution input.
 	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 
 	unsigned m_depth = 0;				///< The context's call-depth.

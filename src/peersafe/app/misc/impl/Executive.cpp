@@ -373,7 +373,14 @@ bool Executive::go()
 		catch (eth::RevertInstruction& _e)
 		{
 			//revert();
-			formatOutput(_e.output());
+            if (m_depth == INITIAL_DEPTH)
+            {
+                m_revertOri = _e.output();
+                formatOutput(_e.output());
+            }
+            else
+                m_output = _e.output();
+            
 			m_excepted = tefCONTRACT_REVERT_INSTRUCTION;
 		}
 		catch (eth::RevertDiyInstruction& _e)
