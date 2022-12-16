@@ -59,24 +59,38 @@ int64_t linearPricer(unsigned _base, unsigned _word, eth::bytesConstRef _in)
 
      uint256 ret;
      uint32_t v = (uint32_t)(eth::u256)in.v;
+     byte recoveryID = 0;
      if (v >= 27 && v <= 28)
      {
-         ripple::SignatureStruct sig(in.r, in.s, (byte)(v - 27));
-         if (sig.isValid())
+         recoveryID = v - 27;
+     }
+     else if (v > 36)
+     {
+         auto chainId = (v - 35) / 2;
+         recoveryID = byte(v - (uint64_t{chainId} * 2 + 35));
+     }
+     else
+     {
+         return {true, {}};
+     }
+     ripple::SignatureStruct sig(in.r, in.s, recoveryID);
+     if (sig.isValid())
+     {
+         try
          {
-             try
+             Blob rec = ripple::recover(sig, in.hash);
+             if (rec.size() != 0)
              {
-                 Blob rec = ripple::recover(sig, in.hash);
-                 if (rec.size() != 0)
-                 {
-                     eth::sha3(rec.data(), rec.size(), ret.data());
-                     memset(ret.data(), 0, 12);
-                     return {true, eth::bytes(ret.data(), ret.data() + ret.size())};
-                 }
+                 eth::sha3(rec.data(), rec.size(), ret.data());
+                 memset(ret.data(), 0, 12);
+                 return {true, eth::bytes(ret.data(), ret.data() + ret.size())};
              }
-             catch (...) {}
+         }
+         catch (...)
+         {
          }
      }
+
      return {true, {}};
  }
 
