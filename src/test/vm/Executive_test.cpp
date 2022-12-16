@@ -141,7 +141,7 @@ namespace ripple {
 			{
 				auto& ctx = getApplyContext();
 				SleOps ops(ctx);
-				auto pInfo = std::make_shared<EnvInfoImpl>(1, 210000,1000, ctx.app.getPreContractFace());
+				auto pInfo = std::make_shared<EnvInfoImpl>(1, 210000,1000,0,0, ctx.app.getPreContractFace());
 				Executive e(ops, *pInfo, 1);
 				uint256 value = uint256(10000000);
 				uint256 gasPrice = uint256(10);
@@ -169,7 +169,7 @@ namespace ripple {
 			{
 				auto& ctx = getApplyContext();
 				SleOps ops(ctx);
-				auto pInfo = std::make_shared<EnvInfoImpl>(pCtx_->view().info().seq, 210000,1000, ctx.app.getPreContractFace());
+				auto pInfo = std::make_shared<EnvInfoImpl>(pCtx_->view().info().seq, 210000,1000,0,0, ctx.app.getPreContractFace());
 				Executive e(ops, *pInfo, 1);
 				uint256 value = uint256(0);
 				uint256 gasPrice = uint256(10);

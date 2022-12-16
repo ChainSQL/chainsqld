@@ -1129,6 +1129,8 @@ doEthCall(RPC::JsonContext& context)
         applyContext.view().info().seq,
         TX_GAS,
         applyContext.view().fees().drops_per_byte,
+        0,
+        getChainID(context.app.openLedger().current()),
         applyContext.app.getPreContractFace());
     Executive e(ops, *pInfo, INITIAL_DEPTH);
     e.initialize();
@@ -1305,6 +1307,8 @@ doEstimateGas(RPC::JsonContext& context)
                 applyContext.view().info().seq,
                 mid,
                 applyContext.view().fees().drops_per_byte,
+                0,
+                getChainID(context.app.openLedger().current()),
                 applyContext.app.getPreContractFace());
             Executive e(ops, *pInfo, INITIAL_DEPTH);
             e.initialize();

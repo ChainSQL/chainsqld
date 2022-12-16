@@ -168,6 +168,16 @@ public:
                 return 0;
         }
 
+        virtual int64_t gasUsed() const
+        {
+            return 0;
+        } 
+
+        virtual int64_t chainID() const
+        {
+            return 0;
+        } 
+
     virtual const ripple::PreContractFace&
         preContractFace() const = 0;
         /*{

@@ -29,6 +29,7 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #include <peersafe/protocol/ContractDefines.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <peersafe/app/ledger/LedgerAdjust.h>
+#include <eth/api/utils/Helpers.h>
 
 namespace ripple {
 
@@ -117,7 +118,9 @@ namespace ripple {
 	{
 		SleOps ops(ctx_);
 		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000, 
-                ctx_.view().fees().drops_per_byte, ctx_.app.getPreContractFace());
+                ctx_.view().fees().drops_per_byte, 0,
+                    getChainID(ctx_.app.openLedger().current()),
+                    ctx_.app.getPreContractFace());
 		Executive e(ops, *pInfo, INITIAL_DEPTH);
 		e.initialize();
 		if (!e.execute())

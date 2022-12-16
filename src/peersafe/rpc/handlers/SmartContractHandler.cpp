@@ -66,7 +66,8 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
 	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, 
-                    context.view().fees().drops_per_byte, context.app.getPreContractFace());
+                    context.view().fees().drops_per_byte, 0,
+            getChainID(context.app.openLedger().current()),context.app.getPreContractFace());
 	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;

@@ -149,6 +149,7 @@ namespace eth {
         result.block_timestamp = m_extVM.envInfo().block_timestamp();
         result.block_gas_limit = m_extVM.envInfo().gasLimit();
         result.block_difficulty = evmc_uint256be{};
+        result.chain_id = ripple::toEvmC(ripple::uint256(m_extVM.envInfo().chainID()));
 
         return result;
     }
