@@ -1158,6 +1158,41 @@ doEthCall(RPC::JsonContext& context)
     return jvResult;
 }
 
+std::tuple <TER, eth::owning_bytes_ref, eth::owning_bytes_ref>
+    execute(
+    RPC::JsonContext& context,
+    STTx const& contractTx,
+    std::shared_ptr<OpenView> openViewTemp)
+{
+    ApplyContext applyContext(
+        context.app,
+        *openViewTemp,
+        contractTx,
+        tesSUCCESS,
+        FeeUnit64{(std::uint64_t)openViewTemp->fees().base.drops()},
+        tapNO_CHECK_SIGN,
+        context.app.journal("EstimateGas"));
+
+    SleOps ops(applyContext);
+    auto pInfo = std::make_shared<EnvInfoImpl>(
+        applyContext.view().info().seq,
+        contractTx.getFieldU32(sfGas),
+        applyContext.view().fees().drops_per_byte,
+        0,
+        getChainID(context.app.openLedger().current()),
+        applyContext.app.getPreContractFace());
+    Executive e(ops, *pInfo, INITIAL_DEPTH);
+    e.initialize();
+
+    TER execRet = tesSUCCESS;
+    if (!e.execute())
+    {
+        e.go();
+    }
+    return std::make_tuple(
+        e.getException(), e.takeOutput(), e.takeRevertData());
+}
+
 Json::Value
 doEstimateGas(RPC::JsonContext& context)
 {
@@ -1272,86 +1307,59 @@ doEstimateGas(RPC::JsonContext& context)
         int64_t lowerBound =
             Executive::baseGasRequired(isCreation, &contractDataBlob);
 
-        while (upperBound != lowerBound)
+          STTx contractTx(
+            ttCONTRACT,
+            [&accountID,
+             &contractAddrID,
+             &value,
+             &contractDataBlob,
+             &isCreation](auto& obj) {
+                obj.setAccountID(sfAccount, accountID);
+                obj.setAccountID(sfContractAddress, contractAddrID);
+                obj.setFieldVL(sfContractData, contractDataBlob);
+                obj.setFieldU16(
+                    sfContractOpType,
+                    isCreation ? ContractCreation : MessageCall);
+                if (value != 0)
+                    obj.setFieldAmount(sfContractValue, ZXCAmount(value));
+            });
+        int64_t cap = upperBound;
+        while (lowerBound + 1 < upperBound)
         {
             int64_t mid = (lowerBound + upperBound) / 2;
-            STTx contractTx(
-                ttCONTRACT,
-                [&accountID,
-                 &contractAddrID,
-                 &value,
-                 &contractDataBlob,
-                 &mid,
-                 &isCreation](auto& obj) {
-                    obj.setAccountID(sfAccount, accountID);
-                    obj.setAccountID(sfContractAddress, contractAddrID);
-                    obj.setFieldVL(sfContractData, contractDataBlob);
-                    obj.setFieldU16(
-                        sfContractOpType,
-                        isCreation ? ContractCreation : MessageCall);
-                    if (value != 0)
-                        obj.setFieldAmount(sfContractValue, ZXCAmount(value));
-                    obj.setFieldU32(sfGas, mid);
-                });
-            ApplyContext applyContext(
-                appTemp,
-                *openViewTemp,
-                contractTx,
-                tesSUCCESS,
-                FeeUnit64{(std::uint64_t)openViewTemp->fees().base.drops()},
-                tapNO_CHECK_SIGN,
-                appTemp.journal("EstimateGas"));
+            contractTx.setFieldU32(sfGas, mid);
+            auto tup = execute(context, contractTx, openViewTemp);
+            auto execRet = std::get<0>(tup);
 
-            SleOps ops(applyContext);
-            auto pInfo = std::make_shared<EnvInfoImpl>(
-                applyContext.view().info().seq,
-                mid,
-                applyContext.view().fees().drops_per_byte,
-                0,
-                getChainID(context.app.openLedger().current()),
-                applyContext.app.getPreContractFace());
-            Executive e(ops, *pInfo, INITIAL_DEPTH);
-            e.initialize();
-
-            TER execRet = tesSUCCESS;
-            if (!e.execute())
-            {
-                e.go();
-                execRet = e.getException();
-            }
+            if (execRet != tesSUCCESS)
+                lowerBound = mid;
             else
-                execRet = e.getException();
+                upperBound = mid;
+        }
+        if (upperBound == cap)
+        {
+            contractTx.setFieldU32(sfGas, upperBound);
+            auto tup = execute(context, contractTx, openViewTemp);
+            TER execRet;
+            eth::owning_bytes_ref output, revertData;
+            std::tie(execRet, output, revertData) =
+                execute(context, contractTx, openViewTemp);
 
             std::string errMsg;
             if (execRet != tesSUCCESS)
-                errMsg = e.takeOutput().toString();
+                errMsg = output.toString();
 
-            if (execRet == tesSUCCESS)
-            {
-                upperBound = upperBound == mid ? lowerBound : mid;
-            }
-            else if (
-                execRet == tefGAS_INSUFFICIENT || errMsg == "OutOfGas" ||
-                errMsg == "BadJumpDestination")
-            {
-                lowerBound = lowerBound == mid ? upperBound : mid;
-            }
-            else
+            if (execRet != tesSUCCESS)
             {
                 if (execRet == tefCONTRACT_REVERT_INSTRUCTION)
                 {
                     return formatEthError(
                         ethERROR_REVERTED,
-                        "0x" + strHex(e.takeRevertData().takeBytes()),
+                        "0x" + strHex(revertData.takeBytes()),
                         revertMsg(errMsg));
                 }
                 return formatEthError(ethERROR_DEFAULT, errMsg);
             }
-
-            // JLOG(context.j.warn())
-            //    << "eth_estimateGas execRet=" << execRet <<
-            //    ",errMsg="<<errMsg<<",bound=["
-            //    << lowerBound << "," << upperBound << "]";
         }
         std::int64_t estimatedGas = upperBound +
             (std::uint64_t)openViewTemp->fees().base.drops() /
