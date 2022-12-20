@@ -280,7 +280,15 @@ bool VM::caseCallSetup(evmc_message& o_msg, bytesRef& o_output)
         intx::uint256 value = m_SP[2];
         if (value > 0)
         {
-            o_msg.value = intx::be::store<evmc_uint256be>(m_SP[2]);
+            if (!m_tx_context)
+                getTxContext();
+            if ((*m_tx_context).eth_tx && value > intx::uint256(1e+12))
+            {
+                //eth_tx,should convert precision to 1e+6 
+                auto res = intx::udivrem(value, intx::uint256(1e+12));
+                value = res.quot;
+            }
+            o_msg.value = intx::be::store<evmc_uint256be>(value);
             o_msg.gas += VMSchedule::callStipend;
             {
                 auto const balance =

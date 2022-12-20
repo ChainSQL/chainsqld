@@ -120,6 +120,7 @@ namespace ripple {
 		auto pInfo = std::make_shared<EnvInfoImpl>(ctx_.view().info().seq, 210000, 
                 ctx_.view().fees().drops_per_byte, 0,
                     getChainID(ctx_.app.openLedger().current()),
+					ctx_.tx.getTxnType() == ttETH_TX,
                     ctx_.app.getPreContractFace());
 		Executive e(ops, *pInfo, INITIAL_DEPTH);
 		e.initialize();

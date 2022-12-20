@@ -1131,6 +1131,7 @@ doEthCall(RPC::JsonContext& context)
         applyContext.view().fees().drops_per_byte,
         0,
         getChainID(context.app.openLedger().current()),
+        true,
         applyContext.app.getPreContractFace());
     Executive e(ops, *pInfo, INITIAL_DEPTH);
     e.initialize();
@@ -1180,6 +1181,7 @@ std::tuple <TER, eth::owning_bytes_ref, eth::owning_bytes_ref>
         applyContext.view().fees().drops_per_byte,
         0,
         getChainID(context.app.openLedger().current()),
+        true,
         applyContext.app.getPreContractFace());
     Executive e(ops, *pInfo, INITIAL_DEPTH);
     e.initialize();

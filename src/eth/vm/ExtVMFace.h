@@ -178,6 +178,11 @@ public:
             return 0;
         } 
 
+        virtual bool eth_tx() const 
+        {
+            return false;
+        }
+
     virtual const ripple::PreContractFace&
         preContractFace() const = 0;
         /*{
