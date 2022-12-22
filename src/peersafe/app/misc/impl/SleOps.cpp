@@ -308,9 +308,10 @@ namespace ripple {
         jsonLog[jss::contract_topics] = jsonTopic;
         std::string strData(byValue.begin(), byValue.end());
         jsonLog[jss::contract_data] = strHex(strData);
+        jsonLog[jss::account] = to_string(contractID);
+
         getTx().addLog(jsonLog);
 
-        jsonLog[jss::account] = to_string(contractID);
         auto j = ctx_.app.journal("Executive");        
         JLOG(j.debug()) << "Contract log or event: " << jsonLog;
 

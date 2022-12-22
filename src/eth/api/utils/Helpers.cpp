@@ -195,7 +195,13 @@ parseContractLogs(
             jvLogItem["data"] = "0x" + (*it)["contract_data"].asString();
         }
 
-        jvLogItem["address"] = address;
+        if ((*it).isMember("account"))
+        {
+            auto account = parseBase58<AccountID>((*it)["account"].asString());
+            jvLogItem["address"] = "0x" + to_string(uint160((*account)));
+        }            
+        else
+            jvLogItem["address"] = address;
 
         Json::Value jvLogItemTopics;
         Json::Value jvLogTopics = (*it)["contract_topics"];
