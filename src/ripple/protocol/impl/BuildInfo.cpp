@@ -34,6 +34,7 @@ namespace BuildInfo {
 //------------------------------------------------------------------------------
 // clang-format off
 char const* const versionString = "3.4.3"
+
 // clang-format on
 
 #if defined(DEBUG) || defined(SANITIZER)
