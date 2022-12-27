@@ -22,6 +22,7 @@
 
 #include <ripple/basics/ZXCAmount.h>
 #include <ripple/basics/chrono.h>
+#include <chrono>
 #include <cstdint>
 #include <string>
 
@@ -72,7 +73,7 @@ constexpr std::ratio<204, 256> preFixAmendmentMajorityCalcThreshold;
 constexpr std::ratio<80, 100> postFixAmendmentMajorityCalcThreshold;
 
 /** The minimum amount of time an amendment must hold a majority */
-constexpr std::chrono::seconds const defaultAmendmentMajorityTime = weeks{2};
+constexpr std::chrono::seconds const defaultAmendmentMajorityTime = std::chrono::hours{12};
 
 }  // namespace ripple
 
