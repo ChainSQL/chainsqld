@@ -96,11 +96,11 @@ namespace ripple {
         uint256 const& key,
         bool bQuery /*=false*/)
     {
-        if (bQuery)
-            return boost::none;
-
         if (auto value = ctx.fetchFromDirty(contract, key); value != boost::none)
             return value;
+
+        if (bQuery)
+            return boost::none;
 
         if (auto data = ctx.fetchFromStateCache(contract, key);
             data != boost::none)
