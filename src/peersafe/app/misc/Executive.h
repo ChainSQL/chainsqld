@@ -114,7 +114,7 @@ private:
 
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
-	void formatOutput(eth::owning_bytes_ref output);
+	void formatOutput(eth::owning_bytes_ref& output);
 	std::string getRevertErr(int64_t errCode);
     TER exceptionToTerCode(eth::VMException const& _e);
 

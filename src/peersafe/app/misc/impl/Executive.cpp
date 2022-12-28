@@ -375,8 +375,9 @@ bool Executive::go()
 			//revert();
             if (m_depth == INITIAL_DEPTH)
             {
+				
                 m_revertOri = _e.output();
-                formatOutput(_e.output());
+                formatOutput(m_revertOri);
             }
             else
                 m_output = _e.output();
@@ -502,7 +503,7 @@ void Executive::formatOutput(std::string msg)
 	m_output = eth::owning_bytes_ref(std::move(blob), 0, blob.size());
 }
 
-void Executive::formatOutput(eth::owning_bytes_ref output)
+void Executive::formatOutput(eth::owning_bytes_ref& output)
 {
 	if (output.empty())
 	{

@@ -368,7 +368,8 @@ void VM::interpretCases()
 
             if (m_OP == Instruction::REVERT)
             {
-                if(m_exception > 0 && (m_exception != 324 && m_exception != 325))
+                if (m_exception > 0 && m_exception < 500 &&
+                    (m_exception != 324 && m_exception != 325))
                 {
                     auto terStr = std::to_string(m_exception);
                     eth::bytes data;
