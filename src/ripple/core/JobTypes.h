@@ -74,7 +74,7 @@ add(    jtTABLESYNC,     "tableSync",               1,        false, 0ms,     0m
 add(    jtTABLESTORAGE,  "tableStorage",            1,        false, 0ms,     0ms);
 add(	jtTableCheckHash, "tableCheckHash",			1,		  false, 0ms,		0ms);
 add(	jtCheckSubTx,	  "checkSubTx",				1,		  false, 0ms,		0ms);
-add(    jtCheckLoadLedger, "checkLoadLedger",       1,        false, 0ms,       0ms);
+add(    jtCheckLoadLedger, "checkLoadLedger",       1,        false, 1000ms,   15000ms);
 add(    jtTABLELOCALSYNC,"tableLocalSync",          1,        false, 0ms,     0ms);
 add(    jtOPERATESQL,    "operateSQL",              10,        false, 0ms,     0ms);
 add(    jtTABLE_REQ,     "tableRequest",            2,        false, 0ms,     0ms);
@@ -92,6 +92,7 @@ add(    jtNS_SYNC_READ,  "SyncReadNode",            0,        true,  0ms,     0m
 add(    jtNS_ASYNC_READ, "AsyncReadNode",           0,        true,  0ms,     0ms);
 add(    jtNS_WRITE,      "WriteNode",               0,        true,  0ms,     0ms);
 add(    jtSTOP_SCHEMA,   "StopSchema",              maxLimit, false, 0ms,     15000ms);
+add(    jtFULLBELOW_TOUCH,  "TouchFullbelow",       1,        false, 1000ms,  10000ms);
 add(    jtCREATE_PROMETH_SLE, "CreatePromethSle",   1,        false, 250ms,   15000ms);
     }
 
