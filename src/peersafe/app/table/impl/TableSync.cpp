@@ -271,9 +271,20 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
     LedgerIndex curLedgerIndex = 0;
     uint256 curLedgerHash;
     uint32_t time = 0;
+    auto const start = std::chrono::steady_clock::now();
+
 	auto pubLedgerSeq = app_.getLedgerMaster().getPublishedLedger()->info().seq;
     for (int i = stItemInfo.u32SeqLedger + 1; i <= pubLedgerSeq; i++)
     {
+        //Every table can do table_sync for 2 minutes,in case other table have no opportunity to work.
+        {
+            auto const now = std::chrono::steady_clock::now();
+            auto const elapsed =
+                std::chrono::duration_cast<std::chrono::seconds>(now - start);
+            if (elapsed.count() > 120)
+                break;
+        }
+
         if (!app_.getLedgerMaster().haveLedger(i))   
         {
             JLOG(journal_.info()) << "in local seekLedger, no ledger : " << i
