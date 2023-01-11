@@ -908,6 +908,11 @@ void TableSync::CreateTableItems()
     }
 		
     //2.read from state table
+    if (!bAutoLoadTable_)
+    {
+        //if auto_sync=0, will not load db tables with field auto_sync = 1
+        return;
+    }
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	//read chainId
 	uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
