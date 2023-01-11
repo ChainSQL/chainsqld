@@ -972,7 +972,9 @@ Transactor::reset(ZXCAmount fee)
     // Since we reset the context, we need to charge the fee and update
     // the account's sequence number again.
     txnAcct->setFieldAmount(sfBalance, balance - fee);
-    txnAcct->setFieldU32(sfSequence, ctx_.tx.getSequence() + 1);
+    //In case tefMAX_LEDGER and Sequence is wrong
+    if (txnAcct->getFieldU32(sfSequence) == ctx_.tx.getSequence())
+        txnAcct->setFieldU32(sfSequence, ctx_.tx.getSequence() + 1);
 
     view().update(txnAcct);
 
