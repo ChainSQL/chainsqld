@@ -21,6 +21,7 @@
 #include <ripple/app/main/LoadManager.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/protocol/Feature.h>
 #include <ripple/basics/UptimeClock.h>
 #include <ripple/json/to_string.h>
 #include <ripple/beast/core/CurrentThreadName.h>
@@ -184,29 +185,32 @@ LoadManager::run()
             }
         }
 
-        bool change = false;
-		bool bOverloaded = app_.getJobQueue().isOverloaded();
+        if (app_.openLedger().current()->rules().enabled(featureFeeEscalation))
+        {
+            bool change = false;
+		    bool bOverloaded = app_.getJobQueue().isOverloaded();
 
-        app_.getSchemaManager().foreach([this, &bOverloaded, &change](std::shared_ptr<Schema> schema) {
-            if (bOverloaded)
-			{
-				JLOG(journal_.info()) << schema->getJobQueue().getJson(0);
+            app_.getSchemaManager().foreach([this, &bOverloaded, &change](std::shared_ptr<Schema> schema) {
+                if (bOverloaded)
+			    {
+				    JLOG(journal_.info()) << schema->getJobQueue().getJson(0);
 
-				change = schema->getFeeTrack().raiseLocalFee();
-			}
-			else
-			{
-				change = schema->getFeeTrack().lowerLocalFee();
-			}
+				    change = schema->getFeeTrack().raiseLocalFee();
+			    }
+			    else
+			    {
+				    change = schema->getFeeTrack().lowerLocalFee();
+			    }
 
-			if (change)
-			{
-				// VFALCO TODO replace this with a Listener / observer and
-				// subscribe in NetworkOPs or Application.
-				schema->getOPs().reportFeeChange();
-			}
-        });
- 
+			    if (change)
+			    {
+				    // VFALCO TODO replace this with a Listener / observer and
+				    // subscribe in NetworkOPs or Application.
+				    schema->getOPs().reportFeeChange();
+			    }
+            });
+        }
+        
 
         t += 1s;
         auto const duration = t - clock_type::now();

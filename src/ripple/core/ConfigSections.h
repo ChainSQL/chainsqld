@@ -66,9 +66,19 @@ struct ConfigSection
         return "crypto_alg";
     }
     static std::string
+    allowRemote()
+    {
+        return "allow_remote";
+    }
+    static std::string
     prometheus()
     {
         return "prometheus";
+    }
+    static std::string
+    voting()
+    {
+        return "voting";
     }
     static std::string
     remoteSync()
@@ -83,9 +93,11 @@ struct ConfigSection
 #define SECTION_COMPRESSION "compression"
 #define SECTION_DEBUG_LOGFILE "debug_logfile"
 #define SECTION_ELB_SUPPORT "elb_support"
-#define SECTION_FEE_DEFAULT "fee_default"
-#define SECTION_FEE_ACCOUNT_RESERVE "fee_account_reserve"
-#define SECTION_FEE_OWNER_RESERVE "fee_owner_reserve"
+#define SECTION_FEE_DEFAULT "reference_fee"
+#define SECTION_FEE_ACCOUNT_RESERVE "account_reserve"
+#define SECTION_FEE_OWNER_RESERVE "owner_reserve"
+#define SECTION_DROPS_PER_BYTE "drops_per_byte"
+#define SECTION_GAS_PRICE "gas_price"
 #define SECTION_FETCH_DEPTH "fetch_depth"
 #define SECTION_LEDGER_HISTORY "ledger_history"
 #define SECTION_INSIGHT "insight"
@@ -116,6 +128,7 @@ struct ConfigSection
 #define SECTION_VALIDATOR_KEYS "validator_keys"
 #define SECTION_GM_SELF_CHECK           "gm_self_check"
 #define SECTION_HASH_ALG                "hash_alg"
+#define SECTION_ALLOW_REMOTE            "allow_remote"
 
 //#define SECTION_FEE_OFFER               "fee_offer"
 
@@ -141,11 +154,17 @@ struct ConfigSection
 
 #define SECTION_GOVERNANCE              "governance"
 
+#define SECTION_FETCH_LEDGER            "ledger_sync"
+
 #define SECTION_PEER_X509_ROOT_PATH     "peer_x509_root_path"
 #define SECTION_PEER_X509_CRED_PATH     "peer_x509_cred_path"
 
 #define SECTOIN_TRUSTED_CA_LIST         "trusted_ca_list"
 #define SECTION_CMD_SSL_CERT            "cmd_ssl_cert"
+
+#define SECTION_GENESIS                 "genesis"
+
+#define SECTION_ETH                     "eth"
 
 }  // namespace ripple
 

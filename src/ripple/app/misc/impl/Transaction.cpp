@@ -99,8 +99,9 @@ Transaction::transactionFromSQL(
     std::uint32_t const inLedger =
         rangeCheckedCast<std::uint32_t>(ledgerSeq.value_or(0));
 
-    SerialIter it(makeSlice(rawTxn));
-    auto txn = std::make_shared<STTx const>(it);
+    //SerialIter it(makeSlice(rawTxn));
+    //auto txn = std::make_shared<STTx const>(it);
+    auto txn = makeSTTx(makeSlice(rawTxn));
     std::string reason;
     auto tr = std::make_shared<Transaction> (
         txn, reason, app);
@@ -217,6 +218,8 @@ Transaction::load(
 {
     boost::optional<std::uint64_t> ledgerSeq;
     boost::optional<std::string> status;
+    if (!app.config().useTxTables())
+        return {};
     if (app.config().SAVE_TX_RAW)
     {
 		std::string sql = "SELECT LedgerSeq,Status,RawTxn,TxnMeta "
@@ -245,7 +248,7 @@ Transaction::load(
 		return Transaction::transactionFromSQLValidated(
 			ledgerSeq, status, rawTxn,txnMeta, app);
     }
-    else
+    else 
     {
 		std::string sql = "SELECT LedgerSeq,Status "
 			"FROM Transactions WHERE TransID='";
@@ -262,7 +265,7 @@ Transaction::load(
 
 		return Transaction::transactionFromSHAMapValidated(
 			ledgerSeq, status, id, app);
-    }    
+    }
 }
 
 // options 1 to include the date of the transaction

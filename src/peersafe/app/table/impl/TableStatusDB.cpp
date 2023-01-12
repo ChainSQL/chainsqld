@@ -32,4 +32,10 @@ TableStatusDB::~TableStatusDB() {
 
 }
 
+void
+TableStatusDB::UpdateDatabaseConn(DatabaseCon* dbconn)
+{
+    databasecon_ = dbconn;
+}
+
 }

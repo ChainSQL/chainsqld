@@ -87,7 +87,7 @@ doAccountInfo(RPC::JsonContext& context)
         ledger = ledgerVal;
 
     auto const sleAccepted = ledger->read(keylet::account(accountID));
-    if (sleAccepted)
+    if (sleAccepted && !sleAccepted->isDeletedAccount())
     {
         auto const queue =
             params.isMember(jss::queue) && params[jss::queue].asBool();

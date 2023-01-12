@@ -29,6 +29,7 @@
 #include <ripple/app/misc/HashRouter.h>
 #include <ripple/app/misc/LoadFeeTrack.h>
 #include <ripple/app/misc/NetworkOPs.h>
+#include <ripple/app/consensus/RCLValidations.h>
 #include <ripple/basics/Log.h>
 #include <ripple/basics/StringUtilities.h>
 #include <ripple/basics/contract.h>
@@ -55,6 +56,9 @@
 #include <peersafe/schema/Schema.h>
 #include <peersafe/app/sql/TxnDBConn.h>
 #include <peersafe/protocol/STMap256.h>
+#include <peersafe/app/util/Common.h>
+#include <peersafe/app/bloom/BloomManager.h>
+#include <eth/api/utils/Helpers.h>
 #include <boost/optional.hpp>
 #include <cassert>
 #include <utility>
@@ -167,11 +171,35 @@ public:
 };
 
 //------------------------------------------------------------------------------
+std::shared_ptr<SLE>
+createFeesSle(Config const& config)
+{
+    auto const k = keylet::fees();
+
+    auto sle = std::make_shared<SLE>(k);
+    if (auto const f = config.FEE_DEFAULT.dropsAs<std::uint64_t>())
+        sle->setFieldU64(sfBaseFee, *f);
+
+    sle->setFieldU32(
+        sfReferenceFeeUnits, config.TRANSACTION_FEE_BASE.fee());
+
+    if (auto const f = config.FEE_ACCOUNT_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(sfReserveBase, *f);
+
+    if (auto const f = config.FEE_OWNER_RESERVE.dropsAs<std::uint32_t>())
+        sle->setFieldU32(
+            sfReserveIncrement, *f);
+
+    sle->setFieldU64(
+        sfDropsPerByte, config.DROPS_PER_BYTE);
+
+    sle->setFieldU64(sfGasPrice, config.GAS_PRICE);
+    return sle;
+}
 
 Ledger::Ledger(
     create_genesis_t,
     Config const& config,
-    std::vector<uint256> const& amendments,
     Family& family)
     : mImmutable(false)
     , txMap_(std::make_shared<SHAMap>(SHAMapType::TRANSACTION, family))
@@ -182,6 +210,8 @@ Ledger::Ledger(
     info_.drops = INITIAL_ZXC;
     info_.closeTimeResolution = ledgerDefaultTimeResolution;
 
+    if (rules_.enabled(featureBloomFilter))
+        info_.bloomEnabled = true;
     // KeyType keyType = KeyType::secp256k1;
 
     // if (nullptr != GmEncryptObj::getInstance())
@@ -206,11 +236,24 @@ Ledger::Ledger(
     rootSle->setFieldU32(sfSequence, 1);
     rootSle->setFieldAmount(sfBalance, info_.drops);
     rawInsert(rootSle);
+    
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    uint256 hash(*config.CHAINID);
+    sleChainID->setFieldH256(sfChainId, hash);
+    rawInsert(sleChainID);
 
-    if (!amendments.empty())
     {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
         auto const sle = std::make_shared<SLE>(keylet::amendments());
-        sle->setFieldV256(sfAmendments, STVector256{amendments});
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
+        rawInsert(sle);
+    }
+    
+
+    {
+        auto sle = createFeesSle(config);
         rawInsert(sle);
     }
 
@@ -291,6 +334,10 @@ Ledger::Ledger(Ledger const& prevLedger, NetClock::time_point closeTime)
         prevLedger.info_.closeTimeResolution,
         getCloseAgree(prevLedger.info()),
         info_.seq);
+    if (prevLedger.rules().enabled(featureBloomFilter))
+    {
+        info_.bloomEnabled = true;
+    }
 
     if (prevLedger.info_.closeTime == NetClock::time_point{})
     {
@@ -301,9 +348,6 @@ Ledger::Ledger(Ledger const& prevLedger, NetClock::time_point closeTime)
         info_.closeTime =
             prevLedger.info_.closeTime + info_.closeTimeResolution;
     }
-
-
-
 }
 
 Ledger::Ledger(LedgerInfo const& info, Config const& config, Family& family)
@@ -336,7 +380,7 @@ Ledger::Ledger(
     setup(config);
 }
 
-Ledger::Ledger(Ledger const& ledger, Family& f)
+Ledger::Ledger(Ledger const& ledger, Family& f, Config const& config, uint256 schemaID)
 	: mImmutable(false)
 	, txMap_(std::make_shared <SHAMap>(SHAMapType::TRANSACTION, f))
 	, stateMap_(std::make_shared <SHAMap>(SHAMapType::STATE, f))
@@ -380,6 +424,24 @@ Ledger::Ledger(Ledger const& ledger, Family& f)
             count++;
         }
     }
+    {
+        std::vector<uint256> initialAmendments = config.amendments;
+        if (initialAmendments.empty())
+            initialAmendments = getDefaultEnabledFeature();
+        auto const sle = std::make_shared<SLE>(keylet::amendments());
+        sle->setFieldV256(sfAmendments, STVector256{initialAmendments});
+        rawInsert(sle);
+    }
+    
+
+    {
+        auto sle = createFeesSle(config);
+        rawInsert(sle);
+    }
+    
+    auto const sleChainID = std::make_shared<SLE>(keylet::chainId());
+    sleChainID->setFieldH256(sfChainId, schemaID);
+    rawInsert(sleChainID);
 
     auto const sle = std::make_shared<SLE>(keylet::statis());
     sle->setFieldU32(sfAccountCountField, count);
@@ -490,8 +552,9 @@ Ledger::addSLE(SLE const& sle)
 std::shared_ptr<STTx const>
 deserializeTx(SHAMapItem const& item)
 {
-    SerialIter sit(item.slice());
-    return std::make_shared<STTx const>(sit);
+    //SerialIter sit(item.slice());
+    //return std::make_shared<STTx const>(sit);
+    return makeSTTx(item.slice());
 }
 
 std::pair<std::shared_ptr<STTx const>, std::shared_ptr<STObject const>>
@@ -501,8 +564,9 @@ deserializeTxPlusMeta(SHAMapItem const& item)
         result;
     SerialIter sit(item.slice());
     {
-        SerialIter s(sit.getSlice(sit.getVLDataLength()));
-        result.first = std::make_shared<STTx const>(s);
+        //SerialIter s(sit.getSlice(sit.getVLDataLength()));
+        //result.first = std::make_shared<STTx const>(s);
+        result.first = makeSTTx(sit.getSlice(sit.getVLDataLength()));
     }
     {
         SerialIter s(sit.getSlice(sit.getVLDataLength()));
@@ -1040,6 +1104,8 @@ saveValidatedLedger(
         "DELETE FROM AccountTransactions WHERE TransID = '%s';");
 	boost::format deleteTrans3(
 		"DELETE FROM TraceTransactions WHERE LedgerSeq = %u;");
+    boost::format deleteLastValidations(
+            "DELETE FROM LastValidations;");
 
     if (!ledger->info().accountHash.isNonZero())
     {
@@ -1067,6 +1133,28 @@ saveValidatedLedger(
             hotLEDGER, std::move(s.modData()), ledger->info().hash, seq);
     }
 
+    //Check and save the first bloom-enabled ledger
+    {
+        if (!app.getBloomManager().getBloomStartSeq()&&
+            ledger->info().bloomEnabled)
+        {
+            bool bSave = false;
+            if (seq == 1)
+                bSave = true;
+            if (!bSave)
+            {
+                auto prevLedger = app.getLedgerMaster().getLedgerByHash(
+                    ledger->info().parentHash);
+                bSave = prevLedger && !prevLedger->info().bloomEnabled;
+            }
+            if (bSave)
+            {
+                app.getBloomManager().saveBloomStartLedger(
+                    seq, ledger->info().hash);
+            }
+        }
+    }
+
     AcceptedLedger::pointer aLedger;
     try
     {
@@ -1092,6 +1180,12 @@ saveValidatedLedger(
     {
         auto db = app.getLedgerDB().checkoutDb();
         *db << boost::str(deleteLedger % seq);
+        if (current)
+        {
+            auto db = app.getLedgerDB().checkoutDb();
+            *db << boost::str(deleteLastValidations);
+        }
+
     }
 
     if (app.config().useTxTables())
@@ -1212,12 +1306,19 @@ saveValidatedLedger(
         static std::string const addLedger(
             R"sql(INSERT OR REPLACE INTO Ledgers
                 (LedgerHash,LedgerSeq,PrevHash,TotalCoins,ClosingTime,PrevClosingTime,
-                CloseTimeRes,CloseFlags,AccountSetHash,TransSetHash)
+                CloseTimeRes,CloseFlags,AccountSetHash,TransSetHash,Bloom)
             VALUES
                 (:ledgerHash,:ledgerSeq,:prevHash,:totalCoins,:closingTime,:prevClosingTime,
-                :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash);)sql");
+                :closeTimeRes,:closeFlags,:accountSetHash,:transSetHash,:bloom);)sql");
+
+        static std::string const insVal(
+        "INSERT OR REPLACE INTO LastValidations "
+        "(LedgerSeq, LedgerHash, NodePubKey, SignTime, RawData) "
+        "VALUES (:ledgerSeq, "
+        ":ledgerHash,:nodePubKey,:signTime,:rawData);");
 
         auto db(app.getLedgerDB().checkoutDb());
+
 
         soci::transaction tr(*db);
 
@@ -1233,12 +1334,45 @@ saveValidatedLedger(
         auto const closeFlags = ledger->info().closeFlags;
         auto const accountHash = to_string(ledger->info().accountHash);
         auto const txHash = to_string(ledger->info().txHash);
+        auto const bloom = (ledger->info().bloom == beast::zero)
+            ? std::string("")
+            : to_string(ledger->info().bloom);
 
         *db << addLedger, soci::use(hash), soci::use(seq),
             soci::use(parentHash), soci::use(drops), soci::use(closeTime),
             soci::use(parentCloseTime), soci::use(closeTimeResolution),
-            soci::use(closeFlags), soci::use(accountHash), soci::use(txHash);
+            soci::use(closeFlags), soci::use(accountHash), soci::use(txHash),soci::use(bloom);
 
+        if (current)
+        {
+            auto currentStale = app.getValidations().getLastValidationsFromCache(ledger->info().seq, ledger->info().hash);
+
+            Serializer s(1024);
+            for (auto const rclValidation : currentStale)
+                {
+                    auto ledgerSeq = rclValidation->getFieldU32(sfLedgerSequence);
+                    s.erase();
+                    STValidation::pointer const& val = rclValidation;
+                    val->add(s);
+
+                    auto const ledgerHash = to_string(val->getLedgerHash());
+
+                    auto const nodePubKey =
+                        toBase58(TokenType::NodePublic, val->getSignerPublic());
+                    auto const signTime =
+                        val->getSignTime().time_since_epoch().count();
+
+                    soci::blob rawData(*db);
+                    rawData.append(
+                        reinterpret_cast<const char*>(s.peekData().data()),
+                        s.peekData().size());
+                    assert(rawData.get_len() == s.peekData().size());
+
+                    *db << insVal, soci::use(ledgerSeq),
+                        soci::use(ledgerHash), soci::use(nodePubKey),
+                        soci::use(signTime), soci::use(rawData);
+                }
+        }
         tr.commit();
     }
 
@@ -1361,20 +1495,22 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     auto db = app.getLedgerDB().checkoutDb();
 
     boost::optional<std::string> sLedgerHash, sPrevHash, sAccountHash,
-        sTransHash;
+        sTransHash,sBloom;
     boost::optional<std::uint64_t> totDrops, closingTime, prevClosingTime,
         closeResolution, closeFlags, ledgerSeq64;
 
     std::string const sql =
         "SELECT "
-        "LedgerHash, PrevHash, AccountSetHash, TransSetHash, "
+        "LedgerHash, PrevHash, AccountSetHash, TransSetHash, Bloom,"
         "TotalCoins,"
         "ClosingTime, PrevClosingTime, CloseTimeRes, CloseFlags,"
         "LedgerSeq from Ledgers " +
         sqlSuffix + ";";
 
+    //ToTest:null can convert to std::string("")?
     *db << sql, soci::into(sLedgerHash), soci::into(sPrevHash),
-        soci::into(sAccountHash), soci::into(sTransHash), soci::into(totDrops),
+        soci::into(sAccountHash), soci::into(sTransHash), 
+        soci::into(sBloom), soci::into(totDrops),
         soci::into(closingTime), soci::into(prevClosingTime),
         soci::into(closeResolution), soci::into(closeFlags),
         soci::into(ledgerSeq64);
@@ -1390,6 +1526,7 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     ledgerSeq = rangeCheckedCast<std::uint32_t>(ledgerSeq64.value_or(0));
 
     uint256 prevHash{}, accountHash{}, transHash{};
+    uint2048 bloom{};
     if (sLedgerHash)
         ledgerHash.SetHexExact(*sLedgerHash);
     if (sPrevHash)
@@ -1398,10 +1535,18 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
         accountHash.SetHexExact(*sAccountHash);
     if (sTransHash)
         transHash.SetHexExact(*sTransHash);
+    if (sBloom)
+    {
+        if ((*sBloom).empty())
+            bloom = beast::zero;
+        else
+            bloom.SetHexExact(*sBloom);
+    }
 
     using time_point = NetClock::time_point;
     using duration = NetClock::duration;
 
+    auto bloomStart = app.getBloomManager().getBloomStartSeq();
     LedgerInfo info;
     info.parentHash = prevHash;
     info.txHash = transHash;
@@ -1412,6 +1557,8 @@ loadLedgerHelper(std::string const& sqlSuffix, Schema& app, bool acquire)
     info.closeFlags = closeFlags.value_or(0);
     info.closeTimeResolution = duration{closeResolution.value_or(0)};
     info.seq = ledgerSeq;
+    info.bloom = bloom;
+    info.bloomEnabled = bloomStart ? (ledgerSeq >= *bloomStart) : false;
 
     bool loaded;
     auto ledger = std::make_shared<Ledger>(
@@ -1588,7 +1735,9 @@ storePeersafeSql(
     if (pTx == nullptr)
         return false;
     TxType txType = pTx->getTxnType();
-    if (!pTx->isChainSqlTableType() && txType != ttCONTRACT)
+    if (!pTx->isChainSqlTableType() &&
+        txType != ttCONTRACT &&
+        txType != ttETH_TX)
         return false;
 
     static std::string const sqlHeader =
@@ -1659,23 +1808,15 @@ storePeersafeSql(
 
         *db << sqlExe;
     }
-    if (txType == ttCONTRACT)
+    if (txType == ttCONTRACT || txType == ttETH_TX)
     {
-        AccountID addrContract;
-        if (pTx->getFieldU16(sfContractOpType) == ContractCreation)
-        {
-            addrContract = Contract::calcNewAddress(
-                pTx->getAccountID(sfAccount), pTx->getFieldU32(sfSequence));
-        }
-        else
-        {
-            addrContract = pTx->getAccountID(sfContractAddress);
-        }
-
+        AccountID addrContract = *getContractAddress(*pTx);
+        std::string sAddress = txType == ttCONTRACT
+            ? to_string(addrContract)
+            : "0x" + to_string(uint160(addrContract));
         sqlBody = boost::str(
             boost::format(bfTrans) % to_string(pTx->getTransactionID()) %
-            format->getName() % SeqInLedger % inLedger %
-            toBase58(addrContract) % "");
+            format->getName() % SeqInLedger % inLedger % sAddress % "");
 
         sqlExe = sqlHeader + sqlBody;
 

@@ -66,9 +66,12 @@ enum JobType {
     jtTABLESYNC,     // synchronize tables
 
     jtSTOP_SCHEMA,   // Stop sub-chain
+    jtFULLBELOW_TOUCH,
 
     jtADVANCE,       // Advance validated/acquired ledgers
     jtPUBLEDGER,     // Publish a fully-accepted ledger
+    jtSAVE_SECTIONS, // Save sections to kv
+    jtFilterAPI,     // handle Filter Api
 
 	jtLEDGER_REQ,    // Peer request ledger/txnset data
 	jtLEDGER_DATA,   // Received data for a ledger we're acquiring

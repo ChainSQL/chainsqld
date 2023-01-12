@@ -26,6 +26,8 @@
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/consensus/rpca/RpcaAdaptor.h>
+#include <peersafe/app/util/NetworkUtil.h>
+#include <peersafe/app/util/Common.h>
 
 
 namespace ripple {
@@ -117,7 +119,7 @@ RpcaAdaptor::onClose(
     const bool wrongLCL = mode == ConsensusMode::wrongLedger;
     const bool proposing = mode == ConsensusMode::proposing;
 
-    notify(protocol::neCLOSING_LEDGER, ledger, !wrongLCL);
+    notify(app_,protocol::neCLOSING_LEDGER, ledger, !wrongLCL, j_);
 
     auto const& prevLedger = ledger.ledger_;
 
@@ -267,8 +269,7 @@ RpcaAdaptor::doAccept(
     {
         try
         {
-            retriableTxs.insert(
-                std::make_shared<STTx const>(SerialIter{item.slice()}));
+            retriableTxs.insert(makeSTTx(item.slice()));
             JLOG(j_.debug()) << "    Tx: " << item.key();
         }
         catch (std::exception const&)
@@ -294,7 +295,7 @@ RpcaAdaptor::doAccept(
     JLOG(j_.debug()) << "Built ledger #" << built.seq() << ": " << newLCLHash;
 
     // Tell directly connected peers that we have a new LCL
-    notify(protocol::neACCEPTED_LEDGER, built, haveCorrectLCL);
+    notify(app_, protocol::neACCEPTED_LEDGER, built, haveCorrectLCL, j_);
 
     // As long as we're in sync with the network, attempt to detect attempts
     // at censorship of transaction by tracking which ones don't make it in
@@ -377,11 +378,10 @@ RpcaAdaptor::doAccept(
                         << "Test applying disputed transaction that did"
                         << " not get in " << it.second.tx().id();
 
-                    SerialIter sit(it.second.tx().tx_.slice());
-                    auto txn = std::make_shared<STTx const>(sit);
+                    auto txn = makeSTTx(it.second.tx().tx_.slice());
 
                     // Disputed pseudo-transactions that were not accepted
-                    // can't be succesfully applied in the next ledger
+                    // can't be successfully applied in the next ledger
                     if (isPseudoTx(*txn))
                         continue;
 

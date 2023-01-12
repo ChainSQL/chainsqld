@@ -155,4 +155,36 @@ ApplyContext::checkInvariants(TER const result, ZXCAmount const fee)
         std::make_index_sequence<std::tuple_size<InvariantChecks>::value>{});
 }
 
+boost::optional<uint256>
+ApplyContext::fetchFromDirty(AccountID const& contract, uint256 const& key)
+{
+    return view_->fetchFromDirty(contract,key);
+}
+
+void
+ApplyContext::setDirtyValue(
+    AccountID const& contract,
+    uint256 const& key,
+    uint256 const& value)
+{
+    view_->setDirtyValue(contract, key, value);
+}
+
+void
+ApplyContext::setDirtyExistInDB(
+    AccountID const& contract,
+    uint256 const& key,
+    bool exist)
+{
+    view_->setDirtyExistInDB(contract, key, exist);
+}
+
+boost::optional<ContractValueType>
+ApplyContext::fetchFromStateCache(
+    AccountID const& contract, 
+    uint256 const& key)
+{
+    return base_.fetchFromStateCache(contract, key);
+}
+
 }  // namespace ripple

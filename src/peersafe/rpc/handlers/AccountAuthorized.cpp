@@ -42,10 +42,12 @@ setFlag2LedgerFlag(std::uint32_t setFlag)
             return lsfIssueCoinsAuth;
         case asfAdminAuth:
             return lsfAdminAuth;
+        case asfRealNameAuth:
+            return lsfRealNameAuth;
         default:
             return LedgerSpecificFlags(
                 lsfPaymentAuth | lsfDeployContractAuth | lsfCreateTableAuth |
-                lsfIssueCoinsAuth | lsfAdminAuth);
+                lsfIssueCoinsAuth | lsfAdminAuth | lsfRealNameAuth);
     }
 }
 
@@ -64,6 +66,8 @@ setFlag2String(std::uint32_t setFlag)
             return "asfIssueCoinsAuth";
         case asfAdminAuth:
             return "asfAdminAuth";
+        case asfRealNameAuth:
+            return "asfRealNameAuth";
         default:
             return "unknown";
     }
@@ -131,6 +135,8 @@ accountAuthorized(
             authorized[setFlag2String(asfIssueCoinsAuth)] = Json::arrayValue);
         Json::Value& adminAuthAccounts(
             authorized[setFlag2String(asfAdminAuth)] = Json::arrayValue);
+        Json::Value& realNameAuthAccounts(
+            authorized[setFlag2String(asfRealNameAuth)] = Json::arrayValue);
         for (auto const& [accountID, flags] : visitData)
         {
             auto const& accountStr =
@@ -145,6 +151,8 @@ accountAuthorized(
                 issueCoinsAuthAccounts.append(accountStr);
             if (flags & lsfAdminAuth)
                 adminAuthAccounts.append(accountStr);
+            if (flags & lsfRealNameAuth)
+                realNameAuthAccounts.append(accountStr);
         }
     }
 
@@ -170,7 +178,7 @@ doAccountAuthorized(RPC::JsonContext& context)
         setFlag = params[jss::SetFlag].asUInt();
         if (setFlag != asfPaymentAuth && setFlag != asfDeployContractAuth &&
             setFlag != asfCreateTableAuth && setFlag != asfIssueCoinsAuth &&
-            setFlag != asfAdminAuth)
+            setFlag != asfAdminAuth && setFlag != asfRealNameAuth)
         {
             return RPC::invalid_field_error(jss::SetFlag);
         }

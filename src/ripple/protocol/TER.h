@@ -235,6 +235,7 @@ enum TEFcodes : TERUnderlyingType
     tefNO_ADMIN_CONFIGURED,
     tefNO_NEED_AUTHORIZE,
     tefBAD_USERCERT,
+    tefACCOUNT_ALREADY_DELETE,
 };
 
 //------------------------------------------------------------------------------
@@ -709,10 +710,10 @@ struct STer {
 	operator TER()const {
 		return ter;
 	}
-	bool operator==(TER const& rhs)
-	{
-		return this->ter == rhs;
-	}
+ //   bool operator==(TERUnderlyingType const& rhs)
+	//{
+ //       return TERtoInt(this->ter) == rhs;
+	//}
 
     bool operator!=(TER const& rhs)
     {
@@ -726,6 +727,11 @@ struct STer {
 	}
 };
 
+constexpr TERUnderlyingType
+TERtoInt(const STer& v)
+{
+    return TERtoInt(v.ter);
+}
 
 } // ripple
 

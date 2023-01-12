@@ -25,6 +25,8 @@
 #include <peersafe/consensus/LedgerTiming.h>
 #include <peersafe/consensus/pop/PopConsensus.h>
 #include <peersafe/consensus/pop/PopConsensusParams.h>
+#include <ripple/protocol/STValidationSet.h>
+#include <peersafe/app/util/NetworkUtil.h>
 
 namespace ripple {
 
@@ -111,17 +113,21 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
             auto oldLedger = adaptor_.getValidatedLedger();
             //If we are acquiring ledger just after init phrase,don't switch ledger to validated.
             if (initAcquireLedgerID_ != beast::zero &&
-                initAcquireLedgerID_ == prevLedgerID_)
+                initAcquireLedgerID_ == prevLedgerID_ &&
+                (!oldLedger || prevLedgerSeq_ > oldLedger->info().seq))
                  oldLedger = previousLedger_.ledger_;
-
             JLOG(j_.warn())
                 << "There have been " << adaptor_.parms().timeoutCOUNT_ROLLBACK
                 << " times of timeout, will rollback to ledger "
                 << oldLedger->seq()
                 << " with view = 0,current ledger:" << previousLedger_.seq();
 
+            
             if (oldLedger)
             {
+                auto ret = viewChangeManager_.FindHighValSeqViewChange(toView_, adaptor_.getValidLedgerIndex());
+                if (ret.first > oldLedger->info().seq)
+                    adaptor_.launchAcquirValidationSet(ret);
                 startRoundInternal(
                     now_,
                     oldLedger->info().hash,
@@ -134,26 +140,13 @@ PopConsensus::timerEntry(NetClock::time_point const& now)
 
                 adaptor_.flushValidations();
                 //In case: ledger closed,but not validated,reopen consensus for the same ledger.
-                adaptor_.clearPoolAvoid(oldLedger->seq() + 1);
+                adaptor_.clearPoolAvoid();
             }
         }
     }
 
     if (mode_.get() == ConsensusMode::wrongLedger)
     {
-        if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-        {
-            JLOG(j_.warn()) << "Have the consensus ledger " << newLedger->seq()
-                            << ":" << prevLedgerID_;
-
-            adaptor_.removePoolTxs(
-                newLedger->ledger_->txMap(),
-                newLedger->ledger_->info().seq,
-                newLedger->ledger_->info().parentHash);
-
-            startRoundInternal(
-                now_, prevLedgerID_, *newLedger, ConsensusMode::switchedLedger);
-        }
         return;
     }
 
@@ -184,6 +177,10 @@ PopConsensus::peerConsensusMessage(
             return peerValidation(peer, isTrusted, m);
         case ConsensusMessageType::mtINITANNOUNCE:
             return peerInitAnnounce(peer, isTrusted, m);
+        case ConsensusMessageType::mtACQUIRVALIDATIONSET:
+            return peerAcquirValidationSet(peer, isTrusted, m);
+        case ConsensusMessageType::mtVALIDATIONSETDATA:
+            return peerValidationSetData(peer, isTrusted, m);
         default:
             break;
     }
@@ -465,7 +462,7 @@ PopConsensus::initAnnounce()
 
     auto initAnnounce = std::make_shared<STInitAnnounce>(
         previousLedger_.seq(),
-        prevLedgerID_,
+        previousLedger_.id(),
         adaptor_.valPublic(),
         adaptor_.closeTime());
 
@@ -526,6 +523,7 @@ PopConsensus::startRoundInternal(
         previousLedger_.closeAgree(),
         previousLedger_.seq() + 1);
 
+    adaptor_.ledgerMaster_.setBuildingLedger(0);
     if (mode == ConsensusMode::proposing)
     {
         viewChangeManager_.onNewRound(previousLedger_);
@@ -539,17 +537,22 @@ PopConsensus::checkLedger()
 {
     auto netLgr =
         adaptor_.getPrevLedger(prevLedgerID_, previousLedger_, mode_.get());
-
     if (netLgr != prevLedgerID_)
     {
-        JLOG(j_.warn()) << "View of consensus changed during "
-                        << to_string(phase_) << " status=" << to_string(phase_)
-                        << ", "
-                        << " mode=" << to_string(mode_.get());
-        JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
-        JLOG(j_.warn()) << previousLedger_.getJson();
-        JLOG(j_.debug()) << "State on consensus change " << getJson(true);
+        if (adaptor_.proposersValidated(netLgr) < adaptor_.getQuorum())
+            return;
+
         handleWrongLedger(netLgr);
+        if (prevLedgerID_ == netLgr)
+        {
+            JLOG(j_.warn())
+                << "View of consensus changed during " << to_string(phase_)
+                << " status=" << to_string(phase_) << ", "
+                << " mode=" << to_string(mode_.get());
+            JLOG(j_.warn()) << prevLedgerID_ << " to " << netLgr;
+            JLOG(j_.warn()) << previousLedger_.getJson();
+            JLOG(j_.debug()) << "State on consensus change " << getJson(true);
+        }
     }
     else if (previousLedger_.id() != prevLedgerID_)
         handleWrongLedger(netLgr);
@@ -560,6 +563,20 @@ void
 PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
 {
     assert(lgrId != prevLedgerID_ || previousLedger_.id() != lgrId);
+
+    auto newLedger = adaptor_.acquireLedger(lgrId);
+    if (!newLedger)
+        return;
+
+    // check compatibility with newest valid ledger.
+    if (!adaptor_.app_.getLedgerMaster().isCompatible(
+            *(newLedger->ledger_),
+            j_.warn(),
+            "Not switching preferedLedger,"))
+    {
+        return;
+    }
+
 
     // Stop proposing because we are out of sync
     leaveConsensus();
@@ -576,23 +593,37 @@ PopConsensus::handleWrongLedger(typename Ledger_t::ID const& lgrId)
         return;
 
     // we need to switch the ledger we're working from
-    if (auto newLedger = adaptor_.acquireLedger(prevLedgerID_))
-    {
+    // if (auto newLedger = adaptor_.acquireLedger(lgrId))
+    // {
         JLOG(j_.warn()) << "Have the consensus ledger when handleWrongLedger " << newLedger->seq()
                         << ":" << prevLedgerID_;
 
-        adaptor_.removePoolTxs(
-            newLedger->ledger_->txMap(),
-            newLedger->ledger_->info().seq,
-            newLedger->ledger_->info().parentHash);
+        auto tmp = previousLedger_.ledger_;
+        for (auto seq = tmp->seq(); tmp && seq >= newLedger->seq(); seq--)
+        {
+            if (tmp->info().txHash ==
+                newLedger->ledger_->info().txHash)
+                break;
+            adaptor_.app_.getTxPool().clearAvoid(seq);
+            tmp = adaptor_.ledgerMaster_.getLedgerByHash(tmp->info().parentHash);
+        }
 
         startRoundInternal(
             now_, lgrId, *newLedger, ConsensusMode::switchedLedger);
-    }
-    else
-    {
-        mode_.set(ConsensusMode::wrongLedger, adaptor_);
-    }
+    // }
+    // else if (adaptor_.app_.getInboundLedgers().isFailure(prevLedgerID_))
+    // {
+    //     mode_.set(ConsensusMode::observing, adaptor_);
+    //     prevLedgerID_ = previousLedger_.id();
+
+    //     JLOG(j_.warn())
+    //                 << "Failed to get netlgr. lgrId: "<< lgrId
+    //                     << " prevLedgerID_: " << prevLedgerID_;
+    // }
+    // else
+    // {
+    //     mode_.set(ConsensusMode::wrongLedger, adaptor_);
+    // }
 }
 
 void
@@ -878,7 +909,8 @@ PopConsensus::launchViewChange()
         prevLedgerID_,
         toView_,
         adaptor_.valPublic(),
-        adaptor_.closeTime());
+        adaptor_.closeTime(),
+        adaptor_.getValidLedgerIndex());
 
     adaptor_.launchViewChange(*viewChange);
 
@@ -1029,6 +1061,10 @@ PopConsensus::peerProposalInternal(
                 rawCloseTimes_.self = now_;
                 closeTime_ = newPeerProp.closeTime();
                 proposalTime_ = clock_.now();
+                // Tell the ledger master not to acquire the ledger we're probably building
+                adaptor_.ledgerMaster_.setBuildingLedger(prevLedgerSeq_ + 1);
+
+                notify(adaptor_.app_, protocol::neCLOSING_LEDGER, previousLedger_, false, j_);
 
                 if (txSetCached_.find(*setID_) != txSetCached_.end())
                 {
@@ -1308,6 +1344,9 @@ PopConsensus::onViewChange(uint64_t toView)
 
     // clear avoid
     // adaptor_.clearPoolAvoid(previousLedger_.seq());
+    auto ret = viewChangeManager_.FindHighValSeqViewChangeByView(view_, adaptor_.getValidLedgerIndex());
+    if (ret.first > adaptor_.getValidLedgerIndex())
+        adaptor_.launchAcquirValidationSet(ret);
 
     viewChangeManager_.onViewChanged(view_, prevLedgerSeq_);
     if (waitingConsensusReach_)
@@ -1441,6 +1480,63 @@ PopConsensus::peerInitAnnounceInternal(STInitAnnounce::ref initAnnounce)
         }
 
         return true;
+    }
+
+    return false;
+}
+
+bool
+PopConsensus::peerAcquirValidationSet(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED AcquirValidation";
+        return false;
+    }
+    try
+    {
+        SerialIter sit(makeSlice(m->msg()));
+        STObject object(sit, sfNewFields);
+        return adaptor_.peerAcquirValidationSet(object.getFieldU32(sfValidatedSequence), peer);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "Acquir Validation Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
+    }
+
+    return false;
+}
+
+bool
+PopConsensus::peerValidationSetData(
+    std::shared_ptr<PeerImp>& peer,
+    bool isTrusted,
+    std::shared_ptr<protocol::TMConsensus> const& m)
+{
+    if (!isTrusted)
+    {
+        JLOG(j_.info()) << "drop UNTRUSTED ValidationData";
+        return false;
+    }
+
+    try
+    {
+        STValidationSet::pointer validationSet;
+
+        SerialIter sit(makeSlice(m->msg()));
+
+        validationSet = std::make_shared<STValidationSet>(std::ref(sit), adaptor_.valPublic_, adaptor_.app_.validatorManifests());
+
+        return adaptor_.peerValidationSetData(validationSet);
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.warn()) << "ValidationData Exception, " << e.what();
+        peer->charge(Resource::feeInvalidRequest);
     }
 
     return false;

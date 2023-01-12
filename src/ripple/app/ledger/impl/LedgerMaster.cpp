@@ -58,12 +58,14 @@
 #include <peersafe/protocol/STEntry.h>
 #include <peersafe/app/sql/TxStore.h>
 #include <peersafe/app/misc/TxPool.h>
+#include <peersafe/app/util/NetworkUtil.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
 #include <peersafe/schema/SchemaManager.h>
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <peersafe/consensus/ConsensusBase.h>
 #include <peersafe/rpc/TableUtils.h>
+#include <peersafe/app/bloom/BloomManager.h>
 #include <algorithm>
 #include <cassert>
 #include <limits>
@@ -232,6 +234,10 @@ LedgerMaster::isCompatible(
     char const* reason)
 {
     auto validLedger = getValidatedLedger();
+    //Fix: genesis ledger may change(because of features or other reason)
+    //     should not be used to judge compatibility.
+    if (validLedger->info().seq == ZXC_LEDGER_EARLIEST_SEQ)
+        return true;
 
     if (validLedger && !areCompatible(*validLedger, view, s, reason))
     {
@@ -284,7 +290,8 @@ LedgerMaster::onConsensusReached(
 
     if (waitingConsensusReach &&
         previousLedger &&
-        previousLedger->info().seq != mValidLedgerSeq)
+        previousLedger->info().seq != mValidLedgerSeq &&
+        isCompatible(*previousLedger, m_journal.warn(), "Not switching when waitingConsensusReach,"))
     {
         setFullLedger(previousLedger, false, true);
         setPubLedger(previousLedger);
@@ -295,6 +302,7 @@ LedgerMaster::onConsensusReached(
     }
     checkSubChains();
     checkLoadLedger();
+
     app_.getTableSync().TryTableSync();
     app_.getTableSync().InitTableItems();
     tryAdvance();
@@ -1390,25 +1398,36 @@ LedgerMaster::heldTransactionSize()
 }
 
 void
-LedgerMaster::checkUpdateOpenLedger()
+LedgerMaster::checkUpdateOpenLedger(
+    std::shared_ptr<Ledger const> swichLedger)
 {
+    std::shared_ptr<Ledger const> lastClosed = nullptr;
+    if (swichLedger != nullptr)
+    {
+        if (app_.openLedger().current()->seq() - 1 == swichLedger->info().seq &&
+            app_.openLedger().current()->info().parentHash !=swichLedger->info().hash)
+        {
+            lastClosed = swichLedger;
+        }
+    }
     if (app_.openLedger().current()->seq() <= mValidLedgerSeq)
     {
         JLOG(m_journal.warn()) << "checkUpdateOpenLedger openLedger seq:"
                                << app_.openLedger().current()->seq()
                                << "<= mValidLedgerSeq:" << mValidLedgerSeq;
-        auto const lastVal = getValidatedLedger();
+        lastClosed = getValidatedLedger();
+        
+    }
+    if (lastClosed)
+    {
         boost::optional<Rules> rules;
-        if (lastVal)
-            rules.emplace(*lastVal, app_.config().features);
-        else
-            rules.emplace(app_.config().features);
+        rules.emplace(*lastClosed, app_.config().features);
 
         auto retries = CanonicalTXSet({});
         app_.openLedger().accept(
             app_,
             *rules,
-            lastVal,
+            lastClosed,
             OrderedTxs({}),
             false,
             retries,
@@ -2105,7 +2124,7 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
     ledger->setValidated();
     ledger->setFull();
     setValidLedger(ledger);
-
+    notify(app_, protocol::neVALID_LEDGER, ledger, false, m_journal);
     checkSubChains();
 
     app_.getTxPool().removeTxs(
@@ -2157,8 +2176,8 @@ LedgerMaster::doValid(std::shared_ptr<Ledger const> const& ledger)
         // The variable upgradeWarningPrevTime_ will be set when and only when
         // the warning is printed.
         if (upgradeWarningPrevTime_ == TimeKeeper::time_point())
-        {
-            // Have not printed the warning before, check if need to print.
+        {     
+            // Have not printed the warning before, check if need to print.           
             auto const vals = app_.getValidations().getTrustedForLedger(
                 ledger->info().parentHash);
             std::size_t higherVersionCount = 0;

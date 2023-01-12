@@ -49,8 +49,7 @@ TableSync::TableSync(Schema& app, Config& cfg, beast::Journal journal)
 	, checkSkipNode_("SkipNode", 65536, std::chrono::seconds{ 450 }, stopwatch(),
         app_.journal("TaggedCache"))
 {
-    if (app.getTxStoreDBConn().GetDBConn() == nullptr || 
-		app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+    if (!app.checkGlobalConnection())
         bIsHaveSync_ = false;
     else
         bIsHaveSync_ = true;
@@ -272,9 +271,20 @@ void TableSync::SeekTableTxLedger(TableSyncItem::BaseInfo &stItemInfo)
     LedgerIndex curLedgerIndex = 0;
     uint256 curLedgerHash;
     uint32_t time = 0;
+    auto const start = std::chrono::steady_clock::now();
+
 	auto pubLedgerSeq = app_.getLedgerMaster().getPublishedLedger()->info().seq;
     for (int i = stItemInfo.u32SeqLedger + 1; i <= pubLedgerSeq; i++)
     {
+        //Every table can do table_sync for 2 minutes,in case other table have no opportunity to work.
+        {
+            auto const now = std::chrono::steady_clock::now();
+            auto const elapsed =
+                std::chrono::duration_cast<std::chrono::seconds>(now - start);
+            if (elapsed.count() > 120)
+                break;
+        }
+
         if (!app_.getLedgerMaster().haveLedger(i))   
         {
             JLOG(journal_.info()) << "in local seekLedger, no ledger : " << i
@@ -520,11 +530,15 @@ bool TableSync::SendSyncRequest(AccountID accountID, std::string sNameInDB, Ledg
 
 bool TableSync::InsertSnycDB(std::string TableName, std::string TableNameInDB, std::string Owner,LedgerIndex LedgerSeq, uint256 LedgerHash, bool IsAutoSync, std::string time,uint256 chainId)
 {
+    if (!app_.checkGlobalConnection())
+        return false;
     return app_.getTableStatusDB().InsertSnycDB(TableName, TableNameInDB, Owner, LedgerSeq, LedgerHash, IsAutoSync, time, chainId);
 }
 
 bool TableSync::ReadSyncDB(std::string nameInDB, LedgerIndex &txnseq, uint256 &txnhash, LedgerIndex &seq, uint256 &hash, uint256 &txnupdatehash)
 {
+    if (!app_.checkGlobalConnection())
+        return false;
     return app_.getTableStatusDB().ReadSyncDB(nameInDB, txnseq, txnhash, seq, hash, txnupdatehash);
 }
 
@@ -894,11 +908,21 @@ void TableSync::CreateTableItems()
     }
 		
     //2.read from state table
+    if (!bAutoLoadTable_)
+    {
+        //if auto_sync=0, will not load db tables with field auto_sync = 1
+        return;
+    }
 	auto ledger = app_.getLedgerMaster().getValidatedLedger();
 	//read chainId
 	uint256 chainId = TableSyncUtil::GetChainId(ledger.get());
 
     std::list<std::tuple<std::string, std::string, std::string, bool> > list;
+    if (!app_.checkGlobalConnection())
+    {
+        JLOG(journal_.error()) << "checkGlobalConnection failed in TableSync::CreateTableItems";
+        return;
+    }
     app_.getTableStatusDB().GetAutoListFromDB(chainId, list);
 
     std::string owner, tablename, time;
@@ -911,7 +935,7 @@ void TableSync::CreateTableItems()
         AccountID accountID;
         try
         {
-            if (auto pOwner = ripple::parseBase58<AccountID>(trim_whitespace(owner));
+            if (auto pOwner = ripple::parseBase58<AccountID>(owner);
                 pOwner)
             {
                 accountID = *pOwner;
@@ -1256,7 +1280,9 @@ void TableSync::TableSyncThread()
             LedgerIndex TxnLedgerSeq = 0, LedgerSeq = 1;
             uint256 TxnLedgerHash, LedgerHash, TxnUpdateHash;
 
-            ReadSyncDB(stItem.sTableNameInDB, TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash);
+            bool ret = ReadSyncDB(stItem.sTableNameInDB, TxnLedgerSeq, TxnLedgerHash, LedgerSeq, LedgerHash, TxnUpdateHash);
+            if (!ret)
+                continue;
 
 			pItem->SetPara(stItem.sTableNameInDB, LedgerSeq, LedgerHash, TxnLedgerSeq, TxnLedgerHash, TxnUpdateHash);
 			pItem->SetSyncState(TableSyncItem::SYNC_BLOCK_STOP);
@@ -1266,6 +1292,12 @@ void TableSync::TableSyncThread()
 		{
 			//delete a table
 			std::string sNameInDB;
+            if (!app_.checkGlobalConnection())
+            {
+                JLOG(journal_.info()) << "TableSyncThread SYNC_DELETING "
+                                         "checkGlobalConnection failed.";
+                continue;
+            }
 			if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 			{
 				//pItem->DeleteTable(sNameInDB);
@@ -1286,6 +1318,11 @@ void TableSync::TableSyncThread()
             
 			if (stItem.eTargetType == TableSyncItem::SyncTarget_db)
 			{
+                if (!app_.checkGlobalConnection())
+                {
+                    JLOG(journal_.info()) << "TableSyncThread SYNC_INIT checkGlobalConnection failed.";
+                    continue;
+                }
 				if (stBaseInfo.nameInDB.isNonZero()) //local read nameInDB is not zero
 				{
                     LedgerIndex TxnLedgerSeq = 0, LedgerSeq = 1;
@@ -1316,6 +1353,9 @@ void TableSync::TableSyncThread()
 						std::string localNameInDB;
 						if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, localNameInDB))
 						{
+                            JLOG(journal_.warn())<< "TableSyncThread SYNC_INIT IsNameInDBExist got nameInDB="
+                                                        << localNameInDB
+                                                        << " set deleted = 1 and delete table.";
 							pItem->DoUpdateSyncDB(to_string(stItem.accountID), localNameInDB, true, PreviousCommit);
 							pItem->DeleteTable(localNameInDB);
 						}
@@ -1354,9 +1394,19 @@ void TableSync::TableSyncThread()
 				}
 				else if(!stItem.isDeleted)
 				{
+                    //if(setTableInCfg_.count(to_string(stItem.accountID) + stItem.sTableName) > 0)
+                    //{
+                    //    JLOG(journal_.warn())
+                    //        << "TableSyncThread SYNC_INIT table "
+                    //        << stItem.sTableName << " not found in ledger:"
+                    //        << app_.getLedgerMaster().getValidLedgerIndex();
+                    //}
+
 					std::string sNameInDB;
 					if (pItem->IsNameInDBExist(stItem.sTableName, to_string(stItem.accountID), true, sNameInDB))
 					{
+                        JLOG(journal_.warn()) << "TableSyncThread SYNC_INIT found real nameInDB " << sNameInDB 
+                            << " in db for table:"<< stItem.sTableName;
 						if (stItem.isAutoSync)
 						{
 							//will drop on the next ledger
@@ -1867,7 +1917,7 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         bool bDBTableExist = false;
                         if (mapTxDBNam2Exist.find(uTxDBName) == mapTxDBNam2Exist.end())
                         {
-                            bDBTableExist = STTx2SQL::IsTableExistBySelect(app_.getTxStoreDBConn().GetDBConn(), "t_" + to_string(uTxDBName));
+                            bDBTableExist = TableSyncUtil::IsTableExist(app_, uTxDBName);                                
                             mapTxDBNam2Exist[uTxDBName] = bDBTableExist;
                         }
                         else
@@ -1878,10 +1928,17 @@ void TableSync::CheckSyncTableTxs(std::shared_ptr<Ledger const> const& ledger)
                         {
                             if (!bDBTableExist)
                             {
+                                auto dbErr = std::string(jss::db_noTableExistInDB);
+                                auto msg = "";
+                                if (TableSyncUtil::IsMysqlConnectionErr(app_.getTxStoreDBConn().GetDBConn()))
+                                {
+                                    dbErr = std::string(jss::db_lostConnection);
+                                    msg = "Database connection lost.";
+                                }
                                 app_.getOPs().pubTableTxs(accountID, tableName, *pSTTX, 
-                                    std::make_tuple(std::string(jss::db_noTableExistInDB), "", ""), false);
+                                    std::make_tuple(dbErr, "", msg), false);
                                 break;
-                            }
+                            }                     
 
                             bool bDBTableSync = false;
                             if (mapTxDBNam2Sync.find(uTxDBName) == mapTxDBNam2Sync.end())
@@ -1936,7 +1993,7 @@ bool TableSync::OnCreateTableTx(STTx const& tx, std::shared_ptr<Ledger const> co
 	auto insertRes = InsertListDynamically(accountID, tableName, to_string(uTxDBName), ledger->info().seq - 1, ledger->info().parentHash, time, chainId);
 	if (isPubErrInfo && !insertRes.first)
 	{
-		JLOG(journal_.error()) << "Insert to list dynamically failed,tableName=" << tableName << ",owner = " << to_string(accountID);
+            JLOG(journal_.error()) << insertRes.second;
 
 		std::tuple<std::string, std::string, std::string> result = std::make_tuple(std::string(jss::db_error), "", insertRes.second);
 		app_.getOPs().pubTableTxs(accountID, tableName, tx, result, false);

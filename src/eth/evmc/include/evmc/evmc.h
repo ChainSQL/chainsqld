@@ -157,6 +157,7 @@ struct evmc_tx_context
     int64_t block_gas_limit;         /**< The block gas limit. */
     evmc_uint256be block_difficulty; /**< The block difficulty. */
     evmc_uint256be chain_id;         /**< The blockchain's ChainID. */
+    bool eth_tx;                     /**< The tx is EthTx type. */
 };
 
 /**
@@ -427,7 +428,7 @@ struct evmc_result
      */
     uint8_t padding[4];
 
-    int exception;
+    int32_t exception;
 };
 
 

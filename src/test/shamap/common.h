@@ -91,6 +91,10 @@ public:
     {
         return tnCache_;
     }
+    
+    std::shared_ptr<StateNodeHashSet> getStateNodeHashSet() override {
+        return nullptr;
+    }
 
     void
     sweep() override
@@ -128,6 +132,10 @@ public:
     clock()
     {
         return clock_;
+    }
+    
+    bool stateNodeHashSetEnabled() override {
+        return false;
     }
 };
 

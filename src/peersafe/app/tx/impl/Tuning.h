@@ -37,10 +37,10 @@ namespace ripple {
 
 	int const MAX_BROAD_CAST_BATCH = 10000;
 
-    int const DELAY_START_COUNT = 5;
-
 	int const MAX_ACCOUNT_HELD_COUNT = 1500;
     int const MAX_HELD_COUNT = 15000;
+
+	int const LAST_LEDGER_SEQ_OFFSET = 10;
 } // ripple
 
 #endif

@@ -33,7 +33,7 @@ namespace ripple {
     uint64_t const TX_GAS               = 21000;
     uint64_t const TX_CREATE_GAS        = 53000;
     uint64_t const TX_DATA_ZERO_GAS     = 4;
-    uint64_t const TX_DATA_NON_ZERO_GAS = 68;
+    uint64_t const TX_DATA_NON_ZERO_GAS = 16;
 
 	constexpr auto maxUInt64 = std::numeric_limits<std::uint64_t>::max();
 	constexpr auto maxInt64  = std::numeric_limits<std::int64_t>::max();
@@ -51,9 +51,19 @@ namespace ripple {
 
     int const DELAY_START_COUNT = 5;
 
+    int const MAX_CONN_RETRY_COUNT = 3;
+    
     uint256 const NODE_TYPE_CONTRACTKEY = uint256(1);
     uint256 const NODE_TYPE_AUTHORIZE = uint256(2);
     uint256 const NODE_TYPE_AUTHORIZER = uint256(3);
+
+    const int BloomByteLength = 256;
+    uint32_t const BLOOM_LENGTH = 2048;
+    uint32_t const DEFAULT_SECTION_SIZE = 4096;
+
+    std::string const BLOOM_PREFIX = "BLOOM-FILTER_";
+    std::string const BLOOM_START_LEDGER_KEY = "start-ledger-key";
+    std::string const BLOOM_SAVED_SECTION_COUNT = "saved_section_count";
 
 } // ripple
 

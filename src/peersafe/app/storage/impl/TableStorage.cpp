@@ -38,8 +38,7 @@ namespace ripple {
         , journal_(journal)
         , cfg_(cfg)
     {
-		if (app.getTxStoreDBConn().GetDBConn() == nullptr ||
-			app.getTxStoreDBConn().GetDBConn()->getSession().get_backend() == nullptr)
+		if (!app.checkGlobalConnection())
 			m_IsHaveStorage = false;
 		else
 			m_IsHaveStorage = true;
@@ -171,7 +170,8 @@ namespace ripple {
             auto validLedger = app_.getLedgerMaster().getValidatedLedger();
             uint256 txnHash, ledgerHash, utxUpdatehash;
             LedgerIndex txnLedgerSeq, LedgerSeq;
-
+            if (!app_.checkGlobalConnection())
+                return tefTABLE_STORAGENORMALERROR;
             bool bRet = app_.getTableStatusDB().ReadSyncDB(to_string(uTxDBName), txnLedgerSeq, txnHash, LedgerSeq, ledgerHash, utxUpdatehash);
             if (bRet)
             {

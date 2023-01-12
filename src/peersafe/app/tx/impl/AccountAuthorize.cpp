@@ -44,7 +44,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (setFlag != asfPaymentAuth && setFlag != asfDeployContractAuth &&
             setFlag != asfCreateTableAuth && setFlag != asfIssueCoinsAuth &&
-            setFlag != asfAdminAuth)
+            setFlag != asfAdminAuth && setFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -54,7 +54,7 @@ AccountAuthorize::affectsFlagCheck(
     {
         if (clearFlag != asfPaymentAuth && clearFlag != asfDeployContractAuth &&
             clearFlag != asfCreateTableAuth && clearFlag != asfIssueCoinsAuth &&
-            clearFlag != asfAdminAuth)
+            clearFlag != asfAdminAuth && clearFlag != asfRealNameAuth)
         {
             return false;
         }
@@ -97,7 +97,8 @@ AccountAuthorize::preclaim(PreclaimContext const& ctx)
     if (!sleDst)
         return tecNO_DST;
 
-    if (uSetFlag == asfAdminAuth || uClearFlag == asfAdminAuth)
+    if (uSetFlag == asfAdminAuth || uClearFlag == asfAdminAuth
+        || uSetFlag == asfRealNameAuth || uClearFlag == asfRealNameAuth)
     {
         // Supper admin check
         if (!ctx.app.config().ADMIN)
@@ -105,6 +106,13 @@ AccountAuthorize::preclaim(PreclaimContext const& ctx)
 
         if (uSrcAccountID != *ctx.app.config().ADMIN)
             return tecNO_PERMISSION;
+
+        if (uSetFlag == asfRealNameAuth || uClearFlag == asfRealNameAuth)
+        {
+            if (!ctx.app.config().REAL_NAME_AUTHORITY_ENABLED)
+                return tefNO_NEED_AUTHORIZE;
+
+        }
     }
     else
     {
@@ -152,6 +160,9 @@ AccountAuthorize::doApply()
         case asfIssueCoinsAuth:
             setAuthority(uFlagsOut, lsfIssueCoinsAuth);
             break;
+        case asfRealNameAuth:
+            uFlagsOut |= lsfRealNameAuth;
+            break;
         case asfAdminAuth:
             setAuthority(uFlagsOut, lsfPaymentAuth);
             setAuthority(uFlagsOut, lsfDeployContractAuth);
@@ -177,6 +188,9 @@ AccountAuthorize::doApply()
         case asfIssueCoinsAuth:
             clearAuthority(uFlagsOut, lsfIssueCoinsAuth);
             break;
+        case asfRealNameAuth:
+            uFlagsOut &= ~lsfRealNameAuth;
+            break;
         case asfAdminAuth:
             clearAuthority(uFlagsOut, lsfPaymentAuth);
             clearAuthority(uFlagsOut, lsfDeployContractAuth);
@@ -193,7 +207,7 @@ AccountAuthorize::doApply()
     // flag权限位被清除时，从超级管理员的目录中移除该账户。
     if (uFlagsOut &
         (lsfPaymentAuth | lsfDeployContractAuth | lsfCreateTableAuth |
-         lsfIssueCoinsAuth | lsfAdminAuth))
+         lsfIssueCoinsAuth | lsfAdminAuth | lsfRealNameAuth))
     {
         auto admin = ctx_.app.config().ADMIN;
         if (!admin)

@@ -6,13 +6,6 @@
 #include <eth/vm/Common.h>
 #include <eth/vm/utils/keccak.h>
 
-/*
-#define DEV_SIMPLE_EXCEPTION(X)       \
-    struct X : virtual eth::Exception \
-    {                                 \
-    }
-*/
-
 namespace ripple
 {
 // struct ChainOperationParams;

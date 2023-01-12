@@ -140,7 +140,8 @@ ZXCNotCreated::finalize(
     beast::Journal const& j)
 {
     // contract have extra fee
-	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT)
+	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT ||
+        tx.getFieldU16(sfTransactionType) == ttETH_TX)
 	{
 		return true;
 		//transfer or send in contract can change balance too
@@ -317,8 +318,12 @@ void
 AccountRootsNotDeleted::visitEntry(
     bool isDelete,
     std::shared_ptr<SLE const> const& before,
-    std::shared_ptr<SLE const> const&)
+    std::shared_ptr<SLE const> const& after)
 {
+    if((*after)[sfFlags] & lsfAccountDeleted)
+    {
+        isDelete = true;
+    }
     if (isDelete && before && before->getType() == ltACCOUNT_ROOT)
         accountsDeleted_++;
 }
@@ -331,7 +336,8 @@ AccountRootsNotDeleted::finalize(
     ReadView const&,
     beast::Journal const& j)
 {   
-	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT) 
+	if (tx.getFieldU16(sfTransactionType) == ttCONTRACT ||
+        tx.getFieldU16(sfTransactionType) == ttETH_TX) 
 	{
 		return true;
 	}
@@ -487,7 +493,8 @@ ValidNewAccountRoot::finalize(
     if (accountsCreated_ == 0)
         return true;
 
-    if ((tx.getTxnType() != ttCONTRACT) && accountsCreated_ > 1)
+    if ((tx.getTxnType() != ttCONTRACT && tx.getTxnType() != ttETH_TX) &&
+        accountsCreated_ > 1)
     {
         JLOG(j.fatal()) << "Invariant failed: multiple accounts "
                            "created in a single transaction";
@@ -495,11 +502,12 @@ ValidNewAccountRoot::finalize(
     }
 
     // From this point on we know exactly one account was created.
-    if ((tx.getTxnType() == ttPAYMENT || tx.getTxnType() == ttCONTRACT)
+    if ((tx.getTxnType() == ttPAYMENT || tx.getTxnType() == ttCONTRACT ||
+         tx.getTxnType() == ttETH_TX)
         && result == tesSUCCESS)
     {
         std::uint32_t const startingSeq{
-            view.rules().enabled(featureDeletableAccounts) ? view.seq() : 1};
+            /*view.rules().enabled(featureDeletableAccounts) ? view.seq() : */1};
 
         if (accountSeq_ != startingSeq)
         {

@@ -359,7 +359,9 @@ public:
     heldTransactionSize();
 
     void
-    checkUpdateOpenLedger();
+    checkUpdateOpenLedger(
+        std::shared_ptr<Ledger const> swichLedger = nullptr);
+
 private:
     void
     setValidLedger(std::shared_ptr<Ledger const> const& l);

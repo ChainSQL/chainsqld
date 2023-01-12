@@ -26,6 +26,7 @@
 #include <ripple/ledger/OpenView.h>
 #include <ripple/ledger/ReadView.h>
 #include <ripple/ledger/detail/ApplyStateTable.h>
+#include <peersafe/app/misc/ContractHelper.h>
 
 namespace ripple {
 namespace detail {
@@ -135,10 +136,28 @@ public:
         CashFilter rhsFilter,
         ApplyViewBase const& rhs);
 
+    boost::optional<uint256>
+    fetchFromDirty(
+        AccountID const& contract,
+        uint256 const& key);
+
+    void
+    setDirtyValue(
+        AccountID const& contract,
+        uint256 const& key,
+        uint256 const& value);
+
+    void
+    setDirtyExistInDB(
+        AccountID const& contract,
+        uint256 const& key,
+        bool exist);
+
 protected:
     ApplyFlags flags_;
     ReadView const* base_;
     detail::ApplyStateTable items_;
+    std::map<AccountID, map256Contract> mDirtyCache;
 };
 
 }  // namespace detail

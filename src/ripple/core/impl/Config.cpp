@@ -29,6 +29,7 @@
 #include <ripple/protocol/SystemParameters.h>
 #include <ripple/protocol/CommonKey.h>
 #include <peersafe/gmencrypt/GmEncryptObj.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/core/string.hpp>
 #include <boost/format.hpp>
@@ -41,7 +42,7 @@
 
 namespace ripple {
 
-inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 13>
+inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 14>
     sizedItems{{
         // FIXME: We should document each of these items, explaining exactly
         // what
@@ -59,7 +60,8 @@ inline constexpr std::array<std::pair<SizedItem, std::array<int, 5>>, 13>
         {SizedItem::txnDBCache, {{4, 12, 24, 64, 128}}},
         {SizedItem::lgrDBCache, {{4, 8, 16, 32, 128}}},
         {SizedItem::transactionSize,    {{65536,  131072, 196608, 262144,     327680  }} },
-        {SizedItem::transactionAge,     {{60,     90,     120,    900,        1800    }} }
+        {SizedItem::transactionAge,     {{60,     90,     120,    900,        1800    }} },
+        {SizedItem::requestMapCount, {{1, 3, 5, 8, 10}}}
     }};
 
 // Ensure that the order of entries in the table corresponds to the
@@ -309,6 +311,7 @@ void Config::initSchemaConfig(Config& config, SchemaParams const& schemaParams)
     removeSection("auto_sync");      //need separate configuration
     removeSection("sync_tables");    //need separate configuration
     removeSection("prometheus");
+    removeSection("voting");
     removeSection(SECTION_VALIDATOR_LIST_KEYS);
     removeSection(SECTION_VALIDATOR_LIST_SITES);
 
@@ -631,6 +634,19 @@ Config::loadFromString(std::string const& fileContents)
             GM_SELF_CHECK = *gmSelfCheck;
         }
     }
+    
+    auto genesisSection = section( SECTION_GENESIS );
+    if (!genesisSection.empty ())
+    {
+        if(genesisSection.exists("chainID"))
+        {
+            auto opChainID = genesisSection.get<std::uint64_t>("chainID");
+            if(opChainID)
+                CHAINID = *opChainID;
+            else
+                Throw<std::runtime_error> ("chainID is invalid in genesis section");
+        }
+    }
 
     {
         std::string dbPath;
@@ -681,6 +697,10 @@ Config::loadFromString(std::string const& fileContents)
 
     if (getSingleSection(secConfig, SECTION_SSL_VERIFY, strTemp, j_))
         SSL_VERIFY = beast::lexicalCastThrow<bool>(strTemp);
+    if (getSingleSection(secConfig, SECTION_ALLOW_REMOTE, strTemp, j_))
+    {
+        IS_ALLOW_REMOTE = beast::lexicalCastThrow<bool>(strTemp);
+    }
 
     auto cmdSSLCertSection = section( SECTION_CMD_SSL_CERT );
     if (!cmdSSLCertSection.empty ())
@@ -733,15 +753,6 @@ Config::loadFromString(std::string const& fileContents)
 
     if (getSingleSection(secConfig, SECTION_NETWORK_QUORUM, strTemp, j_))
         NETWORK_QUORUM = beast::lexicalCastThrow<std::size_t>(strTemp);
-
-    if (getSingleSection(secConfig, SECTION_FEE_ACCOUNT_RESERVE, strTemp, j_))
-        FEE_ACCOUNT_RESERVE = beast::lexicalCastThrow<std::uint64_t>(strTemp);
-
-    if (getSingleSection(secConfig, SECTION_FEE_OWNER_RESERVE, strTemp, j_))
-        FEE_OWNER_RESERVE = beast::lexicalCastThrow<std::uint64_t>(strTemp);
-
-    if (getSingleSection(secConfig, SECTION_FEE_DEFAULT, strTemp, j_))
-        FEE_DEFAULT = beast::lexicalCastThrow<std::uint64_t>(strTemp);
 
     if (getSingleSection(secConfig, SECTION_LEDGER_HISTORY, strTemp, j_))
     {
@@ -1003,6 +1014,17 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error>(
                     "Unknown feature: " + s + "  in config file.");
         }
+
+        auto const partAmend = section("amendments");
+        for (auto const& s : partAmend.values())
+        {
+            if (auto const f = getRegisteredFeature(s))
+                amendments.push_back(*f);
+            else
+                Throw<std::runtime_error>(
+                    "Unknown feature: " + s + "  in config file.");
+        }
+
     }
 
     Section ledgerTxTablesSection = section(LEDGER_TXS_TABLES);
@@ -1027,6 +1049,11 @@ Config::loadFromString(std::string const& fileContents)
         "default_authority_enabled",
         DEFAULT_AUTHORITY_ENABLED);
 
+    get_if_exists(
+        section(SECTION_GOVERNANCE),
+        "real_name_authorize_enabled",
+        REAL_NAME_AUTHORITY_ENABLED);
+
     if (exists(SECTION_GOVERNANCE))
     {
         auto result = section(SECTION_GOVERNANCE).find("admin");
@@ -1037,6 +1064,22 @@ Config::loadFromString(std::string const& fileContents)
                 Throw<std::runtime_error>("admin address is invalid");
         }
     }
+
+    if (exists(SECTION_ETH))
+    {
+        auto result = section(SECTION_ETH).find("account_private");
+        if (result.second && result.first.size() > 2)
+        {
+            if (isHexID(result.first.substr(2)))
+            {
+                ETH_DEFAULT_ACCOUNT_PRIVATE = result.first;
+            }
+        }
+    }
+
+    Section ledgerSyncSection = section(SECTION_FETCH_LEDGER);
+    REQ_MAP_COUNT = get(ledgerSyncSection, "request_map_count", getValueFor(SizedItem::requestMapCount));
+    get_if_exists(ledgerSyncSection, "enable_state_hash_set", ENABLE_STATE_HASH_SET);
 }
 
 boost::filesystem::path

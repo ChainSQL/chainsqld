@@ -27,40 +27,37 @@ along with cpp-ethereum.  If not, see <http://www.gnu.org/licenses/>.
 #include <peersafe/schema/Schema.h>
 #include <ripple/app/tx/impl/ApplyContext.h>
 #include <ripple/app/ledger/OpenLedger.h>
+#include <ripple/rpc/impl/RPCHelpers.h>
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
 #include <peersafe/app/misc/Executive.h>
 #include <peersafe/basics/TypeTransform.h>
 #include <peersafe/core/Tuning.h>
 #include <peersafe/protocol/ContractDefines.h>
+#include <eth/api/utils/Helpers.h>
 #include <iostream> 
 
 namespace ripple {
 
 Json::Value ContractLocalCallResultImpl(Json::Value originJson, TER terResult, std::string exeResult)
 {
-	Json::Value jvResult;
+    Json::Value jvResult;
+    std::string detailMethod = originJson[jss::command].asString();
+    jvResult[jss::request] = originJson;
 	try
 	{
-		jvResult[jss::request] = originJson;
-
 		if (temUNCERTAIN != terResult)
 		{
 			if (tesSUCCESS != terResult)
-			{
-				return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
-				//jvResult[jss::error] = exeResult;
-			}
+                return RPC::make_error(rpcCTR_EVMCALL_EXCEPTION, exeResult);
 			else
-			{
-				jvResult[jss::contract_call_result] = exeResult;
-			}
+                jvResult[jss::contract_call_result] = exeResult;
 		}
 	}
 	catch (std::exception&)
 	{
-		jvResult = RPC::make_error(rpcINTERNAL,
-			"Exception occurred during JSON handling.");
+        auto errMsg = "Exception occurred during JSON handling.";
+        return RPC::make_error(rpcINTERNAL, errMsg);
 	}
 	return jvResult;
 }
@@ -69,7 +66,8 @@ std::pair<TER, std::string> doEVMCall(ApplyContext& context)
 {
 	SleOps ops(context);
 	auto pInfo = std::make_shared<EnvInfoImpl>(context.view().info().seq, TX_GAS, 
-                    context.view().fees().drops_per_byte, context.app.getPreContractFace());
+                    context.view().fees().drops_per_byte, 0,
+            getChainID(context.app.openLedger().current()),false,context.app.getPreContractFace());
 	Executive e(ops, *pInfo, INITIAL_DEPTH);
 	e.initialize();
 	auto tx = context.tx;
@@ -121,6 +119,8 @@ Json::Value checkJsonFields(Json::Value originJson)
 	return ret;
 }
 
+
+
 Json::Value
 doContractCall(RPC::JsonContext& context)
 {
@@ -129,47 +129,46 @@ doContractCall(RPC::JsonContext& context)
 
     // Json::Value jsonRpcObj = context.params[jss::tx_json];
     Json::Value jsonParams = context.params;
-
-    auto checkResult = checkJsonFields(jsonParams);
+    Json::Value checkResult = checkJsonFields(jsonParams);
     if (isRpcError(checkResult))
         return checkResult;
 
-    std::string accountStr = jsonParams[jss::account].asString();
     AccountID accountID;
+    std::string accountStr = jsonParams[jss::account].asString();
     auto jvAccepted = RPC::accountFromString(accountID, accountStr, true);
     if (jvAccepted)
     {
         return jvAccepted;
     }
+
     std::shared_ptr<ReadView const> ledger;
     auto result = RPC::lookupLedger(ledger, context);
     if (!ledger)
         return result;
-    if (!ledger->exists(keylet::account(accountID)))
-        return rpcError(rpcACT_NOT_FOUND);
 
-    std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+
     AccountID contractAddrID;
-    auto jvAcceptedCtrAddr =
-        RPC::accountFromString(contractAddrID, ctrAddrStr, true);
-    if (jvAcceptedCtrAddr)
     {
-        return jvAcceptedCtrAddr;
+        std::string ctrAddrStr = jsonParams[jss::contract_address].asString();
+
+        auto jvAcceptedCtrAddr =
+            RPC::accountFromString(contractAddrID, ctrAddrStr, true);
+        if (jvAcceptedCtrAddr)
+        {
+            return jvAcceptedCtrAddr;
+        }
     }
+
     if (!ledger->exists(keylet::account(contractAddrID)))
         return rpcError(rpcACT_NOT_FOUND);
 
     auto strUnHexRes = strUnHex(jsonParams[jss::contract_data].asString());
-    if (!strUnHexRes)
+    if (!strUnHexRes || (*strUnHexRes).empty())
     {
-        errMsgStr = "contract_data is not in hex";
-        return RPC::make_error(rpcINVALID_PARAMS, errMsgStr);
+        return RPC::make_error(rpcINVALID_PARAMS, "contract_data is invalid.");
     }
-    Blob contractDataBlob = *strUnHexRes;
-    if (contractDataBlob.size() == 0)
-    {
-        return RPC::invalid_field_error(jss::contract_data);
-    }
+    auto contractDataBlob = *strUnHexRes;
+
     // int64_t txValue = 0;
     STTx contractTx(
         ttCONTRACT,
@@ -185,17 +184,6 @@ doContractCall(RPC::JsonContext& context)
     std::shared_ptr<OpenView> openViewTemp =
         std::make_shared<OpenView>(ledger.get());
 
-    boost::optional<PreclaimContext const> pcctx;
-    pcctx.emplace(
-        appTemp,
-        *openViewTemp,
-        tesSUCCESS,
-        contractTx,
-        tapNONE,
-        appTemp.journal("ContractLocalCall"));
-    if (auto ter = Transactor::checkFrozen(*pcctx); ter != tesSUCCESS)
-        return RPC::make_error(rpcFORBIDDEN, "Account already frozen");
-
     ApplyContext applyContext(
         appTemp,
         *openViewTemp,
@@ -210,5 +198,6 @@ doContractCall(RPC::JsonContext& context)
     return ContractLocalCallResultImpl(
         jsonParams, localCallRet.first, localCallRet.second);
 }
+
 
 } // ripple

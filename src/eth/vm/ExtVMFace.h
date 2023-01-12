@@ -133,9 +133,13 @@ struct CreateResult
         evmc_status_code status;
         owning_bytes_ref output;
         evmc_address address; //h160 address
+        int exception;
 
-        CreateResult(evmc_status_code status, owning_bytes_ref&& output, evmc_address const& address)
-                : status{ status }, output{ std::move(output) }, address(address)
+        CreateResult(evmc_status_code status, owning_bytes_ref&& output, evmc_address const& address, int exception)
+            : status{status}
+            , output{std::move(output)}
+            , address(address)
+            , exception(exception)
         {}
 };
 
@@ -162,6 +166,21 @@ public:
 
         virtual uint64_t dropsPerByte() const{
                 return 0;
+        }
+
+        virtual int64_t gasUsed() const
+        {
+            return 0;
+        } 
+
+        virtual int64_t chainID() const
+        {
+            return 0;
+        } 
+
+        virtual bool eth_tx() const 
+        {
+            return false;
         }
 
     virtual const ripple::PreContractFace&

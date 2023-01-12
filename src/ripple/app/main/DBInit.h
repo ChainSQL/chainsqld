@@ -45,7 +45,7 @@ inline constexpr auto LgrDBName{"ledger.db"};
 inline constexpr std::array<char const*, 1> LgrDBPragma{
     {"PRAGMA journal_size_limit=1582080;"}};
 
-inline constexpr std::array<char const*, 9> LgrDBInit{
+inline constexpr std::array<char const*, 10> LgrDBInit{
     {"BEGIN TRANSACTION;",
 
      "CREATE TABLE IF NOT EXISTS Ledgers (           \
@@ -79,8 +79,18 @@ inline constexpr std::array<char const*, 9> LgrDBInit{
      "CREATE INDEX IF NOT EXISTS ValidationsByTime ON          \
         Validations(SignTime);",
 
+     "CREATE TABLE IF NOT EXISTS LastValidations   (         \
+        LedgerSeq   BIGINT UNSIGNED,                    \
+        LedgerHash  CHARACTER(64),                      \
+        NodePubKey  CHARACTER(56),                      \
+        SignTime    BIGINT UNSIGNED,                    \
+        RawData     BLOB                                \
+    );",
+
      "END TRANSACTION;"}};
 
+inline constexpr const char* LedgerAddBloom =
+    "ALTER TABLE Ledgers ADD Bloom VARCHAR(2048);";  
 ////////////////////////////////////////////////////////////////////////////////
 
 // Transaction database holds transactions and public keys

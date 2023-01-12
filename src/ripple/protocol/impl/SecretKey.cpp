@@ -26,14 +26,18 @@
 #include <ripple/protocol/SecretKey.h>
 #include <peersafe/crypto/hashBaseObj.h>
 #include <peersafe/crypto/ECIES.h>
+#include <peersafe/basics/TypeTransform.h>
+
 // #include <ripple/protocol/digest.h>
 #include <ripple/protocol/impl/secp256k1.h>
 #include <cstring>
 #include <ed25519-donna/ed25519.h>
 #include <peersafe/gmencrypt/GmCheck.h>
 #include <ripple/crypto/RFC1751.h>
+#include <eth/tools/Common.h>
 
 namespace ripple {
+using namespace eth;
 
 SecretKey::~SecretKey()
 {
@@ -224,6 +228,30 @@ sign(PublicKey const& pk, SecretKey const& sk, Slice const& m)
     }
 }
 
+static const u256 scSecp256k1n("115792089237316195423570985008687907852837564279074904382605163141518161494337");
+
+Signature signEthDigest(SecretKey const& sk, uint256 const& digest)
+{
+    auto* ctx = secp256k1Context();
+    secp256k1_ecdsa_recoverable_signature rawSig;
+    if (!secp256k1_ecdsa_sign_recoverable(ctx, &rawSig, digest.data(), sk.data(), nullptr, nullptr))
+        return {};
+
+    Signature s;
+    int v = 0;
+    secp256k1_ecdsa_recoverable_signature_serialize_compact(ctx, s.data(), &v, &rawSig);
+
+    SignatureStruct& ss = *reinterpret_cast<SignatureStruct*>(&s);
+    ss.v = static_cast<byte>(v);
+    const auto cuCheck = fromU256(scSecp256k1n / 2);
+    if (ss.s > cuCheck)
+    {
+        ss.v = static_cast<byte>(ss.v ^ 1);
+        ss.s = fromU256(scSecp256k1n - u256(ss.s));
+    }
+    assert(ss.s <= cuCheck);
+    return s;
+}
 Blob
 decrypt(const Blob& cipherBlob, const SecretKey& secret_key)
 {

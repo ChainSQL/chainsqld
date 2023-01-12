@@ -97,6 +97,15 @@ public:
         acquire(hash, seq);
     }
 
+    bool
+    stateNodeHashSetEnabled() override;
+
+    void
+    setTimer();
+
+    void
+    trigger();
+
 private:
     Schema& app_;
     NodeStore::Database& db_;
@@ -106,6 +115,11 @@ private:
     std::shared_ptr<TreeNodeCache> tnCache_;
 
     std::shared_ptr<StateNodeHashSet> stateNodeHashSet_;
+
+    LedgerIndex               lastValidSeq_;
+    std::chrono::milliseconds timerInterval_;
+    boost::asio::basic_waitable_timer<std::chrono::steady_clock> timer_;
+    std::atomic_bool          touching_{false};
 
     // Missing node handler
     LedgerIndex maxSeq_{0};

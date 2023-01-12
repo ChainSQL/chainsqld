@@ -23,11 +23,10 @@
 #include <cstdlib>
 #include <cstring>
 #include "picosha2.h"
-#include <ripple/basics/Slice.h>
-#include <ripple/basics/Blob.h>
+#include "ripemd160.h"
 using namespace std;
 
-namespace ripple
+namespace eth
 {
 
 namespace rmd160

@@ -27,6 +27,7 @@
 #include <ripple/protocol/Feature.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/schema/PeerManager.h>
+#include <peersafe/app/util/Common.h>
 #include <boost/range/adaptor/transformed.hpp>
 
 namespace ripple {
@@ -193,7 +194,7 @@ OpenLedger::apply_one(
         // If the transaction can't get into the queue for intrinsic
         // reasons, and it can still be recovered, try to put it
         // directly into the open ledger, else drop it.
-        if (queueResult.first.ter == telCAN_NOT_QUEUE && shouldRecover)
+        if (queueResult.first == telCAN_NOT_QUEUE && shouldRecover)
             return ripple::apply(app, view, *tx, flags, j);
         return std::make_pair(queueResult.first.ter,queueResult.second);
     }();
@@ -232,8 +233,7 @@ debugTostr(SHAMap const& set)
     {
         try
         {
-            SerialIter sit(item.slice());
-            auto const tx = std::make_shared<STTx const>(sit);
+            auto const tx = makeSTTx(item.slice());
             ss << debugTxstr(tx) << ", ";
         }
         catch (std::exception const&)

@@ -1604,6 +1604,23 @@ private:
         return jvRequest;
     }
 
+    Json::Value
+    parseShamapDump(Json::Value const& jvParams)
+    {
+        Json::Value jvRequest(Json::objectValue);
+
+        if (jvParams.size() >= 1)
+        {
+            jvRequest["root"] = jvParams[0u].asString();
+        }
+        if (jvParams.size() == 2)
+        {
+            jvRequest[jss::hash] = jvParams[1u].asString();
+        }
+
+        return jvRequest;
+    }
+
 public:
     //--------------------------------------------------------------------------
 
@@ -1754,6 +1771,7 @@ public:
             {   "schema_start",	       &RPCParser::parseSchemaID,		       1,  1 },
             {   "tx_in_pool",          &RPCParser::parseAsIs,                  0,  0 },
             {   "sync_info",           &RPCParser::parseSyncInfo,              0,  1 },
+            {   "shamap_dump",         &RPCParser::parseShamapDump,            1,  2 },
         };
 
         auto const count = jvParams.size();
@@ -1982,7 +2000,7 @@ rpcClient(
     std::unordered_map<std::string, std::string> const& headers)
 {
     static_assert(
-        rpcBAD_SYNTAX == 1 && rpcSUCCESS == 0,
+        (int)rpcBAD_SYNTAX == 1 && (int)rpcSUCCESS == 0,
         "Expect specific rpc enum values.");
     if (args.empty())
         return {rpcBAD_SYNTAX, {}};  // rpcBAD_SYNTAX = print usage

@@ -326,7 +326,7 @@ AmendmentTableImpl::AmendmentTableImpl(
         }
     }
 
-    for (auto const& a : parseSection(enabled))
+    /*for (auto const& a : parseSection(enabled))
     {
         if (auto s = add(a.first, sl))
         {
@@ -338,7 +338,7 @@ AmendmentTableImpl::AmendmentTableImpl(
             s->supported = true;
             s->enabled = true;
         }
-    }
+    }*/
 
     for (auto const& a : parseSection(vetoed))
     {
@@ -506,8 +506,26 @@ AmendmentTableImpl::doValidation(std::set<uint256> const& enabled) const
 std::vector<uint256>
 AmendmentTableImpl::getDesired() const
 {
-    // Get the list of amendments we support and do not veto
-    return doValidation({});
+    //The set of amendments to enable in the genesis ledger.
+    // Get the list of amendments we enable and do not
+    // veto, but that are not already enabled
+    std::vector<uint256> amendments;
+
+    {
+        std::lock_guard sl(mutex_);
+        for (auto const& e : amendmentMap_)
+        {
+            if (e.second.enabled && !e.second.vetoed)
+            {
+                amendments.push_back(e.first);
+            }
+        }
+    }
+
+    if (!amendments.empty())
+        std::sort(amendments.begin(), amendments.end());
+
+    return amendments;
 }
 
 std::map<uint256, std::uint32_t>

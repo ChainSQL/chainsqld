@@ -121,7 +121,9 @@ class FeatureCollections
         "TableSLEChange",
         "ContractStorage",
         "PromethSLEHideInMeta",
-        "TableGrant"
+        "TableGrant",
+        "GasPriceCompress",
+        "BloomFilter"
     };
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
@@ -160,6 +162,12 @@ featureToBitsetIndex(uint256 const& f);
 
 uint256
 bitsetIndexToFeature(size_t i);
+
+std::vector<uint256> const
+getDefaultEnabledFeature();
+
+std::vector<std::string> const
+getSupportedAmendments();
 
 class FeatureBitset
     : private std::bitset<detail::FeatureCollections::numFeatures()>
@@ -396,6 +404,9 @@ extern uint256 const featureTableSleChange;
 extern uint256 const featureContractStorage;
 extern uint256 const featureTableGrant;
 extern uint256 const featurePromethSLEHideInMeta;
+extern uint256 const featureFeeEscalation;
+extern uint256 const featureGasPriceCompress;
+extern uint256 const featureBloomFilter;
 
 }  // namespace ripple
 

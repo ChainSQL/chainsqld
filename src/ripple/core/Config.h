@@ -61,7 +61,8 @@ enum class SizedItem : std::size_t {
     txnDBCache,
     lgrDBCache,
     transactionSize,
-    transactionAge
+    transactionAge,
+    requestMapCount,
     //is need still?
     //siSLECacheSize,
     //siSLECacheAge,
@@ -126,12 +127,12 @@ public:
 
     bool GM_SELF_CHECK = false;
 
-    std::vector<std::string> IPS;           // Peer IPs from rippled.cfg.
-    std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from rippled.cfg.
-    std::vector<std::string> SNTP_SERVERS;  // SNTP servers from rippled.cfg.
+    std::vector<std::string> IPS;           // Peer IPs from chainsqld.cfg.
+    std::vector<std::string> IPS_FIXED;     // Fixed Peer IPs from chainsqld.cfg.
+    std::vector<std::string> SNTP_SERVERS;  // SNTP servers from chainsqld.cfg.
 
     std::vector<std::string>    TRUSTED_CA_LIST;
-	std::vector<std::string>    USER_ROOT_CERTIFICATES;          // root certificates from rippled.cfg.
+	std::vector<std::string>    USER_ROOT_CERTIFICATES;          // root certificates from chainsqld.cfg.
 	std::vector<std::string>	SCHEMA_IDS;
 
     std::vector<std::string> PEER_ROOT_CERTIFICATES;
@@ -157,9 +158,6 @@ public:
 
     // Network parameters
 
-    // The number of fee units a reference transaction costs
-    static constexpr FeeUnit32 TRANSACTION_FEE_BASE{10};
-
     // Note: The following parameters do not relate to the UNL or trust at all
     // Minimum number of nodes to consider the network present
     std::size_t NETWORK_QUORUM = 1;
@@ -184,14 +182,12 @@ public:
     boost::optional<std::size_t>
         VALIDATION_QUORUM;  // validations to consider ledger authoritative
 
-    ZXCAmount                      FEE_DEFAULT{10};
-
-    ZXCAmount                      FEE_ACCOUNT_RESERVE { 5*DROPS_PER_ZXC };
-    ZXCAmount                      FEE_OWNER_RESERVE { 1*DROPS_PER_ZXC };
-
-
-	std::uint64_t                     DROPS_PER_BYTE = (1000000 / 1024);
-
+    // The number of fee units a reference transaction costs
+    static constexpr FeeUnit32      TRANSACTION_FEE_BASE{10};
+    ZXCAmount                       FEE_DEFAULT{10};
+    ZXCAmount                       FEE_ACCOUNT_RESERVE { 5*DROPS_PER_ZXC };
+    ZXCAmount                       FEE_OWNER_RESERVE { 1*DROPS_PER_ZXC };
+	std::uint64_t                   DROPS_PER_BYTE = (1000000 / 1024);
     std::uint64_t                   GAS_PRICE = (10);
 
     // Node storage configuration
@@ -200,6 +196,7 @@ public:
 
     std::size_t NODE_SIZE = 0;
 
+    bool IS_ALLOW_REMOTE = false;
     bool SSL_VERIFY = true;
     std::string SSL_VERIFY_FILE;
     std::string SSL_VERIFY_DIR;
@@ -222,7 +219,7 @@ public:
     boost::optional<beast::IP::Endpoint> rpc_ip;
 
     std::unordered_set<uint256, beast::uhash<>> features;
-
+    std::vector<uint256> amendments;
 
 	// schema
 	std::string					 SCHEMA_PATH;
@@ -235,6 +232,17 @@ public:
     bool                        OPEN_ACCOUNT_DELAY = false;
     boost::optional<AccountID>  ADMIN;
     bool                        DEFAULT_AUTHORITY_ENABLED = false;
+    
+    //genesis
+    boost::optional<std::uint64_t>  CHAINID;
+
+    //eth
+    boost::optional<std::string>  ETH_DEFAULT_ACCOUNT_PRIVATE;
+
+
+    std::uint32_t               REQ_MAP_COUNT;
+    bool                        ENABLE_STATE_HASH_SET = false;
+    bool                        REAL_NAME_AUTHORITY_ENABLED = false;
 
 public:
     Config() : j_{beast::Journal::getNullSink()}

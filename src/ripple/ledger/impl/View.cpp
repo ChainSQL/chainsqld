@@ -51,6 +51,8 @@ addRaw(LedgerInfo const& info, Serializer& s)
     s.add32(info.closeTime.time_since_epoch().count());
     s.add8(info.closeTimeResolution.count());
     s.add8(info.closeFlags);
+    if (info.bloomEnabled)
+        s.addBitString(info.bloom);
 }
 
 bool
@@ -631,6 +633,8 @@ getMajorityAmendments(ReadView const& view)
 boost::optional<uint256>
 hashOfSeq(ReadView const& ledger, LedgerIndex seq, beast::Journal journal)
 {
+    if (seq == 0)
+        return boost::none;
     // Easy cases...
     if (seq > ledger.seq())
     {

@@ -79,8 +79,16 @@ bool SoftEncrypt::getPrivateKey(EC_KEY *sm2Keypair, std::vector<unsigned char>& 
     if(priLen != 0)
     {
         DebugPrint("private key Len: %d", priLen);
-        priKey.resize(priLen);
-        priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), priKey.data());
+        std::vector<unsigned char> pTmp;
+        pTmp.resize(priLen);
+
+        // left pad 0x0
+	    unsigned char priKeyTmp[32] = { 0 }; 
+        
+        priLen = BN_bn2bin(EC_KEY_get0_private_key(sm2Keypair), pTmp.data());
+        memcpy(priKeyTmp + (32-priLen), pTmp.data(), priLen);
+
+        priKey.insert(priKey.end(), priKeyTmp, priKeyTmp+32);
         if(priLen != -1)
             return true;
     }

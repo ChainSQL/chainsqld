@@ -16,13 +16,16 @@ namespace ripple
 class EnvInfoImpl : public eth::EnvInfo
 {
 public:
-    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit, uint64_t iDropsPerByte, const PreContractFace& pPreContractFaceIn)
+    EnvInfoImpl(int64_t iBlockNum, int64_t iGasLimit, uint64_t iDropsPerByte,int64_t iGasUsed,int64_t iChainID,bool bEthTx,const PreContractFace& pPreContractFaceIn)
         : EnvInfo(),
         pPreContractFace(pPreContractFaceIn)
     {
 		iBlockNum_     = iBlockNum;
 		iGasLimit_     = iGasLimit;
 		iDropsPerByte_ = iDropsPerByte;
+        iGasUsed_	   = iGasUsed;
+        iChainID_	   = iChainID;
+        bEthTx_		   = bEthTx;
     }
        
 	int64_t gasLimit() const override {
@@ -44,12 +47,33 @@ public:
     const PreContractFace& preContractFace() const override {
         return pPreContractFace;
     }
+
+	int64_t
+    gasUsed() const override
+    {
+        return iGasUsed_;
+    }
+
+    int64_t
+    chainID() const override
+    {
+        return iChainID_;
+    } 
+
+	bool
+	eth_tx() const override
+    {
+		return bEthTx_;
+    }
     
 private:
 	int64_t                   iBlockNum_;
     int64_t                   iGasLimit_;
 	uint64_t                  iDropsPerByte_;
     const PreContractFace&    pPreContractFace;
+    int64_t					  iGasUsed_;
+    int64_t					  iChainID_;
+    bool					  bEthTx_;
 };
 
 struct CallParametersR

@@ -3,6 +3,8 @@
 
 #include <peersafe/app/misc/SleOps.h>
 #include <peersafe/app/misc/ExtVM.h>
+#include <eth/vm/Common.h>
+#include <eth/vm/VMFace.h>
 
 namespace ripple {
 	const std::string ERRFUNSIG = "08C379A0";
@@ -40,6 +42,9 @@ public:
 	//Cannot copy from another object
 	Executive(Executive const&) = delete;
 	void operator=(Executive) = delete;
+    
+    static int64_t baseGasRequired(bool isCreation, eth::bytesConstRef const& code);
+    static double getCurGasPrice(ApplyContext& ctx);
 
 	/// Initializes the executive for evaluating a transaction. You must call finalize() at some point following this.
 	//void initialize(BlobRef _transaction) { initialize(STTx(_transaction, CheckTransaction::None)); }
@@ -98,6 +103,7 @@ public:
 	int64_t gasUsed() const;
 
 	eth::owning_bytes_ref takeOutput() { return std::move(m_output); }
+    eth::owning_bytes_ref takeRevertData() { return std::move(m_revertOri); }
 
 	/// @returns The exception that has happened during the execution if any.
 	TER getException() const noexcept { return m_excepted; }
@@ -108,16 +114,19 @@ private:
 
 	beast::Journal getJ();
 	void formatOutput(std::string msg);
-	void formatOutput(eth::owning_bytes_ref output);
+	void formatOutput(eth::owning_bytes_ref& output);
 	std::string getRevertErr(int64_t errCode);
+    TER exceptionToTerCode(eth::VMException const& _e);
+
 private:
 	SleOps& m_s;						///< The state to which this operation/transaction is applied.
 										
 	eth::EnvInfo const& m_envInfo;					///< Information on the runtime environment.
     PreContractFace const& m_PreContractFace;
 	std::shared_ptr<ExtVM> m_ext;		///< The VM externality object for the VM execution or null if no VM is required. shared_ptr used only to allow ExtVM forward reference. This field does *NOT* survive this object.
-	eth::owning_bytes_ref m_output;			///< Execution output.
-	eth::bytes m_input;						///< Execution input.
+	eth::owning_bytes_ref m_output;		///< Execution output.
+    eth::owning_bytes_ref m_revertOri;	///< Origin revert data.
+	eth::bytes m_input;					///< Execution input.
 	//ExecutionResult* m_res = nullptr;	///< Optional storage for execution results.
 
 	unsigned m_depth = 0;				///< The context's call-depth.
@@ -129,7 +138,7 @@ private:
 
 	//std::shared_ptr<const STTx> m_t;        ///< The original transaction.
 	int64_t m_gasCost;
-	uint32_t m_gasPrice;
+    double m_gasPrice;
 
 	bool m_isCreation = false;
 	AccountID m_newAddress;

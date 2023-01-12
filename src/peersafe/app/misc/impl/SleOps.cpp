@@ -127,6 +127,9 @@ namespace ripple {
         if (auto res = checkAuthority(_from, lsfPaymentAuth, _to);
             res != tesSUCCESS)
             return res;
+		if (auto res = checkAuthority(_from, lsfRealNameAuth, _to);
+            res != tesSUCCESS)
+            return res;
 
         int64_t value = fromUint256(_value);
         auto ret = subBalance(_from, value, addressHasCode(_from));
@@ -204,7 +207,7 @@ namespace ripple {
 			sleDst = std::make_shared<SLE>(k);
 			sleDst->setAccountID(sfAccount, _to);
             std::uint32_t const seqno{
-				ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): 1};
+				/*ctx_.view().rules().enabled(featureDeletableAccounts) ? ctx_.view().seq(): */1};
 			sleDst->setFieldU32(sfSequence, seqno);
 
 			//Add to directory
@@ -305,9 +308,10 @@ namespace ripple {
         jsonLog[jss::contract_topics] = jsonTopic;
         std::string strData(byValue.begin(), byValue.end());
         jsonLog[jss::contract_data] = strHex(strData);
+        jsonLog[jss::account] = to_string(contractID);
+
         getTx().addLog(jsonLog);
 
-        jsonLog[jss::account] = to_string(contractID);
         auto j = ctx_.app.journal("Executive");        
         JLOG(j.debug()) << "Contract log or event: " << jsonLog;
 
@@ -957,21 +961,37 @@ namespace ripple {
             return tesSUCCESS;
 
 		// allow payment with super admin
-		if (flag == lsfPaymentAuth && dst && ctx_.app.config().ADMIN &&
-            dst == ctx_.app.config().ADMIN)
+		if (((flag == lsfPaymentAuth) | (flag == lsfRealNameAuth))
+			&& dst && ctx_.app.config().ADMIN
+			&& dst == ctx_.app.config().ADMIN)
             return tesSUCCESS;
-
-        if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
-        {
-            if (!(sle->getFlags() & flag))
-                return tecNO_PERMISSION;
-        }
+		if (flag == lsfRealNameAuth)
+		{
+			if (ctx_.app.config().REAL_NAME_AUTHORITY_ENABLED)
+			{
+				if (!(sle->getFlags() & flag))
+					return tecNO_PERMISSION;
+				auto const dstSle = ctx_.view().read(keylet::account(dst.value()));
+				if (!dstSle)
+					return tefINTERNAL;
+				if (!(dstSle->getFlags() & flag))
+					return tecNO_PERMISSION;
+			}
+		}
         else
         {
-            if (sle->getFlags() & flag)
-                return tecNO_PERMISSION;
+			if (ctx_.app.config().DEFAULT_AUTHORITY_ENABLED)
+			{
+				if (!(sle->getFlags() & flag))
+					return tecNO_PERMISSION;
+			}
+			else
+			{
+				if (sle->getFlags() & flag)
+					return tecNO_PERMISSION;
+			}
         }
-
+        
         return tesSUCCESS;
     }
 

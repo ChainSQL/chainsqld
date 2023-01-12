@@ -1,6 +1,9 @@
 #include <peersafe/app/misc/ContractHelper.h>
 #include <peersafe/schema/Schema.h>
 #include <peersafe/protocol/STMap256.h>
+#include <ripple/app/tx/impl/ApplyContext.h>
+#include <ripple/shamap/SHAMap.h>
+#include <ripple/ledger/OpenView.h>
 #include <ripple/protocol/digest.h>
 
 namespace ripple {
@@ -88,24 +91,20 @@ namespace ripple {
 	// Contract state storage related
     boost::optional<uint256>
     ContractHelper::fetchFromCache(
+        ApplyContext& ctx,
         AccountID const& contract,
         uint256 const& key,
         bool bQuery /*=false*/)
     {
+        if (auto value = ctx.fetchFromDirty(contract, key); value != boost::none)
+            return value;
+
         if (bQuery)
             return boost::none;
 
-        if (mDirtyCache.find(contract) != mDirtyCache.end())
-        {
-            if (mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
-                return mDirtyCache[contract][key].value;
-        }
-
-        if( mStateCache.find(contract) != mStateCache.end())
-        {
-            if (mStateCache[contract].find(key) != mStateCache[contract].end())
-                return mStateCache[contract][key].value;
-        }
+        if (auto data = ctx.fetchFromStateCache(contract, key);
+            data != boost::none)
+            return data->value;
         
 		return boost::none;
     }
@@ -117,22 +116,31 @@ namespace ripple {
         bool bQuery /*=false*/
     )
     {
-        std::shared_ptr<SHAMap> mapPtr = nullptr;
-        if (mShaMapCache.find(contract) == mShaMapCache.end() || bQuery)
-        {
-            mapPtr = std::make_shared<SHAMap>(
-                SHAMapType::CONTRACT, app_.getNodeFamily());
+        auto funMakeShamap = [&, this](){
+            auto mapPtr = std::make_shared<SHAMap>(SHAMapType::CONTRACT, app_.getNodeFamily());
             if (root && !mapPtr->fetchRoot(SHAMapHash{*root}, nullptr))
             {
                 JLOG(mJournal.warn()) << "Get storage root failed for contract: "
                                       << to_string(contract) << ",root hash: "<<*root;
-                return nullptr;
+                mapPtr = nullptr;
             }
-            if (!bQuery)
-                mShaMapCache[contract] = mapPtr;
+            return mapPtr;
+        };
+        
+        std::shared_ptr<SHAMap> mapPtr = nullptr;
+        //!!!!! potential threat, please consider the thread conflict about mShaMapCache
+        if(bQuery)
+        {
+            mapPtr = funMakeShamap();
         }
         else
+        {
+            if(mShaMapCache.find(contract) == mShaMapCache.end())
+            {
+                mShaMapCache[contract] = funMakeShamap();
+            }
             mapPtr = mShaMapCache[contract];
+        }
 
         return mapPtr;
     }
@@ -171,12 +179,13 @@ namespace ripple {
 
     boost::optional<uint256>
     ContractHelper::fetchValue(
+        ApplyContext& ctx,
         AccountID const& contract,
         boost::optional<uint256> const& root,
         uint256 const& key,
         bool bQuery/*=false*/)
     {
-        auto ret = fetchFromCache(contract, key, bQuery);
+        auto ret = fetchFromCache(ctx,contract, key, bQuery);
         if (ret)
             return ret;
 
@@ -184,65 +193,38 @@ namespace ripple {
     }
 
     void
-    ContractHelper::clearDirty()
-    {
-	    mDirtyCache.clear();
-    }
-
-    void
-    ContractHelper::flushDirty(TER code)
-    {
-        if (code == TEScodes::tesSUCCESS)
-        {
-            auto it = mDirtyCache.begin();
-            while (it != mDirtyCache.end())
-            {
-                auto iter = it->second.begin();
-                while (iter != it->second.end())
-                {
-                    mStateCache[it->first][iter->first] = iter->second;
-                    iter++;
-                }
-                it++;
-            }
-        }
-        
-        clearDirty();
-	}
-
-    void
     ContractHelper::clearCache()
     {
-        mStateCache.clear();
         mShaMapCache.clear();
     }
 
-    void ContractHelper::setStorage(
+    void
+    ContractHelper::setStorage(
+        ApplyContext& ctx,
         AccountID const& contract,
         boost::optional<uint256> root,
         uint256 const& key,
         uint256 const& value)
     {
-        if (mDirtyCache.find(contract) != mDirtyCache.end() &&
-            mDirtyCache[contract].find(key) != mDirtyCache[contract].end())
+        if (ctx.fetchFromDirty(contract,key) != boost::none)
         {
-            mDirtyCache[contract][key].value = value;
-            return;		
+            ctx.setDirtyValue(contract, key, value);
+            return;
         }
-            
-		if (mStateCache.find(contract) != mStateCache.end() &&
-            mStateCache[contract].find(key) != mStateCache[contract].end())
+        
+        if (auto data = ctx.fetchFromStateCache(contract,key); 
+            data != boost::none)
         {
-            mDirtyCache[contract][key].value = value;   
-            mDirtyCache[contract][key].existInDB = mStateCache[contract][key].existInDB;
-            return;	
+            ctx.setDirtyValue(contract, key, value);
+            ctx.setDirtyExistInDB(contract, key, data->existInDB);
+            return;
         }
 
-        mDirtyCache[contract][key].value = value;
+        ctx.setDirtyValue(contract, key, value);
         if (fetchFromDB(contract,root,key)) 
-            mDirtyCache[contract][key].existInDB = true;
+            ctx.setDirtyExistInDB(contract, key, true);
         else
-            mDirtyCache[contract][key].existInDB = false;
+            ctx.setDirtyExistInDB(contract, key, false);
     }
 
     std::shared_ptr<SHAMapItem const>
@@ -254,7 +236,7 @@ namespace ripple {
     }
 
     ContractHelper::ValueOpType
-    ContractHelper::getOpType(ValueType const& value)
+    ContractHelper::getOpType(ContractValueType const& value)
     {
         auto type = ValueOpType::invalid;
         if (value.value == uint256(0))
@@ -275,11 +257,12 @@ namespace ripple {
     void
     ContractHelper::apply(OpenView& open)
     {
-        if (mStateCache.empty())
+        auto& stateCache = open.getStateCache();
+        if (stateCache.empty())
             return;
         try
         {
-            for (auto it = mStateCache.begin(); it != mStateCache.end(); it++)
+            for (auto it = stateCache.begin(); it != stateCache.end(); it++)
             {
                 AccountID const& contract = it->first;
                 auto const k = keylet::account(contract);

@@ -108,7 +108,6 @@ public:
     Ledger(
         create_genesis_t,
         Config const& config,
-        std::vector<uint256> const& amendments,
         Family& family);
 
     Ledger(LedgerInfo const& info, Config const& config, Family& family);
@@ -136,7 +135,9 @@ public:
 	/** Create a new ledger from an exist ledger
 	*/
 	Ledger(Ledger const& ledger,
-		Family& f);
+		Family& f,
+        Config const& config,
+        uint256 schemaID);
 
     // used for database ledgers
     Ledger(
@@ -248,6 +249,12 @@ public:
     setValidated() const
     {
         info_.validated = true;
+    }
+
+    void
+    setBloom(uint2048 const& bloom)
+    {
+        info_.bloom = bloom;
     }
 
     void
@@ -500,17 +507,35 @@ uint256
 calculateLedgerHash(LedgerInfo const& info)
 {
     // VFALCO This has to match addRaw in View.h.
-    return sha512Half<hashType>(
-        HashPrefix::ledgerMaster,
-        std::uint32_t(info.seq),
-        std::uint64_t(info.drops.drops()),
-        info.parentHash,
-        info.txHash,
-        info.accountHash,
-        std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
-        std::uint32_t(info.closeTime.time_since_epoch().count()),
-        std::uint8_t(info.closeTimeResolution.count()),
-        std::uint8_t(info.closeFlags));
+    if (info.bloomEnabled)
+    {
+        return sha512Half<hashType>(
+            HashPrefix::ledgerMaster,
+            std::uint32_t(info.seq),
+            std::uint64_t(info.drops.drops()),
+            info.parentHash,
+            info.txHash,
+            info.accountHash,
+            info.bloom,
+            std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
+            std::uint32_t(info.closeTime.time_since_epoch().count()),
+            std::uint8_t(info.closeTimeResolution.count()),
+            std::uint8_t(info.closeFlags));
+    }
+    else
+    {
+        return sha512Half<hashType>(
+            HashPrefix::ledgerMaster,
+            std::uint32_t(info.seq),
+            std::uint64_t(info.drops.drops()),
+            info.parentHash,
+            info.txHash,
+            info.accountHash,
+            std::uint32_t(info.parentCloseTime.time_since_epoch().count()),
+            std::uint32_t(info.closeTime.time_since_epoch().count()),
+            std::uint8_t(info.closeTimeResolution.count()),
+            std::uint8_t(info.closeFlags));
+    }
 }
 
 }  // namespace ripple

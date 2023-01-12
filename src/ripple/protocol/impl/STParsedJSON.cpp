@@ -869,6 +869,7 @@ parseObject(
                 case STI_VALIDATION:
                 case STI_PROPOSESET:
                 case STI_VIEWCHANGE:
+                case STI_VALIDATIONSET:
                     if (!value.isObject())
                     {
                         error = not_an_object(json_name, fieldName);
